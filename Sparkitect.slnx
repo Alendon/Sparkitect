@@ -1,0 +1,22 @@
+﻿<Solution>
+  <Folder Name="/benchmark/">
+    <Project Path="benchmark\Sparkitect.Benchmark\Sparkitect.Benchmark.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/build">
+    <File Path="build\LocalNuGetPublish.targets" />
+  </Folder>
+  <Folder Name="/gen/">
+    <Project Path="gen\Sparkitect.Generator\Sparkitect.Generator.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples\MinimalSampleMod\MinimalSampleMod.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src\Sparkitect.Sdk\Sparkitect.Sdk.csproj" Type="Classic C#" />
+    <Project Path="src\Sparkitect\Sparkitect.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests\Sparkitect.Generator.Tests\Sparkitect.Generator.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests\Sparkitect.Tests\Sparkitect.Tests.csproj" Type="Classic C#" />
+  </Folder>
+</Solution>

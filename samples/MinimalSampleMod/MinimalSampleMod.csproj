@@ -1,0 +1,20 @@
+﻿<Project Sdk="Sparkitect.Sdk/1.0.12">
+    <PropertyGroup>
+        <ModName>Minimal Sample Mod</ModName>
+        <ModIdentifier>minimal-sample-mod</ModIdentifier>
+        <ModVersion>1.0.0</ModVersion>
+        <ModAuthor>Alendon</ModAuthor>
+        <ModDescription>Minimal sample mod for Sparkitect</ModDescription>
+        <ModType>Game</ModType>
+        
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    
+    <ItemGroup>
+      <PackageReference Include="Sparkitect" Version="1.0.0" />
+    </ItemGroup>
+    
+    
+</Project>

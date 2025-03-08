@@ -1,0 +1,33 @@
+<Project>
+    <PropertyGroup>
+        <!-- Ensure this runs after the standard pack target -->
+        <PackDependsOn>$(PackDependsOn);PublishToLocalNuGet</PackDependsOn>
+    </PropertyGroup>
+
+    <Target Name="PublishToLocalNuGet" AfterTargets="Pack" Condition="'$(EnableLocalNuGetPublish)' == 'true'">
+        <!-- Check if local publishing is properly configured -->
+        <Warning
+                Text="Local NuGet publishing is enabled but LocalNuGetPath is not set. Configure it in your .user file."
+                Condition="'$(EnableLocalNuGetPublish)' == 'true' AND '$(LocalNuGetPath)' == ''" />
+
+        <!-- Validate directory exists -->
+        <Warning
+                Text="Specified LocalNuGetPath '$(LocalNuGetPath)' does not exist."
+                Condition="'$(EnableLocalNuGetPublish)' == 'true' AND !Exists('$(LocalNuGetPath)')" />
+
+        <!-- Copy the package to local NuGet folder -->
+        <ItemGroup>
+            <PackageToPublish Include="$(OutputPath)\..\$(PackageId).$(PackageVersion).nupkg" />
+        </ItemGroup>
+
+        <Copy
+                SourceFiles="@(PackageToPublish)"
+                DestinationFolder="$(LocalNuGetPath)"
+                Condition="'$(EnableLocalNuGetPublish)' == 'true' AND Exists('$(LocalNuGetPath)')" />
+
+        <Message
+                Text="Published package $(PackageId).$(PackageVersion).nupkg to local NuGet folder: $(LocalNuGetPath)"
+                Importance="high"
+                Condition="'$(EnableLocalNuGetPublish)' == 'true' AND Exists('$(LocalNuGetPath)')" />
+    </Target>
+</Project>

@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <PackageId>Sparkitect.Sdk</PackageId>
+        <Version>1.0.12</Version>
+
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+        <DevelopmentDependency>true</DevelopmentDependency>
+
+        <PackageType>MSBuildSdk</PackageType>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <SupressDependenciesWhenPacking>true</SupressDependenciesWhenPacking>
+
+        <MsBuildSdkPackageVersion>$(Version)</MsBuildSdkPackageVersion>
+    </PropertyGroup>
+
+    <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" />
+    
+    <ItemGroup>
+        <Content Include="build\**\*" Pack="true" PackagePath="build" />
+        <Content Include="Sdk\**" Pack="true" PackagePath="Sdk" />
+        <Content Include="Templates\**\*" Pack="true" PackagePath="Templates"/>
+    </ItemGroup>
+
+</Project>

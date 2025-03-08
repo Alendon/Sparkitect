@@ -1,0 +1,9 @@
+﻿namespace ${RootNamespace}.DevLauncher;
+
+internal static class Program
+{
+    public static void Main(string[] args)
+    {
+        Sparkitect.Program.Main(args);
+    }
+}

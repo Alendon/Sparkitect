@@ -1,0 +1,61 @@
+﻿<Project>
+    <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
+    
+    <!-- Validate mod properties -->
+    <Target Name="ValidateModProperties" BeforeTargets="Build">
+        <Error Text="ModName must be set" Condition="'$(ModName)' == ''"/>
+        <Error Text="ModIdentifier must be set" Condition="'$(ModIdentifier)' == ''"/>
+        <Error Text="ModVersion must be set" Condition="'$(ModVersion)' == ''"/>
+        <Error Text="ModAuthor must be set" Condition="'$(ModAuthor)' == ''"/>
+        <Error Text="ModType must be set to either 'Root' or 'Game'"
+               Condition="'$(ModType)' == '' or ('$(ModType)' != 'Root' and '$(ModType)' != 'Game')"/>
+    </Target>
+
+    <!-- Output mod information -->
+    <Target Name="OutputModInfo" AfterTargets="Build">
+        <Message Text="Built mod: $(ModName) ($(ModIdentifier)) v$(ModVersion) by $(ModAuthor)" Importance="high"/>
+        <Message Text="Mod Type: $(ModType)" Importance="high"/>
+        <Message Text="Description: $(ModDescription)"
+                 Condition="'$(ModDescription)' != ''"
+                 Importance="normal"/>
+    </Target>
+
+    <PropertyGroup>
+        <DevLauncherTemplate>$(MSBuildThisFileDirectory)../Templates/DevLauncher.cst</DevLauncherTemplate>
+    </PropertyGroup>
+
+    <!-- Generate Program.cs unless packing -->
+    <Target Name="GenerateDevLauncher"
+            BeforeTargets="CoreCompile">
+
+        <PropertyGroup>
+            <DevLauncherFile>$(IntermediateOutputPath)Generated.DevLauncher.g.cs</DevLauncherFile>
+        </PropertyGroup>
+        
+        <!-- Ensure directory exists -->
+        <MakeDir Directories="$(IntermediateOutputPath)"/>
+
+        <!-- Read template -->
+        <ReadLinesFromFile File="$(DevLauncherTemplate)">
+            <Output TaskParameter="Lines" ItemName="LauncherTemplate"/>
+        </ReadLinesFromFile>
+
+        <!-- Replace template variables -->
+        <PropertyGroup>
+            <LauncherContent>$([System.IO.File]::ReadAllText('$(DevLauncherTemplate)'))</LauncherContent>
+            <LauncherContent>$(LauncherContent.Replace('${RootNamespace}', '$(RootNamespace)'))</LauncherContent>
+        </PropertyGroup>
+
+        <!-- Write the content -->
+        <WriteLinesToFile
+                File="$(DevLauncherFile)"
+                Lines="$(LauncherContent)"
+                Overwrite="true"
+                WriteOnlyWhenDifferent="true" />
+        
+        <!-- Add to compilation -->
+        <ItemGroup>
+            <Compile Include="$(DevLauncherFile)" />
+        </ItemGroup>
+    </Target>
+</Project>

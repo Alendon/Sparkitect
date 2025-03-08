@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="TUnit" Version="0.3.14" />
+      <PackageReference Include="TUnit.Analyzers" Version="0.1.984" />
+      <PackageReference Include="TUnit.Assertions.Analyzers" Version="0.1.984" />
+    </ItemGroup>
+
+</Project>

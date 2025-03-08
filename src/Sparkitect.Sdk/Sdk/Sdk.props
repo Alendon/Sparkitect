@@ -1,0 +1,15 @@
+﻿<Project>
+    <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk"/>
+    
+    <!-- Mod specific properties -->
+    <PropertyGroup>
+        <ModName></ModName>
+        <ModIdentifier></ModIdentifier>
+        <ModVersion></ModVersion>
+        <ModAuthor></ModAuthor>
+        <ModDescription></ModDescription>
+        <ModType></ModType>
+        
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+</Project>  

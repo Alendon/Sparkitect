@@ -1,0 +1,9 @@
+﻿- name: Technical Systems Overview
+  href: index.md
+# Placeholder for future technical system documentation
+# - name: Entity Component System
+#   href: entity-component-system.md
+# - name: Game States
+#   href: game-states.md
+# - name: Multiplayer & Networking
+#   href: multiplayer.md
