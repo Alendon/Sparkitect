@@ -1,11 +1,11 @@
 ﻿- name: Introduction
   href: intro.md
-  uid: articles-intro
+  uid: articles.intro
 - name: Core Systems
   href: core/toc.yml
-  uid: articles-core
+  uid: articles.core.index
   homepage: core/index.md
 - name: Technical Systems
   href: technical/toc.yml
   homepage: technical/index.md
-  uid: articles-technical
+  uid: articles.technical.index

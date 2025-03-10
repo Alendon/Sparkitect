@@ -1,4 +1,8 @@
-﻿# Dependency Injection System
+﻿---
+uid: articles.core.dependency-injection
+---
+
+# Dependency Injection System
 
 The Dependency Injection (DI) system forms a critical part of Sparkitect's architecture, serving as the backbone of the modding framework and enabling modular access to services and components.
 

@@ -1,4 +1,8 @@
-﻿# Engine Initialization
+﻿---
+uid: articles.core.engine-initialization
+---
+
+# Engine Initialization
 
 This document describes the initialization process of the Sparkitect engine, from application startup to the transition to the first game state.
 

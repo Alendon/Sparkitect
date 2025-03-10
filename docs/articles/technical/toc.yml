@@ -1,9 +1,13 @@
 ﻿- name: Technical Systems Overview
   href: index.md
+  uid: articles.technical.index
 # Placeholder for future technical system documentation
 # - name: Entity Component System
 #   href: entity-component-system.md
+#   uid: articles.technical.entity-component-system
 # - name: Game States
 #   href: game-states.md
+#   uid: articles.technical.game-states
 # - name: Multiplayer & Networking
 #   href: multiplayer.md
+#   uid: articles.technical.multiplayer

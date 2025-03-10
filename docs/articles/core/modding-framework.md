@@ -1,4 +1,8 @@
-﻿# Modding Framework
+﻿---
+uid: articles.core.modding-framework
+---
+
+# Modding Framework
 
 The Modding Framework is the cornerstone of Sparkitect's architecture. Unlike traditional game engines where modding is an afterthought, Sparkitect builds its entire structure around the concept of mods.
 

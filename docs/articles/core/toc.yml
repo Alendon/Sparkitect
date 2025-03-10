@@ -1,10 +1,15 @@
 ﻿- name: Core Systems Overview
   href: index.md
+  uid: articles.core.index
 - name: Modding Framework
   href: modding-framework.md
+  uid: articles.core.modding-framework
 - name: Dependency Injection
   href: dependency-injection.md
+  uid: articles.core.dependency-injection
 - name: Registry System
   href: registry-system.md
+  uid: articles.core.registry-system
 - name: Engine Initialization
   href: engine-initialization.md
+  uid: articles.core.engine-initialization

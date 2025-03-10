@@ -20,6 +20,8 @@
 
     <ItemGroup>
         <PackageReference Include="DryIoc" Version="5.4.3" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.13.0" />
+        <PackageReference Include="Semver" Version="3.0.0" />
         <PackageReference Include="Silk.NET.Vulkan" Version="2.22.0" />
         <PackageReference Include="System.Text.Json" Version="9.0.0" />
         <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />

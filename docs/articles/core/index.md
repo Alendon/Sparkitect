@@ -1,4 +1,8 @@
-﻿# Core Systems
+﻿---
+uid: articles.core.index
+---
+
+# Core Systems
 
 The Core Systems form the foundation of Sparkitect, establishing the architectural patterns and infrastructure that all other systems build upon. These systems are tightly integrated and work together to enable the engine's modding-centric architecture.
 

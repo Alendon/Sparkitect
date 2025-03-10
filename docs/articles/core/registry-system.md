@@ -1,4 +1,8 @@
-﻿# Registry System
+﻿---
+uid: articles.core.registry-system
+---
+
+# Registry System
 
 The Registry System provides a centralized mechanism for tracking and managing game objects and resources. It ensures that all components can consistently reference objects across the engine and mods.
 

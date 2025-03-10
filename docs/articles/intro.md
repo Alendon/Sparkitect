@@ -1,4 +1,8 @@
-﻿# Introduction to Sparkitect
+﻿---
+uid: articles.intro
+---
+
+# Introduction to Sparkitect
 
 Sparkitect is a modular 3D game engine built on .NET, designed with modding as its foundational concept. Unlike traditional game engines where the core executable provides a complete environment, Sparkitect's base is intentionally minimal - the actual games and functionality are implemented through mods.
 

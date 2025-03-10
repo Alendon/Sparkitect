@@ -1,4 +1,8 @@
-﻿# Sparkitect Engine Documentation
+﻿---
+uid: articles.index
+---
+
+# Sparkitect Engine Documentation
 
 Welcome to the Sparkitect Engine documentation. This documentation serves as a reference for both engine developers and mod creators.
 
@@ -18,25 +22,25 @@ Sparkitect is built on several key principles that inform its architecture and c
 
 This documentation is organized into the following sections:
 
-- **[Core Systems](articles/core/index.md)**: Foundational systems that power the engine
+- **[Core Systems](core/index.md)**: Foundational systems that power the engine
     - Modding Framework
     - Dependency Injection
     - Registry System
     - Entity Component System
     - Game States
 
-- **[Technical Systems](articles/technical/index.md)**: Implementation of technical capabilities
+- **[Technical Systems](technical/index.md)**: Implementation of technical capabilities
     - Multiplayer & Networking
     - Input Handling
     - Rendering
     - Audio
     - Serialization
 
-- **[API Reference](api/index.md)**: Technical reference for engine APIs
+- **[API Reference](~/api/index.md)**: Technical reference for engine APIs
 
 ## Getting Started
 
-If you are new to Sparkitect, we recommend starting with the [Introduction](articles/intro.md) to understand the engine's philosophy and architecture before diving into specific systems.
+If you are new to Sparkitect, we recommend starting with the [Introduction](intro.md) to understand the engine's philosophy and architecture before diving into specific systems.
 
 ## Target Audience
 

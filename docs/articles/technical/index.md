@@ -1,4 +1,8 @@
-﻿# Technical Systems
+﻿---
+uid: articles.technical.index
+---
+
+# Technical Systems
 
 The Technical Systems of Sparkitect build upon the Core Systems to provide the functional capabilities of the game engine. These systems implement specific features such as rendering, input handling, networking, and more.
 
