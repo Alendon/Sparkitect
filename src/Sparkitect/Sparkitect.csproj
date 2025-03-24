@@ -16,9 +16,10 @@
         <DefineConstants>$(DefineConstants);JETBRAINS_ANNOTATIONS</DefineConstants>
     </PropertyGroup>
     
-    <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" />
+    <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" Condition="Exists('$(SolutionDir)build\LocalNuGetPublish.targets')" />
 
     <ItemGroup>
+        <PackageReference Include="BidirectionalDictionary" Version="1.3.0" />
         <PackageReference Include="DryIoc" Version="5.4.3" />
         <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.13.0" />
         <PackageReference Include="Semver" Version="3.0.0" />

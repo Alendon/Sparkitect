@@ -1,0 +1,39 @@
+﻿<Project>
+
+    <PropertyGroup>
+        <SparkitectModPackageEnabled Condition="'$(SparkitectModPackageEnabled)' == ''">true</SparkitectModPackageEnabled>
+        <SparkitectModManifestIntermediatePath>$(IntermediateOutputPath)manifest.json</SparkitectModManifestIntermediatePath>
+        <SparkitectModArchiveName>$(ModIdentifier)-$(ModVersion).sparkmod</SparkitectModArchiveName>
+        <SparkitectModArchiveOutputPath>$(OutputPath)$(SparkitectModArchiveName)</SparkitectModArchiveOutputPath>
+        <SparkitectSdkTaskDll>$(MSBuildThisFileDirectory)..\tasks\net9.0\$(MSBuildThisFileName).dll</SparkitectSdkTaskDll>
+    </PropertyGroup>
+    
+    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.GenerateModManifest" AssemblyFile="$(SparkitectSdkTaskDll)" />
+    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.CreateModArchive" AssemblyFile="$(SparkitectSdkTaskDll)" />
+    
+    <!-- Generate mod manifest -->
+    <Target Name="GenerateModManifest" AfterTargets="Build" Condition="'$(SparkitectModPackageEnabled)' == 'true'">
+        <GenerateModManifest
+            ModIdentifier="$(ModIdentifier)"
+            ModName="$(ModName)"
+            ModDescription="$(ModDescription)"
+            ModVersion="$(ModVersion)"
+            ModAuthor="$(ModAuthor)"
+            AssemblyPath="$(TargetPath)"
+            OutputPath="$(SparkitectModManifestIntermediatePath)" />
+    </Target>
+    
+    <!-- Create mod archive -->
+    <Target Name="CreateModArchive" 
+            AfterTargets="GenerateModManifest"
+            DependsOnTargets="GenerateModManifest"
+            Condition="'$(SparkitectModPackageEnabled)' == 'true'">
+        <CreateModArchive
+            OutputArchivePath="$(SparkitectModArchiveOutputPath)"
+            ManifestPath="$(SparkitectModManifestIntermediatePath)"
+            AssemblyPath="$(TargetPath)"
+            AdditionalFiles="$(SparkitectAdditionalModFiles)" />
+            
+        <Message Text="Mod archive created at: $(SparkitectModArchiveOutputPath)" Importance="high" />
+    </Target>
+</Project>

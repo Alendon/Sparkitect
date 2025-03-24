@@ -11,7 +11,7 @@ public record ModManifest(
     [property: JsonConverter(typeof(SemVersionJsonConverter))]
     SemVersion Version,
     IReadOnlyList<string> Authors,
-    [property: JsonIgnore] string ModPath,
+    [property: JsonIgnore] string? ModPath,
     IReadOnlyList<ModRelationship> Relationships,
     string ModAssembly);
 

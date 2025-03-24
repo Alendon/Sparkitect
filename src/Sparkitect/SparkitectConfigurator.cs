@@ -9,6 +9,6 @@ public class SparkitectConfigurator : CoreConfigurator
 {
     public override void ConfigureIoc(IContainer container)
     {
-        container.Register<IModManager, ModManager>();
+        container.Register<IRegistryManager, RegistryManager>(Reuse.Singleton);
     }
 }

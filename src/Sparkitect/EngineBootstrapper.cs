@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using DryIoc;
-using Sparkitect.DI;
+﻿using DryIoc;
 using Sparkitect.Modding;
+using Sparkitect.Utils;
+using System;
+using System.Linq;
 
 namespace Sparkitect;
 
@@ -15,19 +12,20 @@ namespace Sparkitect;
 public class EngineBootstrapper
 {
     private IContainer? _coreContainer;
-    private IContainer? _rootContainer;
     private IModManager? _modManager;
+    private ICliArgumentHandler? _cliArgumentHandler;
 
     /// <summary>
     /// Main entry point for the application
     /// </summary>
-    public static void Main()
+    public static void Main(string[] args)
     {
         var bootstrapper = new EngineBootstrapper();
 
         try
         {
             bootstrapper.BuildCoreContainer();
+            bootstrapper.InitializeCliArguments(args);
             bootstrapper.LoadRootMods();
             bootstrapper.ProcessRegistries();
             bootstrapper.RunGame();
@@ -46,10 +44,26 @@ public class EngineBootstrapper
         _coreContainer = new Container();
 
         // Register essential services
+        _coreContainer.Register<ICliArgumentHandler, CliArgumentHandler>(Reuse.Singleton);
         _coreContainer.Register<IModManager, ModManager>(Reuse.Singleton);
+        _coreContainer.Register<IIdentificationManager, IdentificationManager>(Reuse.Singleton);
 
         // Resolve the mod manager for later use
+        _cliArgumentHandler = _coreContainer.Resolve<ICliArgumentHandler>();
         _modManager = _coreContainer.Resolve<IModManager>();
+    }
+
+    /// <summary>
+    /// Initializes the CLI argument handler with command-line arguments
+    /// </summary>
+    public void InitializeCliArguments(string[] args)
+    {
+        if (_cliArgumentHandler is null)
+        {
+            throw new InvalidOperationException("CLI argument handler has not been initialized");
+        }
+
+        _cliArgumentHandler.Initialize(args);
     }
 
     /// <summary>
@@ -64,31 +78,7 @@ public class EngineBootstrapper
 
         // Discover and load all mods
         _modManager.DiscoverMods();
-        _modManager.LoadMods();
-
-        // Build the root container with services from all loaded mods
-        BuildRootContainer();
-    }
-
-    /// <summary>
-    /// Builds the root container with services from all loaded mods
-    /// </summary>
-    private void BuildRootContainer()
-    {
-        if (_modManager is null)
-        {
-            throw new InvalidOperationException("Mod manager has not been initialized");
-        }
-
-        // Create a new container based on the core container
-        _rootContainer = _coreContainer.CreateChild();
-
-        // Discover and execute all IoC builder entrypoints
-        using var iocBuilderEntrypoints = _modManager.CreateConfigurationContainer<CoreConfigurator>(true);
-        foreach (var entrypoint in iocBuilderEntrypoints.ResolveMany<CoreConfigurator>())
-        {
-            entrypoint.ConfigureIoc(_rootContainer);
-        }
+        _modManager.LoadMods(_modManager.DiscoveredArchives.Select(a => a.Id).ToArray());
     }
 
     /// <summary>
@@ -101,24 +91,16 @@ public class EngineBootstrapper
             throw new InvalidOperationException("Mod manager has not been initialized");
         }
 
-        // Create a registry container
-        using var registryContainer = _modManager.CreateConfigurationContainer<IIoCRegistryBuilder>(true);
-        
-         
-        // Discover and execute all registry builder entrypoints
-        foreach (var entrypoint in registryContainer.ResolveMany<IIoCRegistryBuilder>())
-        {
-            entrypoint.ConfigureRegistries(registryContainer);
-        }
-        
-        _modManager.CreateConfigurationContainer<IRegistrations>(registryContainer);
+        var container = _modManager.CurrentCoreContainer;
 
-        // Discover and execute all registration entrypoints
-        foreach (var entrypoint in registryContainer.ResolveMany<IRegistrations>())
+        var registryManager = container.Resolve<IRegistryManager>(IfUnresolved.ReturnDefaultIfNotRegistered);
+
+        if (registryManager is null)
         {
-            // Execute the main phase registration
-            entrypoint.MainPhaseRegistration();
+            throw new InvalidOperationException("Registry manager has not been initialized");
         }
+        
+        registryManager.ProcessRegistry();
     }
 
     /// <summary>
@@ -138,8 +120,6 @@ public class EngineBootstrapper
     /// </summary>
     public void CleanUp()
     {
-        // Dispose containers in reverse order of creation
-        _rootContainer?.Dispose();
         _coreContainer?.Dispose();
     }
 }

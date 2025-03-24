@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using DryIoc;
 using JetBrains.Annotations;
+using OneOf;
+using OneOf.Types;
 using Sparkitect.DI;
 
 namespace Sparkitect.Modding;
@@ -19,6 +21,9 @@ public interface IModManager
     /// Gets a collection of all loaded mods
     /// </summary>
     IReadOnlyCollection<string> LoadedMods { get; }
+    
+    IReadOnlyList<IReadOnlyList<string>> LoadedModsPerGroup { get; }
+    IReadOnlyList<ModManifest> DiscoveredArchives { get; }
 
     /// <summary>
     /// Discovers all available mods from the mods folder
@@ -30,6 +35,8 @@ public interface IModManager
     /// </summary>
     void LoadMods(params ReadOnlySpan<string> modIds);
 
-    [MustDisposeResource] IContainer CreateConfigurationContainer<T>(bool trackDisposeTransients) where T : BaseConfigurationEntrypoint;
-    IContainer CreateConfigurationContainer<T>(IContainer configurationContainer) where T : BaseConfigurationEntrypoint;
+    [MustDisposeResource] IContainer CreateConfigurationContainer<T>(bool trackDisposeTransients,
+        OneOf<All, IEnumerable<string>> modsToInclude) where T : BaseConfigurationEntrypoint;
+    IContainer ModifyConfigurationContainer<T>(IContainer configurationContainer,
+        OneOf<All, IEnumerable<string>> modsToInclude) where T : BaseConfigurationEntrypoint;
 }

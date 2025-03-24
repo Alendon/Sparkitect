@@ -1,5 +1,9 @@
 ﻿<Project>
+    <!-- Properties for mod packaging -->
+    
+    
     <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
+    <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.targets"/>
     
     <!-- Validate mod properties -->
     <Target Name="ValidateModProperties" BeforeTargets="Build">
@@ -15,9 +19,6 @@
     <Target Name="OutputModInfo" AfterTargets="Build">
         <Message Text="Built mod: $(ModName) ($(ModIdentifier)) v$(ModVersion) by $(ModAuthor)" Importance="high"/>
         <Message Text="Mod Type: $(ModType)" Importance="high"/>
-        <Message Text="Description: $(ModDescription)"
-                 Condition="'$(ModDescription)' != ''"
-                 Importance="normal"/>
     </Target>
 
     <PropertyGroup>
@@ -44,6 +45,7 @@
         <PropertyGroup>
             <LauncherContent>$([System.IO.File]::ReadAllText('$(DevLauncherTemplate)'))</LauncherContent>
             <LauncherContent>$(LauncherContent.Replace('${RootNamespace}', '$(RootNamespace)'))</LauncherContent>
+            <LauncherContent>$(LauncherContent.Replace('${DirPlaceholder}', '$([System.IO.Path]::GetFullPath('$(SparkitectModArchiveOutputPath)'))'))</LauncherContent>
         </PropertyGroup>
 
         <!-- Write the content -->

@@ -4,24 +4,72 @@
         <TargetFramework>net9.0</TargetFramework>
         <PackageId>Sparkitect.Sdk</PackageId>
         <Version>1.0.12</Version>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
 
-        <IncludeBuildOutput>false</IncludeBuildOutput>
-        <NoWarn>$(NoWarn);NU5128</NoWarn>
-        <DevelopmentDependency>true</DevelopmentDependency>
-
-        <PackageType>MSBuildSdk</PackageType>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <SupressDependenciesWhenPacking>true</SupressDependenciesWhenPacking>
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <PackageType>MSBuildSdk</PackageType>
+        <IncludeBuildOutput>true</IncludeBuildOutput>
 
         <MsBuildSdkPackageVersion>$(Version)</MsBuildSdkPackageVersion>
+        <GenerateDependencyFile>true</GenerateDependencyFile>
+
+        <TargetsForTfmSpecificBuildOutput>
+            $(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage
+        </TargetsForTfmSpecificBuildOutput>
+        <BuildOutputTargetFolder>tasks</BuildOutputTargetFolder>
+        <NoWarn>NU5100</NoWarn>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <DebugType>embedded</DebugType>
     </PropertyGroup>
 
-    <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" />
-    
+    <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" Condition="Exists('$(SolutionDir)build\LocalNuGetPublish.targets')"/>
+
     <ItemGroup>
-        <Content Include="build\**\*" Pack="true" PackagePath="build" />
-        <Content Include="Sdk\**" Pack="true" PackagePath="Sdk" />
+        <Content Include="build\**\*" Pack="true" PackagePath="build"/>
+        <Content Include="Sdk\**" Pack="true" PackagePath="Sdk"/>
         <Content Include="Templates\**\*" Pack="true" PackagePath="Templates"/>
     </ItemGroup>
+
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Build.Framework" Version="17.13.9" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.Build.Utilities.Core" Version="17.13.9" PrivateAssets="all" ExcludeAssets="Runtime"/>
+        <PackageReference Include="Semver" Version="3.0.0" PrivateAssets="all"/>
+        <PackageReference Include="System.Text.Json" Version="9.0.2" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <Target
+            Name="AddBuildDependencyFileToBuiltProjectOutputGroupOutput"
+            BeforeTargets="BuiltProjectOutputGroup"
+            Condition=" '$(GenerateDependencyFile)' == 'true'">
+
+        <ItemGroup>
+            <BuiltProjectOutputGroupOutput
+                    Include="$(ProjectDepsFilePath)"
+                    TargetPath="$(ProjectDepsFileName)"
+                    FinalOutputPath="$(ProjectDepsFilePath)" />
+        </ItemGroup>
+    </Target>
+
+    <Target
+            Name="CopyProjectReferencesToPackage"
+            DependsOnTargets="ResolveReferences">
+        <ItemGroup>
+            <!-- The TargetPath is the path inside the package that the source file will be placed. This is already precomputed in the ReferenceCopyLocalPaths items' DestinationSubPath, so reuse it here. -->
+            <BuildOutputInPackage
+                    Include="@(ReferenceCopyLocalPaths)"
+                    TargetPath="%(ReferenceCopyLocalPaths.DestinationSubPath)" />
+        </ItemGroup>
+    </Target>
+    
+    <Target Name="CopyOutputToTasks" AfterTargets="Build">
+        <ItemGroup>
+            <DllToCopy Include="$(OutputPath)*.dll" />
+        </ItemGroup>
+        <Copy SourceFiles="@(DllToCopy)" DestinationFolder="$(ProjectDir)tasks\net9.0\" />
+    </Target>
 
 </Project>

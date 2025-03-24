@@ -1,9 +1,13 @@
-﻿namespace ${RootNamespace}.DevLauncher;
+﻿using System.Linq;
+
+namespace ${RootNamespace}.DevLauncher;
 
 internal static class Program
 {
     public static void Main(string[] args)
     {
-        Sparkitect.Program.Main(args);
+        // Add the mod directory argument to locate the built .sparkmod file
+        string[] modifiedArgs = [..args,@"-addModDirs=${DirPlaceholder}"];
+        Sparkitect.EngineBootstrapper.Main(modifiedArgs);
     }
 }

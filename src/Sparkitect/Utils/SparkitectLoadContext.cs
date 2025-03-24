@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Reflection.PortableExecutable;
 using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 
@@ -9,10 +10,12 @@ internal class SparkitectLoadContext : AssemblyLoadContext
 {
     private readonly Dictionary<string, WeakReference<Assembly>> _sharedAssemblies = new();
     private readonly SparkitectLoadContext? _parentContext;
+    private readonly Dictionary<string, Assembly> _loadedAssemblies;
 
-    public SparkitectLoadContext(SparkitectLoadContext? parentContext) : base(true)
+    public SparkitectLoadContext(SparkitectLoadContext? parentContext, Dictionary<string, Assembly> loadedAssemblies) : base(true)
     {
         _parentContext = parentContext;
+        _loadedAssemblies = loadedAssemblies;
     }
 
     /// <inheritdoc />
@@ -29,6 +32,13 @@ internal class SparkitectLoadContext : AssemblyLoadContext
 
     private bool TryLoadCachedAssembly(AssemblyName assemblyName, [MaybeNullWhen(false)] out Assembly assembly)
     {
+        //TODO check if the assembly was loaded previously
+
+        if (assemblyName.Name is not null && _loadedAssemblies.TryGetValue(assemblyName.Name, out assembly))
+        {
+            return true;
+        }
+        
         if (_parentContext is not null && _parentContext.TryLoadCachedAssembly(assemblyName, out assembly))
         {
             return true;
@@ -45,7 +55,9 @@ internal class SparkitectLoadContext : AssemblyLoadContext
 
     public Assembly CachedLoadFromStream(Stream dllStream, Stream? pdbStream = null)
     {
-        using var moduleMetadata = ModuleMetadata.CreateFromStream(dllStream);
+        using var moduleMetadata = ModuleMetadata.CreateFromStream(dllStream, PEStreamOptions.LeaveOpen);
+        dllStream.Seek(0, SeekOrigin.Begin);
+        
         var assemblyName = moduleMetadata.GetMetadataReader().GetAssemblyDefinition().GetAssemblyName();
 
         if (TryLoadCachedAssembly(assemblyName, out var assembly))

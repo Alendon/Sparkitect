@@ -4,8 +4,11 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using DryIoc;
 using JetBrains.Annotations;
+using OneOf.Types;
 using Sparkitect.DI;
 using Sparkitect.Utils;
+using OneOf;
+using Semver;
 
 namespace Sparkitect.Modding;
 
@@ -17,12 +20,30 @@ internal class ModManager : IModManager
     private readonly Dictionary<string, LoadedMod> _loadedMods = [];
     private readonly List<ModManifest> _discoveredArchives = [];
 
+    private readonly Dictionary<string, Assembly> _preLoadedAssemblies = [];
+
     private readonly Stack<LoadedModGroup> _loadedModGroups = new();
     private readonly IContainer _baseCoreContainer;
+    private readonly ICliArgumentHandler _cliArgumentHandler;
+    private readonly IIdentificationManager _identificationManager;
 
-    public ModManager(IContainer baseCoreContainer)
+    private const string AddModDirsArgument = "addModDirs";
+    public const string VirtualSparkitectModId = "sparkitect.core";
+
+    public ModManager(IContainer baseCoreContainer, ICliArgumentHandler cliArgumentHandler,
+        IIdentificationManager identificationManager)
     {
         _baseCoreContainer = baseCoreContainer;
+        _cliArgumentHandler = cliArgumentHandler;
+        _identificationManager = identificationManager;
+
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            var name = assembly.GetName().Name;
+            if (string.IsNullOrEmpty(name)) continue;
+
+            _preLoadedAssemblies[name] = assembly;
+        }
     }
 
 
@@ -34,8 +55,13 @@ internal class ModManager : IModManager
     /// </summary>
     public IReadOnlyCollection<string> LoadedMods => _loadedMods.Keys;
 
+    public IReadOnlyList<IReadOnlyList<string>> LoadedModsPerGroup =>
+        _loadedModGroups.Select(g => g.ModIds).ToList();
+
+    public IReadOnlyList<ModManifest> DiscoveredArchives => _discoveredArchives;
+
     /// <summary>
-    /// Discovers all available mods from the mods folder
+    /// Discovers all available mods from the mods folder and from any additional directories specified by the addModDirs argument
     /// </summary>
     public void DiscoverMods()
     {
@@ -52,8 +78,39 @@ internal class ModManager : IModManager
         // Clear any previously discovered archives
         _discoveredArchives.Clear();
 
+        // Check for additional mod directories specified in command line arguments
+        var additionalModFiles = new List<string>();
+        if (_cliArgumentHandler.TryGetArgumentValues(AddModDirsArgument, out var additionalModDirs))
+        {
+            foreach (var dirPath in additionalModDirs)
+            {
+                if (Directory.Exists(dirPath))
+                {
+                    // Add all .sparkmod files in the specified directory
+                    additionalModFiles.AddRange(
+                        Directory.GetFiles(dirPath, "*.sparkmod", SearchOption.TopDirectoryOnly));
+                    Console.WriteLine($"Added mod directory: {dirPath}");
+                }
+                else if (File.Exists(dirPath) &&
+                         Path.GetExtension(dirPath).Equals(".sparkmod", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Add a single .sparkmod file if it exists
+                    additionalModFiles.Add(dirPath);
+                    Console.WriteLine($"Added mod file: {dirPath}");
+                }
+                else
+                {
+                    Console.WriteLine(
+                        $"Warning: Specified mod path does not exist or is not a .sparkmod file: {dirPath}");
+                }
+            }
+        }
+
+        // Combine all mod files from default location and additional directories
+        var allModFiles = modFiles.Concat(additionalModFiles).ToArray();
+
         // Process each mod file
-        foreach (var modFile in modFiles)
+        foreach (var modFile in allModFiles)
         {
             try
             {
@@ -90,7 +147,32 @@ internal class ModManager : IModManager
             }
         }
 
+        // Add the virtual Sparkitect mod
+        var sparkitectModManifest = CreateSparkitectModManifest();
+        _discoveredArchives.Add(sparkitectModManifest);
+        Console.WriteLine($"Discovered mod: {sparkitectModManifest.Id} (virtual)");
+
         Console.WriteLine($"Discovered {_discoveredArchives.Count} mods");
+    }
+
+    /// <summary>
+    /// Creates a virtual manifest for the Sparkitect core mod
+    /// </summary>
+    /// <returns>A ModManifest representing the Sparkitect core</returns>
+    private ModManifest CreateSparkitectModManifest()
+    {
+        // This method will be implemented by the user later
+        return new ModManifest
+        (
+            Id: VirtualSparkitectModId,
+            Name: "Sparkitect Core",
+            Version: SemVersion.Parse("1.0.0"),
+            Description: "Core engine functionality",
+            ModAssembly: "Sparkitect",
+            ModPath: null!, // No physical path for virtual mod
+            Relationships: [],
+            Authors: []
+        );
     }
 
     /// <summary>
@@ -102,7 +184,8 @@ internal class ModManager : IModManager
         //TODO Load External Dependencies (Non Mod dotnet assemblies)
 
         _loadedModGroups.TryPeek(out var parentModGroup);
-        var loadContext = new SparkitectLoadContext(parentModGroup?.LoadContextHandle.Target as SparkitectLoadContext);
+        var loadContext = new SparkitectLoadContext(parentModGroup?.LoadContextHandle.Target as SparkitectLoadContext,
+            _preLoadedAssemblies);
         var coreContainer = _baseCoreContainer.CreateChild();
 
         var modGroup = new LoadedModGroup()
@@ -117,6 +200,7 @@ internal class ModManager : IModManager
         foreach (var modId in modIds)
         {
             var modManifest = _discoveredArchives.FirstOrDefault(m => m.Id == modId);
+            _identificationManager.RegisterMod(modId);
 
             if (modManifest is null)
             {
@@ -124,6 +208,27 @@ internal class ModManager : IModManager
                 throw new InvalidOperationException($"Mod {modId} not found");
             }
 
+            // Check if it is a virtual mod (e.g. Sparkitect core)
+            if (modManifest.ModPath is null)
+            {
+                if (!_preLoadedAssemblies.TryGetValue(modManifest.ModAssembly, out var preLoadedAssembly))
+                {
+                    Console.WriteLine($"Warning: Virtual mod {modId} assembly {modManifest.ModAssembly} not found");
+                    continue;
+                }
+                
+                newLoadedMods.Add(new LoadedMod
+                {
+                    Archive = null, // No archive for virtual mod
+                    Assembly = preLoadedAssembly,
+                    Manifest = modManifest
+                });
+                
+                Console.WriteLine($"Loaded virtual mod: {modId}");
+                continue;
+            }
+
+            // Handle regular mods with archives
             var archive = ZipFile.OpenRead(modManifest.ModPath);
 
             var modAssemblyEntry = archive.GetEntry(modManifest.ModAssembly);
@@ -137,7 +242,16 @@ internal class ModManager : IModManager
             using var assemblyStream = modAssemblyEntry.Open();
             using var pdbStream = archive.GetEntry(Path.ChangeExtension(modManifest.ModAssembly, ".pdb"))?.Open();
 
-            var assembly = loadContext.CachedLoadFromStream(assemblyStream, pdbStream);
+            using var assemblyMemoryStream = new MemoryStream();
+            assemblyStream.CopyTo(assemblyMemoryStream);
+            assemblyMemoryStream.Seek(0, SeekOrigin.Begin);
+
+            MemoryStream? pdbMemoryStream = pdbStream is not null ? new MemoryStream() : null;
+            pdbStream?.CopyTo(pdbMemoryStream!);
+            pdbMemoryStream?.Seek(0, SeekOrigin.Begin);
+
+
+            var assembly = loadContext.CachedLoadFromStream(assemblyMemoryStream, pdbMemoryStream);
             newLoadedMods.Add(new LoadedMod
             {
                 Archive = archive,
@@ -145,21 +259,28 @@ internal class ModManager : IModManager
                 Manifest = modManifest
             });
         }
-        
-        //TODO Populate core container with mod services
-
 
         _loadedModGroups.Push(modGroup);
         foreach (var newLoadedMod in newLoadedMods)
         {
             _loadedMods.Add(newLoadedMod.Manifest.Id, newLoadedMod);
         }
-        
+
+
+        using var configurationContainer = CreateConfigurationContainer<CoreConfigurator>(true, modIds.ToArray());
+        var configurators = configurationContainer.ResolveMany<CoreConfigurator>();
+
+        foreach (var coreConfigurator in configurators)
+        {
+            coreConfigurator.ConfigureIoc(coreContainer);
+        }
+
         Console.WriteLine($"Loaded {_loadedMods.Count} mods");
     }
 
     [MustDisposeResource]
-    public IContainer CreateConfigurationContainer<T>(bool trackDisposeTransients) where T : BaseConfigurationEntrypoint
+    public IContainer CreateConfigurationContainer<T>(bool trackDisposeTransients,
+        OneOf<All, IEnumerable<string>> modsToInclude) where T : BaseConfigurationEntrypoint
     {
         if (CurrentCoreContainer is null)
         {
@@ -170,14 +291,20 @@ internal class ModManager : IModManager
 
         var container = CurrentCoreContainer.CreateChild(newRules: rules);
 
-        return CreateConfigurationContainer<T>(container);
+        return ModifyConfigurationContainer<T>(container, modsToInclude);
     }
 
-    public IContainer CreateConfigurationContainer<T>(IContainer configurationContainer)
+    public IContainer ModifyConfigurationContainer<T>(IContainer configurationContainer,
+        OneOf<All, IEnumerable<string>> modsToInclude)
         where T : BaseConfigurationEntrypoint
     {
-        foreach (var (_, mod) in _loadedMods)
+        var modIds = modsToInclude.Match(
+            _ => _loadedMods.Keys,
+            ids => ids);
+
+        foreach (var modId in modIds)
         {
+            var mod = _loadedMods[modId];
             var entrypointAttribute = T.EntrypointAttributeType;
 
             var entrypointTypes = mod.Assembly.GetTypes()
@@ -206,6 +333,6 @@ internal class ModManager : IModManager
     {
         public required ModManifest Manifest { get; init; }
         public required Assembly Assembly { get; init; }
-        public required ZipArchive Archive { get; init; }
+        public ZipArchive? Archive { get; init; } // Nullable as virtual mods don't have an archive
     }
 }

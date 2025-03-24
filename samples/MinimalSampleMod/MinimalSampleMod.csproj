@@ -1,7 +1,10 @@
-﻿<Project Sdk="Sparkitect.Sdk/1.0.12">
+﻿<Project>
+    <!-- Import Sparkitect SDK props directly -->
+    <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.props" />
+    
     <PropertyGroup>
         <ModName>Minimal Sample Mod</ModName>
-        <ModIdentifier>minimal-sample-mod</ModIdentifier>
+        <ModIdentifier>minimal_sample_mod</ModIdentifier>
         <ModVersion>1.0.0</ModVersion>
         <ModAuthor>Alendon</ModAuthor>
         <ModDescription>Minimal sample mod for Sparkitect</ModDescription>
@@ -10,11 +13,22 @@
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <GenerateDependencyFile>true</GenerateDependencyFile>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+      <OutputPath>bin\Debug\</OutputPath>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+      <OutputPath>bin\Release\</OutputPath>
     </PropertyGroup>
     
     <ItemGroup>
-      <PackageReference Include="Sparkitect" Version="1.0.0" />
+      <!-- Project reference instead of package reference -->
+      <ProjectReference Include="..\..\src\Sparkitect\Sparkitect.csproj" />
     </ItemGroup>
     
-    
+    <!-- Import Sparkitect SDK targets directly -->
+    <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.targets" />
 </Project>

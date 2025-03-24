@@ -9,7 +9,7 @@
         <IncludeBuildOutput>false</IncludeBuildOutput>
     </PropertyGroup>
     
-    <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" />
+    <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" Condition="Exists('$(SolutionDir)build\LocalNuGetPublish.targets')" />
     
     <ItemGroup>
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
