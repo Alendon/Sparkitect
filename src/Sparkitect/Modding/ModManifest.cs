@@ -13,7 +13,8 @@ public record ModManifest(
     IReadOnlyList<string> Authors,
     [property: JsonIgnore] string? ModPath,
     IReadOnlyList<ModRelationship> Relationships,
-    string ModAssembly);
+    string ModAssembly,
+    IReadOnlyList<string> RequiredAssemblies);
 
 public record struct ModRelationship(
     string Id,

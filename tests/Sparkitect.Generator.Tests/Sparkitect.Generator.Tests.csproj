@@ -4,15 +4,18 @@
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <LangVersion>default</LangVersion>
+        <ImplicitUsings>false</ImplicitUsings>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="TUnit" Version="0.3.14" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" Version="1.1.2" />
+        <PackageReference Include="TUnit" Version="0.19.64" />
         <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.13.0" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
-        <PackageReference Include="Verify" Version="28.3.2" />
+        <PackageReference Include="Verify" Version="29.2.0" />
         <PackageReference Include="Verify.SourceGenerators" Version="2.5.0" />
-        <PackageReference Include="Verify.TUnit" Version="28.3.2" />
+        <PackageReference Include="Verify.TUnit" Version="29.2.0" />
     </ItemGroup>
 
     <ItemGroup>

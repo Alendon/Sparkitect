@@ -11,9 +11,10 @@ This document describes the initialization process of the Sparkitect engine, fro
 The engine initialization process follows these key steps:
 
 1. Core IoC container creation
-2. Root mod discovery and loading
-3. Registry processing for root mods
-4. Transition to the first game state
+2. CLI argument processing
+3. Root mod discovery and loading
+4. Registry processing
+5. Transition to the first game state
 
 The `EngineBootstrapper` class manages this sequence, serving as the central coordination point for engine startup and shutdown.
 
@@ -26,39 +27,53 @@ The initialization begins with the creation of a minimal Core IoC Container:
 ```csharp
 public class EngineBootstrapper
 {
-    public static void Main(string[] args)
+    public void Initialize(string[] args)
     {
-        var bootstrapper = new EngineBootstrapper();
-        bootstrapper.BuildCoreContainer();
-        bootstrapper.LoadRootMods();
-        bootstrapper.RunGame();
-        
-        bootstrapper.CleanUp();
+        BuildCoreContainer();
+        InitializeCliArguments(args);
+        LoadRootMods();
+        ProcessRegistries();
+        RunGame();
+    }
+    
+    public void CleanUp()
+    {
+        // Clean up resources, close streams, etc.
     }
 }
 ```
 
-The Core Container contains only the essential services needed for engine initialization, primarily the ModLoader/Manager. These services are hardcoded in the engine since they are required before any mods can be loaded.
+The Core Container contains only the essential services needed for engine initialization, primarily the ModLoader/Manager and CLI argument handler. These services are hardcoded in the engine since they are required before any mods can be loaded.
+
+### CLI Argument Processing
+
+Before loading mods, the engine processes command-line arguments:
+
+1. Arguments are parsed and categorized
+2. System configurations are applied based on arguments
+3. Special flags (like debug mode) are activated if specified
+
+This allows for runtime configuration of the engine before any mods are loaded.
 
 ### Mod Discovery and Loading
 
 The mod loading process occurs in multiple steps:
 
-1. **Archive Discovery**: The engine searches for mods in the "mods" folder. Mods are distributed as uncompressed zip archives with a special extension.
+1. **Archive Discovery**: The engine searches for mods in the "mods" folder.
 
 2. **Dependency Resolution**: The engine checks mod dependencies defined in manifests and prepares stub implementations for optional dependencies if needed.
 
 3. **Assembly Loading**: Mod assemblies are loaded directly from the zip streams, which remain open for the application's lifetime.
 
-4. **Entrypoint Discovery**: The engine discovers all IoC extension points (classes marked with attributes like `[IoCBuilderEntrypoint]`).
+4. **Configuration Entrypoint Discovery**: The engine discovers all configuration entrypoints (classes marked with attributes like `[CoreContainerConfiguratorEntrypoint]`).
 
 5. **Root Container Creation**: The discovered entrypoints are used to build the root-level IoC container.
 
 ```csharp
-[IoCBuilderEntrypoint]
-public class MyIoCBuilder : IIoCBuilder
+[CoreContainerConfiguratorEntrypoint]
+public class MyConfigurator : CoreConfigurator
 {
-    public void ConfigureIoc(Container container)
+    public override void ConfigureIoc(IContainer container)
     {
         container.Register<IService, Service>();
     }
@@ -67,37 +82,45 @@ public class MyIoCBuilder : IIoCBuilder
 
 ### Registry Processing
 
-Once mods are loaded, the Registry Manager initiates registry processing:
+After mods are loaded, the RegistryManager initiates registry processing:
 
-1. The Registry Manager creates a new child container based on all `RegistryEntrypoints`.
-2. This container includes all individual Registry classes provided by mods.
-3. The registration code accesses this container to perform registrations.
+1. **Category Phase**: Registry categories are registered and initialized
+   ```csharp
+   [IoCRegistryBuilderEntrypoint]
+   public class MyRegistryBuilder : IIoCRegistryBuilder
+   {
+       public void ConfigureRegistries(IRegistryProxy registryProxy)
+       {
+           registryProxy.AddRegistry<MyRegistry>("category_name");
+       }
+   }
+   ```
 
-```csharp
-[IoCRegistryBuilderEntrypoint]
-public class MyIoCBuilder : IIoCRegistryBuilder
-{
-    public void ConfigureRegistries(Container container)
-    {
-        container.Register<MyRegistry, MyRegistry>();
-    }
-}
+2. **Object Pre-Phase**: Pre-registration setup operations
+3. **Object Main Phase**: Primary object registration
+   ```csharp
+   [RegistrationsEntrypoint]
+   public class MyRegistrations : Registrations<MyRegistry>
+   {
+       private readonly IIdentificationManager _identificationManager;
+       
+       public MyRegistrations(IIdentificationManager identificationManager)
+       {
+           _identificationManager = identificationManager;
+       }
+       
+       public override string CategoryIdentifier => "category_name";
+       
+       public override void MainPhaseRegistration(MyRegistry registry)
+       {
+           var id = _identificationManager.RegisterObject("my_mod", "category_name", "my_object");
+           registry.RegisterSomething(id, "additional data");
+       }
+   }
+   ```
+4. **Object Post-Phase**: Post-registration processing and cross-references
 
-[RegistrationsEntrypoint]
-public class MyRegistrationLogic(RegistryManager registryManager, MyRegistry myRegistry) : IRegistrations
-{
-    public void MainPhaseRegistration()
-    {
-        var numericId = registryManager.Register(modId, categoryId, objectId);
-        myRegistry.Register<SomeType>(numericId);
-    }
-}
-```
-
-The registration process:
-1. Registers a new ID for the object with the central registry facility
-2. Associates relevant file names with the ID
-3. Calls the actual Registry class with the ID and required parameters
+The registration process maps string identifiers to numeric IDs and handles the actual registry entries through specialized registry classes.
 
 ### Transition to First Game State
 

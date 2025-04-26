@@ -1,7 +1,18 @@
 ﻿<Project>
-    <!-- Properties for mod packaging -->
+    
+    <PropertyGroup>
+        <Version Condition="'$(Version)' == ''">$(ModVersion)</Version>
+    </PropertyGroup>
     
     
+    <!-- SG related properties -->
+    <ItemGroup Label="SG Properties">
+        <CompilerVisiblePropertiy Include="ModName" />
+        <CompilerVisiblePropertiy Include="ModIdentifier" />
+        <CompilerVisiblePropertiy Include="DisableLogEnrichmentGenerator" />
+    </ItemGroup>
+    
+    <!-- Properties for mod packaging -->    
     <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
     <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.targets"/>
     

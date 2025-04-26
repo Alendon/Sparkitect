@@ -1,0 +1,16 @@
+﻿<Project>
+  <!-- Common properties for all projects in the Sparkitect engine -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>Nullable</WarningsAsErrors>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Sparkitect.Generated</InterceptorsNamespaces>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <!-- Add the log enricher source generator to all projects -->
+    <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  
+</Project>

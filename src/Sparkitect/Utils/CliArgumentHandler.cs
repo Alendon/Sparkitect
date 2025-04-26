@@ -1,8 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using OneOf;
 using OneOf.Types;
+using Serilog;
 
 namespace Sparkitect.Utils;
 
@@ -20,13 +18,17 @@ internal class CliArgumentHandler : ICliArgumentHandler
     /// <param name="args">The command-line arguments to parse.</param>
     public void Initialize(string[] args)
     {
+        Log.Debug("Initializing CLI argument handler with {ArgCount} arguments", args.Length);
         _arguments.Clear();
         
         foreach (var arg in args)
         {
             // Skip arguments that don't start with '-' or '--'
             if (!arg.StartsWith('-'))
+            {
+                Log.Verbose("Skipping argument that doesn't start with '-': {Arg}", arg);
                 continue;
+            }
 
             var trimmedArg = arg.TrimStart('-');
             
@@ -42,6 +44,7 @@ internal class CliArgumentHandler : ICliArgumentHandler
                 
                 if (_arguments.TryGetValue(key, out var existingValue))
                 {
+                    Log.Debug("Updating existing CLI argument: {Key}", key);
                     // Update existing entry based on its current type
                     existingValue.Switch(
                         none => _arguments[key] = valueList.Count == 1 ? valueList[0] : valueList,
@@ -62,12 +65,14 @@ internal class CliArgumentHandler : ICliArgumentHandler
                 {
                     // Create new entry
                     _arguments[key] = valueList.Count == 1 ? valueList[0] : valueList;
+                    Log.Debug("Added CLI argument: {Key} with {ValueCount} values", key, valueList.Count);
                 }
             }
             else
             {
                 // Handle flag arguments (without values)
                 _arguments[trimmedArg] = new None();
+                Log.Debug("Added CLI flag argument: {Key}", trimmedArg);
             }
         }
     }
@@ -79,7 +84,9 @@ internal class CliArgumentHandler : ICliArgumentHandler
     /// <returns>True if the argument exists; otherwise, false.</returns>
     public bool HasArgument(string key)
     {
-        return _arguments.ContainsKey(key);
+        var hasArg = _arguments.ContainsKey(key);
+        Log.Verbose("Checking for CLI argument {Key}: {Result}", key, hasArg ? "Found" : "Not found");
+        return hasArg;
     }
 
     /// <summary>
@@ -133,5 +140,10 @@ internal class CliArgumentHandler : ICliArgumentHandler
         
         values = Array.Empty<string>();
         return false;
+    }
+
+    public IEnumerable<string> GetArgumentValues(string argument)
+    {
+        throw new NotImplementedException();
     }
 }

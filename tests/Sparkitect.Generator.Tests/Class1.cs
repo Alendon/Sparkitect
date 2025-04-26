@@ -1,4 +1,7 @@
-﻿namespace Sparkitect.Generator.Tests;
+﻿using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+
+namespace Sparkitect.Generator.Tests;
 
 public class Class1
 {

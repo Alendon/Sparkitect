@@ -5,11 +5,16 @@
     <PropertyGroup>
         <ModName></ModName>
         <ModIdentifier></ModIdentifier>
+        <!--TODO ? Only use Version instead of ModVersion ?  -->
         <ModVersion></ModVersion>
         <ModAuthor></ModAuthor>
         <ModDescription></ModDescription>
-        <ModType></ModType>
-        
+        <ModType></ModType>        
         <OutputType>Exe</OutputType>
+        
+        <!-- Enable dependency file generation -->
+        <GenerateDependencyFile>true</GenerateDependencyFile>
+        <SparkitectAutoDetectDependencies Condition="'$(SparkitectAutoDetectDependencies)' == ''">true</SparkitectAutoDetectDependencies>
+        <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
     </PropertyGroup>
 </Project>  

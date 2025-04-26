@@ -35,4 +35,11 @@ public interface ICliArgumentHandler
     /// <param name="values">When this method returns, contains the values associated with the specified key, if found; otherwise, an empty collection.</param>
     /// <returns>True if the argument exists and has at least one value; otherwise, false.</returns>
     bool TryGetArgumentValues(string key, out IReadOnlyList<string> values);
+
+    /// <summary>
+    /// Gets all values for a specified argument key.
+    /// </summary>
+    /// <param name="argument">The argument key to retrieve.</param>
+    /// <returns>All set values. Is empty if no values are set or cli argument is not set</returns>
+    IEnumerable<string> GetArgumentValues(string argument);
 }

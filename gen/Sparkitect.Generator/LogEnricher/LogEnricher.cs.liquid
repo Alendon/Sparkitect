@@ -1,0 +1,31 @@
+﻿[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+file class {{ className }}_Enricher
+{
+    
+    {% for intercept in interceptions %}
+    
+    static void LogIntercept_{{ forloop.index }}(
+    {%- unless intercept.staticCall -%}
+    this {{ intercept.targetClass }} __value,
+    {%- endunless -%}
+    {%- for param in intercept.parameters -%}
+    {{ param.type }} {{ param.name }}{% unless forloop.last %}, {%- endunless -%}
+    {%- endfor -%}
+)
+    {
+        using var modNameContext = global::Serilog.Context.LogContext.PushProperty("ModName", "{{modName}}");
+        using var classNameContext = global::Serilog.Context.LogContext.PushProperty("ClassName", "{{className}}");
+        
+        {% if intercept.staticCall -%}
+        {{- intercept.targetClass -}}
+        {%- else -%}
+        __value
+        {%- endif -%}
+        .{{ intercept.targetMethod }}(
+        {%- for param in intercept.parameters -%}
+        {{ param.name }}{% unless forloop.last %}, {%- endunless -%}
+        {%- endfor -%}
+        );
+    }
+    {%endfor%}
+}

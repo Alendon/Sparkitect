@@ -15,42 +15,47 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
     /// </summary>
     [Required]
     public string ModIdentifier { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// The display name of the mod
     /// </summary>
     [Required]
     public string ModName { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// The description of the mod
     /// </summary>
     [Required]
     public string ModDescription { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// The version of the mod
     /// </summary>
     [Required]
     public string ModVersion { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// The authors of the mod (semicolon-separated)
     /// </summary>
     [Required]
     public string ModAuthor { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// The path to the mod's main assembly
     /// </summary>
     [Required]
     public string AssemblyPath { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// The output path for the manifest file
     /// </summary>
     [Required]
     public string OutputPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// List of required assemblies (semicolon-separated)
+    /// </summary>
+    public string RequiredAssemblies { get; set; } = string.Empty;
 
     /// <summary>
     /// Executes the task to generate the manifest
@@ -69,12 +74,19 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
             }
 
             // Split authors string
-            string[] authorsList = ModAuthor.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries)
+            string[] authorsList = ModAuthor.Split([';', ','], StringSplitOptions.RemoveEmptyEntries)
                 .Select(a => a.Trim())
                 .ToArray();
 
             // Get assembly name
             string assemblyFileName = Path.GetFileName(AssemblyPath);
+
+            // Parse required assemblies
+            string[] requiredAssembliesList = string.IsNullOrEmpty(RequiredAssemblies)
+                ? []
+                : RequiredAssemblies.Split([';'], StringSplitOptions.RemoveEmptyEntries)
+                    .Select(a => Path.GetFileName(a.Trim()))
+                    .ToArray();
 
             // Create the manifest model
             var manifest = new ModManifestModel(
@@ -84,7 +96,8 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
                 semVersion,
                 authorsList,
                 Array.Empty<ModRelationshipModel>(), // Empty relationships for now
-                assemblyFileName
+                assemblyFileName,
+                requiredAssembliesList
             );
 
             // Serialize to JSON

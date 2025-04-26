@@ -13,3 +13,6 @@
 - name: Engine Initialization
   href: engine-initialization.md
   uid: articles.core.engine-initialization
+- name: ECS Requirements
+  href: ecs-requirements.md
+  uid: articles.core.ecs-requirements

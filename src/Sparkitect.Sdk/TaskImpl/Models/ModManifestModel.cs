@@ -15,7 +15,8 @@ public record ModManifestModel(
     SemVersion Version,
     IReadOnlyList<string> Authors,
     IReadOnlyList<ModRelationshipModel> Relationships,
-    string ModAssembly);
+    string ModAssembly,
+    IReadOnlyList<string> RequiredAssemblies = null);
 
 /// <summary>
 /// Represents a relationship between mods (dependency, incompatibility, etc.)

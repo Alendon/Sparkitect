@@ -38,22 +38,22 @@ Mods are discovered through a simple directory structure:
 
 1. Application initializes the core DI container with minimal components
 2. The `EngineBootstrapper` discovers and loads Root Mods:
-  - Archives are located and extracted in memory
-  - Mod assemblies are loaded directly from zip streams
-  - Zip streams remain open for the application's lifetime
+   - Archives are located and extracted in memory
+   - Mod assemblies are loaded directly from zip streams
+   - Zip streams remain open for the application's lifetime
 
 3. The `ModManager` performs dependency resolution:
-  - Checks dependencies defined in manifests
-  - Prepares stub implementations for optional dependencies
-  - Determines loading order based on dependencies
+   - Checks dependencies defined in manifests
+   - Prepares stub implementations for optional dependencies
+   - Determines loading order based on dependencies
 
-4. IoC entrypoints are discovered and processed:
-  - Classes marked with `[IoCBuilderEntrypoint]` are located
-  - These are used to build the root-level IoC container
+4. Configuration entrypoints are discovered and processed:
+   - Classes marked with discovery attributes are located
+   - These are used to build the root-level IoC container
 
 5. Game-specific mods are loaded when creating/joining a game
-  - Similar process to Root Mod loading
-  - Game-specific containers are created
+   - Similar process to Root Mod loading
+   - Game-specific containers are created
 
 6. When exiting a game, Game Mods are unloaded while Root Mods remain active
 
@@ -66,14 +66,34 @@ Dependencies between mods are managed through the mod manifest:
   - Optional dependencies: Mod can function without these but will use them if present
   - Incompatible mods: Mod will not load if these are present
 
+- **Version Requirements**:
+  - Semantic versioning support for dependencies
+  - Specify minimum, maximum, or exact versions
+  - Optional version range specifications
+
 - **Optional Dependency Handling**:
   - Stub implementations provided for optional dependencies
   - Allows mods to load even when direct code access to optional dependencies would normally cause exceptions
   - Additional mechanisms streamline working with optional dependencies
 
-### Loading Order
+### Mod Groups and Loading Order
 
-While there is no general loading order for all mods, the Mod Manager provides access to a dependency-ordered list of mods. Individual engine components can use this order for their own processing requirements when appropriate.
+Mods can be organized into logical groups for more controlled loading:
+
+- Groups define logical collections of mods
+- Each group can have its own loading sequence
+- The ModManager provides `LoadedModsPerGroup` to track the loading hierarchy
+- Components can use this group-based order for their own processing requirements
+
+## Identification System
+
+The modding framework includes a hierarchical identification system:
+
+- **Mod Identifiers**: Unique string IDs mapped to efficient numeric IDs
+- **Categories**: Logical groupings of similar objects
+- **Objects**: Individual items within categories
+
+The `IdentificationManager` provides bidirectional mapping between string identifiers and numeric IDs, optimizing runtime performance while maintaining human-readable references.
 
 ## Integration with Core Systems
 
@@ -81,10 +101,10 @@ The Modding Framework is tightly integrated with other core systems:
 
 - **Dependency Injection**:
   ```csharp
-  [IoCBuilderEntrypoint]
-  public class MyIoCBuilder : IIoCBuilder
+  [CoreContainerConfiguratorEntrypoint]
+  public class MyConfigurator : CoreConfigurator
   {
-      public void ConfigureIoc(Container container)
+      public override void ConfigureIoc(IContainer container)
       {
           container.Register<IService, Service>();
       }
@@ -94,27 +114,23 @@ The Modding Framework is tightly integrated with other core systems:
 - **Registry System**:
   ```csharp
   [RegistrationsEntrypoint]
-  public class MyRegistrationLogic : IRegistrations
+  public class MyRegistrations : Registrations<MyRegistry>
   {
-      private readonly RegistryManager _registryManager;
-      private readonly MyRegistry _myRegistry;
+      private readonly IIdentificationManager _identificationManager;
       
-      public MyRegistrationLogic(RegistryManager registryManager, MyRegistry myRegistry)
+      public MyRegistrations(IIdentificationManager identificationManager)
       {
-          _registryManager = registryManager;
-          _myRegistry = myRegistry;
+          _identificationManager = identificationManager;
       }
       
-      public void MainPhaseRegistration()
+      public override string CategoryIdentifier => "category_name";
+      
+      public override void MainPhaseRegistration(MyRegistry registry)
       {
-          var numericId = _registryManager.Register(modId, categoryId, objectId);
-          _myRegistry.Register<SomeType>(numericId);
+          var id = _identificationManager.RegisterObject("my_mod", "category_name", "my_object");
+          registry.RegisterSomething(id, "additional data");
       }
   }
   ```
 
 - **Lifecycle Management**: Object lifecycle is directly tied to mod lifecycle
-
-## Future Development
-
-Version compatibility management is planned for future implementation, likely using a Major.Minor.Patch version system.

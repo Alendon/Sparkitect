@@ -8,11 +8,11 @@ namespace Sparkitect.Utils;
 
 internal class SparkitectLoadContext : AssemblyLoadContext
 {
-    private readonly Dictionary<string, WeakReference<Assembly>> _sharedAssemblies = new();
     private readonly SparkitectLoadContext? _parentContext;
     private readonly Dictionary<string, Assembly> _loadedAssemblies;
 
-    public SparkitectLoadContext(SparkitectLoadContext? parentContext, Dictionary<string, Assembly> loadedAssemblies) : base(true)
+    public SparkitectLoadContext(SparkitectLoadContext? parentContext, Dictionary<string, Assembly> loadedAssemblies) :
+        base(true)
     {
         _parentContext = parentContext;
         _loadedAssemblies = loadedAssemblies;
@@ -21,30 +21,18 @@ internal class SparkitectLoadContext : AssemblyLoadContext
     /// <inheritdoc />
     protected override Assembly? Load(AssemblyName assemblyName)
     {
-        if (_sharedAssemblies.TryGetValue(assemblyName.FullName, out var weakRef) &&
-            weakRef.TryGetTarget(out var assembly))
-        {
-            return assembly;
-        }
-
-        return null;
+        TryLoadCachedAssembly(assemblyName, out var assembly);
+        return assembly;
     }
 
     private bool TryLoadCachedAssembly(AssemblyName assemblyName, [MaybeNullWhen(false)] out Assembly assembly)
     {
-        //TODO check if the assembly was loaded previously
-
         if (assemblyName.Name is not null && _loadedAssemblies.TryGetValue(assemblyName.Name, out assembly))
         {
             return true;
         }
-        
-        if (_parentContext is not null && _parentContext.TryLoadCachedAssembly(assemblyName, out assembly))
-        {
-            return true;
-        }
 
-        if (_sharedAssemblies.TryGetValue(assemblyName.FullName, out var weakRef) && weakRef.TryGetTarget(out assembly))
+        if (_parentContext is not null && _parentContext.TryLoadCachedAssembly(assemblyName, out assembly))
         {
             return true;
         }
@@ -57,7 +45,7 @@ internal class SparkitectLoadContext : AssemblyLoadContext
     {
         using var moduleMetadata = ModuleMetadata.CreateFromStream(dllStream, PEStreamOptions.LeaveOpen);
         dllStream.Seek(0, SeekOrigin.Begin);
-        
+
         var assemblyName = moduleMetadata.GetMetadataReader().GetAssemblyDefinition().GetAssemblyName();
 
         if (TryLoadCachedAssembly(assemblyName, out var assembly))
@@ -66,7 +54,10 @@ internal class SparkitectLoadContext : AssemblyLoadContext
         }
 
         assembly = LoadFromStream(dllStream, pdbStream);
-        _sharedAssemblies[assemblyName.FullName] = new WeakReference<Assembly>(assembly);
+
+        if (assemblyName.Name is not null)
+            _loadedAssemblies[assemblyName.Name] = assembly;
+        
         return assembly;
     }
 }

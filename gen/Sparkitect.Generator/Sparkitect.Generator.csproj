@@ -2,8 +2,9 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <LangVersion>default</LangVersion>
+        <LangVersion>latest</LangVersion>
         <IsRoslynComponent>true</IsRoslynComponent>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <IncludeBuildOutput>false</IncludeBuildOutput>
@@ -16,10 +17,14 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="JetBrains.Annotations" Version="2024.3.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
-        <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-        <PackageReference Include="Scriban" Version="5.12.0" IncludeAssets="Build" />
+        <PackageReference Include="JetBrains.Annotations" Version="2024.3.0" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CSharp" Version="4.7.0" PrivateAssets="all" />
+        <PackageReference Include="Fluid.Core" Version="2.23.0" PrivateAssets="all" GeneratePathProperty="true" />
+        
+        <None Include="$(PkgFluid_Core)\lib\netstandard2.0\Fluid.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        
+        <EmbeddedResource Include="**\*.liquid"/>
     </ItemGroup>
 
 </Project>

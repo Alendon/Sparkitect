@@ -3,6 +3,9 @@ using Sparkitect.Modding;
 using Sparkitect.Utils;
 using System;
 using System.Linq;
+using InterpolatedParsing;
+using Serilog;
+using Serilog.Formatting.Compact;
 
 namespace Sparkitect;
 
@@ -20,20 +23,77 @@ public class EngineBootstrapper
     /// </summary>
     public static void Main(string[] args)
     {
+        InitializeLogger(args);
+        
+        
+        // Static reference to Log initializes the logger
+        Log.Information("Sparkitect engine starting up");
+        
         var bootstrapper = new EngineBootstrapper();
 
         try
         {
+            Log.Information("Building core container");
             bootstrapper.BuildCoreContainer();
+            
+            Log.Information("Initializing CLI arguments");
             bootstrapper.InitializeCliArguments(args);
+            
+            Log.Information("Loading root mods");
             bootstrapper.LoadRootMods();
+            
+            Log.Information("Processing registries");
             bootstrapper.ProcessRegistries();
+            
+            Log.Information("Starting game loop");
             bootstrapper.RunGame();
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Fatal error during engine bootstrap");
+            throw;
         }
         finally
         {
+            Log.Information("Cleaning up resources");
             bootstrapper.CleanUp();
         }
+    }
+
+    private const string LogDirectoryPath = "logs";
+    private const string LogDirArgName = "logDir";
+    
+    private static void InitializeLogger(string[] args)
+    {
+        var logDir = LogDirectoryPath;
+        
+        var logDirArg = args.FirstOrDefault(x => x.StartsWith($"-{LogDirArgName}="));
+        if (logDirArg is not null)
+        {
+            string logDirArgNameStub = String.Empty;
+            InterpolatedParser.Parse(logDirArg, $"-{logDirArgNameStub}={logDir}");
+        }
+
+        logDir = Path.GetFullPath(logDir);
+        
+        
+        // Create logs directory if it doesn't exist
+        if (!Directory.Exists(logDir))
+        {
+            Directory.CreateDirectory(logDir);
+        }
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+
+        // Configure and initialize Serilog
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.File(new CompactJsonFormatter(), $"{logDir}/{timestamp}.log", rollOnFileSizeLimit: true,
+                flushToDiskInterval: TimeSpan.FromMinutes(1))
+            .WriteTo.Console(
+                outputTemplate:
+                "[{Timestamp:HH:mm:ss} {Level:u3}][{ModName}/{Class}] {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+
     }
 
     /// <summary>
@@ -60,10 +120,12 @@ public class EngineBootstrapper
     {
         if (_cliArgumentHandler is null)
         {
+            Log.Error("CLI argument handler is null");
             throw new InvalidOperationException("CLI argument handler has not been initialized");
         }
 
         _cliArgumentHandler.Initialize(args);
+        Log.Debug("CLI arguments initialized with {ArgCount} arguments", args.Length);
     }
 
     /// <summary>
@@ -73,12 +135,19 @@ public class EngineBootstrapper
     {
         if (_modManager is null)
         {
+            Log.Error("Mod manager is null");
             throw new InvalidOperationException("Mod manager has not been initialized");
         }
 
         // Discover and load all mods
+        Log.Debug("Discovering mods");
         _modManager.DiscoverMods();
-        _modManager.LoadMods(_modManager.DiscoveredArchives.Select(a => a.Id).ToArray());
+        
+        var modIds = _modManager.DiscoveredArchives.Select(a => a.Id).ToArray();
+        Log.Information("Loading {ModCount} mods", modIds.Length);
+        
+        _modManager.LoadMods(modIds);
+        Log.Debug("Mods loaded successfully");
     }
 
     /// <summary>
@@ -88,6 +157,7 @@ public class EngineBootstrapper
     {
         if (_modManager is null)
         {
+            Log.Error("Mod manager is null");
             throw new InvalidOperationException("Mod manager has not been initialized");
         }
 
@@ -97,10 +167,13 @@ public class EngineBootstrapper
 
         if (registryManager is null)
         {
+            Log.Error("Registry manager is null");
             throw new InvalidOperationException("Registry manager has not been initialized");
         }
         
+        Log.Debug("Processing registries");
         registryManager.ProcessRegistry();
+        Log.Debug("Registries processed successfully");
     }
 
     /// <summary>
@@ -109,7 +182,7 @@ public class EngineBootstrapper
     public void RunGame()
     {
         // Currently a placeholder until the game state system is implemented
-        Console.WriteLine("Game is running...");
+        Log.Information("Game is running...");
 
         // In a real implementation, this would initialize the game state system
         // and transition to the first game state
@@ -120,6 +193,11 @@ public class EngineBootstrapper
     /// </summary>
     public void CleanUp()
     {
+        Log.Information("Disposing core container");
         _coreContainer?.Dispose();
+        
+        // Flush any remaining logs
+        Log.Information("Shutting down logger");
+        Log.CloseAndFlush();
     }
 }

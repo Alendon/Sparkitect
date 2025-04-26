@@ -9,6 +9,7 @@ using Sparkitect.DI;
 using Sparkitect.Utils;
 using OneOf;
 using Semver;
+using Serilog;
 
 namespace Sparkitect.Modding;
 
@@ -82,28 +83,7 @@ internal class ModManager : IModManager
         var additionalModFiles = new List<string>();
         if (_cliArgumentHandler.TryGetArgumentValues(AddModDirsArgument, out var additionalModDirs))
         {
-            foreach (var dirPath in additionalModDirs)
-            {
-                if (Directory.Exists(dirPath))
-                {
-                    // Add all .sparkmod files in the specified directory
-                    additionalModFiles.AddRange(
-                        Directory.GetFiles(dirPath, "*.sparkmod", SearchOption.TopDirectoryOnly));
-                    Console.WriteLine($"Added mod directory: {dirPath}");
-                }
-                else if (File.Exists(dirPath) &&
-                         Path.GetExtension(dirPath).Equals(".sparkmod", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Add a single .sparkmod file if it exists
-                    additionalModFiles.Add(dirPath);
-                    Console.WriteLine($"Added mod file: {dirPath}");
-                }
-                else
-                {
-                    Console.WriteLine(
-                        $"Warning: Specified mod path does not exist or is not a .sparkmod file: {dirPath}");
-                }
-            }
+            ProcessAdditionalModDirs(additionalModDirs, additionalModFiles);
         }
 
         // Combine all mod files from default location and additional directories
@@ -112,47 +92,71 @@ internal class ModManager : IModManager
         // Process each mod file
         foreach (var modFile in allModFiles)
         {
-            try
-            {
-                // Open the zip archive
-                using var archive = ZipFile.OpenRead(modFile);
-
-                // Read the mod manifest
-                var manifestEntry = archive.GetEntry("manifest.json");
-                if (manifestEntry is null)
-                {
-                    Console.WriteLine($"Warning: Mod {modFile} does not contain a manifest.json file");
-                    continue;
-                }
-
-                using var manifestStream = manifestEntry.Open();
-                var manifest = JsonSerializer.Deserialize<ModManifest>(manifestStream);
-
-                if (manifest is null)
-                {
-                    Console.WriteLine($"Warning: Failed to read manifest.json for mod {modFile}");
-                    continue;
-                }
-
-                manifest = manifest with { ModPath = modFile };
-
-                // For now, just store the archive for later loading
-                _discoveredArchives.Add(manifest);
-
-                Console.WriteLine($"Discovered mod: {Path.GetFileName(modFile)}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing mod file {modFile}: {ex.Message}");
-            }
+            DiscoverModArchive(modFile);
         }
 
         // Add the virtual Sparkitect mod
         var sparkitectModManifest = CreateSparkitectModManifest();
         _discoveredArchives.Add(sparkitectModManifest);
-        Console.WriteLine($"Discovered mod: {sparkitectModManifest.Id} (virtual)");
+        Log.Information("Discovered mod: {ModId} (virtual)", sparkitectModManifest.Id);
 
-        Console.WriteLine($"Discovered {_discoveredArchives.Count} mods");
+        Log.Information("Discovered {ModCount} mods", _discoveredArchives.Count);
+    }
+
+    private void DiscoverModArchive(string modFile)
+    {
+        // Open the zip archive
+        using var archive = ZipFile.OpenRead(modFile);
+
+        // Read the mod manifest
+        var manifestEntry = archive.GetEntry("manifest.json");
+        if (manifestEntry is null)
+        {
+            Log.Warning("Mod {ModFile} does not contain a manifest.json file", modFile);
+            return;
+        }
+
+        using var manifestStream = manifestEntry.Open();
+        var manifest = JsonSerializer.Deserialize<ModManifest>(manifestStream);
+
+        if (manifest is null)
+        {
+            Log.Warning("Failed to read manifest.json for mod {ModFile}", modFile);
+            return;
+        }
+
+        manifest = manifest with { ModPath = modFile };
+
+        // For now, just store the archive for later loading
+        _discoveredArchives.Add(manifest);
+
+        Log.Information("Discovered mod: {ModFile}", Path.GetFileName(modFile));
+    }
+
+    private static void ProcessAdditionalModDirs(IReadOnlyList<string> additionalModDirs,
+        List<string> additionalModFiles)
+    {
+        foreach (var dirPath in additionalModDirs)
+        {
+            if (Directory.Exists(dirPath))
+            {
+                // Add all .sparkmod files in the specified directory
+                additionalModFiles.AddRange(
+                    Directory.GetFiles(dirPath, "*.sparkmod", SearchOption.TopDirectoryOnly));
+                Log.Information("Added mod directory: {DirPath}", dirPath);
+            }
+            else if (File.Exists(dirPath) &&
+                     Path.GetExtension(dirPath).Equals(".sparkmod", StringComparison.OrdinalIgnoreCase))
+            {
+                // Add a single .sparkmod file if it exists
+                additionalModFiles.Add(dirPath);
+                Log.Information("Added mod file: {FilePath}", dirPath);
+            }
+            else
+            {
+                Log.Warning("Specified mod path does not exist or is not a .sparkmod file: {Path}", dirPath);
+            }
+        }
     }
 
     /// <summary>
@@ -171,7 +175,8 @@ internal class ModManager : IModManager
             ModAssembly: "Sparkitect",
             ModPath: null!, // No physical path for virtual mod
             Relationships: [],
-            Authors: []
+            Authors: [],
+            RequiredAssemblies: []
         );
     }
 
@@ -213,45 +218,31 @@ internal class ModManager : IModManager
             {
                 if (!_preLoadedAssemblies.TryGetValue(modManifest.ModAssembly, out var preLoadedAssembly))
                 {
-                    Console.WriteLine($"Warning: Virtual mod {modId} assembly {modManifest.ModAssembly} not found");
+                    
+                    Log.Warning("Virtual mod {ModId} assembly {Assembly} not found", modId, modManifest.ModAssembly);
                     continue;
                 }
-                
+
                 newLoadedMods.Add(new LoadedMod
                 {
                     Archive = null, // No archive for virtual mod
                     Assembly = preLoadedAssembly,
                     Manifest = modManifest
                 });
-                
-                Console.WriteLine($"Loaded virtual mod: {modId}");
+
+                Log.Information("Loaded virtual mod: {ModId}", modId);
                 continue;
             }
 
             // Handle regular mods with archives
             var archive = ZipFile.OpenRead(modManifest.ModPath);
 
-            var modAssemblyEntry = archive.GetEntry(modManifest.ModAssembly);
-            if (modAssemblyEntry is null)
-            {
-                //TODO result based error handling
-                throw new InvalidOperationException(
-                    $"Mod {modId} does not contain the specified assembly {modManifest.ModAssembly}");
-            }
-
-            using var assemblyStream = modAssemblyEntry.Open();
-            using var pdbStream = archive.GetEntry(Path.ChangeExtension(modManifest.ModAssembly, ".pdb"))?.Open();
-
-            using var assemblyMemoryStream = new MemoryStream();
-            assemblyStream.CopyTo(assemblyMemoryStream);
-            assemblyMemoryStream.Seek(0, SeekOrigin.Begin);
-
-            MemoryStream? pdbMemoryStream = pdbStream is not null ? new MemoryStream() : null;
-            pdbStream?.CopyTo(pdbMemoryStream!);
-            pdbMemoryStream?.Seek(0, SeekOrigin.Begin);
+            // Load required assemblies first
+            LoadModDependencies(modManifest, archive, modId, loadContext);
 
 
-            var assembly = loadContext.CachedLoadFromStream(assemblyMemoryStream, pdbMemoryStream);
+            // Load the main mod assembly
+            var assembly = LoadModAssembly(archive, modManifest, modId, loadContext);
             newLoadedMods.Add(new LoadedMod
             {
                 Archive = archive,
@@ -275,7 +266,68 @@ internal class ModManager : IModManager
             coreConfigurator.ConfigureIoc(coreContainer);
         }
 
-        Console.WriteLine($"Loaded {_loadedMods.Count} mods");
+        Log.Information("Loaded {ModCount} mods", _loadedMods.Count);
+    }
+
+    private static Assembly LoadModAssembly(ZipArchive archive, ModManifest modManifest, string modId,
+        SparkitectLoadContext loadContext)
+    {
+        var modAssemblyEntry = archive.GetEntry(modManifest.ModAssembly);
+        if (modAssemblyEntry is null)
+        {
+            //TODO result based error handling
+            throw new InvalidOperationException(
+                $"Mod {modId} does not contain the specified assembly {modManifest.ModAssembly}");
+        }
+
+        using var assemblyStream = modAssemblyEntry.Open();
+        using var pdbStream = archive.GetEntry(Path.ChangeExtension(modManifest.ModAssembly, ".pdb"))?.Open();
+
+        using var assemblyMemoryStream = new MemoryStream();
+        assemblyStream.CopyTo(assemblyMemoryStream);
+        assemblyMemoryStream.Seek(0, SeekOrigin.Begin);
+
+        MemoryStream? pdbMemoryStream = pdbStream is not null ? new MemoryStream() : null;
+        pdbStream?.CopyTo(pdbMemoryStream!);
+        pdbMemoryStream?.Seek(0, SeekOrigin.Begin);
+
+        var assembly = loadContext.CachedLoadFromStream(assemblyMemoryStream, pdbMemoryStream);
+        return assembly;
+    }
+
+    private static void LoadModDependencies(ModManifest modManifest, ZipArchive archive, string modId,
+        SparkitectLoadContext loadContext)
+    {
+        foreach (var requiredAssembly in modManifest.RequiredAssemblies)
+        {
+            var assemblyEntry = archive.GetEntry($"lib/{requiredAssembly}");
+            if (assemblyEntry == null)
+            {
+                Log.Warning("Required assembly {Assembly} not found in mod {ModId}", requiredAssembly, modId);
+                continue;
+            }
+
+            using var assemblyStream = assemblyEntry.Open();
+            using var pdbStream = archive.GetEntry($"lib/{Path.ChangeExtension(requiredAssembly, ".pdb")}")?.Open();
+
+            using var assemblyMemoryStream = new MemoryStream();
+            assemblyStream.CopyTo(assemblyMemoryStream);
+            assemblyMemoryStream.Seek(0, SeekOrigin.Begin);
+
+            MemoryStream? pdbMemoryStream = pdbStream is not null ? new MemoryStream() : null;
+            pdbStream?.CopyTo(pdbMemoryStream!);
+            pdbMemoryStream?.Seek(0, SeekOrigin.Begin);
+
+            try
+            {
+                loadContext.CachedLoadFromStream(assemblyMemoryStream, pdbMemoryStream);
+                Log.Debug("Loaded required assembly: {Assembly} for mod {ModId}", requiredAssembly, modId);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error loading required assembly {Assembly} for mod {ModId}", requiredAssembly, modId);
+            }
+        }
     }
 
     [MustDisposeResource]
