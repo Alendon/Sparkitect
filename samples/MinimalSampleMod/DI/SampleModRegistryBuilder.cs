@@ -1,4 +1,5 @@
-﻿using Sparkitect.DI;
+﻿using System.Linq.Expressions;
+using Sparkitect.DI;
 
 namespace MinimalSampleMod.DI;
 

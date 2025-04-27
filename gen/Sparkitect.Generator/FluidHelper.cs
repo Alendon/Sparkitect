@@ -7,31 +7,49 @@ namespace Sparkitect.Generator;
 
 public class FluidHelper
 {
-    private static readonly FluidParser _fluidParser = new FluidParser();
-    private static Dictionary<string, IFluidTemplate> _templateCache = new();
+    private static FluidParser FluidParser  { get; set; }
+    private static Dictionary<string, IFluidTemplate> TemplateCache  { get; set; }
 
 
-    
-    public static bool TryRenderTemplate(string templateName, object model, out string result, [CanBeNull] TemplateOptions options = null)
+    public static TemplateOptions DefaultUnsafeAccess { get; private set; }
+
+    static bool isSetup = false;
+    public static void Setup()
     {
+        if (isSetup) return;
+        
+        DefaultUnsafeAccess = new TemplateOptions
+        {
+            MemberAccessStrategy = new UnsafeMemberAccessStrategy()
+        };
+        FluidParser = new FluidParser();
+        TemplateCache = new();
+        
+        isSetup = true;
+    }
+    
+    public static bool TryRenderTemplate(string templateName, object model, out string result, TemplateOptions? options = null)
+    {
+        Setup();
+        
         result = string.Empty;
         
         if(!templateName.StartsWith("Sparkitect.Generator."))
             templateName = $"Sparkitect.Generator.{templateName}";
 
-        if (!_templateCache.TryGetValue(templateName, out var template))
+        if (!TemplateCache.TryGetValue(templateName, out var template))
         {
             using var templateFileStream = typeof(FluidHelper).Assembly.GetManifestResourceStream(templateName);
             if (templateFileStream == null) return false;
             
             var templateString = new StreamReader(templateFileStream).ReadToEnd();
 
-            if (!_fluidParser.TryParse(templateString, out template)) return false;
+            if (!FluidParser.TryParse(templateString, out template)) return false;
             
-            _templateCache[templateName] = template;
+            TemplateCache[templateName] = template;
         }
 
-        var context = new TemplateContext(model, options ?? TemplateOptions.Default);
+        var context = new TemplateContext(model, options ?? DefaultUnsafeAccess);
 
         result = template.Render(context);
         

@@ -26,31 +26,38 @@ public class LogEnricherTests : TestBase<LogEnricherGenerator>
 
 
     [Test]
-    public async Task SingleLogStatement()
+    public async Task SingleLogStatement(CancellationToken token)
     {
-        CSharpSourceGeneratorTest<LogEnricherGenerator, DefaultVerifier> a = new()
-        {
-            ReferenceAssemblies = SerilogReferences,
-            TestState =
-            {
-                AnalyzerConfigFiles = { }
-            }
-        };
+        var testSource = """
+                         using Serilog;
 
-        await a.RunAsync();
-        a.CreateWorkspaceAsync();
+                         namespace TestNamespace
+                         {
+                             public class TestClass
+                             {
+                                 public void TestMethod()
+                                 {
+                                     Log.Information("Test {Value}", 42);
+                                 }
+                             }
+                         }
+
+                         """;
         
-        var testState = TestState;
+
+        TestState.Sources.Add(("TestClass.cs", testSource));
+        TestState.AnalyzerConfigFiles.Add(("/TestConfig.editorconfig",
+            """
+            is_global = true
+            build_property.ModName = ValidationTest
+            build_property.DisableLogEnrichmentGenerator = false
+            """));
+        TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck | TestBehaviors.SkipGeneratedCodeCheck |
+                        TestBehaviors.SkipSuppressionCheck;
+
+        await RunAsync(token);
 
 
-        var project = await CreateProjectAsync(new EvaluatedProjectState(testState, ReferenceAssemblies),
-            [
-                ..testState.AdditionalProjects.Values
-                    .Select(additionalProject => new EvaluatedProjectState(additionalProject, ReferenceAssemblies))
-            ], CancellationToken.None);
-        var compilation = await project.GetCompilationAsync();
-
-
-        CSharpSourceGeneratorVerifier<LogEnricherGenerator, DefaultVerifier> b = new();
+        Verifier.Verify(TestState.GeneratedSources);
     }
 }

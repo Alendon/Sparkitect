@@ -1,7 +1,11 @@
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using CSharpExtensions = Microsoft.CodeAnalysis.CSharp.CSharpExtensions;
 
 namespace Sparkitect.Generator.LogEnricher;
 #pragma warning disable RSEXPERIMENTAL002
@@ -18,19 +22,9 @@ public class LogEnricherGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var compActiveProvider = context.AnalyzerConfigOptionsProvider.Select(
-            (x, _) =>
-            {
-                if (x.GlobalOptions.TryGetValue("build_property.DisableLogEnrichmentGenerator", out var value))
-                {
-                    return value.ToLowerInvariant() != "true";
-                }
-
-                return true;
-            });
-
-        var modNameProvider = context.AnalyzerConfigOptionsProvider.Select(
-            (x, _) => x.GlobalOptions.TryGetValue("build_property.ModName", out var value) ? value : string.Empty);
+        var compilationOptions = context.AnalyzerConfigOptionsProvider
+            .Select(GetCompilerOptions)
+            .WithTrackingName("CompilationOptions");
         
         var logMethodInvocationProvider = context.SyntaxProvider.CreateSyntaxProvider(
                 (node, token) =>
@@ -42,7 +36,7 @@ public class LogEnricherGenerator : IIncrementalGenerator
                 {
                     token.ThrowIfCancellationRequested();
                     var invocation = (InvocationExpressionSyntax)context.Node;
-                    var symbol = ModelExtensions.GetSymbolInfo(context.SemanticModel, invocation, token).Symbol;
+                    var symbol = context.SemanticModel.GetSymbolInfo(invocation, token).Symbol;
                     if (symbol is not IMethodSymbol methodSymbol)
                     {
                         return null;
@@ -55,15 +49,15 @@ public class LogEnricherGenerator : IIncrementalGenerator
                     {
                         return null;
                     }
-                    
+
                     var classSyntax = invocation.FirstAncestorOrSelf<ClassDeclarationSyntax>();
-                    if(classSyntax is null)
+                    if (classSyntax is null)
                     {
                         return null;
                     }
 
-                    var classSymbol = context.SemanticModel.GetSymbolInfo(classSyntax);
-                    if (classSymbol.Symbol is not INamedTypeSymbol containingClass)
+                    var classSymbol = context.SemanticModel.GetDeclaredSymbol(classSyntax);
+                    if (classSymbol is not INamedTypeSymbol containingClass)
                     {
                         return null;
                     }
@@ -80,52 +74,80 @@ public class LogEnricherGenerator : IIncrementalGenerator
 
 
         context.RegisterImplementationSourceOutput(
-            logMethodInvocationProvider.Combine(compActiveProvider.Combine(modNameProvider)),
+            logMethodInvocationProvider.Combine(compilationOptions),
             ProcessLogMethodInvocation
         );
     }
 
     private void ProcessLogMethodInvocation(SourceProductionContext sourceProductionContext,
-        (IGrouping<ISymbol, (IInvocationOperation invocationSymbol, IMethodSymbol methodSymbol, INamedTypeSymbol containingClass)> Left, (bool Left, string Right) Right) tuple)
+        (IGrouping<ISymbol?, (IInvocationOperation invocationSymbol, IMethodSymbol methodSymbol, INamedTypeSymbol containingClass)> Left, CompilerOptions Right) valueTuple)
     {
-        var classSymbol = tuple.Left.Key;
-        var invocations = tuple.Left.Select(x => (x.invocationSymbol, x.methodSymbol)).ToList();
-        var (compActive, modName) = tuple.Right;
+        var classSymbol = valueTuple.Left.Key as INamedTypeSymbol;
+        var invocations = valueTuple.Left.Select(x => (x.invocationSymbol, x.methodSymbol)).ToList();
+        var (compActive, modName, rootNamespace) = valueTuple.Right;
+        var interceptorNamespace = $"{rootNamespace}.LogEnricher";
 
         if (!compActive)
         {
             return;
         }
 
-        var className = $"{classSymbol.ToDisplayString()}_Enricher";
+
+        var className = $"{classSymbol!.ToDisplayString().Replace('.', '_')}_LogEnricher";
 
         var model = new
         {
             className,
             modName,
-            interceptions = invocations.Select(x => new
+            interceptorNamespace,
+            interceptions = invocations.Select(x =>
             {
-                targetClass = x.methodSymbol.ContainingType.ToDisplayString(),
-                targetMethod = x.methodSymbol.Name,
-                staticCall = x.methodSymbol.IsStatic,
-                parameters = x.methodSymbol.Parameters.Select(y => new
+                return new
                 {
-                    type = y.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    name = y.Name
-                })
+                    targetClass = x.methodSymbol.ContainingType.ToDisplayString(),
+                    targetMethod = x.methodSymbol.Name,
+                    staticCall = x.methodSymbol.IsStatic,
+                    parameters = x.methodSymbol.Parameters.Select(y => new
+                    {
+                        type = y.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        name = y.Name
+                    }),
+                    interceptLocationAttribute = GetInterceptLocationAtt(x.invocationSymbol)
+                };
+
+                string GetInterceptLocationAtt(IInvocationOperation symbol)
+                {
+                    var semantic = symbol.SemanticModel;
+                    if (symbol.Syntax is not InvocationExpressionSyntax syntax) return "";
+                    if (CSharpExtensions.GetInterceptableLocation(semantic, syntax) is not { } location) return "";
+                    return CSharpExtensions.GetInterceptsLocationAttributeSyntax(location);
+                }
             })
         };
 
-        if (!FluidHelper.TryRenderTemplate("LogEnricher.LogEnricher.cs.liquid", model, out var code))
+        if (!FluidHelper.TryRenderTemplate("LogEnricher.LogEnricher.liquid", model, out var code))
         {
             return;
         }
-        
+
         sourceProductionContext.AddSource(
             $"{className}.g.cs",
             code
         );
-        
     }
+    
+    private static CompilerOptions GetCompilerOptions(AnalyzerConfigOptionsProvider optionsProvider, CancellationToken cancellationToken)
+    {
+        var options = optionsProvider.GlobalOptions;
+        var compilationActive = options.TryGetValue("build_property.DisableLogEnrichmentGenerator", out var value) &&
+                                value.ToLowerInvariant() != "true";
+        var modName = options.TryGetValue("build_property.ModName", out var modNameValue) ? modNameValue : string.Empty;
+        var rootNamespace = options.TryGetValue("build_property.RootNamespace", out var rootNamespaceValue)
+            ? rootNamespaceValue
+            : string.Empty;
 
+        return new CompilerOptions(compilationActive, modName, rootNamespace);
+    }
+    
+    record CompilerOptions(bool CompilationActive, string ModName, string RootNamespace);
 }

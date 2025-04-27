@@ -1,4 +1,6 @@
-﻿using DryIoc;
+﻿using System.ComponentModel;
+using DryIoc;
+using IContainer = DryIoc.IContainer;
 
 namespace Sparkitect.DI;
 

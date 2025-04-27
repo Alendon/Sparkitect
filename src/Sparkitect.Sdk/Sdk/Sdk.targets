@@ -7,9 +7,9 @@
     
     <!-- SG related properties -->
     <ItemGroup Label="SG Properties">
-        <CompilerVisiblePropertiy Include="ModName" />
-        <CompilerVisiblePropertiy Include="ModIdentifier" />
-        <CompilerVisiblePropertiy Include="DisableLogEnrichmentGenerator" />
+        <CompilerVisibleProperty Include="ModName" />
+        <CompilerVisibleProperty Include="ModIdentifier" />
+        <CompilerVisibleProperty Include="DisableLogEnrichmentGenerator" />
     </ItemGroup>
     
     <!-- Properties for mod packaging -->    

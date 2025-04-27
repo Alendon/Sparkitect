@@ -13,9 +13,24 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <ExportJetBrainsAnnotations>true</ExportJetBrainsAnnotations>
         <LangVersion>preview</LangVersion>
+        <RootNamespace>Sparkitect</RootNamespace>
         
         <DefineConstants>$(DefineConstants);JETBRAINS_ANNOTATIONS</DefineConstants>
     </PropertyGroup>
+    
+    <PropertyGroup>
+        <ModName>Sparkitect</ModName>
+        <ModIdentifier>sparkitect</ModIdentifier>
+        <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
+        
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Sparkitect.LogEnricher</InterceptorsNamespaces>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <CompilerVisibleProperty Include="ModName" />
+        <CompilerVisibleProperty Include="ModIdentifier" />
+        <CompilerVisibleProperty Include="DisableLogEnrichmentGenerator" />
+    </ItemGroup>
     
     <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" Condition="Exists('$(SolutionDir)build\LocalNuGetPublish.targets')" />
 

@@ -1,12 +1,16 @@
-﻿[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-file class {{ className }}_Enricher
+﻿namespace {{ interceptorNamespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+file class {{ className }}
 {
     
     {% for intercept in interceptions %}
     
-    static void LogIntercept_{{ forloop.index }}(
+    {{ intercept.interceptLocationAttribute }}    
+    public static void LogIntercept_{{ forloop.index }}(
     {%- unless intercept.staticCall -%}
-    this {{ intercept.targetClass }} __value,
+    this {{ intercept.targetClass }} __value
+        {%- unless intercept.parameters.size == 0-%},{%- endunless -%}
     {%- endunless -%}
     {%- for param in intercept.parameters -%}
     {{ param.type }} {{ param.name }}{% unless forloop.last %}, {%- endunless -%}
@@ -27,5 +31,5 @@ file class {{ className }}_Enricher
         {%- endfor -%}
         );
     }
-    {%endfor%}
+    {% endfor %}
 }

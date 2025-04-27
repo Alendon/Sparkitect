@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using DryIoc;
 using JetBrains.Annotations;
 using OneOf;
 using OneOf.Types;
 using Sparkitect.DI;
+using IContainer = DryIoc.IContainer;
 
 namespace Sparkitect.Modding;
 
