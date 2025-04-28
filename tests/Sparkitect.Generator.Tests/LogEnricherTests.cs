@@ -1,22 +1,14 @@
-﻿using System.Collections.Immutable;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.CodeAnalysis.Testing.Model;
 using Sparkitect.Generator.LogEnricher;
 using VerifyTUnit;
 
 namespace Sparkitect.Generator.Tests;
 
-public class LogEnricherTests : TestBase<LogEnricherGenerator>
+public class LogEnricherTests : SourceGeneratorTestBase<LogEnricherGenerator>
 {
-    private static readonly ReferenceAssemblies SerilogReferences = ReferenceAssemblies.Net.Net90
-        .WithPackages([new PackageIdentity("Serilog", "4.2.0")]);
 
     [Before(Test)]
     public void Setup()
@@ -31,7 +23,7 @@ public class LogEnricherTests : TestBase<LogEnricherGenerator>
         var testSource = """
                          using Serilog;
 
-                         namespace TestNamespace
+                         namespace ValidationTest
                          {
                              public class TestClass
                              {
@@ -44,20 +36,19 @@ public class LogEnricherTests : TestBase<LogEnricherGenerator>
 
                          """;
         
-
-        TestState.Sources.Add(("TestClass.cs", testSource));
-        TestState.AnalyzerConfigFiles.Add(("/TestConfig.editorconfig",
+        TestSources.Add(("TestClass.cs", testSource));
+        
+        AnalyzerConfigFiles.Add(("/TestConfig.editorconfig",
             """
             is_global = true
-            build_property.ModName = ValidationTest
+            build_property.ModName = ValidationTestMod
             build_property.DisableLogEnrichmentGenerator = false
+            build_property.RootNamespace = ValidationTest
             """));
-        TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck | TestBehaviors.SkipGeneratedCodeCheck |
-                        TestBehaviors.SkipSuppressionCheck;
 
-        await RunAsync(token);
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
 
 
-        Verifier.Verify(TestState.GeneratedSources);
+        await Verifier.Verify(driverRunResult);
     }
 }
