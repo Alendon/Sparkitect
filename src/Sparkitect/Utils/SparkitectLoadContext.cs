@@ -43,21 +43,25 @@ internal class SparkitectLoadContext : AssemblyLoadContext
 
     public Assembly CachedLoadFromStream(Stream dllStream, Stream? pdbStream = null)
     {
-        using var moduleMetadata = ModuleMetadata.CreateFromStream(dllStream, PEStreamOptions.LeaveOpen);
-        dllStream.Seek(0, SeekOrigin.Begin);
+        AssemblyName assemblyName;
+        Assembly? assembly;
 
-        var assemblyName = moduleMetadata.GetMetadataReader().GetAssemblyDefinition().GetAssemblyName();
-
-        if (TryLoadCachedAssembly(assemblyName, out var assembly))
+        using (var moduleMetadata = ModuleMetadata.CreateFromStream(dllStream, PEStreamOptions.LeaveOpen))
         {
-            return assembly;
+            assemblyName = moduleMetadata.GetMetadataReader().GetAssemblyDefinition().GetAssemblyName();
+
+            if (TryLoadCachedAssembly(assemblyName, out assembly))
+            {
+                return assembly;
+            }
         }
+        dllStream.Seek(0, SeekOrigin.Begin);
 
         assembly = LoadFromStream(dllStream, pdbStream);
 
         if (assemblyName.Name is not null)
             _loadedAssemblies[assemblyName.Name] = assembly;
-        
+
         return assembly;
     }
 }

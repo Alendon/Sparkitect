@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using InterpolatedParsing;
 using Serilog;
+using Serilog.Exceptions;
 using Serilog.Formatting.Compact;
 
 namespace Sparkitect;
@@ -87,11 +88,13 @@ public class EngineBootstrapper
         // Configure and initialize Serilog
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
+            .Enrich.FromLogContext()
+            .Enrich.WithExceptionDetails()
             .WriteTo.File(new CompactJsonFormatter(), $"{logDir}/{timestamp}.log", rollOnFileSizeLimit: true,
                 flushToDiskInterval: TimeSpan.FromMinutes(1))
             .WriteTo.Console(
                 outputTemplate:
-                "[{Timestamp:HH:mm:ss} {Level:u3}][{ModName}/{Class}] {Message:lj}{NewLine}{Exception}")
+                "[{Timestamp:HH:mm:ss} {Level:u3}][{ModName}/{ClassName}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
     }

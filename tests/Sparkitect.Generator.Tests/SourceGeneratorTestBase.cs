@@ -10,12 +10,24 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Text;
+using VerifyTests;
 
-namespace Sparkitect.Generator.Tests; // Adjust namespace as needed
+namespace Sparkitect.Generator.Tests;
 
 public abstract class SourceGeneratorTestBase<TSourceGenerator>
     where TSourceGenerator : IIncrementalGenerator, new()
 {
+    
+    protected readonly VerifySettings verifySettings = new();
+    
+    
+    [Before(Test)]
+    public void SetupBase()
+    {
+        ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
+        verifySettings.UseDirectory("TestResults");
+    }
+    
     private static readonly Lazy<Workspace> Workspace = new(CreateWorkspace);
 
     /// <summary>

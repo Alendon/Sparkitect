@@ -49,6 +49,6 @@ public class LogEnricherTests : SourceGeneratorTestBase<LogEnricherGenerator>
         var (_, driverRunResult) = await RunGeneratorAsync(token);
 
 
-        await Verifier.Verify(driverRunResult);
+        await Verifier.Verify(driverRunResult, verifySettings);
     }
 }

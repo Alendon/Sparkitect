@@ -92,12 +92,13 @@ public class LogEnricherGenerator : IIncrementalGenerator
             return;
         }
 
-
-        var className = $"{classSymbol!.ToDisplayString().Replace('.', '_')}_LogEnricher";
+        var fullClassName = $"{classSymbol!.ToDisplayString().Replace('.', '_')}_LogEnricher";
+        var className = classSymbol.Name;
 
         var model = new
         {
             className,
+            fullClassName,
             modName,
             interceptorNamespace,
             interceptions = invocations.Select(x =>
@@ -131,7 +132,7 @@ public class LogEnricherGenerator : IIncrementalGenerator
         }
 
         sourceProductionContext.AddSource(
-            $"{className}.g.cs",
+            $"{fullClassName}.g.cs",
             code
         );
     }
