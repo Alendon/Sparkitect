@@ -1,46 +1,45 @@
-﻿---
+---
 uid: articles.index
+title: Articles
+description: Comprehensive documentation on Sparkitect Engine systems, architecture, and implementation
 ---
 
 # Sparkitect Engine Documentation
 
-Welcome to the Sparkitect Engine documentation. This documentation serves as a reference for both engine developers and mod creators.
+This section contains detailed articles and technical documentation about all aspects of the Sparkitect Engine, from core architecture to specific implementation details.
 
-## Core Design Principles
+## Documentation Overview
 
-Sparkitect is built on several key principles that inform its architecture and capabilities:
+These articles provide in-depth information about the engine's systems and concepts:
 
-1. **Modding-Centric Design**: The engine executable itself is just a foundation, with games implemented as mods. Every aspect of the engine revolves around modding.
+- **Getting Started** - Installation, first steps, and key concepts
+- **Engine Architecture** - Core systems and architectural patterns
+- **Entity Component System** - The ECS implementation at the heart of Sparkitect
+- **Modding Framework** - How the engine supports and manages game mods
+- **Game State Management** - Managing game states, persistence, and transitions
+- **Rendering Pipeline** - Graphics rendering with Vulkan
+- **Utilities** - Helper systems and tools for development
 
-2. **Integration Over Duplication**: New systems should leverage existing ones when appropriate rather than creating redundant functionality.
+## Core Design Philosophy
 
-3. **Modularity**: Components are designed to be as modular and separated as possible to facilitate development and maintenance.
+Sparkitect Engine is built on several key principles:
 
-4. **Registry System**: A centralized registration mechanism for all game objects and resources, enabling consistent identification and access.
+1. **Modding-Centric Design**: The engine is designed from the ground up to support modding, with games implemented as mods.
 
-## Documentation Structure
+2. **Entity Component System**: A pure data-oriented ECS architecture for clear separation of data and logic.
 
-This documentation is organized into the following sections:
+3. **Registry System**: A centralized registry system for game objects, resources, and subsystems.
 
-- **[Core Systems](core/index.md)**: Foundational systems that power the engine
-    - Modding Framework
-    - Dependency Injection
-    - Registry System
-    - Entity Component System
-    - Game States
+4. **Dependency Injection**: Loose coupling through comprehensive dependency injection.
 
-- **[Technical Systems](technical/index.md)**: Implementation of technical capabilities
-    - Multiplayer & Networking
-    - Input Handling
-    - Rendering
-    - Audio
-    - Serialization
+5. **Vulkan-Based Rendering**: Modern, efficient graphics with the Vulkan API.
 
-- **[API Reference](~/api/index.md)**: Technical reference for engine APIs
+## When to Use These Articles
 
-## Getting Started
-
-If you are new to Sparkitect, we recommend starting with the [Introduction](intro.md) to understand the engine's philosophy and architecture before diving into specific systems.
+- **Learning the Engine**: If you're looking to understand how Sparkitect works at a conceptual level
+- **Implementation Reference**: When you need detailed information about specific systems
+- **Architecture Decisions**: To understand why the engine is designed the way it is
+- **Advanced Development**: For leveraging the full power of the engine's systems
 
 ## Target Audience
 
@@ -48,5 +47,10 @@ This documentation is primarily intended for:
 
 - Engine developers extending or maintaining Sparkitect
 - Mod developers creating content using the Sparkitect framework
+- Game developers evaluating Sparkitect for their projects
 
-It assumes a working knowledge of C# and game development concepts.
+## Additional Resources
+
+- For hands-on learning, see the [Tutorials & Samples](~/tutorials/index.md) section
+- For API details, refer to the [API Reference](~/api/index.md) section
+- For community resources, visit our [GitHub repository](https://github.com/path-to-your-repository)

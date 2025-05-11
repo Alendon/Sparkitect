@@ -1,5 +1,7 @@
-﻿---
-uid: articles.core.index
+---
+uid: articles.core
+title: Core Systems
+description: Fundamental systems that form the foundation of Sparkitect Engine
 ---
 
 # Core Systems

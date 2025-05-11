@@ -1,11 +1,11 @@
-﻿- name: Introduction
+- name: Introduction
   href: intro.md
   uid: articles.intro
 - name: Core Systems
   href: core/toc.yml
-  uid: articles.core.index
-  homepage: core/index.md
+  topicHref: core/index.md
+  dropdown: true
 - name: Technical Systems
   href: technical/toc.yml
-  homepage: technical/index.md
-  uid: articles.technical.index
+  topicHref: technical/index.md
+  dropdown: true

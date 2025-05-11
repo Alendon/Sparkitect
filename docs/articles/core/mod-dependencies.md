@@ -1,3 +1,9 @@
+---
+uid: articles.core.mod-dependencies
+title: Managing External Dependencies
+description: How to manage and include external dependencies in Sparkitect mods
+---
+
 # Managing External Dependencies in Sparkitect Mods
 
 ## Overview

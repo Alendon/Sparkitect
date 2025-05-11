@@ -1,6 +1,6 @@
-﻿- name: Core Systems Overview
+- name: Core Systems Overview
   href: index.md
-  uid: articles.core.index
+  uid: articles.core
 - name: Modding Framework
   href: modding-framework.md
   uid: articles.core.modding-framework
@@ -16,3 +16,6 @@
 - name: ECS Requirements
   href: ecs-requirements.md
   uid: articles.core.ecs-requirements
+- name: Mod Dependencies
+  href: mod-dependencies.md
+  uid: articles.core.mod-dependencies

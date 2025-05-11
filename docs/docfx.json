@@ -34,11 +34,22 @@
       }
     ],
     "dest": "_site",
+    "globalMetadata": {
+      "_appTitle": "Sparkitect Documentation",
+      "_appFooter": "© 2025 Sparkitect Game Engine",
+      "_enableSearch": true,
+      "_enableNewTab": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/Alendon/Sparkitect",
+        "branch": "main"
+      }
+    },
     "globalMetadataFiles": [],
     "fileMetadataFiles": [],
     "template": [
       "default",
-      "templates/singulinkfx"
+      "templates/default"
     ],
     "postProcessors": [],
     "keepFileLink": false,

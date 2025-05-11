@@ -1,6 +1,6 @@
-﻿- name: Technical Systems Overview
+- name: Technical Systems Overview
   href: index.md
-  uid: articles.technical.index
+  uid: articles.technical
 # Placeholder for future technical system documentation
 # - name: Entity Component System
 #   href: entity-component-system.md

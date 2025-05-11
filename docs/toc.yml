@@ -2,10 +2,10 @@
   href: index.md
   uid: root.index
 - name: Articles
-  href: articles/
-  uid: articles.index
-  homepage: articles/index.md
-- name: Api Documentation
-  href: api/
-  homepage: api/index.md
-  uid: api.index
+  href: articles/toc.yml
+  topicHref: articles/index.md
+  dropdown: true
+- name: API Reference
+  href: api/toc.yml
+  topicHref: api/index.md
+  dropdown: true

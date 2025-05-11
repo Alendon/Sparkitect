@@ -1,4 +1,10 @@
-﻿# ECS Requirements
+---
+uid: articles.core.ecs-requirements
+title: ECS Requirements
+description: Requirements for working with the Entity Component System
+---
+
+# ECS Requirements
 
 List of different requirements for the Entity Component System (ECS) architecture.
 
@@ -58,4 +64,3 @@ Open Questions:
 Entities are just IDs.
 
 There must be two types of Entity IDs. A stable and a "volatile" ID.
-The stable ID is used 

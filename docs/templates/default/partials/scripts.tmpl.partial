@@ -1,0 +1,8 @@
+{{!Copyright (c) Microsoft. All rights reserved. Licensed under the MIT license. See LICENSE file in the project root for full license information.}}
+
+<script type="text/javascript" src="{{_rel}}styles/docfx.vendor.min.js"></script>
+<script type="text/javascript" src="{{_rel}}styles/docfx.js"></script>
+<script type="text/javascript" src="{{_rel}}styles/main.js"></script>
+<!-- Custom fixes for navigation tree issue -->
+<link rel="stylesheet" href="{{_rel}}js/toc-fix.css">
+<script type="text/javascript" src="{{_rel}}js/toc-fix.js"></script>
