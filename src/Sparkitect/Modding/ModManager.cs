@@ -24,17 +24,16 @@ internal class ModManager : IModManager
     private readonly Dictionary<string, Assembly> _preLoadedAssemblies = [];
 
     private readonly Stack<LoadedModGroup> _loadedModGroups = new();
-    private readonly IContainer _baseCoreContainer;
+    private readonly IContainer _baseCoreContainer = null!;
     private readonly ICliArgumentHandler _cliArgumentHandler;
     private readonly IIdentificationManager _identificationManager;
 
     private const string AddModDirsArgument = "addModDirs";
     public const string VirtualSparkitectModId = "sparkitect.core";
 
-    public ModManager(IContainer baseCoreContainer, ICliArgumentHandler cliArgumentHandler,
+    public ModManager(ICliArgumentHandler cliArgumentHandler,
         IIdentificationManager identificationManager)
     {
-        _baseCoreContainer = baseCoreContainer;
         _cliArgumentHandler = cliArgumentHandler;
         _identificationManager = identificationManager;
 
@@ -46,6 +45,10 @@ internal class ModManager : IModManager
             _preLoadedAssemblies[name] = assembly;
         }
     }
+    
+    //TODO Remove These Properties
+    public required IDisposable TestRequired1 { get; init; }
+    public required IDisposable TestRequired2 { get; set; }
 
 
     public IContainer CurrentCoreContainer =>

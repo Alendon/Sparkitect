@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using Microsoft.Build.Framework;
 using Semver;
-using Sparkitect.Sdk.Tasks.Models;
+using Sparkitect.Sdk.TaskImpl.Models;
 
 namespace Sparkitect.Sdk.TaskImpl;
 

@@ -1,4 +1,6 @@
-﻿using DryIoc;
+﻿using Sparkitect.DI;
+using Sparkitect.DI.Exceptions;
+using Sparkitect.DI.ServiceFactories;
 using Sparkitect.Modding;
 using Sparkitect.Utils;
 using System;
@@ -15,7 +17,7 @@ namespace Sparkitect;
 /// </summary>
 public class EngineBootstrapper
 {
-    private IContainer? _coreContainer;
+    private ICoreContainer? _coreContainer;
     private IModManager? _modManager;
     private ICliArgumentHandler? _cliArgumentHandler;
 
@@ -104,16 +106,34 @@ public class EngineBootstrapper
     /// </summary>
     public void BuildCoreContainer()
     {
-        _coreContainer = new Container();
+        ICoreContainerBuilder builder = new CoreContainerBuilder();
 
-        // Register essential services
-        _coreContainer.Register<ICliArgumentHandler, CliArgumentHandler>(Reuse.Singleton);
-        _coreContainer.Register<IModManager, ModManager>(Reuse.Singleton);
-        _coreContainer.Register<IIdentificationManager, IdentificationManager>(Reuse.Singleton);
+        // Register service factories for base container services
+        builder.Register(new CliArgumentHandlerFactory());
+        builder.Register(new IdentificationManagerFactory());
+        builder.Register(new ModManagerFactory());
 
-        // Resolve the mod manager for later use
-        _cliArgumentHandler = _coreContainer.Resolve<ICliArgumentHandler>();
-        _modManager = _coreContainer.Resolve<IModManager>();
+        try
+        {
+            var container = builder.Build();
+            _coreContainer = container; 
+
+            // Resolve essential services
+            _cliArgumentHandler = container.Resolve<ICliArgumentHandler>();
+            _modManager = container.Resolve<IModManager>();
+            
+            Log.Debug("Core container built successfully");
+        }
+        catch (CircularDependencyException ex)
+        {
+            Log.Fatal(ex, "Circular dependency detected in core container");
+            throw;
+        }
+        catch (DependencyResolutionException ex)
+        {
+            Log.Fatal(ex, "Failed to resolve dependency in core container");
+            throw;
+        }
     }
 
     /// <summary>
@@ -165,18 +185,18 @@ public class EngineBootstrapper
         }
 
         var container = _modManager.CurrentCoreContainer;
-
-        var registryManager = container.Resolve<IRegistryManager>(IfUnresolved.ReturnDefaultIfNotRegistered);
-
-        if (registryManager is null)
+/*
+        if (container.TryResolve(out IRegistryManager registryManager))
+        {
+            Log.Debug("Processing registries");
+            registryManager.ProcessRegistry();
+            Log.Debug("Registries processed successfully");
+        }
+        else
         {
             Log.Error("Registry manager is null");
             throw new InvalidOperationException("Registry manager has not been initialized");
-        }
-        
-        Log.Debug("Processing registries");
-        registryManager.ProcessRegistry();
-        Log.Debug("Registries processed successfully");
+        }*/
     }
 
     /// <summary>

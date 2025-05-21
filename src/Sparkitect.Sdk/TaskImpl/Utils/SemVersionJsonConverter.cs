@@ -2,7 +2,7 @@
 using System.Text.Json.Serialization;
 using Semver;
 
-namespace Sparkitect.Sdk.Tasks.Utils;
+namespace Sparkitect.Sdk.TaskImpl.Utils;
 
 /// <summary>
 /// JSON converter for Semantic Version objects

@@ -1,8 +1,8 @@
 ﻿using System.Text.Json.Serialization;
 using Semver;
-using Sparkitect.Sdk.Tasks.Utils;
+using Sparkitect.Sdk.TaskImpl.Utils;
 
-namespace Sparkitect.Sdk.Tasks.Models;
+namespace Sparkitect.Sdk.TaskImpl.Models;
 
 /// <summary>
 /// Represents a mod manifest containing metadata about a mod

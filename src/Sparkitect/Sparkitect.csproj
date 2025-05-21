@@ -39,6 +39,7 @@
         <PackageReference Include="DryIoc.dll" Version="5.4.3" />
         <PackageReference Include="InterpolatedParser" Version="1.1.5" />
         <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.13.0" />
+        <PackageReference Include="QuikGraph" Version="2.5.0" />
         <PackageReference Include="Semver" Version="3.0.0" />
         <PackageReference Include="Serilog.Exceptions" Version="8.4.0" />
         <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />

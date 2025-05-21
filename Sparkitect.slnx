@@ -12,7 +12,10 @@
     <Project Path="samples\MinimalSampleMod\MinimalSampleMod.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src\Sparkitect.Sdk\Sparkitect.Sdk.csproj" Type="Classic C#" />
+    <Project Path="src\Sparkitect.Sdk\Sparkitect.Sdk.csproj" Type="Classic C#">
+      <Configuration Solution="Debug|Any CPU" Project="Debug|Any CPU|NoBuild" />
+      <Configuration Solution="Release|Any CPU" Project="Release|Any CPU|NoBuild" />
+    </Project>
     <Project Path="src\Sparkitect\Sparkitect.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/tests/">
