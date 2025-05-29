@@ -1,0 +1,96 @@
+namespace {{ ImplementationNamespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.DI.GeneratorAttributes.KeyedFactoryAttribute<{{ BaseType }}>]
+internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<{{ BaseType }}>
+{
+    // Cached dependencies
+    {% for argument in ConstructorArguments %}
+    private {{ argument.Type }} _arg_{{ forloop.index }};
+    {% endfor %}
+    {% for argument in RequiredProperties %}
+    private {{ argument.Type }} _prop_{{ forloop.index }};
+    {% endfor %}
+    
+    public Type ImplementationType => typeof({{ ImplementationTypeName }});
+    
+    {% if KeyInfo %}
+    {% assign keyInfoType = KeyInfo | object.type %}
+    {% if keyInfoType == "DirectKeyInfo" %}
+    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => "{{ KeyInfo.KeyValue }}";
+    {% elsif keyInfoType == "PropertyKeyInfo" %}
+    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => {{ ImplementationTypeName }}.{{ KeyInfo.PropertyName }};
+    {% endif %}
+    {% else %}
+    // TODO: Key information not found - analyzer should catch this
+    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => throw new NotImplementedException("Key not specified");
+    {% endif %}
+    
+    public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
+    {% for argument in ConstructorArguments %}
+        (typeof({{ argument.Type }}), {{ argument.IsOptional }}) {% unless forloop.last %}, {%- endunless -%}            
+    {% endfor %}
+    ];
+    
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
+    {% for argument in RequiredProperties %}
+        (typeof({{ argument.Type }}), {{ argument.IsOptional }}) {% unless forloop.last %}, {%- endunless -%}
+    {% endfor %}
+    ];
+    
+    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container)
+    {
+        // Resolve and cache constructor dependencies
+        {% for argument in ConstructorArguments %}
+            if(!container.TryResolve<{{ argument.Type }}>(out _arg_{{ forloop.index }}))
+            {
+            {% unless argument.IsOptional %}
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+            {% endunless %}
+            }
+        {% endfor %}
+        
+        // Resolve and cache property dependencies
+        {% for argument in RequiredProperties %}
+            if(!container.TryResolve<{{ argument.Type }}>(out _prop_{{ forloop.index }}))
+            {
+            {% unless argument.IsOptional %}
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+            {% endunless %}
+            }
+        {% endfor %}
+    }
+    
+    public {{ BaseType }} CreateInstance()
+    {
+        var instance = Constructor(
+{% for argument in ConstructorArguments %}
+    _arg_{{ forloop.index }}  {% unless forloop.last %}, {%- endunless -%}
+{% endfor %}
+);
+        
+        // Apply cached property dependencies
+    {% for argument in RequiredProperties %}
+        {% unless argument.IsOptional %}
+        SetProperty_{{ forloop.index }}(instance, _prop_{{ forloop.index }});
+        {% else %}
+        if (_prop_{{ forloop.index }} is not null)
+            SetProperty_{{ forloop.index }}(instance, _prop_{{ forloop.index }});
+        {% endunless %}
+    {% endfor %}
+        
+        return instance;
+    
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
+        static extern {{ ImplementationTypeName }} Constructor(
+{% for argument in ConstructorArguments %}
+    {{ argument.Type }} arg_{{ forloop.index }}  {% unless forloop.last %}, {%- endunless -%}
+{% endfor %}
+);
+        
+    {% for argument in RequiredProperties %}
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "{{ argument.SetterName }}")]
+        static extern void SetProperty_{{ forloop.index }}({{ ImplementationTypeName }} target, {{ argument.Type }} value);
+    {% endfor %}
+    }
+}

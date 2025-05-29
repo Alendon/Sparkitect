@@ -2,21 +2,21 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using DryIoc;
-using JetBrains.Annotations;
 using OneOf.Types;
 using Sparkitect.DI;
 using Sparkitect.Utils;
 using OneOf;
 using Semver;
 using Serilog;
+using Sparkitect.DI.Container;
+using Sparkitect.DI.GeneratorAttributes;
 
 namespace Sparkitect.Modding;
 
 /// <summary>
 /// Implementation of the IModManager interface for managing mods
 /// </summary>
-internal class ModManager : IModManager
+[CreateServiceFactory<IModManager>]internal class ModManager : IModManager
 {
     private readonly Dictionary<string, LoadedMod> _loadedMods = [];
     private readonly List<ModManifest> _discoveredArchives = [];
@@ -24,7 +24,6 @@ internal class ModManager : IModManager
     private readonly Dictionary<string, Assembly> _preLoadedAssemblies = [];
 
     private readonly Stack<LoadedModGroup> _loadedModGroups = new();
-    private readonly IContainer _baseCoreContainer = null!;
     private readonly ICliArgumentHandler _cliArgumentHandler;
     private readonly IIdentificationManager _identificationManager;
 
@@ -45,14 +44,16 @@ internal class ModManager : IModManager
             _preLoadedAssemblies[name] = assembly;
         }
     }
-    
-    //TODO Remove These Properties
-    public required IDisposable TestRequired1 { get; init; }
-    public required IDisposable TestRequired2 { get; set; }
 
 
-    public IContainer CurrentCoreContainer =>
-        _loadedModGroups.Count > 0 ? _loadedModGroups.Peek().CoreContainer : _baseCoreContainer;
+    public ICoreContainer CurrentCoreContainer =>
+        _loadedModGroups.Count > 0 ? _loadedModGroups.Peek().CoreContainer : BaseCoreContainer;
+
+    internal ICoreContainer BaseCoreContainer
+    {
+        get => field ?? throw new InvalidOperationException("Base Core Container not set");
+        set;
+    } = null!;
 
     /// <summary>
     /// Gets a collection of all loaded mods
@@ -194,14 +195,6 @@ internal class ModManager : IModManager
         _loadedModGroups.TryPeek(out var parentModGroup);
         var loadContext = new SparkitectLoadContext(parentModGroup?.LoadContextHandle.Target as SparkitectLoadContext,
             _preLoadedAssemblies);
-        var coreContainer = _baseCoreContainer.CreateChild();
-
-        var modGroup = new LoadedModGroup()
-        {
-            LoadContextHandle = GCHandle.Alloc(loadContext, GCHandleType.Normal),
-            ModIds = modIds.ToArray(),
-            CoreContainer = coreContainer
-        };
 
         var newLoadedMods = new List<LoadedMod>(modIds.Length);
 
@@ -221,7 +214,6 @@ internal class ModManager : IModManager
             {
                 if (!_preLoadedAssemblies.TryGetValue(modManifest.ModAssembly, out var preLoadedAssembly))
                 {
-                    
                     Log.Warning("Virtual mod {ModId} assembly {Assembly} not found", modId, modManifest.ModAssembly);
                     continue;
                 }
@@ -254,19 +246,26 @@ internal class ModManager : IModManager
             });
         }
 
+        using var configurationContainer = CreateEntrypointContainer<CoreConfigurator>(modIds.ToArray());
+        var configurators = configurationContainer.ResolveMany();
+        var coreContainerBuilder = new CoreContainerBuilder(CurrentCoreContainer);
+        
+        foreach (var coreConfigurator in configurators)
+        {
+            coreConfigurator.ConfigureIoc(coreContainerBuilder);
+        }
+        
+        var modGroup = new LoadedModGroup()
+        {
+            LoadContextHandle = GCHandle.Alloc(loadContext, GCHandleType.Normal),
+            ModIds = modIds.ToArray(),
+            CoreContainer = coreContainerBuilder.Build()
+        };
+        
         _loadedModGroups.Push(modGroup);
         foreach (var newLoadedMod in newLoadedMods)
         {
             _loadedMods.Add(newLoadedMod.Manifest.Id, newLoadedMod);
-        }
-
-
-        using var configurationContainer = CreateConfigurationContainer<CoreConfigurator>(true, modIds.ToArray());
-        var configurators = configurationContainer.ResolveMany<CoreConfigurator>();
-
-        foreach (var coreConfigurator in configurators)
-        {
-            coreConfigurator.ConfigureIoc(coreContainer);
         }
 
         Log.Information("Loaded {ModCount} mods", _loadedMods.Count);
@@ -333,26 +332,11 @@ internal class ModManager : IModManager
         }
     }
 
-    [MustDisposeResource]
-    public IContainer CreateConfigurationContainer<T>(bool trackDisposeTransients,
-        OneOf<All, IEnumerable<string>> modsToInclude) where T : BaseConfigurationEntrypoint
+    public IEntrypointContainer<T> CreateEntrypointContainer<T>(OneOf<All, IEnumerable<string>> modsToInclude)
+        where T : class, BaseConfigurationEntrypoint
     {
-        if (CurrentCoreContainer is null)
-        {
-            throw new InvalidOperationException("Core container has not been initialized");
-        }
+        var containerBuilder = new EntrypointContainerBuilder<T>(CurrentCoreContainer);
 
-        var rules = trackDisposeTransients ? Rules.Default.WithTrackingDisposableTransients() : Rules.Default;
-
-        var container = CurrentCoreContainer.CreateChild(newRules: rules);
-
-        return ModifyConfigurationContainer<T>(container, modsToInclude);
-    }
-
-    public IContainer ModifyConfigurationContainer<T>(IContainer configurationContainer,
-        OneOf<All, IEnumerable<string>> modsToInclude)
-        where T : BaseConfigurationEntrypoint
-    {
         var modIds = modsToInclude.Match(
             _ => _loadedMods.Keys,
             ids => ids);
@@ -360,28 +344,30 @@ internal class ModManager : IModManager
         foreach (var modId in modIds)
         {
             var mod = _loadedMods[modId];
-            var entrypointAttribute = T.EntrypointAttributeType;
+            var entrypointAttribute = T.EntrypointFactoryAttributeType;
 
-            var entrypointTypes = mod.Assembly.GetTypes()
+            var entrypointFactoryTypes = mod.Assembly.GetTypes()
                 .Where(t => t.GetCustomAttributes(false).Any(a => a.GetType() == entrypointAttribute))
-                .Where(t => typeof(T).IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false });
+                .Where(t => typeof(IEntrypointFactory<T>).IsAssignableFrom(t) &&
+                            t is { IsInterface: false, IsAbstract: false });
+
 
             //TODO Future, when mod dependencies are implemented, we will need to have ordered entrypoints
 
-            foreach (var entrypointType in entrypointTypes)
+            foreach (var entrypointFactoryType in entrypointFactoryTypes)
             {
-                configurationContainer.Register(typeof(T), entrypointType, Reuse.Transient);
+                containerBuilder.Register((Activator.CreateInstance(entrypointFactoryType) as IEntrypointFactory<T>)!);
             }
         }
 
-        return configurationContainer;
+        return containerBuilder.Build();
     }
 
     private class LoadedModGroup
     {
         public required GCHandle LoadContextHandle { get; init; }
         public required string[] ModIds { get; init; }
-        public required IContainer CoreContainer { get; init; }
+        public required ICoreContainer CoreContainer { get; init; }
     }
 
     private class LoadedMod

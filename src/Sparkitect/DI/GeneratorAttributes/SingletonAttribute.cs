@@ -1,4 +1,5 @@
 ﻿namespace Sparkitect.DI.GeneratorAttributes;
 
 [AttributeUsage(AttributeTargets.Class)]
-public class SingletonAttribute<TInterface> : Attribute;
+[FactoryGenerationType(FactoryGenerationType.Service)]
+public class SingletonAttribute<TInterface> : FactoryAttribute<TInterface> where TInterface : class;

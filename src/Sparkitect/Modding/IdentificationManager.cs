@@ -1,7 +1,9 @@
 ﻿using OneOf;
+using Sparkitect.DI.GeneratorAttributes;
 
 namespace Sparkitect.Modding;
 
+[CreateServiceFactory<IIdentificationManager>]
 internal class IdentificationManager : IIdentificationManager
 {
     private readonly BidirectionalDictionary<string, ushort> _modIds = new();

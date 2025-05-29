@@ -26,11 +26,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Remove="TestResults/**"/>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Update="TestResults\" />
+        <Compile Remove="**/TestResults/**/*.cs" />
     </ItemGroup>
 
 </Project>

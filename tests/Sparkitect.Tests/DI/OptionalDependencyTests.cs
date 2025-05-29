@@ -1,5 +1,6 @@
 using TUnit.Assertions.AssertConditions.Throws;
 using Sparkitect.DI;
+using Sparkitect.DI.Container;
 using Sparkitect.DI.Exceptions;
 
 namespace Sparkitect.Tests.DI;
@@ -13,8 +14,8 @@ public class OptionalDependencyTests
     public async Task OptionalPropertyDependency_WhenMissing_DoesNotThrow()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new ServiceWithOptionalPropertyDependencyFactory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<ServiceWithOptionalPropertyDependencyFactory>();
         // Not registering DependencyService
         
         // Act & Assert - should not throw since the dependency is optional
@@ -25,9 +26,9 @@ public class OptionalDependencyTests
     public async Task OptionalPropertyDependency_WhenAvailable_IsResolved()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new ServiceWithOptionalPropertyDependencyFactory());
-        builder.Register(new DependencyServiceFactory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<ServiceWithOptionalPropertyDependencyFactory>();
+        builder.Register<DependencyServiceFactory>();
         
         // Act
         var container = builder.Build();
@@ -43,8 +44,8 @@ public class OptionalDependencyTests
     public async Task OptionalConstructorDependency_WhenMissing_DoesNotThrow()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new ServiceWithOptionalConstructorDependencyFactory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<ServiceWithOptionalConstructorDependencyFactory>();
         // Not registering DependencyService
         
         // Act & Assert - should not throw since the dependency is optional
@@ -55,8 +56,8 @@ public class OptionalDependencyTests
     public async Task OptionalConstructorDependency_WhenMissing_CreatesServiceWithoutDependency()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new ServiceWithOptionalConstructorDependencyFactory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<ServiceWithOptionalConstructorDependencyFactory>();
         // Not registering DependencyService
         
         // Act
@@ -72,9 +73,9 @@ public class OptionalDependencyTests
     public async Task OptionalConstructorDependency_WhenAvailable_IsResolved()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new ServiceWithOptionalConstructorDependencyFactory());
-        builder.Register(new DependencyServiceFactory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<ServiceWithOptionalConstructorDependencyFactory>();
+        builder.Register<DependencyServiceFactory>();
         
         // Act
         var container = builder.Build();

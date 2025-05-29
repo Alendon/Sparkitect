@@ -1,5 +1,4 @@
-﻿using DryIoc;
-using Sparkitect.Modding;
+﻿using Sparkitect.Modding;
 
 namespace Sparkitect.DI;
 

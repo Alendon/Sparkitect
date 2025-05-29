@@ -1,5 +1,5 @@
-﻿using DryIoc;
-using Sparkitect.DI;
+﻿using Sparkitect.DI;
+using Sparkitect.DI.Container;
 using Sparkitect.Modding;
 
 namespace Sparkitect;
@@ -7,8 +7,8 @@ namespace Sparkitect;
 [CoreContainerConfiguratorEntrypoint]
 public class SparkitectConfigurator : CoreConfigurator
 {
-    public override void ConfigureIoc(IContainer container)
+    public override void ConfigureIoc(ICoreContainerBuilder container)
     {
-        container.Register<IRegistryManager, RegistryManager>(Reuse.Singleton);
+        container.Register<RegistryManager_Factory>();
     }
 }

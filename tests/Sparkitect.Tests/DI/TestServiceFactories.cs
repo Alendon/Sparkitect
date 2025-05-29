@@ -1,4 +1,5 @@
 using Sparkitect.DI;
+using Sparkitect.DI.Container;
 using Sparkitect.DI.Exceptions;
 
 namespace Sparkitect.Tests.DI;
@@ -10,7 +11,7 @@ public class TestServiceFactory : IServiceFactory
     public Type ImplementationType => typeof(TestService);
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => [];
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
     public object CreateInstance(ICoreContainerBuilder container) => new TestService();
 
@@ -25,7 +26,7 @@ public class OverrideTestServiceFactory : IServiceFactory
     public Type ImplementationType => typeof(OverrideTestService);
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => [];
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
     public object CreateInstance(ICoreContainerBuilder container) => new OverrideTestService();
 
@@ -40,7 +41,7 @@ public class DuplicateTestServiceFactory : IServiceFactory
     public Type ImplementationType => typeof(TestService);
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => [];
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
     public object CreateInstance(ICoreContainerBuilder container) => new TestService();
 
@@ -55,7 +56,7 @@ public class DependencyServiceFactory : IServiceFactory
     public Type ImplementationType => typeof(DependencyService);
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => [];
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
     public object CreateInstance(ICoreContainerBuilder container) => new DependencyService();
 
@@ -70,7 +71,7 @@ public class DependentServiceFactory : IServiceFactory
     public Type ImplementationType => typeof(DependentService);
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [(typeof(IDependencyService), false)];
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => [];
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
     public object CreateInstance(ICoreContainerBuilder container)
     {
@@ -91,7 +92,7 @@ public class CircularService1Factory : IServiceFactory
     public Type ImplementationType => typeof(CircularService1);
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [(typeof(ICircularService2), false)];
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => [];
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
     public object CreateInstance(ICoreContainerBuilder container)
     {
@@ -112,7 +113,7 @@ public class CircularService2Factory : IServiceFactory
     public Type ImplementationType => typeof(CircularService2);
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [(typeof(ICircularService1), false)];
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => [];
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
     public object CreateInstance(ICoreContainerBuilder container)
     {
@@ -134,9 +135,9 @@ public class ServiceWithOptionalPropertyDependencyFactory : IServiceFactory
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
 
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() =>
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() =>
     [
-        (typeof(IDependencyService), "OptionalDependency", true)
+        (typeof(IDependencyService), true)
     ];
 
     public object CreateInstance(ICoreContainerBuilder container) => new ServiceWithOptionalPropertyDependency();
@@ -155,7 +156,7 @@ public class ServiceWithOptionalConstructorDependencyFactory : IServiceFactory
     public Type ImplementationType => typeof(ServiceWithOptionalConstructorDependency);
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [(typeof(IDependencyService), true)];
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => [];
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
     public object CreateInstance(ICoreContainerBuilder container)
     {

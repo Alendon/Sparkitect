@@ -1,4 +1,5 @@
 using Sparkitect.DI;
+using Sparkitect.DI.Container;
 using Sparkitect.DI.Exceptions;
 using TUnit.Assertions.AssertConditions.Throws;
 
@@ -10,11 +11,10 @@ public class CoreContainerBuilderTests
     public async Task Register_ValidServiceFactory_RegistersService()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        var factory = new TestServiceFactory();
+        var builder = new CoreContainerBuilder(null);
         
         // Act
-        builder.Register(factory);
+        builder.Register<TestServiceFactory>();
         var container = builder.Build();
         
         // Assert
@@ -28,22 +28,22 @@ public class CoreContainerBuilderTests
     public async Task Register_DuplicateServiceFactory_ThrowsInvalidOperationException()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
+        var builder = new CoreContainerBuilder(null);
         var factory1 = new TestServiceFactory();
         var factory2 = new DuplicateTestServiceFactory();
         
         // Act & Assert
-        builder.Register(factory1);
-        await Assert.That(() => builder.Register(factory2)).Throws<InvalidOperationException>();
+        builder.Register<TestServiceFactory>();
+        await Assert.That(() => builder.Register<DuplicateTestServiceFactory>()).Throws<InvalidOperationException>();
     }
     
     [Test]
     public async Task Build_RegisteredServices_CreatesCoreContainer()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new TestServiceFactory());
-        builder.Register(new DependencyServiceFactory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<TestServiceFactory>();
+        builder.Register<DependencyServiceFactory>();
         
         // Act
         var container = builder.Build();
@@ -63,9 +63,9 @@ public class CoreContainerBuilderTests
     public async Task Build_WithDependentService_ResolvesInCorrectOrder()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new DependencyServiceFactory());
-        builder.Register(new DependentServiceFactory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<DependencyServiceFactory>();
+        builder.Register<DependentServiceFactory>();
         
         // Act
         var container = builder.Build();
@@ -83,8 +83,8 @@ public class CoreContainerBuilderTests
     public async Task Build_MissingDependency_ThrowsDependencyResolutionException()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new DependentServiceFactory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<DependentServiceFactory>();
         
         // Act & Assert
         await Assert.That(() => builder.Build()).Throws<DependencyResolutionException>();
@@ -94,11 +94,11 @@ public class CoreContainerBuilderTests
     public async Task Override_RegisteredService_OverridesImplementation()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new TestServiceFactory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<TestServiceFactory>();
         
         // Act
-        builder.Override(new OverrideTestServiceFactory());
+        builder.Override<OverrideTestServiceFactory>();
         var container = builder.Build();
         
         // Assert
@@ -112,10 +112,9 @@ public class CoreContainerBuilderTests
     public async Task Override_UnregisteredService_ThrowsInvalidOperationException()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        var factory = new OverrideTestServiceFactory();
+        var builder = new CoreContainerBuilder(null);
         
         // Act & Assert
-        await Assert.That(() => builder.Override(factory)).Throws<InvalidOperationException>();
+        await Assert.That(() => builder.Override<OverrideTestServiceFactory>()).Throws<InvalidOperationException>();
     }
 }

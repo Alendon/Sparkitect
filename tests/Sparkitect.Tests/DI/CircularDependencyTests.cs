@@ -1,5 +1,6 @@
 using TUnit.Assertions.AssertConditions.Throws;
 using Sparkitect.DI;
+using Sparkitect.DI.Container;
 using Sparkitect.DI.Exceptions;
 
 namespace Sparkitect.Tests.DI;
@@ -13,9 +14,9 @@ public class CircularDependencyTests
     public async Task Build_WithCircularDependency_ThrowsCircularDependencyException()
     {
         // Arrange
-        var builder = new CoreContainerBuilder();
-        builder.Register(new CircularService1Factory());
-        builder.Register(new CircularService2Factory());
+        var builder = new CoreContainerBuilder(null);
+        builder.Register<CircularService1Factory>();
+        builder.Register<CircularService2Factory>();
         
         // Act & Assert
         await Assert.That(() => builder.Build()).Throws<CircularDependencyException>();
@@ -25,11 +26,11 @@ public class CircularDependencyTests
     public async Task ValidateDependencyGraph_CircularThroughProperties_DoesNotThrow()
     {
         // Arrange - Create factories that form a cycle through property dependencies
-        var builder = new CoreContainerBuilder();
+        var builder = new CoreContainerBuilder(null);
         
         // Register factories with circular property dependencies
-        builder.Register(new PropertyCircularService1Factory());
-        builder.Register(new PropertyCircularService2Factory());
+        builder.Register<PropertyCircularService1Factory>();
+        builder.Register<PropertyCircularService2Factory>();
         
         // Act & Assert
         await Assert.That(() => builder.Build()).ThrowsNothing();
@@ -39,11 +40,11 @@ public class CircularDependencyTests
     public async Task ValidateDependencyGraph_CircularMixed_DoesNotThrow()
     {
         // Arrange - Create factories that form a cycle through property dependencies
-        var builder = new CoreContainerBuilder();
+        var builder = new CoreContainerBuilder(null);
         
         // Register factories with circular property dependencies
-        builder.Register(new CircularService1Factory());
-        builder.Register(new PropertyCircularService2Factory());
+        builder.Register<CircularService1Factory>();
+        builder.Register<PropertyCircularService2Factory>();
         
         // Act & Assert
         await Assert.That(() => builder.Build()).ThrowsNothing();
@@ -60,9 +61,9 @@ public class PropertyCircularService1Factory : IServiceFactory
     
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
     
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => 
+    public (Type Type,  bool IsOptional)[] GetPropertyDependencies() => 
     [
-        (typeof(ICircularService2), "Service2", false)
+        (typeof(ICircularService2),false)
     ];
     
     public object CreateInstance(ICoreContainerBuilder container) => new PropertyCircularService1();
@@ -82,9 +83,9 @@ public class PropertyCircularService2Factory : IServiceFactory
     
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
     
-    public (Type Type, string PropertyName, bool IsOptional)[] GetPropertyDependencies() => 
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => 
     [
-        (typeof(ICircularService1), "Service1", false)
+        (typeof(ICircularService1), false)
     ];
     
     public object CreateInstance(ICoreContainerBuilder container) => new PropertyCircularService2();

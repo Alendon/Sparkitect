@@ -1,13 +1,13 @@
-﻿using DryIoc;
-using Sparkitect.DI;
+﻿using Sparkitect.DI;
+using Sparkitect.DI.Container;
 
 namespace MinimalSampleMod.DI;
 
 [CoreContainerConfiguratorEntrypoint]
 public class SampleModConfigurator : CoreConfigurator
 {
-    public override void ConfigureIoc(IContainer container)
+    public override void ConfigureIoc(ICoreContainerBuilder container)
     {
-        container.Register<IDummyValueManager, DummyValueManager>();
+        container.Register<DummyValueManager_Factory>();
     }
 }

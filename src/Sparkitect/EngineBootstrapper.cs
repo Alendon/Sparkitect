@@ -1,14 +1,11 @@
-﻿using Sparkitect.DI;
-using Sparkitect.DI.Exceptions;
-using Sparkitect.DI.ServiceFactories;
+﻿using Sparkitect.DI.Exceptions;
 using Sparkitect.Modding;
 using Sparkitect.Utils;
-using System;
-using System.Linq;
 using InterpolatedParsing;
 using Serilog;
 using Serilog.Exceptions;
 using Serilog.Formatting.Compact;
+using Sparkitect.DI.Container;
 
 namespace Sparkitect;
 
@@ -106,12 +103,12 @@ public class EngineBootstrapper
     /// </summary>
     public void BuildCoreContainer()
     {
-        ICoreContainerBuilder builder = new CoreContainerBuilder();
+        ICoreContainerBuilder builder = new CoreContainerBuilder(null);
 
         // Register service factories for base container services
-        builder.Register(new CliArgumentHandlerFactory());
-        builder.Register(new IdentificationManagerFactory());
-        builder.Register(new ModManagerFactory());
+        builder.Register<CliArgumentHandler_Factory>();
+        builder.Register<IdentificationManager_Factory>();
+        builder.Register<ModManager_Factory>();
 
         try
         {
@@ -121,6 +118,10 @@ public class EngineBootstrapper
             // Resolve essential services
             _cliArgumentHandler = container.Resolve<ICliArgumentHandler>();
             _modManager = container.Resolve<IModManager>();
+            if (_modManager is ModManager modManager)
+            {
+                modManager.BaseCoreContainer = container;
+            }
             
             Log.Debug("Core container built successfully");
         }

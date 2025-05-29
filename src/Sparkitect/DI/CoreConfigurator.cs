@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-using DryIoc;
-using IContainer = DryIoc.IContainer;
+﻿using Sparkitect.DI.Container;
 
 namespace Sparkitect.DI;
 
@@ -14,5 +12,5 @@ public abstract class CoreConfigurator
     /// Configures the IoC container with services
     /// </summary>
     /// <param name="container">The container to configure</param>
-    public abstract void ConfigureIoc(IContainer container);
+    public abstract void ConfigureIoc(ICoreContainerBuilder container);
 }

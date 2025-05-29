@@ -1,0 +1,88 @@
+﻿namespace DiTest;
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.DI.GeneratorAttributes.ServiceFactory<TestService>]
+internal class TestService_Factory : Sparkitect.DI.IServiceFactory
+{
+    public Type ServiceType => typeof(global::DiTest.ITestService);
+    public Type ImplementationType => typeof(TestService);
+    
+    public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
+    
+        (typeof(global::DiTest.IDependencyA), false) ,
+        (typeof(global::DiTest.IDependencyB), true) 
+    ];
+    
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
+    
+        (typeof(global::DiTest.IDependencyC), false) ,
+        (typeof(global::DiTest.IDependencyD), true) 
+    ];
+    
+    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container)
+    {
+        
+            if(!container.TryResolveInternal<global::DiTest.IDependencyA>(out var arg_1))
+            {
+            
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyA>();
+            
+            }
+        
+            if(!container.TryResolveInternal<global::DiTest.IDependencyB>(out var arg_2))
+            {
+            
+            }
+        
+
+        return Constructor(
+
+    arg_1  ,
+    arg_2  
+);
+    
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
+        static extern TestService Constructor(
+
+    global::DiTest.IDependencyA arg_1  ,
+    global::DiTest.IDependencyB arg_2  
+);
+    }
+    
+    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container)
+    {
+        if (instance is not TestService typedInstance)
+            throw new InvalidCastException($"Service of type {instance.GetType().Name} could not be cast to {nameof(TestService)}");
+
+    
+        if(!container.TryResolveInternal<global::DiTest.IDependencyC>(out var arg_1))
+        {
+        
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyC>();
+        
+        }
+        else
+        {
+            SetProperty_1(typedInstance, arg_1);
+        }
+    
+        if(!container.TryResolveInternal<global::DiTest.IDependencyD>(out var arg_2))
+        {
+        
+        }
+        else
+        {
+            SetProperty_2(typedInstance, arg_2);
+        }
+    
+    
+    
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_C")]
+        static extern void SetProperty_1(TestService target, global::DiTest.IDependencyC value);
+    
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_D")]
+        static extern void SetProperty_2(TestService target, global::DiTest.IDependencyD value);
+    
+        
+    }
+}

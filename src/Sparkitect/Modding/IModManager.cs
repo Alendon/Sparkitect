@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using DryIoc;
-using JetBrains.Annotations;
+﻿using JetBrains.Annotations;
 using OneOf;
 using OneOf.Types;
 using Sparkitect.DI;
-using IContainer = DryIoc.IContainer;
+using Sparkitect.DI.Container;
 
 namespace Sparkitect.Modding;
 
@@ -17,7 +13,7 @@ public interface IModManager
 {
     //TODO adjust to expose a "hierarchy" of loaded mods. Eg first a group of engine mods get loaded and later a group of game mods
     
-    IContainer CurrentCoreContainer { get; }
+    ICoreContainer CurrentCoreContainer { get; }
 
     /// <summary>
     /// Gets a collection of all loaded mods
@@ -36,9 +32,13 @@ public interface IModManager
     /// Loads all discovered mods
     /// </summary>
     void LoadMods(params ReadOnlySpan<string> modIds);
-
-    [MustDisposeResource] IContainer CreateConfigurationContainer<T>(bool trackDisposeTransients,
-        OneOf<All, IEnumerable<string>> modsToInclude) where T : BaseConfigurationEntrypoint;
-    IContainer ModifyConfigurationContainer<T>(IContainer configurationContainer,
-        OneOf<All, IEnumerable<string>> modsToInclude) where T : BaseConfigurationEntrypoint;
+        
+    /// <summary>
+    /// Creates an entrypoint container for the specified entrypoint type
+    /// </summary>
+    /// <typeparam name="T">The base type of entrypoints to include</typeparam>
+    /// <param name="modsToInclude">The mods to include in the container (All or specific mod IDs)</param>
+    /// <returns>A new entrypoint container with discovered entrypoints</returns>
+    [MustDisposeResource] IEntrypointContainer<T> CreateEntrypointContainer<T>(
+        OneOf<All, IEnumerable<string>> modsToInclude) where T : class, BaseConfigurationEntrypoint;
 }

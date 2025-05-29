@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Sparkitect.DI.Exceptions;
 
-namespace Sparkitect.DI;
+namespace Sparkitect.DI.Container;
 
 internal sealed class CoreContainer : ICoreContainer
 {
