@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Sparkitect.DI.Exceptions;
+using Serilog;
 
 namespace Sparkitect.DI.Container;
 
@@ -16,9 +17,6 @@ internal sealed class CoreContainer : ICoreContainer
     
     public TService Resolve<TService>() where TService : class
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(CoreContainer));
-            
         var serviceType = typeof(TService);
         var instance = Resolve(serviceType);
         
@@ -88,9 +86,10 @@ internal sealed class CoreContainer : ICoreContainer
                 {
                     disposable.Dispose();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Suppress exceptions during disposal
+                    // Log disposal exceptions but don't let them propagate to prevent cascading failures
+                    Log.Warning(ex, "Exception occurred while disposing service of type {ServiceType}", instance.GetType().Name);
                 }
             }
         }

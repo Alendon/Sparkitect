@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using OneOf;
 using Sparkitect.Modding;
+using Serilog;
 
 namespace Sparkitect.DI.Container;
 
@@ -85,9 +86,10 @@ internal sealed class FactoryContainer<TBase> : IFactoryContainer<TBase>
                 {
                     disposable.Dispose();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Suppress exceptions during disposal
+                    // Log disposal exceptions but don't let them propagate to prevent cascading failures
+                    Log.Warning(ex, "Exception occurred while disposing factory of type {FactoryType}", factory.GetType().Name);
                 }
             }
         }

@@ -26,8 +26,8 @@ public class KeyAttribute : Attribute;
 
 /// <summary>
 /// Marks a property parameter (/named argument) as containing the name of a static property that provides the key for a KeyedFactory.
-/// The Property must have a public getter and setter
-/// The static property must return string, Identification, or OneOf&lt;Identification, string&gt;
+/// The attribute property must have a public getter and setter (required for named arguments).
+/// The referenced static property must have a public getter and return string, Identification, or OneOf&lt;Identification, string&gt;
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
 public class KeyPropertyAttribute : Attribute;

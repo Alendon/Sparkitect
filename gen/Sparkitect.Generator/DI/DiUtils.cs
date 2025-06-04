@@ -7,6 +7,10 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace Sparkitect.Generator.DI;
 
+/// <summary>
+/// Utility class providing helper methods and constants for DI factory code generation.
+/// Contains logic for analyzing factory attributes, determining key types, and validating type symbols.
+/// </summary>
 public static class DiUtils
 {
     internal const string GeneratorAttributeNamespace = "Sparkitect.DI.GeneratorAttributes";

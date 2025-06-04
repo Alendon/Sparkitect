@@ -20,8 +20,7 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
     public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => {{ ImplementationTypeName }}.{{ KeyInfo.PropertyName }};
     {% endif %}
     {% else %}
-    // TODO: Key information not found - analyzer should catch this
-    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => throw new NotImplementedException("Key not specified");
+    #error "KeyedFactory generated without key information - this should have been caught by the analyzer (SPARK1006)"
     {% endif %}
     
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
