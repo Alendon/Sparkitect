@@ -1,0 +1,401 @@
+using System.Collections.Immutable;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Testing;
+using Sparkitect.Generator.DI;
+
+namespace Sparkitect.Generator.Tests.DI;
+
+public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
+{
+
+    [Before(Test)]
+    public void Setup()
+    {
+        ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OneOf", "3.0.271")]);
+        TestSources.Add(DiTestData.DiAttributes);
+    }
+
+    [Test]
+    public async Task SingleConstructor_WhenMultipleConstructors_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [Singleton<IService>]
+            public class Service : IService
+            {
+                public Service() { }
+                public Service(string name) { }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1002", 1);
+    }
+
+    [Test]
+    public async Task SingleConstructor_WhenOneConstructor_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [Singleton<IService>]
+            public class Service : IService
+            {
+                public Service() { }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task AbstractDependencies_WhenConcreteParameter_ReportsWarning()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            public interface IDependency { }
+            public class ConcreteDependency : IDependency { }
+            
+            [Singleton<IService>]
+            public class Service : IService
+            {
+                public Service(ConcreteDependency dependency) { }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1001", 1);
+    }
+
+    [Test]
+    public async Task AbstractDependencies_WhenInterfaceParameter_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            public interface IDependency { }
+            
+            [Singleton<IService>]
+            public class Service : IService
+            {
+                public Service(IDependency dependency) { }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task AbstractDependencies_WhenAbstractClassParameter_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            public abstract class AbstractDependency { }
+            
+            [Singleton<IService>]
+            public class Service : IService
+            {
+                public Service(AbstractDependency dependency) { }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task RequiredProperties_WhenNotInitOnly_ReportsWarning()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            public interface IDependency { }
+            
+            [Singleton<IService>]
+            public class Service : IService
+            {
+                public required IDependency Dependency { get; set; }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1003", 1);
+        await AssertDiagnostic(diagnostics, "SPARK1003", 9, 33, "Dependency");
+    }
+
+    [Test]
+    public async Task RequiredProperties_WhenInitOnly_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            public interface IDependency { }
+            
+            [Singleton<IService>]
+            public class Service : IService
+            {
+                public required IDependency Dependency { get; init; }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task RequiredProperties_WhenConcreteType_ReportsWarning()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            public class ConcreteDependency { }
+            
+            [Singleton<IService>]
+            public class Service : IService
+            {
+                public required ConcreteDependency Dependency { get; init; }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1001", 1);
+        await AssertDiagnostic(diagnostics, "SPARK1001", 9, 41, "Dependency", "ConcreteDependency");
+    }
+
+    [Test]
+    public async Task MultipleGenerationMarkers_WhenSameType_ReportsWarning()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [Singleton<IService>]
+            [Singleton<IService>]
+            public class Service : IService { }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1004", 1);
+    }
+
+    [Test]
+    public async Task ConflictingGenerationMarkers_WhenDifferentTypes_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [Singleton<IService>]
+            [KeyedFactory<IService>("key")]
+            public class Service : IService { }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1005", 1);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WhenNoKey_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>]
+            public class Service : IService { }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1006", 1);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithDirectKey_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>("myKey")]
+            public class Service : IService { }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithValidKeyProperty_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(keyProperty: "ServiceKey")]
+            public class Service : IService 
+            {
+                public static string ServiceKey => "myKey";
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithInvalidKeyProperty_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(keyProperty: "NonExistentKey")]
+            public class Service : IService { }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1008", 1);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithNonStaticKeyProperty_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(keyProperty: "ServiceKey")]
+            public class Service : IService 
+            {
+                public string ServiceKey => "myKey";
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1008", 1);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithBothKeyAndKeyProperty_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(key: "directKey", keyProperty: "ServiceKey")]
+            public class Service : IService 
+            {
+                public static string ServiceKey => "myKey";
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1009", 1);
+    }
+
+    [Test]
+    public async Task ComplexScenario_MultipleIssues_ReportsAll()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            public interface IDependency { }
+            public class ConcreteDependency : IDependency { }
+            
+            [Singleton<IService>]
+            [Singleton<IService>]
+            public class Service : IService
+            {
+                public Service(ConcreteDependency dependency) { }
+                public Service() { }
+                
+                public required ConcreteDependency RequiredDep { get; set; }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        // Should have multiple diagnostics
+        await Assert.That(diagnostics.Length).IsGreaterThanOrEqualTo(4);
+        await AssertDiagnosticCount(diagnostics, "SPARK1001", 2); // Two concrete dependencies
+        await AssertDiagnosticCount(diagnostics, "SPARK1002", 1); // Multiple constructors
+        await AssertDiagnosticCount(diagnostics, "SPARK1003", 1); // Required property not init-only
+        await AssertDiagnosticCount(diagnostics, "SPARK1004", 1); // Multiple same markers
+    }
+}

@@ -96,7 +96,15 @@ public abstract class SourceGeneratorTestBase<TSourceGenerator>
             OutputKind,
             allowUnsafe: AllowUnsafe,
             platform: Platform,
-            nullableContextOptions: NullableContextOptions);
+            nullableContextOptions: NullableContextOptions).WithUsings(
+            "global::System;",
+            "global::System.Collections.Generic;",
+            "global::System.IO;",
+            "global::System.Linq;",
+            "global::System.Net.Http;",
+            "global::System.Threading;",
+            "global::System.Threading.Tasks;"
+        );
 
     /// <summary>
     /// Allows customization of parse options in derived classes.

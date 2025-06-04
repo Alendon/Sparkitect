@@ -135,7 +135,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
             
             public interface IMyEntrypoint {}
             
-            [EntrypointAttribute<IMyEntrypoint>]
+            [EntrypointFactoryAttribute<IMyEntrypoint>]
             public class TestEntrypoint : IMyEntrypoint 
             {
                 public TestEntrypoint() {}
@@ -204,6 +204,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
             """));
 
         var (_, driverRunResult) = await RunGeneratorAsync(token);
+        
         await Verifier.Verify(driverRunResult, verifySettings);
     }
     

@@ -15,10 +15,9 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
     public Type ImplementationType => typeof({{ ImplementationTypeName }});
     
     {% if KeyInfo %}
-    {% assign keyInfoType = KeyInfo | object.type %}
-    {% if keyInfoType == "DirectKeyInfo" %}
+    {% if KeyInfo.KeyValue %}
     public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => "{{ KeyInfo.KeyValue }}";
-    {% elsif keyInfoType == "PropertyKeyInfo" %}
+    {% elsif KeyInfo.PropertyName %}
     public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => {{ ImplementationTypeName }}.{{ KeyInfo.PropertyName }};
     {% endif %}
     {% else %}

@@ -124,8 +124,10 @@ public class DiFactoryGenerator : IIncrementalGenerator
 
     internal static SingletonModel? ExtractSingletonModelData(INamedTypeSymbol classSymbol)
     {
-        var factoryBase = FindFactoryBase(classSymbol.GetAttributes().First());
+        var factoryAttribute = classSymbol.GetAttributes().FirstOrDefault(x => FindFactoryBase(x) is not null);
+        if (factoryAttribute is null) return null;
         
+        var factoryBase = FindFactoryBase(factoryAttribute);
         var serviceType = factoryBase?.TypeArguments.FirstOrDefault();
         var constructor = classSymbol.Constructors.FirstOrDefault();
         
@@ -154,7 +156,10 @@ public class DiFactoryGenerator : IIncrementalGenerator
     
     internal static EntrypointFactoryModel? ExtractEntrypointFactoryModelData(INamedTypeSymbol classSymbol)
     {
-        var factoryBase = FindFactoryBase(classSymbol.GetAttributes().First());
+        var factoryAttribute = classSymbol.GetAttributes().FirstOrDefault(x => FindFactoryBase(x) is not null);
+        if (factoryAttribute is null) return null;
+        
+        var factoryBase = FindFactoryBase(factoryAttribute);
         var baseType = factoryBase?.TypeArguments.FirstOrDefault();
         var constructor = classSymbol.Constructors.FirstOrDefault();
         

@@ -16,7 +16,8 @@ namespace Sparkitect.Modding;
 /// <summary>
 /// Implementation of the IModManager interface for managing mods
 /// </summary>
-[CreateServiceFactory<IModManager>]internal class ModManager : IModManager
+[CreateServiceFactory<IModManager>]
+internal class ModManager : IModManager
 {
     private readonly Dictionary<string, LoadedMod> _loadedMods = [];
     private readonly List<ModManifest> _discoveredArchives = [];
@@ -249,19 +250,19 @@ namespace Sparkitect.Modding;
         using var configurationContainer = CreateEntrypointContainer<CoreConfigurator>(modIds.ToArray());
         var configurators = configurationContainer.ResolveMany();
         var coreContainerBuilder = new CoreContainerBuilder(CurrentCoreContainer);
-        
+
         foreach (var coreConfigurator in configurators)
         {
             coreConfigurator.ConfigureIoc(coreContainerBuilder);
         }
-        
+
         var modGroup = new LoadedModGroup()
         {
             LoadContextHandle = GCHandle.Alloc(loadContext, GCHandleType.Normal),
             ModIds = modIds.ToArray(),
             CoreContainer = coreContainerBuilder.Build()
         };
-        
+
         _loadedModGroups.Push(modGroup);
         foreach (var newLoadedMod in newLoadedMods)
         {

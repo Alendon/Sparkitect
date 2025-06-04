@@ -1,0 +1,82 @@
+﻿namespace DiTest;
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.DI.GeneratorAttributes.KeyedFactoryAttribute<global::DiTest.IProcessor>]
+internal class JsonProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<global::DiTest.IProcessor>
+{
+    // Cached dependencies
+    
+    private global::DiTest.ILogger _arg_1;
+    
+    
+    private global::DiTest.ISerializer _prop_1;
+    
+    
+    public Type ImplementationType => typeof(JsonProcessor);
+    
+    
+    
+    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => "json";
+    
+    
+    
+    public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
+    
+        (typeof(global::DiTest.ILogger), false) 
+    ];
+    
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
+    
+        (typeof(global::DiTest.ISerializer), true) 
+    ];
+    
+    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container)
+    {
+        // Resolve and cache constructor dependencies
+        
+            if(!container.TryResolve<global::DiTest.ILogger>(out _arg_1))
+            {
+            
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<JsonProcessor, global::DiTest.ILogger>();
+            
+            }
+        
+        
+        // Resolve and cache property dependencies
+        
+            if(!container.TryResolve<global::DiTest.ISerializer>(out _prop_1))
+            {
+            
+            }
+        
+    }
+    
+    public global::DiTest.IProcessor CreateInstance()
+    {
+        var instance = Constructor(
+
+    _arg_1  
+);
+        
+        // Apply cached property dependencies
+    
+        
+        if (_prop_1 is not null)
+            SetProperty_1(instance, _prop_1);
+        
+    
+        
+        return instance;
+    
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
+        static extern JsonProcessor Constructor(
+
+    global::DiTest.ILogger arg_1  
+);
+        
+    
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_Serializer")]
+        static extern void SetProperty_1(JsonProcessor target, global::DiTest.ISerializer value);
+    
+    }
+}
