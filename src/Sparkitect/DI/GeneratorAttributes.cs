@@ -8,42 +8,42 @@ public enum FactoryGenerationType
     Entrypoint
 }
 
+[AttributeUsage(AttributeTargets.Class)]
 public class FactoryGenerationTypeAttribute(FactoryGenerationType generationType) : Attribute;
 
 [AttributeUsage(AttributeTargets.Class)]
 public abstract class FactoryAttribute<TExposedType> : Attribute where TExposedType : class;
 
-[AttributeUsage(AttributeTargets.Class)]
 [FactoryGenerationType(FactoryGenerationType.Entrypoint)]
 public class EntrypointFactoryAttribute<TBase> : FactoryAttribute<TBase> where TBase : class;
 
 /// <summary>
-/// Marks a constructor parameter as the key for a KeyedFactory.
-/// The parameter must be of type string, Identification, or OneOf&lt;Identification, string&gt;
+/// Marks a property parameter (/named argument) as the key for a KeyedFactory.
+/// The parameter must be of type string
 /// </summary>
-[AttributeUsage(AttributeTargets.Parameter)]
+[AttributeUsage(AttributeTargets.Property)]
 public class KeyAttribute : Attribute;
 
 /// <summary>
-/// Marks a constructor parameter as containing the name of a static property that provides the key for a KeyedFactory.
+/// Marks a property parameter (/named argument) as containing the name of a static property that provides the key for a KeyedFactory.
+/// The Property must have a public getter and setter
 /// The static property must return string, Identification, or OneOf&lt;Identification, string&gt;
 /// </summary>
-[AttributeUsage(AttributeTargets.Parameter)]
+[AttributeUsage(AttributeTargets.Property)]
 public class KeyPropertyAttribute : Attribute;
 
-[AttributeUsage(AttributeTargets.Class)]
 [FactoryGenerationType(FactoryGenerationType.Factory)]
 public class KeyedFactoryAttribute<TBase> : FactoryAttribute<TBase> where TBase : class
 {
-    public KeyedFactoryAttribute([Key] string? key = null, [KeyProperty] string? propertyName = null)
-    {
-    }
+    [Key]
+    public string? Key { get; set; }
+    
+    [KeyProperty]
+    public string? KeyPropertyName { get; set; }
 }
 
-[AttributeUsage(AttributeTargets.Class)]
 [FactoryGenerationType(FactoryGenerationType.Service)]
 public class CreateServiceFactoryAttribute<TInterface> : FactoryAttribute<TInterface> where TInterface : class;
 
-[AttributeUsage(AttributeTargets.Class)]
 [FactoryGenerationType(FactoryGenerationType.Service)]
 public class SingletonAttribute<TInterface> : FactoryAttribute<TInterface> where TInterface : class;

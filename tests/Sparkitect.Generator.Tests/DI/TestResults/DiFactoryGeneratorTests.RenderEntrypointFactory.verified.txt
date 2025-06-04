@@ -1,7 +1,6 @@
 ﻿namespace DiTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-[global::Sparkitect.DI.GeneratorAttributes.EntrypointFactoryAttribute<global::DiTest.IMyEntrypoint>]
 internal class TestEntrypoint_EntrypointFactory : global::Sparkitect.DI.IEntrypointFactory<global::DiTest.IMyEntrypoint>
 {
     public Type ImplementationType => typeof(TestEntrypoint);

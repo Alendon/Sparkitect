@@ -1,7 +1,6 @@
 ﻿namespace DiTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-[global::Sparkitect.DI.GeneratorAttributes.KeyedFactoryAttribute<global::DiTest.IProcessor>]
 internal class JsonProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<global::DiTest.IProcessor>
 {
     // Cached dependencies

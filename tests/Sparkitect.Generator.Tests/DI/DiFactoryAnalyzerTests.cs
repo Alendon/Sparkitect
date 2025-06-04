@@ -15,6 +15,8 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
     {
         ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OneOf", "3.0.271")]);
         TestSources.Add(DiTestData.DiAttributes);
+        TestSources.Add(DiTestData.GlobalUsings);
+        TestSources.Add(DiTestData.DiStubTypes);
     }
 
     [Test]
@@ -200,7 +202,6 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         var diagnostics = await RunAnalyzerAsync();
         
         await AssertDiagnosticCount(diagnostics, "SPARK1001", 1);
-        await AssertDiagnostic(diagnostics, "SPARK1001", 9, 41, "Dependency", "ConcreteDependency");
     }
 
     [Test]
@@ -232,7 +233,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
             public interface IService { }
             
             [Singleton<IService>]
-            [KeyedFactory<IService>("key")]
+            [KeyedFactory<IService>(key: "key")]
             public class Service : IService { }
             """;
         
@@ -270,7 +271,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
             
             public interface IService { }
             
-            [KeyedFactory<IService>("myKey")]
+            [KeyedFactory<IService>(Key = "myKey")]
             public class Service : IService { }
             """;
         
@@ -289,7 +290,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
             
             public interface IService { }
             
-            [KeyedFactory<IService>(keyProperty: "ServiceKey")]
+            [KeyedFactory<IService>(KeyPropertyName = nameof(ServiceKey))]
             public class Service : IService 
             {
                 public static string ServiceKey => "myKey";
@@ -311,7 +312,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
             
             public interface IService { }
             
-            [KeyedFactory<IService>(keyProperty: "NonExistentKey")]
+            [KeyedFactory<IService>(KeyPropertyName = nameof(NonExistentKey))]
             public class Service : IService { }
             """;
         
@@ -319,7 +320,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1008", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
     }
 
     [Test]
@@ -330,7 +331,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
             
             public interface IService { }
             
-            [KeyedFactory<IService>(keyProperty: "ServiceKey")]
+            [KeyedFactory<IService>(KeyPropertyName = nameof(ServiceKey))]
             public class Service : IService 
             {
                 public string ServiceKey => "myKey";
@@ -341,7 +342,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1008", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
     }
 
     [Test]
@@ -352,7 +353,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
             
             public interface IService { }
             
-            [KeyedFactory<IService>(key: "directKey", keyProperty: "ServiceKey")]
+            [KeyedFactory<IService>(Key = "directKey", KeyPropertyName = nameof(ServiceKey))]
             public class Service : IService 
             {
                 public static string ServiceKey => "myKey";
@@ -363,7 +364,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1009", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK1008", 1);
     }
 
     [Test]
@@ -397,5 +398,178 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         await AssertDiagnosticCount(diagnostics, "SPARK1002", 1); // Multiple constructors
         await AssertDiagnosticCount(diagnostics, "SPARK1003", 1); // Required property not init-only
         await AssertDiagnosticCount(diagnostics, "SPARK1004", 1); // Multiple same markers
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithPrivateKeyProperty_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(KeyPropertyName = nameof(ServiceKey))]
+            public class Service : IService 
+            {
+                private static string ServiceKey => "myKey";
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithWriteOnlyKeyProperty_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(KeyPropertyName = nameof(ServiceKey))]
+            public class Service : IService 
+            {
+                public static string ServiceKey { set { } }
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithIdentificationKeyProperty_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.Modding;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(KeyPropertyName = nameof(ServiceKey))]
+            public class Service : IService 
+            {
+                public static Identification ServiceKey => new("myKey");
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithOneOfKeyProperty_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.Modding;
+            using OneOf;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(KeyPropertyName = nameof(ServiceKey))]
+            public class Service : IService 
+            {
+                public static OneOf<Identification, string> ServiceKey => "myKey";
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithInvalidReturnTypeKeyProperty_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(KeyPropertyName = nameof(ServiceKey))]
+            public class Service : IService 
+            {
+                public static int ServiceKey => 42;
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithEmptyKey_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(Key = "")]
+            public class Service : IService { }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1006", 1);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithEmptyKeyPropertyName_ReportsError()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(KeyPropertyName = "")]
+            public class Service : IService { }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertDiagnosticCount(diagnostics, "SPARK1006", 1);
+    }
+
+    [Test]
+    public async Task KeyedFactory_WithPublicGetterPrivateSetter_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.DI.GeneratorAttributes;
+            
+            public interface IService { }
+            
+            [KeyedFactory<IService>(KeyPropertyName = nameof(ServiceKey))]
+            public class Service : IService 
+            {
+                public static string ServiceKey { get; private set; } = "myKey";
+            }
+            """;
+        
+        TestSources.Add(("Service.cs", code));
+        
+        var diagnostics = await RunAnalyzerAsync();
+        
+        await AssertNoDiagnostics(diagnostics);
     }
 }

@@ -115,13 +115,13 @@ public abstract class AnalyzerTestBase<TAnalyzer>
                 nullableContextOptions: NullableContextOptions,
                 specificDiagnosticOptions: GetNullableWarningsFromCompiler())
             .WithUsings(
-                "global::System;",
-                "global::System.Collections.Generic;",
-                "global::System.IO;",
-                "global::System.Linq;",
-                "global::System.Net.Http;",
-                "global::System.Threading;",
-                "global::System.Threading.Tasks;"
+                "System",
+                "System.Collections.Generic",
+                "System.IO",
+                "System.Linq",
+                "System.Net.Http",
+                "System.Threading",
+                "System.Threading.Tasks"
             );
 
         return CSharpCompilation.Create(

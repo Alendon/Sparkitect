@@ -1,4 +1,5 @@
-﻿namespace DiTest;
+﻿//HintName: XmlProcessor_KeyedFactory.g.cs
+namespace DiTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<global::DiTest.IProcessor>
@@ -7,6 +8,8 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
     
     private global::DiTest.ILogger _arg_1;
     
+    
+    private global::DiTest.ISerializer _prop_1;
     
     
     public Type ImplementationType => typeof(XmlProcessor);
@@ -24,6 +27,7 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
     
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
     
+        (typeof(global::DiTest.ISerializer), false) 
     ];
     
     public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container)
@@ -40,6 +44,13 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
         
         // Resolve and cache property dependencies
         
+            if(!container.TryResolve<global::DiTest.ISerializer>(out _prop_1))
+            {
+            
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<XmlProcessor, global::DiTest.ISerializer>();
+            
+            }
+        
     }
     
     public global::DiTest.IProcessor CreateInstance()
@@ -52,6 +63,10 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
         // Apply cached property dependencies
     
         
+        SetProperty_1(instance, _prop_1);
+        
+    
+        
         return instance;
     
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
@@ -60,6 +75,9 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
     global::DiTest.ILogger arg_1  
 );
         
+    
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_Serializer")]
+        static extern void SetProperty_1(XmlProcessor target, global::DiTest.ISerializer value);
     
     }
 }

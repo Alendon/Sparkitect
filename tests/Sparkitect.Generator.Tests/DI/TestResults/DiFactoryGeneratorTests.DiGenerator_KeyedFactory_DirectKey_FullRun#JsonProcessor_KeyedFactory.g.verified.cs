@@ -1,7 +1,8 @@
-﻿namespace DiTest;
+﻿//HintName: JsonProcessor_KeyedFactory.g.cs
+namespace DiTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<global::DiTest.IProcessor>
+internal class JsonProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<global::DiTest.IProcessor>
 {
     // Cached dependencies
     
@@ -9,11 +10,11 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
     
     
     
-    public Type ImplementationType => typeof(XmlProcessor);
+    public Type ImplementationType => typeof(JsonProcessor);
     
     
     
-    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => XmlProcessor.ProcessorKey;
+    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => "json";
     
     
     
@@ -33,7 +34,7 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
             if(!container.TryResolve<global::DiTest.ILogger>(out _arg_1))
             {
             
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<XmlProcessor, global::DiTest.ILogger>();
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<JsonProcessor, global::DiTest.ILogger>();
             
             }
         
@@ -55,7 +56,7 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
         return instance;
     
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
-        static extern XmlProcessor Constructor(
+        static extern JsonProcessor Constructor(
 
     global::DiTest.ILogger arg_1  
 );

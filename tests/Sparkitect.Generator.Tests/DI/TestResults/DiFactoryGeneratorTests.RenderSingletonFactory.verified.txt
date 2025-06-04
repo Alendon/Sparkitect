@@ -1,7 +1,6 @@
 ﻿namespace DiTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-[global::Sparkitect.DI.GeneratorAttributes.ServiceFactory<TestService>]
 internal class TestService_Factory : Sparkitect.DI.IServiceFactory
 {
     public Type ServiceType => typeof(global::DiTest.ITestService);

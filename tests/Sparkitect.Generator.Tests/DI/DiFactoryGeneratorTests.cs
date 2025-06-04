@@ -13,12 +13,13 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     public void Setup()
     {
         ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OneOf", "3.0.271")]);
+        
+        TestSources.Add(DiTestData.GlobalUsings);
+        TestSources.Add(DiTestData.DiAttributes);
     }
     [Test]
     public async Task DiGenerator_FullRun_NoDependencies(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
-
         TestSources.Add(("TestService.cs",
             """
             using Sparkitect.DI.GeneratorAttributes;
@@ -37,8 +38,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task ExtractSingletonModelData_NoDependencies(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
-
         TestSources.Add(("TestService.cs",
             """
             using Sparkitect.DI.GeneratorAttributes;
@@ -94,7 +93,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task DiGenerator_EntrypointFactory_FullRun(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
         TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestEntrypoint.cs",
@@ -125,7 +123,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task ExtractEntrypointFactoryModelData(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
         TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestEntrypoint.cs",
@@ -183,7 +180,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task DiGenerator_KeyedFactory_DirectKey_FullRun(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
         TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestKeyedFactory.cs",
@@ -194,7 +190,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
 
             public interface IProcessor {}
 
-            [KeyedFactory<IProcessor>("json")]
+            [KeyedFactory<IProcessor>(Key = "json")]
             public class JsonProcessor : IProcessor 
             {
                 public JsonProcessor(ILogger logger) {}
@@ -211,7 +207,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task DiGenerator_KeyedFactory_PropertyKey_FullRun(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
         TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestKeyedFactory.cs",
@@ -223,7 +218,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
 
             public interface IProcessor {}
 
-            [KeyedFactory<IProcessor>(propertyName: "ProcessorKey")]
+            [KeyedFactory<IProcessor>(KeyPropertyName = nameof(ProcessorKey)]
             public class XmlProcessor : IProcessor 
             {
                 public static OneOf<Identification, string> ProcessorKey => new Identification("xml_processor");
@@ -244,7 +239,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task ExtractKeyedFactoryModelData_DirectKey(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
         TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestKeyedFactory.cs",
@@ -254,7 +248,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
             
             public interface IProcessor {}
             
-            [KeyedFactory<IProcessor>("json")]
+            [KeyedFactory<IProcessor>(Key = "json")]
             public class JsonProcessor : IProcessor 
             {
                 public JsonProcessor() {}
@@ -326,7 +320,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task ExtractKeyedFactoryModelData_PropertyKey(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
         TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestKeyedFactory.cs",
@@ -338,7 +331,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
             
             public interface IProcessor {}
             
-            [KeyedFactory<IProcessor>(propertyName: "ProcessorKey")]
+            [KeyedFactory<IProcessor>(KeyPropertyName = nameof(ProcessorKey))]
             public class XmlProcessor : IProcessor 
             {
                 public static OneOf<Identification, string> ProcessorKey => "xml";
@@ -365,8 +358,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task ExtractKeyInfo_DirectKey(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
-        
         TestSources.Add(("TestKeyedFactory.cs",
             """
             using Sparkitect.DI.GeneratorAttributes;
@@ -374,7 +365,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
             
             public interface IProcessor {}
             
-            [KeyedFactory<IProcessor>("json")]
+            [KeyedFactory<IProcessor>(Key = "json")]
             public class JsonProcessor : IProcessor {}
             """));
 
@@ -382,7 +373,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
         var type = compilation.GetTypeByMetadataName("DiTest.JsonProcessor");
         await Assert.That(type).IsNotNull();
         
-        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiFactoryGenerator.FindFactoryBase(x) is not null);
+        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiUtils.FindFactoryBase(x) is not null);
         await Assert.That(factoryAttribute).IsNotNull();
         
         var keyInfo = DiFactoryGenerator.ExtractKeyInfo(factoryAttribute!, type);
@@ -393,10 +384,39 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     }
     
     [Test]
+    public async Task ExtractKeyInfo_PropertyKey(CancellationToken token)
+    {
+        TestSources.Add(("TestKeyedFactory.cs",
+            """
+            using Sparkitect.DI.GeneratorAttributes;
+            namespace DiTest;
+
+            public interface IProcessor {}
+
+            [KeyedFactory<IProcessor>(KeyPropertyName = nameof(Key))]
+            public class JsonProcessor : IProcessor {
+                public static string Key => "json";
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("DiTest.JsonProcessor");
+        await Assert.That(type).IsNotNull();
+        
+        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiUtils.FindFactoryBase(x) is not null);
+        await Assert.That(factoryAttribute).IsNotNull();
+        
+        var keyInfo = DiFactoryGenerator.ExtractKeyInfo(factoryAttribute!, type);
+        
+        await Assert.That(keyInfo).IsNotNull();
+        await Assert.That(keyInfo).IsTypeOf<PropertyKeyInfo>();
+        await Assert.That(((PropertyKeyInfo)keyInfo!).PropertyName).IsEqualTo("Key");
+        await Assert.That(((PropertyKeyInfo)keyInfo).ReturnType).IsEqualTo("string");
+    }
+    
+    [Test]
     public async Task ExtractKeyInfo_NoKey_ReturnsNull(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiAttributes);
-        
         TestSources.Add(("TestKeyedFactory.cs",
             """
             using Sparkitect.DI.GeneratorAttributes;
@@ -412,7 +432,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
         var type = compilation.GetTypeByMetadataName("DiTest.JsonProcessor");
         await Assert.That(type).IsNotNull();
         
-        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiFactoryGenerator.FindFactoryBase(x) is not null);
+        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiUtils.FindFactoryBase(x) is not null);
         await Assert.That(factoryAttribute).IsNotNull();
         
         var keyInfo = DiFactoryGenerator.ExtractKeyInfo(factoryAttribute!, type);
