@@ -29,8 +29,4 @@
         <Compile Remove="**/TestResults/**/*.cs" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="DI\TestResults\" />
-    </ItemGroup>
-
 </Project>

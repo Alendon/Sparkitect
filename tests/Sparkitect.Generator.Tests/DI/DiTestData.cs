@@ -28,11 +28,13 @@ public static class DiTestData
         [AttributeUsage(AttributeTargets.Class)]
         public class FactoryGenerationTypeAttribute(FactoryGenerationType generationType) : Attribute;
         
-        [AttributeUsage(AttributeTargets.Class)]
-        public abstract class FactoryAttribute<TExposedType> : Attribute where TExposedType : class;
+        /// <summary>
+        /// Marker interface for factory attributes that generate service factories
+        /// </summary>
+        public interface IFactoryMarker<TExposedType> where TExposedType : class;
         
         [FactoryGenerationType(FactoryGenerationType.Entrypoint)]
-        public class EntrypointFactoryAttribute<TBase> : FactoryAttribute<TBase> where TBase : class;
+        public class EntrypointFactoryAttribute<TBase> : Attribute, IFactoryMarker<TBase> where TBase : class;
         
         /// <summary>
         /// Marks a property parameter (/named argument) as the key for a KeyedFactory.
@@ -49,7 +51,7 @@ public static class DiTestData
         public class KeyPropertyAttribute : Attribute;
         
         [FactoryGenerationType(FactoryGenerationType.Factory)]
-        public class KeyedFactoryAttribute<TBase> : FactoryAttribute<TBase> where TBase : class
+        public class KeyedFactoryAttribute<TBase> : Attribute, IFactoryMarker<TBase> where TBase : class
         {
             [Key]
             public string? Key { get; set; }
@@ -59,10 +61,10 @@ public static class DiTestData
         }
         
         [FactoryGenerationType(FactoryGenerationType.Service)]
-        public class CreateServiceFactoryAttribute<TInterface> : FactoryAttribute<TInterface> where TInterface : class;
+        public class CreateServiceFactoryAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
         
         [FactoryGenerationType(FactoryGenerationType.Service)]
-        public class SingletonAttribute<TInterface> : FactoryAttribute<TInterface> where TInterface : class;
+        public class SingletonAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
         """);
 
     public static (string, object) DiStubTypes => ("DiStubTypes.cs",

@@ -14,7 +14,7 @@ namespace Sparkitect.Generator.DI;
 public static class DiUtils
 {
     internal const string GeneratorAttributeNamespace = "Sparkitect.DI.GeneratorAttributes";
-    internal const string FactoryBaseAttribute = $"{GeneratorAttributeNamespace}.FactoryAttribute";
+    internal const string FactoryMarkerInterface = $"{GeneratorAttributeNamespace}.IFactoryMarker";
     
     internal const string KeyAttribute = $"{GeneratorAttributeNamespace}.KeyAttribute";
     internal const string KeyPropertyAttribute = $"{GeneratorAttributeNamespace}.KeyPropertyAttribute";
@@ -22,23 +22,20 @@ public static class DiUtils
     internal const string FactoryTypeAttribute = $"{GeneratorAttributeNamespace}.FactoryGenerationTypeAttribute";
     internal const string FactoryGenerationType = $"{GeneratorAttributeNamespace}.FactoryGenerationType";
     
-    internal static INamedTypeSymbol? FindFactoryBase(AttributeData attributeData)
+    internal const string SingletonAttributeMetadataName = $"{GeneratorAttributeNamespace}.SingletonAttribute`1";
+    
+    internal static INamedTypeSymbol? FindFactoryMarker(AttributeData attributeData)
     {
         var attributeClass = attributeData.AttributeClass;
+        if (attributeClass is null) return null;
 
-        while (attributeClass is not null)
+        // Check if the attribute class implements IFactoryMarker<T>
+        foreach (var iface in attributeClass.AllInterfaces)
         {
-            var displayString = attributeClass.ToDisplayString(DisplayFormats.NamespaceAndType);
-
-            switch (displayString)
+            var displayString = iface.ConstructedFrom.ToDisplayString(DisplayFormats.NamespaceAndType);
+            if (displayString == FactoryMarkerInterface)
             {
-                case FactoryBaseAttribute:
-                    return attributeClass;
-                case "System.Attribute":
-                    return null;
-                default:
-                    attributeClass = attributeClass.BaseType;
-                    break;
+                return iface;
             }
         }
 

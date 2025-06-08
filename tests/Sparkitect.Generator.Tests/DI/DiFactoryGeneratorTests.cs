@@ -54,7 +54,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
 
         await Assert.That(type).IsNotNull();
 
-        var model = DiFactoryGenerator.ExtractSingletonModelData(type!);
+        var model = DiFactoryGenerator.ExtractServiceFactoryModelData(type!);
 
 
         await Assert.That(model).IsNotNull();
@@ -68,7 +68,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task RenderSingletonFactory(CancellationToken token)
     {
-        var model = new SingletonModel(
+        var model = new ServiceFactoryModel(
             "global::DiTest.ITestService",
             "TestService",
             "DiTest",
@@ -83,7 +83,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
 
         );
         
-        var success = DiFactoryGenerator.RenderSingletonFactory(model, out var code, out var fileName);
+        var success = DiFactoryGenerator.RenderServiceFactory(model, out var code, out var fileName);
         
         await Assert.That(success).IsTrue();
         await Assert.That(fileName).IsEqualTo("TestService_Factory.g.cs");
@@ -373,7 +373,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
         var type = compilation.GetTypeByMetadataName("DiTest.JsonProcessor");
         await Assert.That(type).IsNotNull();
         
-        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiUtils.FindFactoryBase(x) is not null);
+        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiUtils.FindFactoryMarker(x) is not null);
         await Assert.That(factoryAttribute).IsNotNull();
         
         var keyInfo = DiFactoryGenerator.ExtractKeyInfo(factoryAttribute!, type);
@@ -403,7 +403,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
         var type = compilation.GetTypeByMetadataName("DiTest.JsonProcessor");
         await Assert.That(type).IsNotNull();
         
-        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiUtils.FindFactoryBase(x) is not null);
+        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiUtils.FindFactoryMarker(x) is not null);
         await Assert.That(factoryAttribute).IsNotNull();
         
         var keyInfo = DiFactoryGenerator.ExtractKeyInfo(factoryAttribute!, type);
@@ -432,7 +432,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
         var type = compilation.GetTypeByMetadataName("DiTest.JsonProcessor");
         await Assert.That(type).IsNotNull();
         
-        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiUtils.FindFactoryBase(x) is not null);
+        var factoryAttribute = type!.GetAttributes().FirstOrDefault(x => DiUtils.FindFactoryMarker(x) is not null);
         await Assert.That(factoryAttribute).IsNotNull();
         
         var keyInfo = DiFactoryGenerator.ExtractKeyInfo(factoryAttribute!, type);

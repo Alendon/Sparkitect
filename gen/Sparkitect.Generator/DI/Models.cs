@@ -6,7 +6,7 @@ namespace Sparkitect.Generator.DI;
 /// <summary>
 /// Model for generating singleton service factories
 /// </summary>
-public record SingletonModel(
+public record ServiceFactoryModel(
     string ServiceType,
     string ImplementationTypeName,
     string ImplementationNamespace,
@@ -43,3 +43,5 @@ public record RequiredProperty(string Type, string SetterName, bool IsOptional);
 public abstract record KeyInfo;
 public record DirectKeyInfo(string KeyValue) : KeyInfo; // Direct key is always string
 public record PropertyKeyInfo(string PropertyName, string ReturnType) : KeyInfo; // Property can return string, Identification, or OneOf<Identification, string>
+
+public record SingletonModel;

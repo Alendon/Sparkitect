@@ -25,7 +25,7 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
         if (context.Symbol is not INamedTypeSymbol type) return;
 
         var factoryAttributes = type.GetAttributes()
-            .Where(x => FindFactoryBase(x) is not null)
+            .Where(x => FindFactoryMarker(x) is not null)
             .ToList();
 
         if (!factoryAttributes.Any()) return;

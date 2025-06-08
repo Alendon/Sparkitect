@@ -63,7 +63,7 @@ Containers are immutable once built. Service registration and dependency configu
 
 ### Service Registration Attributes
 
-Services are registered using specialized attributes that automatically generate factory classes through source generators:
+Services are registered using specialized attributes that implement the `IFactoryMarker<T>` interface. The source generators automatically create factory classes through these marker attributes:
 
 ```csharp
 // Singleton service registration
@@ -96,7 +96,7 @@ internal class XmlProcessor : IProcessor
 }
 ```
 
-The source generators automatically create factory classes that handle dependency resolution, instantiation, and property injection based on these attributes.
+All factory attributes (`SingletonAttribute`, `KeyedFactoryAttribute`, `EntrypointFactoryAttribute`) implement the `IFactoryMarker<T>` interface, which signals to the source generator that factory code should be generated. The generators automatically create factory classes that handle dependency resolution, instantiation, and property injection based on these attributes.
 
 
 ## Entrypoint System

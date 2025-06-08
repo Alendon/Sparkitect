@@ -31,14 +31,14 @@ public class DiFactoryGenerator : IIncrementalGenerator
 
                 var attributes = classSymbol.GetAttributes();
 
-                var factoryAttribute = attributes.FirstOrDefault(x => FindFactoryBase(x) is not null);
+                var factoryAttribute = attributes.FirstOrDefault(x => FindFactoryMarker(x) is not null);
                 if (factoryAttribute is null) return null;
 
                 var factoryType = GetFactoryGenerationType(factoryAttribute.AttributeClass);
 
                 return factoryType switch
                 {
-                    FactoryType.Service => ExtractSingletonModelData(classSymbol),
+                    FactoryType.Service => ExtractServiceFactoryModelData(classSymbol),
                     FactoryType.Factory => ExtractKeyedFactoryModelData(classSymbol),
                     FactoryType.Entrypoint => ExtractEntrypointFactoryModelData(classSymbol),
                     _ => null
@@ -52,8 +52,8 @@ public class DiFactoryGenerator : IIncrementalGenerator
 
             switch (model)
             {
-                case SingletonModel singletonModel:
-                    if (RenderSingletonFactory(singletonModel, out code, out fileName))
+                case ServiceFactoryModel singletonModel:
+                    if (RenderServiceFactory(singletonModel, out code, out fileName))
                         context.AddSource(fileName, code);
                     break;
 
@@ -71,20 +71,20 @@ public class DiFactoryGenerator : IIncrementalGenerator
     }
 
 
-    internal static bool RenderSingletonFactory(SingletonModel model, out string code, out string fileName)
+    internal static bool RenderServiceFactory(ServiceFactoryModel model, out string code, out string fileName)
     {
         fileName = $"{model.ImplementationTypeName}_Factory.g.cs";
 
         return FluidHelper.TryRenderTemplate("DI.SingletonFactory.liquid", model, out code);
     }
 
-    internal static SingletonModel? ExtractSingletonModelData(INamedTypeSymbol classSymbol)
+    internal static ServiceFactoryModel? ExtractServiceFactoryModelData(INamedTypeSymbol classSymbol)
     {
-        var factoryAttribute = classSymbol.GetAttributes().FirstOrDefault(x => FindFactoryBase(x) is not null);
+        var factoryAttribute = classSymbol.GetAttributes().FirstOrDefault(x => FindFactoryMarker(x) is not null);
         if (factoryAttribute is null) return null;
 
-        var factoryBase = FindFactoryBase(factoryAttribute);
-        var serviceType = factoryBase?.TypeArguments.FirstOrDefault();
+        var factoryMarker = FindFactoryMarker(factoryAttribute);
+        var serviceType = factoryMarker?.TypeArguments.FirstOrDefault();
         var constructor = classSymbol.Constructors.FirstOrDefault();
 
         if (serviceType is null || constructor is null) return null;
@@ -94,7 +94,7 @@ public class DiFactoryGenerator : IIncrementalGenerator
             .Where(x => x.IsRequired);
 
 
-        return new SingletonModel(
+        return new ServiceFactoryModel(
             serviceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             classSymbol.Name,
             classSymbol.ContainingNamespace.ToDisplayString(),
@@ -112,11 +112,11 @@ public class DiFactoryGenerator : IIncrementalGenerator
 
     internal static EntrypointFactoryModel? ExtractEntrypointFactoryModelData(INamedTypeSymbol classSymbol)
     {
-        var factoryAttribute = classSymbol.GetAttributes().FirstOrDefault(x => FindFactoryBase(x) is not null);
+        var factoryAttribute = classSymbol.GetAttributes().FirstOrDefault(x => FindFactoryMarker(x) is not null);
         if (factoryAttribute is null) return null;
 
-        var factoryBase = FindFactoryBase(factoryAttribute);
-        var baseType = factoryBase?.TypeArguments.FirstOrDefault();
+        var factoryMarker = FindFactoryMarker(factoryAttribute);
+        var baseType = factoryMarker?.TypeArguments.FirstOrDefault();
         var constructor = classSymbol.Constructors.FirstOrDefault();
 
         if (baseType is null || constructor is null) return null;
@@ -143,11 +143,11 @@ public class DiFactoryGenerator : IIncrementalGenerator
 
     internal static KeyedFactoryModel? ExtractKeyedFactoryModelData(INamedTypeSymbol classSymbol)
     {
-        var factoryAttribute = classSymbol.GetAttributes().FirstOrDefault(x => FindFactoryBase(x) is not null);
+        var factoryAttribute = classSymbol.GetAttributes().FirstOrDefault(x => FindFactoryMarker(x) is not null);
         if (factoryAttribute is null) return null;
 
-        var factoryBase = FindFactoryBase(factoryAttribute);
-        var baseType = factoryBase?.TypeArguments.FirstOrDefault();
+        var factoryMarker = FindFactoryMarker(factoryAttribute);
+        var baseType = factoryMarker?.TypeArguments.FirstOrDefault();
         var constructor = classSymbol.Constructors.FirstOrDefault();
 
         if (baseType is null || constructor is null) return null;

@@ -22,9 +22,7 @@ public class LogEnricherGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var compilationOptions = context.AnalyzerConfigOptionsProvider
-            .Select(GetCompilerOptions)
-            .WithTrackingName("CompilationOptions");
+        var buildSettings = context.GetModBuildSettings();
         
         var logMethodInvocationProvider = context.SyntaxProvider.CreateSyntaxProvider(
                 (node, token) =>
@@ -74,20 +72,20 @@ public class LogEnricherGenerator : IIncrementalGenerator
 
 
         context.RegisterImplementationSourceOutput(
-            logMethodInvocationProvider.Combine(compilationOptions),
+            logMethodInvocationProvider.Combine(buildSettings),
             ProcessLogMethodInvocation
         );
     }
 
     private void ProcessLogMethodInvocation(SourceProductionContext sourceProductionContext,
-        (IGrouping<ISymbol?, (IInvocationOperation invocationSymbol, IMethodSymbol methodSymbol, INamedTypeSymbol containingClass)> Left, CompilerOptions Right) valueTuple)
+        (IGrouping<ISymbol?, (IInvocationOperation invocationSymbol, IMethodSymbol methodSymbol, INamedTypeSymbol containingClass)> Left, ModBuildSettings Right) valueTuple)
     {
         var classSymbol = valueTuple.Left.Key as INamedTypeSymbol;
         var invocations = valueTuple.Left.Select(x => (x.invocationSymbol, x.methodSymbol)).ToList();
-        var (compActive, modName, rootNamespace) = valueTuple.Right;
-        var interceptorNamespace = $"{rootNamespace}.LogEnricher";
+        var buildSettings = valueTuple.Right;
+        var interceptorNamespace = $"{buildSettings.RootNamespace}.LogEnricher";
 
-        if (!compActive)
+        if (!buildSettings.EnableLogEnrichment)
         {
             return;
         }
@@ -99,7 +97,7 @@ public class LogEnricherGenerator : IIncrementalGenerator
         {
             className,
             fullClassName,
-            modName,
+            buildSettings.ModName,
             interceptorNamespace,
             interceptions = invocations.Select(x =>
             {
@@ -136,19 +134,4 @@ public class LogEnricherGenerator : IIncrementalGenerator
             code
         );
     }
-    
-    private static CompilerOptions GetCompilerOptions(AnalyzerConfigOptionsProvider optionsProvider, CancellationToken cancellationToken)
-    {
-        var options = optionsProvider.GlobalOptions;
-        var compilationActive = options.TryGetValue("build_property.DisableLogEnrichmentGenerator", out var value) &&
-                                value.ToLowerInvariant() != "true";
-        var modName = options.TryGetValue("build_property.ModName", out var modNameValue) ? modNameValue : string.Empty;
-        var rootNamespace = options.TryGetValue("build_property.RootNamespace", out var rootNamespaceValue)
-            ? rootNamespaceValue
-            : string.Empty;
-
-        return new CompilerOptions(compilationActive, modName, rootNamespace);
-    }
-    
-    record CompilerOptions(bool CompilationActive, string ModName, string RootNamespace);
 }
