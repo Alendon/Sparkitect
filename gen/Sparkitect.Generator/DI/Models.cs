@@ -44,4 +44,16 @@ public abstract record KeyInfo;
 public record DirectKeyInfo(string KeyValue) : KeyInfo; // Direct key is always string
 public record PropertyKeyInfo(string PropertyName, string ReturnType) : KeyInfo; // Property can return string, Identification, or OneOf<Identification, string>
 
-public record SingletonModel;
+/// <summary>
+/// Model for individual singleton services that will be registered in a container
+/// </summary>
+public record SingletonModel(
+    string FactoryFullName);     // e.g., "global::Sparkitect.Modding.RegistryManager_Factory"
+
+/// <summary>
+/// Model for generating singleton container configurators
+/// </summary>
+public record SingletonContainerModel(
+    string ConfiguratorClassName,        // e.g., "SparkitectConfigurator", "TestModConfigurator"
+    string Namespace,                   // e.g., "Sparkitect", "DiTest"
+    ValueCompareList<SingletonModel> Singletons); // List of singleton services to register

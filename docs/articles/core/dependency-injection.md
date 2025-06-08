@@ -133,6 +133,29 @@ The system provides several specialized entrypoints for different configuration 
 
 #### CoreConfigurator
 
+CoreConfigurator implementations are **automatically generated** by the source generator system. When you mark classes with `[Singleton<T>]` attributes, a CoreConfigurator class is automatically created to register all the service factories.
+
+**Automatic Generation Example:**
+```csharp
+// Your singleton service
+[Singleton<IMyService>]
+public class MyService : IMyService { }
+
+// Automatically generated CoreConfigurator:
+[CoreContainerConfiguratorEntrypoint]
+[CompilerGenerated]
+public class MyProjectConfigurator : CoreConfigurator
+{
+    public override void ConfigureIoc(ICoreContainerBuilder container)
+    {
+        container.Register<global::MyNamespace.MyService_Factory>();
+    }
+}
+```
+
+The generated configurator class name is based on the project's `RootNamespace` property, and the namespace matches the `RootNamespace`. All singleton services in the assembly are automatically registered.
+
+**Manual Implementation (Legacy):**
 ```csharp
 [CoreContainerConfiguratorEntrypoint]
 public class MyConfigurator : CoreConfigurator
@@ -144,7 +167,7 @@ public class MyConfigurator : CoreConfigurator
 }
 ```
 
-Used for configuring the core DI container with essential services by registering service factories.
+Manual CoreConfigurator implementations are still supported but are not recommended as they require manual maintenance when services are added or removed.
 
 #### IoCRegistryBuilder
 

@@ -1,0 +1,15 @@
+﻿//HintName: DiTestConfigurator.g.cs
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
+namespace DiTest;
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.DI.CoreContainerConfiguratorEntrypointAttribute]
+public class DiTestConfigurator : global::Sparkitect.DI.CoreConfigurator
+{
+    public override void ConfigureIoc(global::Sparkitect.DI.Container.ICoreContainerBuilder container)
+    {
+        container.Register<global::DiTest.TestService_Factory>();
+        container.Register<global::DiTest.AnotherService_Factory>();
+    }
+}

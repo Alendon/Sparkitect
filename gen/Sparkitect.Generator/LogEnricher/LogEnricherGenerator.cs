@@ -97,7 +97,7 @@ public class LogEnricherGenerator : IIncrementalGenerator
         {
             className,
             fullClassName,
-            buildSettings.ModName,
+            modName = buildSettings.ModName,
             interceptorNamespace,
             interceptions = invocations.Select(x =>
             {
