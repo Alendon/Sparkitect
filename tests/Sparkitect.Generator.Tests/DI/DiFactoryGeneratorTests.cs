@@ -14,8 +14,9 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     {
         ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OneOf", "3.0.271")]);
         
-        TestSources.Add(DiTestData.GlobalUsings);
-        TestSources.Add(DiTestData.DiAttributes);
+        TestSources.Add(TestData.GlobalUsings);
+        TestSources.Add(TestData.DiAttributes);
+        TestSources.Add(TestData.SparkitectCore);
     }
     [Test]
     public async Task DiGenerator_FullRun_NoDependencies(CancellationToken token)
@@ -93,7 +94,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task DiGenerator_EntrypointFactory_FullRun(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestEntrypoint.cs",
             """
@@ -123,7 +123,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task ExtractEntrypointFactoryModelData(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestEntrypoint.cs",
             """
@@ -180,7 +179,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task DiGenerator_KeyedFactory_DirectKey_FullRun(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestKeyedFactory.cs",
             """
@@ -207,7 +205,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task DiGenerator_KeyedFactory_PropertyKey_FullRun(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestKeyedFactory.cs",
             """
@@ -239,7 +236,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task ExtractKeyedFactoryModelData_DirectKey(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestKeyedFactory.cs",
             """
@@ -320,7 +316,6 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
     [Test]
     public async Task ExtractKeyedFactoryModelData_PropertyKey(CancellationToken token)
     {
-        TestSources.Add(DiTestData.DiStubTypes);
 
         TestSources.Add(("TestKeyedFactory.cs",
             """

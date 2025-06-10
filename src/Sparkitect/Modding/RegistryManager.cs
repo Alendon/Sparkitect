@@ -9,7 +9,6 @@ namespace Sparkitect.Modding;
 [Singleton<IRegistryManager>]
 internal class RegistryManager : IRegistryManager
 {
-    private readonly Dictionary<ushort, Action<IFactoryContainerBuilder<Registrations>>> _registryBuilders = new();
     private readonly IModManager _modManager;
     private readonly IIdentificationManager _identificationManager;
 
@@ -43,13 +42,20 @@ internal class RegistryManager : IRegistryManager
 
     private void RegisterCategories()
     {
-        IEnumerable<string> modsToInclude = _modManager.LoadedModsPerGroup[^1];
+        var modsToInclude = _modManager.LoadedModsPerGroup[^1];
+
+        using var configurator =
+            _modManager.CreateEntrypointContainer<IRegistryConfigurator>(new All());
+
+        var containerBuilder =
+            new FactoryContainerBuilder<IRegistry>(_modManager.CurrentCoreContainer, FactoryKeyType.String);
+
+        configurator.ProcessMany(c => c.ConfigureRegistries(containerBuilder));
         
+        var container = containerBuilder.Build();
     }
 
     private void RegisterObjects(RegistryPhase registryPhase)
     {
-        
     }
-    
 }

@@ -16,8 +16,8 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
     {
         ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OneOf", "3.0.271")]);
         
-        TestSources.Add(DiTestData.GlobalUsings);
-        TestSources.Add(DiTestData.DiAttributes);
+        TestSources.Add(TestData.GlobalUsings);
+        TestSources.Add(TestData.DiAttributes);
         
         // Add analyzer config for ModBuildSettings
         AnalyzerConfigFiles.Add(("/TestConfig.editorconfig", 
@@ -80,7 +80,7 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
             new SingletonModel("global::DiTest.TestService_Factory")
         );
 
-        var buildSettings = new ModBuildSettings("TestMod", "DiTest", false);
+        var buildSettings = new ModBuildSettings("TestMod", "DiTest", false, "");
 
         var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, buildSettings);
 
@@ -97,7 +97,7 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
             new SingletonModel("global::DiTest.TestService_Factory")
         );
 
-        var buildSettings = new ModBuildSettings("TestMod", "", false);
+        var buildSettings = new ModBuildSettings("TestMod", "", false, "");
 
         var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, buildSettings);
 

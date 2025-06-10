@@ -6,9 +6,7 @@ namespace Sparkitect.DI.Container;
 /// Builder for creating entrypoint containers
 /// </summary>
 /// <typeparam name="TBase">The base type for the entrypoints</typeparam>
-internal class 
-    EntrypointContainerBuilder<TBase> : IEntrypointContainerBuilder<TBase> 
-    where TBase : class
+internal class EntrypointContainerBuilder<TBase> : IEntrypointContainerBuilder<TBase> where TBase : class
 {
     private readonly ICoreContainer _coreContainer;
     private readonly List<IEntrypointFactory<TBase>> _factories = [];
@@ -21,7 +19,7 @@ internal class
     {
         _coreContainer = coreContainer ?? throw new ArgumentNullException(nameof(coreContainer));
     }
-    
+
     /// <summary>
     /// Registers an entrypoint factory with the builder
     /// </summary>

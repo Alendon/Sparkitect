@@ -27,11 +27,22 @@ internal sealed class EntrypointContainer<TBase> : IEntrypointContainer<TBase>
     public IReadOnlyList<TBase> ResolveMany()
     {
         if (_disposed)
-            throw new ObjectDisposedException(nameof(EntrypointContainer<TBase>));
+            throw new ObjectDisposedException(nameof(EntrypointContainer<>));
             
         return _instances.AsReadOnly();
     }
-    
+
+    public void ProcessMany(Action<TBase> action)
+    {
+        if(_disposed)
+            throw new ObjectDisposedException(nameof(EntrypointContainer<>));
+
+        foreach (var instance in _instances)
+        {
+            action(instance);
+        }
+    }
+
     /// <summary>
     /// Disposes the container and all disposable entrypoint instances
     /// </summary>

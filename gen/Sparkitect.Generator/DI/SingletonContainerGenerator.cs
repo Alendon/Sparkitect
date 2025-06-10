@@ -57,6 +57,7 @@ public class SingletonContainerGenerator : IIncrementalGenerator
     {
         // TODO: Consider using ModName for configurator class name, but need to handle unsafe characters (spaces, special chars, etc.)
         // For now, use RootNamespace which should be a safe C# identifier
+        // Use the SgOutputNamespace Compile option
         
         // Generate configurator class name based on RootNamespace
         var configuratorClassName = string.IsNullOrEmpty(buildSettings.RootNamespace) 

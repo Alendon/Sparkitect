@@ -42,17 +42,13 @@ internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     /// <exception cref="InvalidOperationException">Thrown when the factory's key type doesn't match the builder's key type</exception>
     public IFactoryContainerBuilder<TBase> Register(IKeyedFactory<TBase> keyedFactory)
     {
-        if (keyedFactory is null)
-            throw new ArgumentNullException(nameof(keyedFactory));
-        
         // Validate key type matches the builder's allowed key type
         ValidateKeyType(keyedFactory.Key);
         
         // Check for duplicate keys
-        if (_factories.ContainsKey(keyedFactory.Key))
+        if (!_factories.TryAdd(keyedFactory.Key, keyedFactory))
             throw new InvalidOperationException($"A factory with key '{keyedFactory.Key}' is already registered");
-            
-        _factories.Add(keyedFactory.Key, keyedFactory);
+
         return this;
     }
     

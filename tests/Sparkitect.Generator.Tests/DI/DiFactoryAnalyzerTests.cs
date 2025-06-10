@@ -14,9 +14,9 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
     public void Setup()
     {
         ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OneOf", "3.0.271")]);
-        TestSources.Add(DiTestData.DiAttributes);
-        TestSources.Add(DiTestData.GlobalUsings);
-        TestSources.Add(DiTestData.DiStubTypes);
+        TestSources.Add(TestData.DiAttributes);
+        TestSources.Add(TestData.GlobalUsings);
+        TestSources.Add(TestData.SparkitectCore);
     }
 
     [Test]

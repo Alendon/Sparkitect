@@ -15,4 +15,6 @@ public interface IEntrypointContainer<out TBase> : IDisposable where TBase : cla
     /// </summary>
     /// <returns>A read-only list of all registered implementations</returns>
     IReadOnlyList<TBase> ResolveMany();
+    
+    void ProcessMany(Action<TBase> action);
 }
