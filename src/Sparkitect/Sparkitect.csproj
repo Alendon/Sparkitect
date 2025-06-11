@@ -14,6 +14,7 @@
         <ExportJetBrainsAnnotations>true</ExportJetBrainsAnnotations>
         <LangVersion>preview</LangVersion>
         <RootNamespace>Sparkitect</RootNamespace>
+        <SgOutputNamespace>Sparkitect.CompilerGenerated</SgOutputNamespace>
         
         <DefineConstants>$(DefineConstants);JETBRAINS_ANNOTATIONS</DefineConstants>
     </PropertyGroup>
@@ -30,6 +31,8 @@
         <CompilerVisibleProperty Include="ModName" />
         <CompilerVisibleProperty Include="ModIdentifier" />
         <CompilerVisibleProperty Include="DisableLogEnrichmentGenerator" />
+        <CompilerVisibleProperty Include="SgOutputNamespace" />
+        
     </ItemGroup>
     
     <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" Condition="Exists('$(SolutionDir)build\LocalNuGetPublish.targets')" />

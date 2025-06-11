@@ -31,6 +31,7 @@
         <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" PrivateAssets="all" GeneratePathProperty="true"/>
         <PackageReference Include="System.Text.Json" Version="9.0.4" PrivateAssets="all" GeneratePathProperty="true" />
         <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" PrivateAssets="all" GeneratePathProperty="true" />
+        <PackageReference Include="YamlDotNet" Version="16.3.0" PrivateAssets="all" GeneratePathProperty="true" />
 
         <None Include="$(PKGFluid_Core)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
         <None Include="$(PKGTimeZoneConverter)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
@@ -39,6 +40,7 @@
         <None Include="$(PKGSystem_Reflection_Emit_Lightweight)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
         <None Include="$(PKGSystem_Text_Json)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
         <None Include="$(PKGMicrosoft_Bcl_HashCode)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        <None Include="$(PKGYamlDotNet)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 
     </ItemGroup>
 

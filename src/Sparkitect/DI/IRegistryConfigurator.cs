@@ -5,7 +5,7 @@ using Sparkitect.Modding;
 namespace Sparkitect.DI;
 
 
-public interface IRegistryConfigurator : ConfigurationEntrypoint<IRegistryConfiguratorAttribute>
+public interface IRegistryConfigurator : ConfigurationEntrypoint<RegistryConfiguratorAttribute>
 {
     void ConfigureRegistries(IFactoryContainerBuilder<IRegistry> registryBuilder);
 }
@@ -13,4 +13,4 @@ public interface IRegistryConfigurator : ConfigurationEntrypoint<IRegistryConfig
 
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 [MeansImplicitUse]
-public class IRegistryConfiguratorAttribute : Attribute;
+public class RegistryConfiguratorAttribute : Attribute;

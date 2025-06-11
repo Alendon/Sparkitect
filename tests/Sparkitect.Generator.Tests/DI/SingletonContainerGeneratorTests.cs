@@ -86,8 +86,9 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
 
         await Assert.That(containerModel.ConfiguratorClassName).IsEqualTo("DiTestConfigurator");
         await Assert.That(containerModel.Namespace).IsEqualTo("DiTest");
-        await Assert.That(containerModel.Singletons).HasCount().EqualTo(1);
-        await Assert.That(containerModel.Singletons[0].FactoryFullName).IsEqualTo("global::DiTest.TestService_Factory");
+        var item = await Assert.That(containerModel.Singletons).HasSingleItem();
+        await Assert.That(item).IsNotNull();
+        await Assert.That(item!.FactoryFullName).IsEqualTo("global::DiTest.TestService_Factory");
     }
 
     [Test]

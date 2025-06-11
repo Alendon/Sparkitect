@@ -10,7 +10,6 @@ namespace Sparkitect.Generator.Tests.Modding;
 
 public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
 {
-    
     [Before(Test)]
     public void Setup()
     {
@@ -30,36 +29,47 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             """));
     }
 
-    //[Test]
-    public async Task SingletonGenerator_FullRun_NoDependencies(CancellationToken token)
+    [Test]
+    public async Task RegistryGenerator_FullRun_SingleRegistry(CancellationToken token)
     {
         TestSources.Add(("TestService.cs",
             """
             using Sparkitect.DI.GeneratorAttributes;
             using Sparkitect.Modding;
-            
-            namespace DiTest;
 
-            [assembly: RegistryMetadataAttribute<TestMetadata>]
-            
-            public class TestMetadata {
-                public const string TypeName = "TestRegistry";
-                public const string Key = "test";
-                public const string ContainingNamespace = "DiTest";
-            }
-            
-            public interface ITestService {}
+            namespace DiTest;
 
             [Registry(Identifier = "test")]
             public class TestRegistry : IRegistry {}
             """));
 
         var (_, driverRunResult) = await RunGeneratorAsync(token);
-        //await Verifier.Verify(driverRunResult, verifySettings);
+        await Verifier.Verify(driverRunResult, verifySettings);
     }
 
     [Test]
-    public async Task SingletonGenerator_ExtractModel_Valid(CancellationToken token)
+    public async Task RegistryGenerator_FullRun_MultipleRegistries(CancellationToken token)
+    {
+        TestSources.Add(("TestService.cs",
+            """
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.Modding;
+
+            namespace DiTest;
+
+            [Registry(Identifier = "test1")]
+            public class TestRegistry1 : IRegistry {}
+
+            [Registry(Identifier = "test2")]
+            public class TestRegistry2 : IRegistry {}
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+        await Verifier.Verify(driverRunResult, verifySettings);
+    }
+
+    [Test]
+    public async Task ExtractModel_Valid(CancellationToken token)
     {
         TestSources.Add(("TestService.cs",
             """
@@ -72,7 +82,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             public class TestRegistry : IRegistry {}
             """));
 
-        var (project, compilation) = await GetInitialCompilationAsync(token);
+        var (_, compilation) = await GetInitialCompilationAsync(token);
 
         var registryType = compilation.GetTypeByMetadataName("DiTest.TestRegistry");
         var att = registryType?.GetAttributes().First();
@@ -84,19 +94,19 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(result.Key).IsEqualTo("test");
         await Assert.That(result.ContainingNamespace).IsEqualTo("DiTest");
     }
-    
+
     [Test]
-    public async Task SingletonGenerator_ExtractFromMetadata_Valid(CancellationToken token)
+    public async Task ExtractFromMetadata_Valid(CancellationToken token)
     {
         TestSources.Add(("TestService.cs",
             """
             using Sparkitect.DI.GeneratorAttributes;
             using Sparkitect.Modding;
-            
+
             namespace DiTest;
-            
+
             [assembly: RegistryMetadataAttribute<TestMetadata>]
-            
+
             public class TestMetadata {
                 public const string TypeName = "TestRegistry";
                 public const string Key = "test";
@@ -104,19 +114,20 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             }
             """));
 
-        var (project, compilation) = await GetInitialCompilationAsync(token);
+        var (_, compilation) = await GetInitialCompilationAsync(token);
 
         var registryType = compilation.GetTypeByMetadataName("DiTest.TestMetadata");
-        
 
-        var success = RegistryGenerator.TryExtractRegistryFromAssemblyAttribute(registryType!, out var model);
+
+        var success =
+            RegistryGenerator.TryExtractRegistryFromAssemblyAttribute(registryType!, compilation, out var model);
         await Assert.That(success).IsTrue();
-        
+
         await Assert.That(model!.TypeName).IsEqualTo("TestRegistry");
         await Assert.That(model.Key).IsEqualTo("test");
         await Assert.That(model.ContainingNamespace).IsEqualTo("DiTest");
     }
-    
+
     [Test]
     public async Task ExtractModel_NullNamespace_ReturnsNull(CancellationToken token)
     {
@@ -124,22 +135,22 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             """
             using Sparkitect.DI.GeneratorAttributes;
             using Sparkitect.Modding;
-            
+
             // No namespace - class at global level
-            
+
             [Registry(Identifier = "test")]
             public class TestRegistry : IRegistry {}
             """));
 
-        var (project, compilation) = await GetInitialCompilationAsync(token);
+        var (_, compilation) = await GetInitialCompilationAsync(token);
         var registryType = compilation.GetTypeByMetadataName("TestRegistry");
         var att = registryType?.GetAttributes().First();
 
         var result = RegistryGenerator.ExtractModel(registryType!, att!);
-        
+
         await Assert.That(result).IsNull();
     }
-    
+
     [Test]
     public async Task ExtractModel_NullKey_ReturnsNull(CancellationToken token)
     {
@@ -147,22 +158,22 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             """
             using Sparkitect.DI.GeneratorAttributes;
             using Sparkitect.Modding;
-            
+
             namespace DiTest;
-            
+
             [Registry()] // No Identifier provided
             public class TestRegistry : IRegistry {}
             """));
 
-        var (project, compilation) = await GetInitialCompilationAsync(token);
+        var (_, compilation) = await GetInitialCompilationAsync(token);
         var registryType = compilation.GetTypeByMetadataName("DiTest.TestRegistry");
         var att = registryType?.GetAttributes().First();
 
         var result = RegistryGenerator.ExtractModel(registryType!, att!);
-        
+
         await Assert.That(result).IsNull();
     }
-    
+
     [Test]
     public async Task TryExtractRegistryFromAssemblyAttribute_MissingField_ReturnsFalse(CancellationToken token)
     {
@@ -170,9 +181,9 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             """
             using Sparkitect.DI.GeneratorAttributes;
             using Sparkitect.Modding;
-            
+
             namespace DiTest;
-            
+
             public class TestMetadata {
                 public const string TypeName = "TestRegistry";
                 // Missing Key field
@@ -180,15 +191,15 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             }
             """));
 
-        var (project, compilation) = await GetInitialCompilationAsync(token);
+        var (_, compilation) = await GetInitialCompilationAsync(token);
         var metadataType = compilation.GetTypeByMetadataName("DiTest.TestMetadata");
 
-        var success = RegistryGenerator.TryExtractRegistryFromAssemblyAttribute(metadataType!, out var model);
-        
+        var success = RegistryGenerator.TryExtractRegistryFromAssemblyAttribute(metadataType!, compilation, out var model);
+
         await Assert.That(success).IsFalse();
         await Assert.That(model).IsNull();
     }
-    
+
     [Test]
     public async Task TryExtractRegistryFromAssemblyAttribute_NonConstField_ReturnsFalse(CancellationToken token)
     {
@@ -196,9 +207,9 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             """
             using Sparkitect.DI.GeneratorAttributes;
             using Sparkitect.Modding;
-            
+
             namespace DiTest;
-            
+
             public class TestMetadata {
                 public const string TypeName = "TestRegistry";
                 public static string Key = "test"; // Not const
@@ -206,11 +217,11 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             }
             """));
 
-        var (project, compilation) = await GetInitialCompilationAsync(token);
+        var (_, compilation) = await GetInitialCompilationAsync(token);
         var metadataType = compilation.GetTypeByMetadataName("DiTest.TestMetadata");
 
-        var success = RegistryGenerator.TryExtractRegistryFromAssemblyAttribute(metadataType!, out var model);
-        
+        var success = RegistryGenerator.TryExtractRegistryFromAssemblyAttribute(metadataType!, compilation, out var model);
+
         await Assert.That(success).IsFalse();
         await Assert.That(model).IsNull();
     }

@@ -1,0 +1,14 @@
+namespace {{ Namespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.DI.RegistryConfigurator]
+public class {{ ConfiguratorClassName }} : global::Sparkitect.DI.IRegistryConfigurator
+{
+    public void ConfigureRegistries(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistry> registryBuilder)
+    {
+        {% for registry in Registries -%}
+        registryBuilder.Register(new {{ registry.FactoryName }}()); {%- unless forloop.last %}
+        {% endunless -%}
+{%- endfor %}
+    }
+}

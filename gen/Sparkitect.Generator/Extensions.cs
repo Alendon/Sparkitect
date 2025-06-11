@@ -10,8 +10,8 @@ public static class Extensions
         return provider.Where(x => x is not null).Select((x, _) => x!);
     }
 
-    public static ValueCompareList<T> ToValueCompareList<T>(this IEnumerable<T> values)
+    public static ValueCompareSet<T> ToValueCompareList<T>(this IEnumerable<T> values)
     {
-        return new ValueCompareList<T>(values);
+        return new ValueCompareSet<T>(values);
     }
 }

@@ -2,7 +2,7 @@
     
     <PropertyGroup>
         <Version Condition="'$(Version)' == ''">$(ModVersion)</Version>
-        <SgOutputNamespace Condition="'$(SgOutputNamespace)' == ''">$(RootNamespace)</SgOutputNamespace>
+        <SgOutputNamespace Condition="'$(SgOutputNamespace)' == ''">$(RootNamespace).CompilerGenerated</SgOutputNamespace>
     </PropertyGroup>
     
     

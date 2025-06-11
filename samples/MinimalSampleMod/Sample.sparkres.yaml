@@ -1,0 +1,7 @@
+﻿registries:
+  MinimalSampleMod.DummyRegistry_Metadata:
+    - id: test
+      symbolName: TestId
+      files:
+        fileA: testA.txt
+        fileB: testB.txt

@@ -10,8 +10,8 @@ public record ServiceFactoryModel(
     string ServiceType,
     string ImplementationTypeName,
     string ImplementationNamespace,
-    ValueCompareList<ConstructorArgument> ConstructorArguments,
-    ValueCompareList<RequiredProperty> RequiredProperties);
+    ValueCompareSet<ConstructorArgument> ConstructorArguments,
+    ValueCompareSet<RequiredProperty> RequiredProperties);
 
 /// <summary>
 /// Model for generating entrypoint factories that share a common base type
@@ -20,8 +20,8 @@ public record EntrypointFactoryModel(
     string BaseType,
     string ImplementationTypeName,
     string ImplementationNamespace,
-    ValueCompareList<ConstructorArgument> ConstructorArguments,
-    ValueCompareList<RequiredProperty> RequiredProperties);
+    ValueCompareSet<ConstructorArgument> ConstructorArguments,
+    ValueCompareSet<RequiredProperty> RequiredProperties);
 
 /// <summary>
 /// Model for generating keyed factories with string or Identification-based keys
@@ -30,8 +30,8 @@ public record KeyedFactoryModel(
     string BaseType,
     string ImplementationTypeName,
     string ImplementationNamespace,
-    ValueCompareList<ConstructorArgument> ConstructorArguments,
-    ValueCompareList<RequiredProperty> RequiredProperties,
+    ValueCompareSet<ConstructorArgument> ConstructorArguments,
+    ValueCompareSet<RequiredProperty> RequiredProperties,
     KeyInfo? KeyInfo);
 
 public record ConstructorArgument(string Type, bool IsOptional);
@@ -56,4 +56,4 @@ public record SingletonModel(
 public record SingletonContainerModel(
     string ConfiguratorClassName,        // e.g., "SparkitectConfigurator", "TestModConfigurator"
     string Namespace,                   // e.g., "Sparkitect", "DiTest"
-    ValueCompareList<SingletonModel> Singletons); // List of singleton services to register
+    ValueCompareSet<SingletonModel> Singletons); // List of singleton services to register
