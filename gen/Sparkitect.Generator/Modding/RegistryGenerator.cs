@@ -6,6 +6,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace Sparkitect.Generator.Modding;
 
@@ -56,7 +57,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             .Select(ParseResourceYaml);
     }
 
-    private static ValueCompareSet<FileRegistrationEntry> ParseResourceYaml(AdditionalText text,
+    internal static ValueCompareSet<FileRegistrationEntry> ParseResourceYaml(AdditionalText text,
         CancellationToken cancellation)
     {
         ValueCompareSet<FileRegistrationEntry> result = [];
@@ -66,7 +67,9 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         try
         {
-            var deserializer = new DeserializerBuilder().Build();
+            var deserializer = new DeserializerBuilder()
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                .Build();
             var yamlContent = deserializer.Deserialize<ResourceYamlRoot>(sourceText.ToString());
 
             if (yamlContent?.Registries is null)
@@ -100,7 +103,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
         }
         catch
         {
-            // Return empty list if parsing fails
+            //The file is invalid. This should be caught by the Analyzer
+            return [];
         }
 
         return result;
@@ -249,7 +253,6 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 if (attributeData.AttributeClass.TypeArguments.Length != 1) continue;
 
                 if (TryExtractRegistryFromAssemblyAttribute(attributeData.AttributeClass.TypeArguments.First(),
-                        compilation,
                         out var model) && model is not null)
                     models.Add(model);
             }
@@ -259,19 +262,20 @@ public partial class RegistryGenerator : IIncrementalGenerator
     }
 
 
-    internal static bool TryExtractRegistryFromAssemblyAttribute(ITypeSymbol metadata, Compilation compilation,
+    internal static bool TryExtractRegistryFromAssemblyAttribute(ITypeSymbol metadata,
         out RegistryModel? model)
     {
         var reader = new SymbolMetadataReader(metadata);
 
-        var methods = Of("RegisterMethods").Split(';');
+        var methods = Of("RegisterMethods").Split([';'], StringSplitOptions.RemoveEmptyEntries);
 
         ValueCompareSet<RegisterMethodModel> methodModels = new();
 
         var allValid = true;
-        foreach (var methodMetadata in methods)
+        foreach (var methodName in methods)
         {
-            if (TryParseRegisterMethod(methodMetadata, compilation, out var methodModel))
+            // Method metadata is now an inner class with the same name as the method
+            if (TryParseRegisterMethod((INamedTypeSymbol)metadata, methodName, out var methodModel))
             {
                 methodModels.Add(methodModel!);
                 continue;
@@ -280,10 +284,28 @@ public partial class RegistryGenerator : IIncrementalGenerator
             allValid = false;
         }
 
+        // Parse ResourceFiles
+        ValueCompareSet<(string identifier, bool optional)> resourceFiles = [];
+        var resourceFilesStr = Of("ResourceFiles");
+        if (!string.IsNullOrEmpty(resourceFilesStr))
+        {
+            var files = resourceFilesStr.Split([';'], StringSplitOptions.RemoveEmptyEntries);
+            foreach (var file in files)
+            {
+                var parts = file.Split(':');
+                if (parts.Length == 2 && int.TryParse(parts[1], out var optionalInt))
+                {
+                    resourceFiles.Add((parts[0], optionalInt == 1));
+                }
+            }
+        }
+
         model = new RegistryModel(
             Of("TypeName"),
             Of("Key"),
-            Of("ContainingNamespace"), methodModels);
+            Of("ContainingNamespace"), 
+            methodModels,
+            resourceFiles);
 
         allValid &= reader.AllValid;
 
@@ -294,12 +316,13 @@ public partial class RegistryGenerator : IIncrementalGenerator
         string Of(string fieldName) => reader.Of(fieldName);
     }
 
-    internal static bool TryParseRegisterMethod(string methodName, Compilation compilation,
+    internal static bool TryParseRegisterMethod(INamedTypeSymbol parentMetadata, string methodName,
         out RegisterMethodModel? model)
     {
         model = null;
 
-        var methodMetadata = compilation.GetTypeByMetadataName(methodName);
+        // Look for the inner class within the parent metadata type
+        var methodMetadata = parentMetadata.GetTypeMembers(methodName).FirstOrDefault();
         if (methodMetadata is null)
         {
             return false;
@@ -345,8 +368,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         public string Of(string fieldName)
         {
             var field = symbol.GetMembers(fieldName).OfType<IFieldSymbol>().FirstOrDefault();
-            if (field is not { IsConst: true, HasConstantValue: true } || field.ConstantValue is not string data ||
-                string.IsNullOrWhiteSpace(data))
+            if(field is not { IsConst: true, HasConstantValue: true, ConstantValue: string data })
             {
                 AllValid = false;
                 return null!;
@@ -366,6 +388,60 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
             return data;
         }
+    }
+
+    internal static bool RenderRegistryMetadata(RegistryModel model, out string code, out string fileName)
+    {
+        fileName = $"{model.TypeName}_Metadata.g.cs";
+        
+        var methodsMetadata = model.RegisterMethods.Select(method => new
+        {
+            FunctionName = method.FunctionName,
+            PrimaryParameterKind = (int)method.PrimaryParameterKind,
+            Constraint = (int)method.Constraint,
+            TypeConstraint = string.Join(";", method.TypeConstraint)
+        }).ToArray();
+        
+        var registerMethodsString = string.Join(";", model.RegisterMethods.Select(m => m.FunctionName));
+        
+        var resourceFilesString = string.Join(";", model.ResourceFiles.Select(rf => 
+            $"{rf.identifier}:{(rf.optional ? 1 : 0)}"));
+        
+        var metadataModel = new
+        {
+            Namespace = model.ContainingNamespace,
+            MetadataClassName = $"{model.TypeName}_Metadata",
+            TypeName = model.TypeName,
+            Key = model.Key,
+            ContainingNamespace = model.ContainingNamespace,
+            RegisterMethods = registerMethodsString,
+            ResourceFiles = resourceFilesString,
+            RegisterMethodsMetadata = methodsMetadata
+        };
+        
+        return FluidHelper.TryRenderTemplate("Modding.RegistryMetadata.liquid", metadataModel, out code);
+    }
+
+    internal static bool RenderRegistryConfigurator(ImmutableArray<RegistryModel> models, ModBuildSettings settings, out string code, out string fileName)
+    {
+        fileName = "RegistryConfigurator.g.cs";
+        
+        if (models.IsEmpty)
+        {
+            code = string.Empty;
+            return false;
+        }
+        
+        var configuratorModel = new
+        {
+            Namespace = settings.SgOutputNamespace,
+            ConfiguratorClassName = "RegistryConfigurator",
+            Registries = models.Select(m => new { 
+                FactoryName = $"global::{m.ContainingNamespace}.{m.TypeName}_KeyedFactory"
+            }).ToArray()
+        };
+        
+        return FluidHelper.TryRenderTemplate("Modding.RegistryConfigurator.liquid", configuratorModel, out code);
     }
 
     private class ResourceYamlRoot

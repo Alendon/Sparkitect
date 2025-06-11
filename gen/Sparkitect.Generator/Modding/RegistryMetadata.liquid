@@ -9,4 +9,18 @@ public class {{ MetadataClassName }}
     public const string TypeName = "{{ TypeName }}";
     public const string Key = "{{ Key }}";
     public const string ContainingNamespace = "{{ ContainingNamespace }}";
+    public const string RegisterMethods = "{{ RegisterMethods }}";
+    public const string ResourceFiles = "{{ ResourceFiles }}";
+
+{% for method in RegisterMethodsMetadata %}
+    [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+    public class {{ method.FunctionName }}
+    {
+        public const string FunctionName = "{{ method.FunctionName }}";
+        public const int PrimaryParameterKind = {{ method.PrimaryParameterKind }};
+        public const int Constraint = {{ method.Constraint }};
+        public const string TypeConstraint = "{{ method.TypeConstraint }}";
+    }
+
+{% endfor %}
 }

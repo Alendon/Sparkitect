@@ -1,0 +1,36 @@
+﻿[assembly: global::Sparkitect.Modding.RegistryMetadataAttribute<global::DiTest.TestRegistry_Metadata>]
+
+namespace DiTest;
+
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+public class TestRegistry_Metadata
+{
+    public const string TypeName = "TestRegistry";
+    public const string Key = "test";
+    public const string ContainingNamespace = "DiTest";
+    public const string RegisterMethods = "RegisterItem;RegisterType";
+    public const string ResourceFiles = "data:0;config:1";
+
+
+    [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+    public class RegisterItem
+    {
+        public const string FunctionName = "RegisterItem";
+        public const int PrimaryParameterKind = 2;
+        public const int Constraint = 0;
+        public const string TypeConstraint = "global::System.String";
+    }
+
+
+    [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+    public class RegisterType
+    {
+        public const string FunctionName = "RegisterType";
+        public const int PrimaryParameterKind = 4;
+        public const int Constraint = 1;
+        public const string TypeConstraint = "global::System.IDisposable";
+    }
+
+
+}

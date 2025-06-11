@@ -10,4 +10,8 @@ public class TestRegistry2_Metadata
     public const string TypeName = "TestRegistry2";
     public const string Key = "test2";
     public const string ContainingNamespace = "DiTest";
+    public const string RegisterMethods = "";
+    public const string ResourceFiles = "";
+
+
 }

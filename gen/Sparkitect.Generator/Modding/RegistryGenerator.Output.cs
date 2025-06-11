@@ -1,4 +1,4 @@
-﻿using System.Collections.Immutable;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 
@@ -10,18 +10,8 @@ public partial class RegistryGenerator
     {
         var (model, settings) = arg2;
         
-        var metadataModel = new
+        if (RenderRegistryMetadata(model, out var code, out var fileName))
         {
-            Namespace = model.ContainingNamespace,
-            MetadataClassName = $"{model.TypeName}_Metadata",
-            TypeName = model.TypeName,
-            Key = model.Key,
-            ContainingNamespace = model.ContainingNamespace
-        };
-        
-        if (FluidHelper.TryRenderTemplate("Modding.RegistryMetadata.liquid", metadataModel, out var code))
-        {
-            var fileName = $"{model.TypeName}_Metadata.g.cs";
             context.AddSource(fileName, code);
         }
     }
@@ -30,20 +20,8 @@ public partial class RegistryGenerator
     {
         var (models, settings) = arg2;
         
-        if (models.IsEmpty) return;
-        
-        var configuratorModel = new
+        if (RenderRegistryConfigurator(models, settings, out var code, out var fileName))
         {
-            Namespace = settings.SgOutputNamespace,
-            ConfiguratorClassName = "RegistryConfigurator",
-            Registries = models.Select(m => new { 
-                FactoryName = $"global::{m.ContainingNamespace}.{m.TypeName}_KeyedFactory"
-            }).ToArray()
-        };
-        
-        if (FluidHelper.TryRenderTemplate("Modding.RegistryConfigurator.liquid", configuratorModel, out var code))
-        {
-            var fileName = "RegistryConfigurator.g.cs";
             context.AddSource(fileName, code);
         }
     }
