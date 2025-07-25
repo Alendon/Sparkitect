@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-
-namespace Sparkitect.Generator.DI;
+﻿namespace Sparkitect.Generator.DI;
 
 /// <summary>
 /// Model for generating singleton service factories

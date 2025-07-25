@@ -1,0 +1,74 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmark", "benchmark", "{09EED85C-BE3C-7566-DC0E-2E8E43466740}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sparkitect.Benchmark", "benchmark\Sparkitect.Benchmark\Sparkitect.Benchmark.csproj", "{C244C08F-9401-5E15-7FA8-8C9DD6091C21}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{DEE5DD87-39C1-BF34-B639-A387DCCF972B}"
+	ProjectSection(SolutionItems) = preProject
+		build\LocalNuGetPublish.targets = build\LocalNuGetPublish.targets
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "gen", "gen", "{21B44B34-1D47-1312-99D7-9BFB05A71085}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sparkitect.Generator", "gen\Sparkitect.Generator\Sparkitect.Generator.csproj", "{08353708-0ADC-ACAC-FDD7-333BD892F766}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5D20AA90-6969-D8BD-9DCD-8634F4692FDA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalSampleMod", "samples\MinimalSampleMod\MinimalSampleMod.csproj", "{3B8AD024-7363-A0D1-ADD8-51136E3709AA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sparkitect.Sdk", "src\Sparkitect.Sdk\Sparkitect.Sdk.csproj", "{32DE222D-BBB6-A13A-15EE-FD110735D7B1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sparkitect", "src\Sparkitect\Sparkitect.csproj", "{3C735D0A-244B-417E-4943-23D707BFBBEA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sparkitect.Generator.Tests", "tests\Sparkitect.Generator.Tests\Sparkitect.Generator.Tests.csproj", "{B8E65DDE-E367-494C-3EBC-45A6FBCA538C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sparkitect.Tests", "tests\Sparkitect.Tests\Sparkitect.Tests.csproj", "{42FEDE53-CBD6-98A8-8209-E78D2DFD8EAE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C244C08F-9401-5E15-7FA8-8C9DD6091C21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C244C08F-9401-5E15-7FA8-8C9DD6091C21}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C244C08F-9401-5E15-7FA8-8C9DD6091C21}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C244C08F-9401-5E15-7FA8-8C9DD6091C21}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08353708-0ADC-ACAC-FDD7-333BD892F766}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08353708-0ADC-ACAC-FDD7-333BD892F766}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08353708-0ADC-ACAC-FDD7-333BD892F766}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08353708-0ADC-ACAC-FDD7-333BD892F766}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B8AD024-7363-A0D1-ADD8-51136E3709AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B8AD024-7363-A0D1-ADD8-51136E3709AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B8AD024-7363-A0D1-ADD8-51136E3709AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B8AD024-7363-A0D1-ADD8-51136E3709AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32DE222D-BBB6-A13A-15EE-FD110735D7B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32DE222D-BBB6-A13A-15EE-FD110735D7B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C735D0A-244B-417E-4943-23D707BFBBEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C735D0A-244B-417E-4943-23D707BFBBEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C735D0A-244B-417E-4943-23D707BFBBEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C735D0A-244B-417E-4943-23D707BFBBEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8E65DDE-E367-494C-3EBC-45A6FBCA538C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8E65DDE-E367-494C-3EBC-45A6FBCA538C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8E65DDE-E367-494C-3EBC-45A6FBCA538C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8E65DDE-E367-494C-3EBC-45A6FBCA538C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{42FEDE53-CBD6-98A8-8209-E78D2DFD8EAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42FEDE53-CBD6-98A8-8209-E78D2DFD8EAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42FEDE53-CBD6-98A8-8209-E78D2DFD8EAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42FEDE53-CBD6-98A8-8209-E78D2DFD8EAE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C244C08F-9401-5E15-7FA8-8C9DD6091C21} = {09EED85C-BE3C-7566-DC0E-2E8E43466740}
+		{08353708-0ADC-ACAC-FDD7-333BD892F766} = {21B44B34-1D47-1312-99D7-9BFB05A71085}
+		{3B8AD024-7363-A0D1-ADD8-51136E3709AA} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
+		{32DE222D-BBB6-A13A-15EE-FD110735D7B1} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{3C735D0A-244B-417E-4943-23D707BFBBEA} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{B8E65DDE-E367-494C-3EBC-45A6FBCA538C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{42FEDE53-CBD6-98A8-8209-E78D2DFD8EAE} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+	EndGlobalSection
+EndGlobal

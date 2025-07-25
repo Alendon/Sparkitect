@@ -1,11 +1,7 @@
-using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
-using CSharpExtensions = Microsoft.CodeAnalysis.CSharp.CSharpExtensions;
 
 namespace Sparkitect.Generator.LogEnricher;
 #pragma warning disable RSEXPERIMENTAL002
@@ -119,8 +115,8 @@ public class LogEnricherGenerator : IIncrementalGenerator
                 {
                     var semantic = symbol.SemanticModel;
                     if (symbol.Syntax is not InvocationExpressionSyntax syntax) return "";
-                    if (CSharpExtensions.GetInterceptableLocation(semantic, syntax) is not { } location) return "";
-                    return CSharpExtensions.GetInterceptsLocationAttributeSyntax(location);
+                    if (Microsoft.CodeAnalysis.CSharp.CSharpExtensions.GetInterceptableLocation(semantic, syntax) is not { } location) return "";
+                    return Microsoft.CodeAnalysis.CSharp.CSharpExtensions.GetInterceptsLocationAttributeSyntax(location);
                 }
             })
         };

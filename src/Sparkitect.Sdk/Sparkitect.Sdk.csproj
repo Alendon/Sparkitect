@@ -35,11 +35,13 @@
 
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Build.Framework" Version="17.13.9" PrivateAssets="all"/>
-        <PackageReference Include="Microsoft.Build.Utilities.Core" Version="17.13.9" PrivateAssets="all" ExcludeAssets="Runtime"/>
+        <PackageReference Include="Microsoft.Build.Framework" Version="17.14.8" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.Build.Utilities.Core" Version="17.14.8" PrivateAssets="all" ExcludeAssets="Runtime">
+          <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Mono.Cecil" Version="0.11.6" />
         <PackageReference Include="Semver" Version="3.0.0" PrivateAssets="all"/>
-        <PackageReference Include="System.Text.Json" Version="9.0.4" PrivateAssets="all" />
+        <PackageReference Include="System.Text.Json" Version="9.0.7" PrivateAssets="all" />
     </ItemGroup>
 
     <Target
