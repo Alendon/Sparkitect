@@ -36,6 +36,66 @@ Notes
 - Commits: Prefer Conventional Commits (e.g., `feat:`, `fix:`, `docs:`, `test:`). Keep messages imperative and scoped.
 - PRs: Include a clear description, linked issues, and rationale. Add test coverage, update docs when user-facing behavior or APIs change, and ensure CI passes.
 
+## Source Generator & Analyzer Guidelines
+
+### Core Principles
+- Follow the incremental pipeline model: Input → Transform → Model → Output
+- All models must be value-equatable for proper caching
+- Keep transformations pure and stateless
+- Do Error Reporting in Roslyn Analyzers alongside the Generators
+- Generators silently fail but never throw exceptions (eg by returning null)
+- Use custom .NotNull extension method to automatically filter null values and transform type to non nullable
+
+### Pipeline Architecture
+- Use `ForAttributeWithMetadataName` for attribute-driven generators (99x more efficient than CreateSyntaxProvider)
+- Extract symbols to value-equatable models immediately, never store ISymbol/SyntaxNode in models
+- Use `Collect()` sparingly - only when you need all items at once
+- Combine providers using `Combine()` for related data that needs to be processed together
+- Register outputs in the order of dependencies (e.g., attributes before metadata)
+- Only use `ImmutableValueArray<T>` (custom immutable collection with value equality) instead of regular collections
+- Never use any other collection type, for passing data between pipeline steps
+
+### Model Design
+- Use records or implement proper value equality for all models
+- Only use `ImmutableValueArray<T>`, never `ImmutableArray<T>` or other, for value comparison semantics
+- Keep models flat and simple when possible
+- Extract only the data you need from symbols (names, types as strings, not full symbols; BREAKS pipeline otherwise!!!)
+
+### Build Properties
+- Use GetModBuildSettings extension method, to access build settings provider
+- Extend Sdk.targets file, when adding more build settings
+
+### Code Generation
+- ALWAYS Use Fluid templates (.liquid files) for code generation
+- Follow naming convention: `{TypeName}_{Purpose}.g.cs`
+- Place generated code in appropriate namespaces using `SgOutputNamespace` MSBuild property
+- Always use full qualification for ALL types (global::)
+
+### Performance Best Practices
+- Batch related outputs when they share the same data source
+- Avoid heavy processing in Select operations - extract to separate methods
+- Cache expensive computations by ensuring proper value equality
+
+### Common Anti-Patterns to Avoid
+- ❌ Don't modify existing user code
+- ❌ Don't perform I/O in transformations (except AdditionalTexts)
+- ❌ Don't use mutable state or static fields
+- ❌ Don't put non-equatable types in pipeline models
+- ❌ Don't scan for indirect interface implementations without marker attributes
+
+### Testing Source Generators
+- Use Verify for snapshot testing (`TestResults/*.verified.cs`)
+- Snapshots are always validated by the Developer, never by the LLM!!!
+- Test incremental behavior - unchanged inputs should reuse cached outputs
+- Test empty/null inputs and edge cases
+- Use `RegistryGeneratorTests` as reference for test patterns
+
+### Analyzer Guidelines
+- Analyzers should complement generators by validating user input
+- Report diagnostics for invalid attribute usage
+- Validate resource file formats (YAML, JSON) when used with generators
+- Use appropriate diagnostic severity levels (Error, Warning, Info)
+
 ## Security & Configuration Tips
 - Never commit secrets. DocFX publishing runs via GitHub Actions—use repository secrets.
 - Local builds rely on the pinned SDK; avoid downgrading language features or frameworks.
