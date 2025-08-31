@@ -80,7 +80,7 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
             new SingletonModel("global::DiTest.TestService_Factory")
         );
 
-        var buildSettings = new ModBuildSettings("TestMod", "DiTest", false, "");
+        var buildSettings = new ModBuildSettings("TestMod", "DiTest", false, "", "");
 
         var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, buildSettings);
 
@@ -98,7 +98,7 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
             new SingletonModel("global::DiTest.TestService_Factory")
         );
 
-        var buildSettings = new ModBuildSettings("TestMod", "", false, "");
+        var buildSettings = new ModBuildSettings("TestMod", "", false, "", "");
 
         var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, buildSettings);
 

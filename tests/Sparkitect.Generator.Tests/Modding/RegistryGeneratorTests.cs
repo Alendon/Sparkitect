@@ -305,7 +305,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                 [])
         ];
 
-        var settings = new ModBuildSettings("DiTest", "DiTest", false, "DiTest.Generated");
+        var settings = new ModBuildSettings("DiTest", "DiTest", false, "DiTest.Generated", "");
 
         var success = RegistryGenerator.RenderRegistryConfigurator([..models], settings, out var code, out var fileName);
 
@@ -318,7 +318,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     public async Task RenderRegistryConfigurator_EmptyRegistries_ReturnsFalse(CancellationToken token)
     {
         var models = ImmutableArray<RegistryModel>.Empty;
-        var settings = new ModBuildSettings("DiTest", "DiTest", false, "DiTest.Generated");
+        var settings = new ModBuildSettings("DiTest", "DiTest", false, "DiTest.Generated", "");
 
         var success = RegistryGenerator.RenderRegistryConfigurator(models, settings, out var code, out var fileName);
 
@@ -327,6 +327,186 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(code).IsEmpty();
     }
 
+    [Test]
+    public async Task RenderRegistryRegistrations_YamlOnly(CancellationToken token)
+    {
+        var model = new RegistryModel(
+            "DummyRegistry",
+            "dummy",
+            "MinimalSampleMod",
+            [ new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, []) ],
+            []
+        );
+
+        FileRegistrationEntry[] entries =
+        [
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello1", null, []),
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello2", null, [])
+        ];
+
+        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+
+        var success = RegistryGenerator.RenderRegistryRegistrations(model, [..entries], ImmutableArray<MethodRegistrationEntry>.Empty, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var code, out var fileName);
+
+        await Assert.That(success).IsTrue();
+        await Assert.That(fileName).IsEqualTo("DummyRegistryRegistrations.g.cs");
+        await Verifier.Verify(code, verifySettings);
+    }
+
+    [Test]
+    public async Task RenderRegistryIds_ModGrouping_Yaml(CancellationToken token)
+    {
+        var model = new RegistryModel(
+            "DummyRegistry",
+            "dummy",
+            "MinimalSampleMod",
+            [ new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, []) ],
+            []
+        );
+
+        FileRegistrationEntry[] entries =
+        [
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello1", null, []),
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello2", null, [])
+        ];
+
+        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+
+        var successContainer = RegistryGenerator.RenderRegistryIdContainer(model, out var codeContainer, out var fileNameContainer);
+        await Assert.That(successContainer).IsTrue();
+        await Assert.That(fileNameContainer).IsEqualTo("DummyID.g.cs");
+
+        var successExt = RegistryGenerator.RenderRegistryIdExtensions(model, [..entries], ImmutableArray<MethodRegistrationEntry>.Empty, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var codeExt, out var fileNameExt);
+        await Assert.That(successExt).IsTrue();
+        await Assert.That(fileNameExt).IsEqualTo("DummyRegistry.IdExtensions.g.cs");
+        await Verifier.Verify(codeExt, verifySettings);
+    }
+
+    [Test]
+    public async Task RenderRegistryIds_Grouping_DefaultFalse_GeneratesModStruct(CancellationToken token)
+    {
+        var model = new RegistryModel(
+            "DummyRegistry",
+            "dummy",
+            "MinimalSampleMod",
+            [ new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, []) ],
+            []
+        );
+
+        FileRegistrationEntry[] entries =
+        [
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello1", null, []),
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello2", null, [])
+        ];
+
+        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+
+        var successContainer = RegistryGenerator.RenderRegistryIdContainer(model, out var codeContainer, out var fileNameContainer);
+        await Assert.That(successContainer).IsTrue();
+        await Assert.That(fileNameContainer).IsEqualTo("DummyID.g.cs");
+
+        var successExt = RegistryGenerator.RenderRegistryIdExtensions(model, [..entries], ImmutableArray<MethodRegistrationEntry>.Empty, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var codeExt, out var fileNameExt);
+        await Assert.That(successExt).IsTrue();
+        await Assert.That(fileNameExt).IsEqualTo("DummyRegistry.IdExtensions.g.cs");
+        await Verifier.Verify(codeExt, verifySettings);
+    }
+
+    [Test]
+    public async Task RenderRegistryRegistrations_MethodProvider_SingleParam(CancellationToken token)
+    {
+        var model = new RegistryModel(
+            "DummyRegistry",
+            "dummy",
+            "MinimalSampleMod",
+            [ new RegisterMethodModel("RegisterValue", PrimaryParameterKind.Value, TypeConstraintFlag.None, ["global::System.String"]) ],
+            []
+        );
+
+        var methodProviders = ImmutableArray.Create(
+            new MethodRegistrationEntry(
+                "MinimalSampleMod",
+                "DummyRegistry",
+                "RegisterValue",
+                "hello1",
+                "MinimalSampleMod.RegistryExample",
+                "SomeValueToRegister",
+                new ValueCompareSet<(string paramType, bool isNullable)> { ("System.String", false) },
+                null)
+        );
+
+        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+
+        var success = RegistryGenerator.RenderRegistryRegistrations(model, ImmutableArray<FileRegistrationEntry>.Empty, methodProviders, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var code, out var fileName);
+
+        await Assert.That(success).IsTrue();
+        await Assert.That(fileName).IsEqualTo("DummyRegistryRegistrations.g.cs");
+        await Verifier.Verify(code, verifySettings);
+    }
+
+    [Test]
+    public async Task RenderRegistryRegistrations_TypeProvider_Generic(CancellationToken token)
+    {
+        var model = new RegistryModel(
+            "DummyRegistry",
+            "dummy",
+            "MinimalSampleMod",
+            [ new RegisterMethodModel("RegisterType", PrimaryParameterKind.Type, TypeConstraintFlag.None, []) ],
+            []
+        );
+
+        var typeProviders = ImmutableArray.Create(
+            new TypeRegistrationEntry(
+                "MinimalSampleMod",
+                "DummyRegistry",
+                "RegisterType",
+                "hello3",
+                "MinimalSampleMod.RegistryExample.SampleType")
+        );
+
+        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+
+        var success = RegistryGenerator.RenderRegistryRegistrations(model, ImmutableArray<FileRegistrationEntry>.Empty, ImmutableArray<MethodRegistrationEntry>.Empty, typeProviders, settings, out var code, out var fileName);
+
+        await Assert.That(success).IsTrue();
+        await Assert.That(fileName).IsEqualTo("DummyRegistryRegistrations.g.cs");
+        await Verifier.Verify(code, verifySettings);
+    }
+
+    [Test]
+    public async Task RenderRegistryIds_ModGrouping_MethodProvider(CancellationToken token)
+    {
+        var model = new RegistryModel(
+            "DummyRegistry",
+            "dummy",
+            "MinimalSampleMod",
+            [ new RegisterMethodModel("RegisterValue", PrimaryParameterKind.Value, TypeConstraintFlag.None, ["global::System.String"]) ],
+            []
+        );
+
+        var methodProviders = ImmutableArray.Create(
+            new MethodRegistrationEntry(
+                "MinimalSampleMod",
+                "DummyRegistry",
+                "RegisterValue",
+                "hello1",
+                "MinimalSampleMod.RegistryExample",
+                "SomeValueToRegister",
+                new ValueCompareSet<(string paramType, bool isNullable)> { ("System.String", false) })
+        );
+
+        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+
+        var successContainer = RegistryGenerator.RenderRegistryIdContainer(model, out var codeContainer, out var fileNameContainer);
+        await Assert.That(successContainer).IsTrue();
+        await Assert.That(fileNameContainer).IsEqualTo("DummyID.g.cs");
+
+        var successExt = RegistryGenerator.RenderRegistryIdExtensions(model, ImmutableArray<FileRegistrationEntry>.Empty, methodProviders, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var codeExt, out var fileNameExt);
+        await Assert.That(successExt).IsTrue();
+        await Assert.That(fileNameExt).IsEqualTo("DummyRegistry.IdExtensions.g.cs");
+        await Verifier.Verify(codeExt, verifySettings);
+    }
+
+    // Root (direct) grouping is not supported currently; only mod grouping.
     #region ParseResourceYaml Tests
 
     [Test]
@@ -363,7 +543,6 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         var entry = result.First();
         await Assert.That(entry.MetadataClass).IsEqualTo("MinimalSampleMod.DummyRegistry_Metadata");
         await Assert.That(entry.Id).IsEqualTo("test");
-        await Assert.That(entry.SymbolName).IsEqualTo("TestId");
         await Assert.That(entry.Files).HasCount().EqualTo(2);
         await Assert.That(entry.Files.Contains(("fileA", "testA.txt"))).IsTrue();
         await Assert.That(entry.Files.Contains(("fileB", "testB.txt"))).IsTrue();
@@ -400,7 +579,6 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         
         var entry1 = result.First(e => e.Id == "entry1");
         await Assert.That(entry1.MetadataClass).IsEqualTo("TestMod.Registry1_Metadata");
-        await Assert.That(entry1.SymbolName).IsEqualTo("Entry1Symbol");
         await Assert.That(entry1.Files.Contains(("config", "config.json"))).IsTrue();
 
         var entry3 = result.First(e => e.Id == "entry3");
@@ -428,7 +606,6 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         var entry = result.First();
         await Assert.That(entry.MetadataClass).IsEqualTo("TestMod.Registry_Metadata");
         await Assert.That(entry.Id).IsEqualTo("entry1");
-        await Assert.That(entry.SymbolName).IsEqualTo("Entry1Symbol");
         await Assert.That(entry.Files).HasCount().EqualTo(0);
     }
 

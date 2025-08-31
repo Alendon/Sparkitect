@@ -1,0 +1,16 @@
+﻿namespace MinimalSampleMod.Generated.IdExtensions;
+
+public static partial class IdExtensions
+{
+    extension(DummyID)
+    {
+        public static MinimalSampleModDummyIDs MinimalSampleMod => default;
+    }
+}
+
+public readonly struct MinimalSampleModDummyIDs
+{
+public global::Sparkitect.Modding.Identification Hello1 => global::MinimalSampleMod.Generated.Registrations.DummyRegistryRegistrations.Hello1;
+public global::Sparkitect.Modding.Identification Hello2 => global::MinimalSampleMod.Generated.Registrations.DummyRegistryRegistrations.Hello2;
+}
+

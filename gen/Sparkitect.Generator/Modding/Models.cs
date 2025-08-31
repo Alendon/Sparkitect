@@ -9,9 +9,25 @@ public record RegistryModel(
     ValueCompareSet<RegisterMethodModel> RegisterMethods,
     ValueCompareSet<(string identifier, bool optional)> ResourceFiles);
 
-public record RegistryEntryModel;
 
-public record FileRegistrationEntry(string MetadataClass, string Id, string? SymbolName, ValueCompareSet<(string fileId, string fileName)> Files) : RegistryEntryModel;
+
+public record MethodRegistrationEntry(
+    string RegistryNamespace,
+    string RegistryTypeName,
+    string RegistryMethodName,
+    string Id,
+    string ProviderContainingType,
+    string ProviderMethodName,
+    ValueCompareSet<(string paramType, bool isNullable)> Parameters);
+
+public record TypeRegistrationEntry(
+    string RegistryNamespace,
+    string RegistryTypeName,
+    string RegistryMethodName,
+    string Id,
+    string ProvidedTypeFullName);
+
+public record FileRegistrationEntry(string MetadataClass, string Id,  ValueCompareSet<(string fileId, string fileName)> Files);
 
 
 /// <summary>
@@ -51,13 +67,6 @@ public enum PrimaryParameterKind
     /// </summary>
     /// <remarks>Type registration</remarks>
     Type = 4
-}
-
-public enum FileAttachmentKind
-{
-    None = 1,
-    Singular = 2,
-    Multiple = 3
 }
 
 [Flags]

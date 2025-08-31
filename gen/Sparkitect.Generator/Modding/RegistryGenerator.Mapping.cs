@@ -13,7 +13,6 @@ public partial class RegistryGenerator
         private RegistryMap(Dictionary<string, RegistryModel> registryModels)
         {
             _registryModels = registryModels;
-            var a = (1, 2);
         }
 
         public static RegistryMap Create(
@@ -52,6 +51,22 @@ public partial class RegistryGenerator
         public bool TryGetValue(string fullName, out RegistryModel model)
         {
             return _registryModels.TryGetValue(fullName, out model);
+        }
+
+        public bool TryGetByTypeName(string typeName, out RegistryModel? model)
+        {
+            model = null;
+            foreach (var kvp in _registryModels)
+            {
+                var lastDot = kvp.Key.LastIndexOf('.') + 1;
+                var simple = lastDot > 0 && lastDot < kvp.Key.Length ? kvp.Key.Substring(lastDot) : kvp.Key;
+                if (string.Equals(simple, typeName, StringComparison.Ordinal))
+                {
+                    model = kvp.Value;
+                    return true;
+                }
+            }
+            return false;
         }
         
         

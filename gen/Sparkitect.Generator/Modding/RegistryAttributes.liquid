@@ -1,0 +1,16 @@
+namespace {{ Namespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+public partial class {{ RegistryName }}
+{
+{% for method in Methods -%}
+    public class {{ method }}Attribute(string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
+    {
+        public bool GroupAtRoot { get; set; } = false;
+    }
+{%- unless forloop.last %}
+
+{% endunless -%}
+{% endfor %}
+}
+

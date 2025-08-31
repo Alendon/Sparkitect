@@ -31,18 +31,16 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 return ExtractModel(symbol, registryAttribute);
             }).NotNull();
 
-        var assemblyRegistryModelsProvider = context.CompilationProvider.Select((compilation, _) =>
-        {
-            return ExtractModels(compilation);
-        });
+        var assemblyRegistryModelsProvider = context.CompilationProvider.Select((compilation, _) => ExtractModels(compilation));
+
+        // Emit per-registry nested attributes early to stabilize attribute resolution in subsequent passes
+        context.RegisterSourceOutput(symbolRegistryModelsProvider, OutputRegistryAttributes);
 
         context.RegisterSourceOutput(symbolRegistryModelsProvider.Combine(buildSettings), OutputRegistryMetadata);
         context.RegisterSourceOutput(symbolRegistryModelsProvider.Collect().Combine(buildSettings),
             OutputRegistryConfigurator);
 
-        var registryMapProvider = symbolRegistryModelsProvider.Collect().Combine(assemblyRegistryModelsProvider)
-            .Select((x, _) => RegistryMap.Create(x));
-
+        
         /*
          * When looking at registrations with registry methods of the current compilation
          * The Attributes are not available at SG time (SG produces them)
@@ -50,6 +48,9 @@ public partial class RegistryGenerator : IIncrementalGenerator
          * If this happens, aka the Generator reports that it is an Error Type and more than one type with this name exists,
          * Generating a partial class as a "dummy" fixes this issue, by introducing the target attribute class
          */
+        
+        var registryMapProvider = symbolRegistryModelsProvider.Collect().Combine(assemblyRegistryModelsProvider)
+            .Select((x, _) => RegistryMap.Create(x));
 
 
         var resourceFileRegistrationProvider = context.AdditionalTextsProvider
@@ -70,34 +71,69 @@ public partial class RegistryGenerator : IIncrementalGenerator
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .Build();
-            var yamlContent = deserializer.Deserialize<ResourceYamlRoot>(sourceText.ToString());
 
-            if (yamlContent?.Registries is null)
-                return result;
+            var raw = sourceText.ToString();
 
-            foreach (var registry in yamlContent.Registries)
+            // Try standard root: registries: { MetadataClass: [entries] }
+            var yamlContent = deserializer.Deserialize<ResourceYamlRoot>(raw);
+            if (yamlContent?.Registries is not null)
             {
-                if (string.IsNullOrWhiteSpace(registry.Key) || registry.Value is null) continue;
-
-                foreach (var entry in registry.Value)
+                foreach (var registry in yamlContent.Registries)
                 {
-                    if (string.IsNullOrWhiteSpace(entry.Id)) continue;
+                    if (string.IsNullOrWhiteSpace(registry.Key) || registry.Value is null) continue;
 
-                    ValueCompareSet<(string fileId, string fileName)> files = [];
-                    if (entry.Files is not null)
+                    foreach (var entry in registry.Value)
                     {
-                        foreach (var file in entry.Files)
-                        {
-                            files.Add((file.Key, file.Value));
-                        }
-                    }
+                        if (string.IsNullOrWhiteSpace(entry.Id)) continue;
 
-                    result.Add(new FileRegistrationEntry(
-                        registry.Key,
-                        entry.Id!,
-                        entry.SymbolName,
-                        files
-                    ));
+                        ValueCompareSet<(string fileId, string fileName)> files = [];
+                        
+                        //TODO add analyzer to validate only Files or File is set
+                        if (entry.Files is not null)
+                        {
+                            foreach (var file in entry.Files)
+                            {
+                                files.Add((file.Key, file.Value));
+                            }
+                        }
+
+                        result.Add(new FileRegistrationEntry(
+                            registry.Key,
+                            entry.Id!,
+                            files
+                        ));
+                    }
+                }
+                return result;
+            }
+
+            // Single-registry root: { MetadataClass: [entries] }
+            var singleRoot = deserializer.Deserialize<Dictionary<string, List<ResourceYamlEntry>>>(raw);
+            if (singleRoot is not null)
+            {
+                foreach (var registry in singleRoot)
+                {
+                    if (string.IsNullOrWhiteSpace(registry.Key) || registry.Value is null) continue;
+
+                    foreach (var entry in registry.Value)
+                    {
+                        if (string.IsNullOrWhiteSpace(entry.Id)) continue;
+
+                        ValueCompareSet<(string fileId, string fileName)> files = [];
+                        if (entry.Files is not null)
+                        {
+                            foreach (var file in entry.Files)
+                            {
+                                files.Add((file.Key, file.Value));
+                            }
+                        }
+
+                        result.Add(new FileRegistrationEntry(
+                            registry.Key,
+                            entry.Id!,
+                            files
+                        ));
+                    }
                 }
             }
         }
@@ -223,12 +259,12 @@ public partial class RegistryGenerator : IIncrementalGenerator
         constraintFlag = TypeConstraintFlag.None;
         typeConstraints = [];
 
-        if (parameter.HasReferenceTypeConstraint) constraintFlag &= TypeConstraintFlag.ReferenceType;
-        if (parameter.HasValueTypeConstraint) constraintFlag &= TypeConstraintFlag.ValueType;
-        if (parameter.AllowsRefLikeType) constraintFlag &= TypeConstraintFlag.AllowRefLike;
-        if (parameter.HasUnmanagedTypeConstraint) constraintFlag &= TypeConstraintFlag.Unmanaged;
-        if (parameter.HasNotNullConstraint) constraintFlag &= TypeConstraintFlag.NotNull;
-        if (parameter.HasConstructorConstraint) constraintFlag &= TypeConstraintFlag.ParameterlessConstructor;
+        if (parameter.HasReferenceTypeConstraint) constraintFlag |= TypeConstraintFlag.ReferenceType;
+        if (parameter.HasValueTypeConstraint) constraintFlag |= TypeConstraintFlag.ValueType;
+        if (parameter.AllowsRefLikeType) constraintFlag |= TypeConstraintFlag.AllowRefLike;
+        if (parameter.HasUnmanagedTypeConstraint) constraintFlag |= TypeConstraintFlag.Unmanaged;
+        if (parameter.HasNotNullConstraint) constraintFlag |= TypeConstraintFlag.NotNull;
+        if (parameter.HasConstructorConstraint) constraintFlag |= TypeConstraintFlag.ParameterlessConstructor;
 
         foreach (var constraintType in parameter.ConstraintTypes)
         {
@@ -390,58 +426,50 @@ public partial class RegistryGenerator : IIncrementalGenerator
         }
     }
 
-    internal static bool RenderRegistryMetadata(RegistryModel model, out string code, out string fileName)
+
+    internal static string ToSnakeCase(string s)
     {
-        fileName = $"{model.TypeName}_Metadata.g.cs";
-        
-        var methodsMetadata = model.RegisterMethods.Select(method => new
+        if (string.IsNullOrWhiteSpace(s)) return s;
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < s.Length; i++)
         {
-            FunctionName = method.FunctionName,
-            PrimaryParameterKind = (int)method.PrimaryParameterKind,
-            Constraint = (int)method.Constraint,
-            TypeConstraint = string.Join(";", method.TypeConstraint)
-        }).ToArray();
-        
-        var registerMethodsString = string.Join(";", model.RegisterMethods.Select(m => m.FunctionName));
-        
-        var resourceFilesString = string.Join(";", model.ResourceFiles.Select(rf => 
-            $"{rf.identifier}:{(rf.optional ? 1 : 0)}"));
-        
-        var metadataModel = new
-        {
-            Namespace = model.ContainingNamespace,
-            MetadataClassName = $"{model.TypeName}_Metadata",
-            TypeName = model.TypeName,
-            Key = model.Key,
-            ContainingNamespace = model.ContainingNamespace,
-            RegisterMethods = registerMethodsString,
-            ResourceFiles = resourceFilesString,
-            RegisterMethodsMetadata = methodsMetadata
-        };
-        
-        return FluidHelper.TryRenderTemplate("Modding.RegistryMetadata.liquid", metadataModel, out code);
+            var c = s[i];
+            if (char.IsUpper(c))
+            {
+                if (i > 0) sb.Append('_');
+                sb.Append(char.ToLowerInvariant(c));
+            }
+            else sb.Append(c);
+        }
+        return sb.ToString();
     }
 
-    internal static bool RenderRegistryConfigurator(ImmutableArray<RegistryModel> models, ModBuildSettings settings, out string code, out string fileName)
+    internal static string ToPascalCase(string s)
     {
-        fileName = "RegistryConfigurator.g.cs";
-        
-        if (models.IsEmpty)
+        if (string.IsNullOrWhiteSpace(s)) return s;
+        var parts = s.Split(new[] {'_','-',' '}, StringSplitOptions.RemoveEmptyEntries);
+        var sb = new System.Text.StringBuilder();
+        foreach (var p in parts)
         {
-            code = string.Empty;
-            return false;
+            if (p.Length == 0) continue;
+            sb.Append(char.ToUpperInvariant(p[0]));
+            if (p.Length > 1) sb.Append(p.Substring(1));
         }
-        
-        var configuratorModel = new
+        return sb.ToString();
+    }
+
+    internal static bool RenderRegistryAttributes(RegistryModel model, out string code, out string fileName)
+    {
+        fileName = $"{model.TypeName}_Attributes.g.cs";
+
+        var templateModel = new
         {
-            Namespace = settings.SgOutputNamespace,
-            ConfiguratorClassName = "RegistryConfigurator",
-            Registries = models.Select(m => new { 
-                FactoryName = $"global::{m.ContainingNamespace}.{m.TypeName}_KeyedFactory"
-            }).ToArray()
+            Namespace = model.ContainingNamespace,
+            RegistryName = model.TypeName,
+            Methods = model.RegisterMethods.Select(m => m.FunctionName).ToArray()
         };
-        
-        return FluidHelper.TryRenderTemplate("Modding.RegistryConfigurator.liquid", configuratorModel, out code);
+
+        return FluidHelper.TryRenderTemplate("Modding.RegistryAttributes.liquid", templateModel, out code);
     }
 
     private class ResourceYamlRoot
@@ -452,7 +480,11 @@ public partial class RegistryGenerator : IIncrementalGenerator
     private class ResourceYamlEntry
     {
         public string? Id { get; set; }
-        public string? SymbolName { get; set; }
+        
+        // Only Files or File can be set not both
         public Dictionary<string, string>? Files { get; set; }
+        public string File { get; set; }
     }
+
+    // TODO: Analyzer: prevent duplicate registry class names across namespaces (assumption: unique type names).
 }
