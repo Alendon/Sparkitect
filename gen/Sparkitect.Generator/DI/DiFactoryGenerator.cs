@@ -101,11 +101,11 @@ public class DiFactoryGenerator : IIncrementalGenerator
                 .Select(x =>
                     new ConstructorArgument(x.Type.ToDisplayString(),
                         x.NullableAnnotation == NullableAnnotation.Annotated))
-                .ToValueCompareList(),
+                .ToImmutableValueArray(),
             requiredProperties.Select(x =>
                     new RequiredProperty(x.Type.ToDisplayString(), x.SetMethod!.Name,
                         x.NullableAnnotation == NullableAnnotation.Annotated))
-                .ToValueCompareList()
+                .ToImmutableValueArray()
         );
     }
 
@@ -131,12 +131,12 @@ public class DiFactoryGenerator : IIncrementalGenerator
                 .Select(x =>
                     new ConstructorArgument(x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         x.NullableAnnotation == NullableAnnotation.Annotated))
-                .ToValueCompareList(),
+                .ToImmutableValueArray(),
             requiredProperties.Select(x =>
                     new RequiredProperty(x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         x.SetMethod!.Name,
                         x.NullableAnnotation == NullableAnnotation.Annotated))
-                .ToValueCompareList()
+                .ToImmutableValueArray()
         );
     }
 
@@ -166,12 +166,12 @@ public class DiFactoryGenerator : IIncrementalGenerator
                 .Select(x =>
                     new ConstructorArgument(x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         x.NullableAnnotation == NullableAnnotation.Annotated))
-                .ToValueCompareList(),
+                .ToImmutableValueArray(),
             requiredProperties.Select(x =>
                     new RequiredProperty(x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         x.SetMethod!.Name,
                         x.NullableAnnotation == NullableAnnotation.Annotated))
-                .ToValueCompareList(),
+                .ToImmutableValueArray(),
             keyInfo
         );
     }

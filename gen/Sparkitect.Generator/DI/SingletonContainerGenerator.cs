@@ -69,7 +69,7 @@ public class SingletonContainerGenerator : IIncrementalGenerator
         return new SingletonContainerModel(
             configuratorClassName,
             namespaceName,
-            singletons.ToValueCompareList());
+            singletons.ToImmutableValueArray());
     }
 
     internal static bool RenderCoreConfigurator(SingletonContainerModel model, out string code, out string fileName)

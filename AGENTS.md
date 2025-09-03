@@ -45,6 +45,7 @@ Notes
 - Do Error Reporting in Roslyn Analyzers alongside the Generators
 - Generators silently fail but never throw exceptions (eg by returning null)
 - Use custom .NotNull extension method to automatically filter null values and transform type to non nullable
+- Determinism: avoid nondeterministic iteration (HashSet/Dictionary); sort inputs before emission; never depend on time/random.
 
 ### Pipeline Architecture
 - Use `ForAttributeWithMetadataName` for attribute-driven generators (99x more efficient than CreateSyntaxProvider)
@@ -54,22 +55,33 @@ Notes
 - Register outputs in the order of dependencies (e.g., attributes before metadata)
 - Only use `ImmutableValueArray<T>` (custom immutable collection with value equality) instead of regular collections
 - Never use any other collection type, for passing data between pipeline steps
+- Apply `WithComparer(...)` for custom DTO equality and `WithTrackingName(...)` on key providers.
+- Respect `CancellationToken` in transforms and syntax provider callbacks.
 
 ### Model Design
 - Use records or implement proper value equality for all models
 - Only use `ImmutableValueArray<T>`, never `ImmutableArray<T>` or other, for value comparison semantics
 - Keep models flat and simple when possible
 - Extract only the data you need from symbols (names, types as strings, not full symbols; BREAKS pipeline otherwise!!!)
+- Replace any `ValueCompareSet<T>` usage with `ImmutableValueArray<T>`; define whether semantics are set-like (order-insensitive) or ordered (pre-sort) and ensure hash/equality match.
 
 ### Build Properties
 - Use GetModBuildSettings extension method, to access build settings provider
 - Extend Sdk.targets file, when adding more build settings
+- Expose every consumed MSBuild property via `<CompilerVisibleProperty>` so generators can read them.
 
 ### Code Generation
 - ALWAYS Use Fluid templates (.liquid files) for code generation
 - Follow naming convention: `{TypeName}_{Purpose}.g.cs`
 - Place generated code in appropriate namespaces using `SgOutputNamespace` MSBuild property
 - Always use full qualification for ALL types (global::)
+- Namespacing: when `SgOutputNamespace` is set, always use it; otherwise fall back to the containing namespace consistently.
+- Sort template inputs (methods, members, files) before rendering to keep outputs stable.
+
+### Additional Files
+- Filter strictly (e.g., `*.sparkres.yaml`) using `AdditionalTextsProvider`.
+- Parse only when content changes; transform to immutable DTOs; attach a comparer if needed.
+- Invalid content or schema violations must be reported by analyzers; do not throw or silently swallow in generators.
 
 ### Performance Best Practices
 - Batch related outputs when they share the same data source
@@ -89,12 +101,19 @@ Notes
 - Test incremental behavior - unchanged inputs should reuse cached outputs
 - Test empty/null inputs and edge cases
 - Use `RegistryGeneratorTests` as reference for test patterns
+- Cover `.editorconfig` build options and `AdditionalTexts` scenarios.
+- Add incrementality tests for order-insensitivity and unrelated-change no-op.
 
 ### Analyzer Guidelines
 - Analyzers should complement generators by validating user input
 - Report diagnostics for invalid attribute usage
 - Validate resource file formats (YAML, JSON) when used with generators
 - Use appropriate diagnostic severity levels (Error, Warning, Info)
+- Coverage (concise): DI constraints (single ctor, abstract/interface deps, required init-only); keyed-factory rules (exactly one key source, valid key type); registry rules (in namespace, unique names); resource schema (mutually exclusive `File` vs `Files`).
+
+### RegistryGenerator Notes (temporary exceptions)
+- Aggregation: central configurator intentionally aggregates across registries; keep DTOs minimal/immutable and use `Collect()` only where truly required.
+- Attribute staging: emit dependent attributes first to stabilize later analysis; keep staged outputs deterministic.
 
 ## Security & Configuration Tips
 - Never commit secrets. DocFX publishing runs via GitHub Actions—use repository secrets.

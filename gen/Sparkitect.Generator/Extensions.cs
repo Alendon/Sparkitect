@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 
 namespace Sparkitect.Generator;
@@ -10,8 +12,5 @@ public static class Extensions
         return provider.Where(x => x is not null).Select((x, _) => x!);
     }
 
-    public static ValueCompareSet<T> ToValueCompareList<T>(this IEnumerable<T> values)
-    {
-        return new ValueCompareSet<T>(values);
-    }
+    
 }

@@ -80,7 +80,7 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
             new SingletonModel("global::DiTest.TestService_Factory")
         );
 
-        var buildSettings = new ModBuildSettings("TestMod", "DiTest", false, "", "");
+        var buildSettings = new ModBuildSettings("TestMod", "DiTest", false, "");
 
         var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, buildSettings);
 
@@ -98,7 +98,7 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
             new SingletonModel("global::DiTest.TestService_Factory")
         );
 
-        var buildSettings = new ModBuildSettings("TestMod", "", false, "", "");
+        var buildSettings = new ModBuildSettings("TestMod", "", false, "");
 
         var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, buildSettings);
 
@@ -112,7 +112,7 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
         var containerModel = new SingletonContainerModel(
             "DiTestConfigurator",
             "DiTest",
-            [new SingletonModel("global::DiTest.TestService_Factory")]
+            ImmutableValueArray.From(new SingletonModel("global::DiTest.TestService_Factory"))
         );
 
         var success = SingletonContainerGenerator.RenderCoreConfigurator(containerModel, out var code, out var fileName);
@@ -128,10 +128,10 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
         var containerModel = new SingletonContainerModel(
             "DiTestConfigurator",
             "DiTest",
-            [
+            ImmutableValueArray.From(
                 new SingletonModel("global::DiTest.TestService_Factory"),
                 new SingletonModel("global::DiTest.AnotherService_Factory")
-            ]
+            )
         );
 
         var success = SingletonContainerGenerator.RenderCoreConfigurator(containerModel, out var code, out var fileName);

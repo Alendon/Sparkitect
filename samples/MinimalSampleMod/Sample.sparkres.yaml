@@ -1,6 +1,6 @@
 ﻿MinimalSampleMod.DummyRegistry.RegisterResourceFile:
-  - id: test
-    symbolName: TestId
+  - id: hello4
     files:
-      fileA: testA.txt
-      fileB: testB.txt
+      foo: testA.obj
+      bar: testB.mp4
+    file: exclusive.txt

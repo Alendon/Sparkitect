@@ -8,8 +8,11 @@ namespace MinimalSampleMod.DI
 {
     // The registrations classes are source generated
     // they contain the object registration logic and also store the Identification values
+    // These classes can appear multiple times for the same registry, to simplify the source generator pipeline
+    // Method, Type and Yaml Registrations are each contained in their own class for this
+    // This also simplifies the different liquid templates
     [RegistrationsEntrypoint]
-    public class DummyValueRegistrations(IIdentificationManager identificationManager) : Registrations<DummyRegistry>
+    internal class DummyValueRegistrations(IIdentificationManager identificationManager, IResourceManager resourceManager) : Registrations<DummyRegistry>
     {
         public override string CategoryIdentifier => "dummy";
 
@@ -45,8 +48,10 @@ namespace MinimalSampleMod.DI
             dummyRegistry.RegisterType<RegistryExample.SampleType>(Hello3);
             
             Hello4 = identificationManager.RegisterObject("minimal_sample_mod", "dummy", "hello4");
+            resourceManager.SetResource(Hello4, "foo", "testA.obj");
+            resourceManager.SetResource(Hello4, "bar", "testB.mp4");
             dummyRegistry.RegisterResourceFile(Hello4);
-
+            
         }
 
         public override void PostPhaseRegistration(DummyRegistry registry, ICoreContainer container)
@@ -57,28 +62,32 @@ namespace MinimalSampleMod.DI
 
 namespace Sparkitect.Modding.IDs
 {
-    // One empty stub class for holding the ID Values, get generated per RegistryCategory
+    // One empty stub class for holding the ID Values, get generated per RegistryCategory from the assembly which adds the registry
     public static class DummyID
     {
 
     }
 
-
+    
     public static class DummyIDExtension
     {
         // For each Mod one or multiple extensions can be created per ID Value Container
         // Note, this feature is added in C# 14 (preview), it allows direct "extensions" to the specified class
         // Remarks: A extension still needs to be contained in a class
+        // Through the use of extensions we streamline the Id access and create a central collection per mod
+        // By this the output of multiple registration classes is completely transparent(/irrelevant) for the user
         extension(DummyID)
         {
 
             // Currently the IDs are organized into groups by the mod.
             // This can later be organized in any way. The extension feature should provide all necessary capabilities for this
+            // This Property declaration is just used as "syntactical sugar" for the access
             public static SampleModDummyIDs SampleMod => default;
         }
     }
 
     // The sub containers are just (readonly) structs, with properties for each Identification
+    // In contrast to the registration class, this one needs to contain 
     public readonly struct SampleModDummyIDs
     {
         // The actual values are stored in the Registrations classes.

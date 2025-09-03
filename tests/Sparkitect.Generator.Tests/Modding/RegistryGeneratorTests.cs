@@ -148,12 +148,12 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(model.ContainingNamespace).IsEqualTo("DiTest");
         await Assert.That(model.RegisterMethods).HasCount().EqualTo(2);
         await Assert.That(model.ResourceFiles).HasCount().EqualTo(2);
-        
+
         var registerItem = model.RegisterMethods.First(m => m.FunctionName == "RegisterItem");
         await Assert.That(registerItem.PrimaryParameterKind).IsEqualTo(PrimaryParameterKind.Value);
         await Assert.That(registerItem.Constraint).IsEqualTo(TypeConstraintFlag.None);
         await Assert.That(registerItem.TypeConstraint.First()).IsEqualTo("global::System.String");
-        
+
         var resourceData = model.ResourceFiles.First(rf => rf.identifier == "data");
         await Assert.That(resourceData.optional).IsFalse();
         var resourceConfig = model.ResourceFiles.First(rf => rf.identifier == "config");
@@ -269,14 +269,16 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             "TestRegistry",
             "test",
             "DiTest",
-            [
-                new RegisterMethodModel("RegisterItem", PrimaryParameterKind.Value, TypeConstraintFlag.None, ["global::System.String"]),
-                new RegisterMethodModel("RegisterType", PrimaryParameterKind.Type, TypeConstraintFlag.ReferenceType, ["global::System.IDisposable"])
-            ],
-            [
+            ImmutableValueArray.From(
+                new RegisterMethodModel("RegisterItem", PrimaryParameterKind.Value, TypeConstraintFlag.None,
+                    ImmutableValueArray.From("global::System.String")),
+                new RegisterMethodModel("RegisterType", PrimaryParameterKind.Type, TypeConstraintFlag.ReferenceType,
+                    ImmutableValueArray.From("global::System.IDisposable"))
+            ),
+            ImmutableValueArray.From(
                 ("data", false),
                 ("config", true)
-            ]
+            )
         );
 
         var success = RegistryGenerator.RenderRegistryMetadata(model, out var code, out var fileName);
@@ -305,9 +307,10 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                 [])
         ];
 
-        var settings = new ModBuildSettings("DiTest", "DiTest", false, "DiTest.Generated", "");
+        var settings = new ModBuildSettings("DiTest", "DiTest", false, "DiTest.Generated");
 
-        var success = RegistryGenerator.RenderRegistryConfigurator([..models], settings, out var code, out var fileName);
+        var success =
+            RegistryGenerator.RenderRegistryConfigurator([..models], settings, out var code, out var fileName);
 
         await Assert.That(success).IsTrue();
         await Assert.That(fileName).IsEqualTo("RegistryConfigurator.g.cs");
@@ -318,7 +321,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     public async Task RenderRegistryConfigurator_EmptyRegistries_ReturnsFalse(CancellationToken token)
     {
         var models = ImmutableArray<RegistryModel>.Empty;
-        var settings = new ModBuildSettings("DiTest", "DiTest", false, "DiTest.Generated", "");
+        var settings = new ModBuildSettings("DiTest", "DiTest", false, "DiTest.Generated");
 
         var success = RegistryGenerator.RenderRegistryConfigurator(models, settings, out var code, out var fileName);
 
@@ -334,19 +337,23 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             "DummyRegistry",
             "dummy",
             "MinimalSampleMod",
-            [ new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, []) ],
+            ImmutableValueArray.From(new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None,
+                TypeConstraintFlag.None, [])),
             []
         );
 
         FileRegistrationEntry[] entries =
         [
-            new("MinimalSampleMod.DummyRegistry_Metadata", "hello1", null, []),
-            new("MinimalSampleMod.DummyRegistry_Metadata", "hello2", null, [])
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello1", null),
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello2", null)
         ];
 
-        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+        var settings =
+            new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated");
 
-        var success = RegistryGenerator.RenderRegistryRegistrations(model, [..entries], ImmutableArray<MethodRegistrationEntry>.Empty, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var code, out var fileName);
+        var success = RegistryGenerator.RenderRegistryRegistrations(model, [..entries],
+            ImmutableArray<MethodRegistrationEntry>.Empty, ImmutableArray<TypeRegistrationEntry>.Empty, settings,
+            out var code, out var fileName);
 
         await Assert.That(success).IsTrue();
         await Assert.That(fileName).IsEqualTo("DummyRegistryRegistrations.g.cs");
@@ -360,23 +367,28 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             "DummyRegistry",
             "dummy",
             "MinimalSampleMod",
-            [ new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, []) ],
+            ImmutableValueArray.From(new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None,
+                TypeConstraintFlag.None, [])),
             []
         );
 
         FileRegistrationEntry[] entries =
         [
-            new("MinimalSampleMod.DummyRegistry_Metadata", "hello1", null, []),
-            new("MinimalSampleMod.DummyRegistry_Metadata", "hello2", null, [])
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello1", null),
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello2", null)
         ];
 
-        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+        var settings =
+            new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated");
 
-        var successContainer = RegistryGenerator.RenderRegistryIdContainer(model, out var codeContainer, out var fileNameContainer);
+        var successContainer =
+            RegistryGenerator.RenderRegistryIdContainer(model, out var codeContainer, out var fileNameContainer);
         await Assert.That(successContainer).IsTrue();
         await Assert.That(fileNameContainer).IsEqualTo("DummyID.g.cs");
 
-        var successExt = RegistryGenerator.RenderRegistryIdExtensions(model, [..entries], ImmutableArray<MethodRegistrationEntry>.Empty, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var codeExt, out var fileNameExt);
+        var successExt = RegistryGenerator.RenderRegistryIdExtensions(model, [..entries],
+            ImmutableArray<MethodRegistrationEntry>.Empty, ImmutableArray<TypeRegistrationEntry>.Empty, settings,
+            out var codeExt, out var fileNameExt);
         await Assert.That(successExt).IsTrue();
         await Assert.That(fileNameExt).IsEqualTo("DummyRegistry.IdExtensions.g.cs");
         await Verifier.Verify(codeExt, verifySettings);
@@ -389,23 +401,28 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             "DummyRegistry",
             "dummy",
             "MinimalSampleMod",
-            [ new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, []) ],
+            ImmutableValueArray.From(new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None,
+                TypeConstraintFlag.None, [])),
             []
         );
 
         FileRegistrationEntry[] entries =
         [
-            new("MinimalSampleMod.DummyRegistry_Metadata", "hello1", null, []),
-            new("MinimalSampleMod.DummyRegistry_Metadata", "hello2", null, [])
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello1", null),
+            new("MinimalSampleMod.DummyRegistry_Metadata", "hello2", null)
         ];
 
-        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+        var settings =
+            new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated");
 
-        var successContainer = RegistryGenerator.RenderRegistryIdContainer(model, out var codeContainer, out var fileNameContainer);
+        var successContainer =
+            RegistryGenerator.RenderRegistryIdContainer(model, out var codeContainer, out var fileNameContainer);
         await Assert.That(successContainer).IsTrue();
         await Assert.That(fileNameContainer).IsEqualTo("DummyID.g.cs");
 
-        var successExt = RegistryGenerator.RenderRegistryIdExtensions(model, [..entries], ImmutableArray<MethodRegistrationEntry>.Empty, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var codeExt, out var fileNameExt);
+        var successExt = RegistryGenerator.RenderRegistryIdExtensions(model, [..entries],
+            ImmutableArray<MethodRegistrationEntry>.Empty, ImmutableArray<TypeRegistrationEntry>.Empty, settings,
+            out var codeExt, out var fileNameExt);
         await Assert.That(successExt).IsTrue();
         await Assert.That(fileNameExt).IsEqualTo("DummyRegistry.IdExtensions.g.cs");
         await Verifier.Verify(codeExt, verifySettings);
@@ -418,7 +435,10 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             "DummyRegistry",
             "dummy",
             "MinimalSampleMod",
-            [ new RegisterMethodModel("RegisterValue", PrimaryParameterKind.Value, TypeConstraintFlag.None, ["global::System.String"]) ],
+            ImmutableValueArray.From(
+                new RegisterMethodModel("RegisterValue", PrimaryParameterKind.Value, TypeConstraintFlag.None,
+                    ImmutableValueArray.From("global::System.String"))
+            ),
             []
         );
 
@@ -430,13 +450,13 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                 "hello1",
                 "MinimalSampleMod.RegistryExample",
                 "SomeValueToRegister",
-                new ValueCompareSet<(string paramType, bool isNullable)> { ("System.String", false) },
-                null)
+                ImmutableValueArray.From(("System.String", false)))
         );
 
-        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated");
 
-        var success = RegistryGenerator.RenderRegistryRegistrations(model, ImmutableArray<FileRegistrationEntry>.Empty, methodProviders, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var code, out var fileName);
+        var success = RegistryGenerator.RenderRegistryRegistrations(model, ImmutableArray<FileRegistrationEntry>.Empty,
+            methodProviders, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var code, out var fileName);
 
         await Assert.That(success).IsTrue();
         await Assert.That(fileName).IsEqualTo("DummyRegistryRegistrations.g.cs");
@@ -450,7 +470,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             "DummyRegistry",
             "dummy",
             "MinimalSampleMod",
-            [ new RegisterMethodModel("RegisterType", PrimaryParameterKind.Type, TypeConstraintFlag.None, []) ],
+            ImmutableValueArray.From(new RegisterMethodModel("RegisterType", PrimaryParameterKind.Type, TypeConstraintFlag.None, [])),
             []
         );
 
@@ -463,9 +483,10 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                 "MinimalSampleMod.RegistryExample.SampleType")
         );
 
-        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated");
 
-        var success = RegistryGenerator.RenderRegistryRegistrations(model, ImmutableArray<FileRegistrationEntry>.Empty, ImmutableArray<MethodRegistrationEntry>.Empty, typeProviders, settings, out var code, out var fileName);
+        var success = RegistryGenerator.RenderRegistryRegistrations(model, ImmutableArray<FileRegistrationEntry>.Empty,
+            ImmutableArray<MethodRegistrationEntry>.Empty, typeProviders, settings, out var code, out var fileName);
 
         await Assert.That(success).IsTrue();
         await Assert.That(fileName).IsEqualTo("DummyRegistryRegistrations.g.cs");
@@ -479,7 +500,10 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             "DummyRegistry",
             "dummy",
             "MinimalSampleMod",
-            [ new RegisterMethodModel("RegisterValue", PrimaryParameterKind.Value, TypeConstraintFlag.None, ["global::System.String"]) ],
+            ImmutableValueArray.From(
+                new RegisterMethodModel("RegisterValue", PrimaryParameterKind.Value, TypeConstraintFlag.None,
+                    ImmutableValueArray.From("global::System.String"))
+            ),
             []
         );
 
@@ -491,24 +515,25 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                 "hello1",
                 "MinimalSampleMod.RegistryExample",
                 "SomeValueToRegister",
-                new ValueCompareSet<(string paramType, bool isNullable)> { ("System.String", false) })
+                ImmutableValueArray.From( ("System.String", false) ))
         );
 
-        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated", "");
+        var settings = new ModBuildSettings("MinimalSampleMod", "MinimalSampleMod", false, "MinimalSampleMod.Generated");
 
-        var successContainer = RegistryGenerator.RenderRegistryIdContainer(model, out var codeContainer, out var fileNameContainer);
+        var successContainer =
+            RegistryGenerator.RenderRegistryIdContainer(model, out var codeContainer, out var fileNameContainer);
         await Assert.That(successContainer).IsTrue();
         await Assert.That(fileNameContainer).IsEqualTo("DummyID.g.cs");
 
-        var successExt = RegistryGenerator.RenderRegistryIdExtensions(model, ImmutableArray<FileRegistrationEntry>.Empty, methodProviders, ImmutableArray<TypeRegistrationEntry>.Empty, settings, out var codeExt, out var fileNameExt);
+        var successExt = RegistryGenerator.RenderRegistryIdExtensions(model,
+            ImmutableArray<FileRegistrationEntry>.Empty, methodProviders, ImmutableArray<TypeRegistrationEntry>.Empty,
+            settings, out var codeExt, out var fileNameExt);
         await Assert.That(successExt).IsTrue();
         await Assert.That(fileNameExt).IsEqualTo("DummyRegistry.IdExtensions.g.cs");
         await Verifier.Verify(codeExt, verifySettings);
     }
 
-    // Root (direct) grouping is not supported currently; only mod grouping.
-    #region ParseResourceYaml Tests
-
+    
     [Test]
     public async Task ParseResourceYaml_NullSourceText_ReturnsEmpty()
     {
@@ -524,14 +549,9 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     public async Task ParseResourceYaml_ValidYaml_SingleRegistry_SingleEntry()
     {
         var yamlContent = """
-            registries:
-              MinimalSampleMod.DummyRegistry_Metadata:
-                - id: test
-                  symbolName: TestId
-                  files:
-                    fileA: testA.txt
-                    fileB: testB.txt
-            """;
+                          MinimalSampleMod.DummyRegistry_Metadata:
+                            - id: test
+                          """;
 
         var mockSourceText = SourceText.From(yamlContent);
         var mockAdditionalText = new Mock<AdditionalText>();
@@ -544,30 +564,28 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(entry.MetadataClass).IsEqualTo("MinimalSampleMod.DummyRegistry_Metadata");
         await Assert.That(entry.Id).IsEqualTo("test");
         await Assert.That(entry.Files).HasCount().EqualTo(2);
-        await Assert.That(entry.Files.Contains(("fileA", "testA.txt"))).IsTrue();
-        await Assert.That(entry.Files.Contains(("fileB", "testB.txt"))).IsTrue();
     }
 
     [Test]
     public async Task ParseResourceYaml_ValidYaml_MultipleRegistries_MultipleEntries()
     {
         var yamlContent = """
-            registries:
-              TestMod.Registry1_Metadata:
-                - id: entry1
-                  symbolName: Entry1Symbol
-                  files:
-                    config: config.json
-                - id: entry2
-                  symbolName: Entry2Symbol
-                  files:
-                    data: data.xml
-              TestMod.Registry2_Metadata:
-                - id: entry3
-                  symbolName: Entry3Symbol
-                  files:
-                    image: image.png
-            """;
+                          registries:
+                            TestMod.Registry1_Metadata:
+                              - id: entry1
+                                symbolName: Entry1Symbol
+                                files:
+                                  config: config.json
+                              - id: entry2
+                                symbolName: Entry2Symbol
+                                files:
+                                  data: data.xml
+                            TestMod.Registry2_Metadata:
+                              - id: entry3
+                                symbolName: Entry3Symbol
+                                files:
+                                  image: image.png
+                          """;
 
         var mockSourceText = SourceText.From(yamlContent);
         var mockAdditionalText = new Mock<AdditionalText>();
@@ -576,7 +594,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, CancellationToken.None);
 
         await Assert.That(result).HasCount().EqualTo(3);
-        
+
         var entry1 = result.First(e => e.Id == "entry1");
         await Assert.That(entry1.MetadataClass).IsEqualTo("TestMod.Registry1_Metadata");
         await Assert.That(entry1.Files.Contains(("config", "config.json"))).IsTrue();
@@ -590,11 +608,11 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     public async Task ParseResourceYaml_ValidYaml_EntryWithNoFiles()
     {
         var yamlContent = """
-            registries:
-              TestMod.Registry_Metadata:
-                - id: entry1
-                  symbolName: Entry1Symbol
-            """;
+                          registries:
+                            TestMod.Registry_Metadata:
+                              - id: entry1
+                                symbolName: Entry1Symbol
+                          """;
 
         var mockSourceText = SourceText.From(yamlContent);
         var mockAdditionalText = new Mock<AdditionalText>();
@@ -613,12 +631,12 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     public async Task ParseResourceYaml_InvalidYaml_ReturnsEmpty()
     {
         var invalidYamlContent = """
-            registries:
-              TestMod.Registry_Metadata:
-                - id: entry1
-                  symbolName: Entry1Symbol
-                  invalid_yaml_structure: [unclosed_array
-            """;
+                                 registries:
+                                   TestMod.Registry_Metadata:
+                                     - id: entry1
+                                       symbolName: Entry1Symbol
+                                       invalid_yaml_structure: [unclosed_array
+                                 """;
 
         var mockSourceText = SourceText.From(invalidYamlContent);
         var mockAdditionalText = new Mock<AdditionalText>();
@@ -647,8 +665,8 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     public async Task ParseResourceYaml_NullRegistries_ReturnsEmpty()
     {
         var yamlContent = """
-            someOtherProperty: value
-            """;
+                          someOtherProperty: value
+                          """;
 
         var mockSourceText = SourceText.From(yamlContent);
         var mockAdditionalText = new Mock<AdditionalText>();
@@ -663,14 +681,14 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     public async Task ParseResourceYaml_EmptyRegistryKey_SkipsEntry()
     {
         var yamlContent = """
-            registries:
-              '':
-                - id: entry1
-                  symbolName: Entry1Symbol
-              TestMod.Registry_Metadata:
-                - id: entry2
-                  symbolName: Entry2Symbol
-            """;
+                          registries:
+                            '':
+                              - id: entry1
+                                symbolName: Entry1Symbol
+                            TestMod.Registry_Metadata:
+                              - id: entry2
+                                symbolName: Entry2Symbol
+                          """;
 
         var mockSourceText = SourceText.From(yamlContent);
         var mockAdditionalText = new Mock<AdditionalText>();
@@ -683,51 +701,6 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(entry.MetadataClass).IsEqualTo("TestMod.Registry_Metadata");
         await Assert.That(entry.Id).IsEqualTo("entry2");
     }
+    
 
-    [Test]
-    public async Task ParseResourceYaml_EmptyEntryId_SkipsEntry()
-    {
-        var yamlContent = """
-            registries:
-              TestMod.Registry_Metadata:
-                - id: ''
-                  symbolName: Entry1Symbol
-                - id: entry2
-                  symbolName: Entry2Symbol
-            """;
-
-        var mockSourceText = SourceText.From(yamlContent);
-        var mockAdditionalText = new Mock<AdditionalText>();
-        mockAdditionalText.Setup(x => x.GetText(It.IsAny<CancellationToken>())).Returns(mockSourceText);
-
-        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, CancellationToken.None);
-
-        await Assert.That(result).HasCount().EqualTo(1);
-        var entry = result.First();
-        await Assert.That(entry.Id).IsEqualTo("entry2");
-    }
-
-    [Test]
-    public async Task ParseResourceYaml_NullEntryId_SkipsEntry()
-    {
-        var yamlContent = """
-            registries:
-              TestMod.Registry_Metadata:
-                - symbolName: Entry1Symbol
-                - id: entry2
-                  symbolName: Entry2Symbol
-            """;
-
-        var mockSourceText = SourceText.From(yamlContent);
-        var mockAdditionalText = new Mock<AdditionalText>();
-        mockAdditionalText.Setup(x => x.GetText(It.IsAny<CancellationToken>())).Returns(mockSourceText);
-
-        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, CancellationToken.None);
-
-        await Assert.That(result).HasCount().EqualTo(1);
-        var entry = result.First();
-        await Assert.That(entry.Id).IsEqualTo("entry2");
-    }
-
-    #endregion
 }

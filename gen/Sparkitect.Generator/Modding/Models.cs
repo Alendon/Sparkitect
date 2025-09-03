@@ -6,8 +6,8 @@ public record RegistryModel(
     string TypeName,
     string Key,
     string ContainingNamespace,
-    ValueCompareSet<RegisterMethodModel> RegisterMethods,
-    ValueCompareSet<(string identifier, bool optional)> ResourceFiles);
+    ImmutableValueArray<RegisterMethodModel> RegisterMethods,
+    ImmutableValueArray<(string identifier, bool optional)> ResourceFiles);
 
 
 
@@ -18,7 +18,7 @@ public record MethodRegistrationEntry(
     string Id,
     string ProviderContainingType,
     string ProviderMethodName,
-    ValueCompareSet<(string paramType, bool isNullable)> Parameters);
+    ImmutableValueArray<(string paramType, bool isNullable)> Parameters);
 
 public record TypeRegistrationEntry(
     string RegistryNamespace,
@@ -27,7 +27,7 @@ public record TypeRegistrationEntry(
     string Id,
     string ProvidedTypeFullName);
 
-public record FileRegistrationEntry(string MetadataClass, string Id,  ValueCompareSet<(string fileId, string fileName)> Files);
+public record FileRegistrationEntry(string MetadataClass, string Id,  ImmutableValueArray<(string fileId, string fileName)> Files);
 
 
 /// <summary>
@@ -37,7 +37,7 @@ public record FileRegistrationEntry(string MetadataClass, string Id,  ValueCompa
 /// <param name="PrimaryParameterKind">The kind of the primary parameter</param>
 /// <param name="Constraint">Direct constraints</param>
 /// <param name="TypeConstraint">Affecting type constraints. May be empty</param>
-public record RegisterMethodModel(string FunctionName, PrimaryParameterKind PrimaryParameterKind, TypeConstraintFlag Constraint, ValueCompareSet<string> TypeConstraint);
+public record RegisterMethodModel(string FunctionName, PrimaryParameterKind PrimaryParameterKind, TypeConstraintFlag Constraint, ImmutableValueArray<string> TypeConstraint);
 
 /// <summary>
 /// The kind of the primary parameter of a registry method

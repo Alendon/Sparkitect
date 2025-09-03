@@ -31,7 +31,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 return ExtractModel(symbol, registryAttribute);
             }).NotNull();
 
-        var assemblyRegistryModelsProvider = context.CompilationProvider.Select((compilation, _) => ExtractModels(compilation));
+        var assemblyRegistryModelsProvider =
+            context.CompilationProvider.Select((compilation, _) => ExtractModels(compilation));
 
         // Emit per-registry nested attributes early to stabilize attribute resolution in subsequent passes
         context.RegisterSourceOutput(symbolRegistryModelsProvider, OutputRegistryAttributes);
@@ -40,7 +41,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(symbolRegistryModelsProvider.Collect().Combine(buildSettings),
             OutputRegistryConfigurator);
 
-        
+
         /*
          * When looking at registrations with registry methods of the current compilation
          * The Attributes are not available at SG time (SG produces them)
@@ -48,7 +49,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
          * If this happens, aka the Generator reports that it is an Error Type and more than one type with this name exists,
          * Generating a partial class as a "dummy" fixes this issue, by introducing the target attribute class
          */
-        
+
         var registryMapProvider = symbolRegistryModelsProvider.Collect().Combine(assemblyRegistryModelsProvider)
             .Select((x, _) => RegistryMap.Create(x));
 
@@ -58,13 +59,13 @@ public partial class RegistryGenerator : IIncrementalGenerator
             .Select(ParseResourceYaml);
     }
 
-    internal static ValueCompareSet<FileRegistrationEntry> ParseResourceYaml(AdditionalText text,
+    internal static ImmutableValueArray<FileRegistrationEntry> ParseResourceYaml(AdditionalText text,
         CancellationToken cancellation)
     {
-        ValueCompareSet<FileRegistrationEntry> result = [];
+        var result = new ImmutableValueArray<FileRegistrationEntry>.Builder();
 
         var sourceText = text.GetText(cancellation);
-        if (sourceText is null) return result;
+        if (sourceText is null) return result.ToImmutableValueArray();
 
         try
         {
@@ -86,8 +87,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
                     {
                         if (string.IsNullOrWhiteSpace(entry.Id)) continue;
 
-                        ValueCompareSet<(string fileId, string fileName)> files = [];
-                        
+                        var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
+
                         //TODO add analyzer to validate only Files or File is set
                         if (entry.Files is not null)
                         {
@@ -100,11 +101,12 @@ public partial class RegistryGenerator : IIncrementalGenerator
                         result.Add(new FileRegistrationEntry(
                             registry.Key,
                             entry.Id!,
-                            files
+                            files.ToImmutableValueArray()
                         ));
                     }
                 }
-                return result;
+
+                return result.ToImmutableValueArray();
             }
 
             // Single-registry root: { MetadataClass: [entries] }
@@ -119,7 +121,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
                     {
                         if (string.IsNullOrWhiteSpace(entry.Id)) continue;
 
-                        ValueCompareSet<(string fileId, string fileName)> files = [];
+                        var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
                         if (entry.Files is not null)
                         {
                             foreach (var file in entry.Files)
@@ -131,7 +133,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
                         result.Add(new FileRegistrationEntry(
                             registry.Key,
                             entry.Id!,
-                            files
+                            files.ToImmutableValueArray()
                         ));
                     }
                 }
@@ -140,10 +142,10 @@ public partial class RegistryGenerator : IIncrementalGenerator
         catch
         {
             //The file is invalid. This should be caught by the Analyzer
-            return [];
+            return new ImmutableValueArray<FileRegistrationEntry>();
         }
 
-        return result;
+        return result.ToImmutableValueArray();
     }
 
 
@@ -164,9 +166,10 @@ public partial class RegistryGenerator : IIncrementalGenerator
             ExtractResourceFiles(symbol));
     }
 
-    internal static ValueCompareSet<(string Identifier, bool Required)> ExtractResourceFiles(INamedTypeSymbol symbol)
+    internal static ImmutableValueArray<(string Identifier, bool Required)> ExtractResourceFiles(
+        INamedTypeSymbol symbol)
     {
-        ValueCompareSet<(string Identifier, bool Required)> result = [];
+        var result = new ImmutableValueArray<(string Identifier, bool Required)>.Builder();
 
         var attributes = symbol.GetAttributes().Where(x =>
             x.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) is UseResourceFileAttribute);
@@ -184,12 +187,12 @@ public partial class RegistryGenerator : IIncrementalGenerator
             result.Add((identifier, required is true));
         }
 
-        return result;
+        return result.ToImmutableValueArray();
     }
 
-    internal static ValueCompareSet<RegisterMethodModel> ExtractRegisterMethods(INamedTypeSymbol symbol)
+    internal static ImmutableValueArray<RegisterMethodModel> ExtractRegisterMethods(INamedTypeSymbol symbol)
     {
-        ValueCompareSet<RegisterMethodModel> result = new();
+        var result = new ImmutableValueArray<RegisterMethodModel>.Builder();
 
         var candidates = symbol.GetMembers().OfType<IMethodSymbol>()
             .Select((IMethodSymbol x, AttributeData attribute)? (x) =>
@@ -229,7 +232,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 }
 
                 result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Value, TypeConstraintFlag.None,
-                    [parameter.ToDisplayString(DisplayFormats.NamespaceAndType)]));
+                    ((string[])[parameter.ToDisplayString(DisplayFormats.NamespaceAndType)]).ToImmutableValueArray()));
 
                 continue;
             }
@@ -250,14 +253,14 @@ public partial class RegistryGenerator : IIncrementalGenerator
             result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.None, TypeConstraintFlag.None, []));
         }
 
-        return result;
+        return result.ToImmutableValueArray();
     }
 
     internal static void ParseTypeParameterConstraints(ITypeParameterSymbol parameter,
-        out TypeConstraintFlag constraintFlag, out ValueCompareSet<string> typeConstraints)
+        out TypeConstraintFlag constraintFlag, out ImmutableValueArray<string> typeConstraints)
     {
         constraintFlag = TypeConstraintFlag.None;
-        typeConstraints = [];
+        var constraintBuilder = new ImmutableValueArray<string>.Builder();
 
         if (parameter.HasReferenceTypeConstraint) constraintFlag |= TypeConstraintFlag.ReferenceType;
         if (parameter.HasValueTypeConstraint) constraintFlag |= TypeConstraintFlag.ValueType;
@@ -268,17 +271,19 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         foreach (var constraintType in parameter.ConstraintTypes)
         {
-            typeConstraints.Add(constraintType.ToDisplayString(DisplayFormats.NamespaceAndType));
+            constraintBuilder.Add(constraintType.ToDisplayString(DisplayFormats.NamespaceAndType));
         }
+
+        typeConstraints = constraintBuilder.ToImmutableValueArray();
     }
 
-    internal static ValueCompareSet<RegistryModel> ExtractModels(Compilation compilation)
+    internal static ImmutableValueArray<RegistryModel> ExtractModels(Compilation compilation)
     {
         //WARNING This function is currently not tested because of the complexity.
         //Be careful with changes
         //TODO Validate manually with the MinimalTestMod that this is functional
 
-        ValueCompareSet<RegistryModel> models = new();
+        var models = new ImmutableValueArray<RegistryModel>.Builder();
         foreach (var reference in compilation.References)
         {
             if (compilation.GetAssemblyOrModuleSymbol(reference) is not IAssemblySymbol assembly) continue;
@@ -294,7 +299,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             }
         }
 
-        return models;
+        return models.ToImmutableValueArray();
     }
 
 
@@ -305,7 +310,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         var methods = Of("RegisterMethods").Split([';'], StringSplitOptions.RemoveEmptyEntries);
 
-        ValueCompareSet<RegisterMethodModel> methodModels = new();
+        var methodModels = new ImmutableValueArray<RegisterMethodModel>.Builder();
 
         var allValid = true;
         foreach (var methodName in methods)
@@ -321,7 +326,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         }
 
         // Parse ResourceFiles
-        ValueCompareSet<(string identifier, bool optional)> resourceFiles = [];
+        var resourceFiles = new ImmutableValueArray<(string identifier, bool optional)>.Builder();
         var resourceFilesStr = Of("ResourceFiles");
         if (!string.IsNullOrEmpty(resourceFilesStr))
         {
@@ -339,9 +344,9 @@ public partial class RegistryGenerator : IIncrementalGenerator
         model = new RegistryModel(
             Of("TypeName"),
             Of("Key"),
-            Of("ContainingNamespace"), 
-            methodModels,
-            resourceFiles);
+            Of("ContainingNamespace"),
+            methodModels.ToImmutableValueArray(),
+            resourceFiles.ToImmutableValueArray());
 
         allValid &= reader.AllValid;
 
@@ -373,7 +378,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         var constraint = (TypeConstraintFlag)reader.OfInt("Constraint");
 
         // Parse TypeConstraint as semicolon-separated string
-        ValueCompareSet<string> typeConstraints = [];
+        var typeConstraints = new ImmutableValueArray<string>.Builder();
         var typeConstraintStr = Of("TypeConstraint");
         // TypeConstraint should exist but may be empty
         if (!string.IsNullOrEmpty(typeConstraintStr))
@@ -389,7 +394,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             Of("FunctionName"),
             parameterKind,
             constraint,
-            typeConstraints
+            typeConstraints.ToImmutableValueArray()
         );
 
         return reader.AllValid;
@@ -404,7 +409,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         public string Of(string fieldName)
         {
             var field = symbol.GetMembers(fieldName).OfType<IFieldSymbol>().FirstOrDefault();
-            if(field is not { IsConst: true, HasConstantValue: true, ConstantValue: string data })
+            if (field is not { IsConst: true, HasConstantValue: true, ConstantValue: string data })
             {
                 AllValid = false;
                 return null!;
@@ -441,13 +446,14 @@ public partial class RegistryGenerator : IIncrementalGenerator
             }
             else sb.Append(c);
         }
+
         return sb.ToString();
     }
 
     internal static string ToPascalCase(string s)
     {
         if (string.IsNullOrWhiteSpace(s)) return s;
-        var parts = s.Split(new[] {'_','-',' '}, StringSplitOptions.RemoveEmptyEntries);
+        var parts = s.Split(new[] { '_', '-', ' ' }, StringSplitOptions.RemoveEmptyEntries);
         var sb = new System.Text.StringBuilder();
         foreach (var p in parts)
         {
@@ -455,6 +461,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             sb.Append(char.ToUpperInvariant(p[0]));
             if (p.Length > 1) sb.Append(p.Substring(1));
         }
+
         return sb.ToString();
     }
 
@@ -480,7 +487,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
     private class ResourceYamlEntry
     {
         public string? Id { get; set; }
-        
+
         // Only Files or File can be set not both
         public Dictionary<string, string>? Files { get; set; }
         public string File { get; set; }

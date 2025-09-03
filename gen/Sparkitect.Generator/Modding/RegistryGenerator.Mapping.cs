@@ -16,7 +16,7 @@ public partial class RegistryGenerator
         }
 
         public static RegistryMap Create(
-            (ImmutableArray<RegistryModel> Left, ValueCompareSet<RegistryModel> Right) valueTuple)
+            (ImmutableArray<RegistryModel> Left, ImmutableValueArray<RegistryModel> Right) valueTuple)
         {
             Dictionary<string, RegistryModel> models = [];
             
