@@ -331,7 +331,8 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
         foreach (var ch in s)
         {
             if (ch == '_') continue;
-            if (ch < 'a' || ch > 'z') return false;
+            if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) continue;
+            return false;
         }
         return true;
     }

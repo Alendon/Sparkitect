@@ -141,6 +141,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 foreach (var entry in registry.Value)
                 {
                     if (string.IsNullOrWhiteSpace(entry.Id)) continue;
+                    if (!IsSnakeCase(entry.Id!)) continue;
 
                     var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
                     if (entry.Files is not null)
@@ -274,6 +275,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
     {
         var identifierEntry = registryAttribute.NamedArguments.FirstOrDefault(x => x.Key is RegistryAttributeIdField);
         if (identifierEntry.Value.Value is not string id || string.IsNullOrWhiteSpace(id)) return null;
+        if (!IsSnakeCase(id)) return null;
 
         var namespaceName = symbol.ContainingNamespace?.ToDisplayString();
         if (string.IsNullOrWhiteSpace(namespaceName) ||
@@ -584,6 +586,19 @@ public partial class RegistryGenerator : IIncrementalGenerator
         }
 
         return sb.ToString();
+    }
+
+    internal static bool IsSnakeCase(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return false;
+        for (int i = 0; i < s.Length; i++)
+        {
+            var ch = s[i];
+            if (ch == '_') continue;
+            if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) continue;
+            return false;
+        }
+        return true;
     }
 
     internal static bool RenderRegistryAttributes(RegistryModel model, out string code, out string fileName)

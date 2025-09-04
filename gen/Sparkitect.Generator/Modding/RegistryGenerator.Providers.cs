@@ -93,6 +93,7 @@ public partial class RegistryGenerator
         // Parse constructor and named args syntactically to be resilient to error types
         if (!TryParseProviderArguments(attrSyntax, out var id, out var files))
             return null;
+        if (!IsSnakeCase(id)) return null;
 
         bool isTypeProvider = targetSymbol is INamedTypeSymbol;
         bool isPropertyProvider = targetSymbol is IPropertySymbol;

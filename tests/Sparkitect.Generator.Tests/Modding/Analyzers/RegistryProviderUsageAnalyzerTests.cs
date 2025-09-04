@@ -169,6 +169,33 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
     }
 
     [Test]
+    public async Task Id_WithNumbers_No_2031()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        public static class Providers
+        {
+            [DummyRegistry.RegisterValue("id_123")] // allowed
+            public static string Value() => "x";
+        }
+        """;
+
+        TestSources.Add(("P5b.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await Assert.That(diagnostics.Any(d => d.Id == "SPARK2031")).IsFalse();
+    }
+
+    [Test]
     public async Task KindMismatch_TypeProvider_ToValueMethod_Reports_2024()
     {
         var code = """

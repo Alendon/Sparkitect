@@ -137,6 +137,23 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     }
 
     [Test]
+    public async Task Identifier_SnakeCase_WithNumbers_No_2006()
+    {
+        var code = """
+        using Sparkitect.Modding;
+        
+        namespace N;
+        
+        [Registry(Identifier = "good_id_123")]
+        public class MyRegistry : IRegistry { }
+        """;
+
+        TestSources.Add(("R6b.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await Assert.That(diagnostics.Any(d => d.Id == "SPARK2006")).IsFalse();
+    }
+
+    [Test]
     public async Task RegistryMethodOutsideRegistry_Reports_2010()
     {
         var code = """
