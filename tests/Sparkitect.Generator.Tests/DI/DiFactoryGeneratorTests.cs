@@ -20,6 +20,8 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
         TestSources.Add(TestData.SparkitectCore);
     }
 
+    public override ModBuildSettings BuildSettings { get; }
+
     [Test]
     public async Task DiGenerator_FullRun_NoDependencies(CancellationToken token)
     {

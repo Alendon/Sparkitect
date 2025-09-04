@@ -1,0 +1,13 @@
+﻿namespace SampleTest.Generated.IdExtensions;
+
+public static partial class IdExtensions
+{
+    extension(global::Sparkitect.Modding.IDs.DummyID)
+    {
+        public static SampleTestModDummyIDs SampleTestMod => default;
+    }
+}
+
+public readonly partial struct SampleTestModDummyIDs
+{
+}

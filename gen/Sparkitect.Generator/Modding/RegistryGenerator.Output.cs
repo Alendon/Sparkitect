@@ -6,6 +6,103 @@ namespace Sparkitect.Generator.Modding;
 
 public partial class RegistryGenerator
 {
+    internal static bool RenderRegistryRegistrationsUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
+    {
+        fileName = $"{unit.Model.TypeName}Registrations_{unit.SourceTag}.g.cs";
+
+        var ns = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
+            ? unit.Model.ContainingNamespace + ".Registrations"
+            : settings.SgOutputNamespace + ".Registrations";
+
+        var entries = unit.Entries
+            .OrderBy(e => e.Id)
+            .Select(e => new
+            {
+                Id = e.Id,
+                PropertyName = ToPascalCase(e.Id),
+                Kind = e.Kind.ToString(),
+                MethodName = e.MethodName,
+                ProviderFullName = string.IsNullOrWhiteSpace(e.ProviderContainingType) ? string.Empty : $"global::{e.ProviderContainingType}.{e.ProviderMemberName}",
+                TypeFullName = e.ProviderMemberName.StartsWith("global::") ? e.ProviderMemberName : (string.IsNullOrWhiteSpace(e.ProviderMemberName) ? string.Empty : $"global::{e.ProviderMemberName}"),
+                Files = e.Files.OrderBy(f => f.fileId).Select(f => new { fileId = f.fileId, fileName = f.fileName }).ToArray()
+            })
+            .ToArray();
+
+        var useResourceManager = entries.Any(e => e.Files.Length > 0);
+
+        var model = new
+        {
+            Namespace = ns,
+            RegistryName = unit.Model.TypeName,
+            RegistryFullName = unit.Model.ContainingNamespace + "." + unit.Model.TypeName,
+            CategoryKey = unit.Model.Key,
+            ModNameSnakeCase = ToSnakeCase(settings.ModName),
+            SourceTag = unit.SourceTag,
+            UseResourceManager = useResourceManager,
+            Entries = entries
+        };
+
+        return FluidHelper.TryRenderTemplate("Modding.RegistryRegistrations.Unit.liquid", model, out code);
+    }
+
+    internal static bool RenderRegistryIdContainer(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
+    {
+        fileName = $"{ToPascalCase(model.Key)}ID.g.cs";
+        var tpl = new
+        {
+            CategoryPascal = ToPascalCase(model.Key)
+        };
+        return FluidHelper.TryRenderTemplate("Modding.RegistryIdContainer.Framework.liquid", tpl, out code);
+    }
+
+    internal static bool RenderRegistryIdExtensionsFramework(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
+    {
+        var categoryPascal = ToPascalCase(model.Key);
+        var modPascal = ToPascalCase(settings.ModName);
+        var registrationsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
+            ? model.ContainingNamespace + ".Registrations"
+            : settings.SgOutputNamespace + ".Registrations";
+        var extensionsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
+            ? model.ContainingNamespace + ".IdExtensions"
+            : settings.SgOutputNamespace + ".IdExtensions";
+
+        fileName = $"{model.TypeName}.IdFramework.g.cs";
+        var tpl = new
+        {
+            ExtensionsNamespace = extensionsNs,
+            CategoryPascal = categoryPascal,
+            ModNamePascal = modPascal,
+            ModStructName = modPascal + categoryPascal + "IDs",
+            RegistrationsNamespace = registrationsNs,
+            RegistryName = model.TypeName
+        };
+        return FluidHelper.TryRenderTemplate("Modding.RegistryIdExtensions.Framework.liquid", tpl, out code);
+    }
+
+    internal static bool RenderRegistryIdPropertiesUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
+    {
+        fileName = $"{unit.Model.TypeName}.IdProperties_{unit.SourceTag}.g.cs";
+
+        var categoryPascal = ToPascalCase(unit.Model.Key);
+        var registrationsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
+            ? unit.Model.ContainingNamespace + ".Registrations"
+            : settings.SgOutputNamespace + ".Registrations";
+        var extensionsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
+            ? unit.Model.ContainingNamespace + ".IdExtensions"
+            : settings.SgOutputNamespace + ".IdExtensions";
+
+        var tpl = new
+        {
+            ExtensionsNamespace = extensionsNs,
+            ModStructName = ToPascalCase(settings.ModName) + categoryPascal + "IDs",
+            RegistrationsNamespace = registrationsNs,
+            RegistryName = unit.Model.TypeName,
+            SourceTag = unit.SourceTag,
+            Entries = unit.Entries.OrderBy(e => e.Id).Select(e => new { PropertyName = ToPascalCase(e.Id) }).ToArray()
+        };
+
+        return FluidHelper.TryRenderTemplate("Modding.RegistryIdProperties.Unit.liquid", tpl, out code);
+    }
     
         internal static bool RenderRegistryMetadata(RegistryModel model, out string code, out string fileName)
     {
@@ -61,105 +158,7 @@ public partial class RegistryGenerator
         return FluidHelper.TryRenderTemplate("Modding.RegistryConfigurator.liquid", configuratorModel, out code);
     }
 
-    internal static bool RenderRegistryRegistrations(RegistryModel model, ImmutableArray<FileRegistrationEntry> yamlEntries, ImmutableArray<MethodRegistrationEntry> methodProviders, ImmutableArray<TypeRegistrationEntry> typeProviders, ModBuildSettings settings, out string code, out string fileName)
-    {
-        fileName = $"{model.TypeName}Registrations.g.cs";
 
-        if (yamlEntries.IsDefaultOrEmpty && methodProviders.IsDefaultOrEmpty && typeProviders.IsDefaultOrEmpty)
-        {
-            code = string.Empty;
-            return false;
-        }
-
-        var ns = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
-            ? model.ContainingNamespace
-            : settings.SgOutputNamespace + ".Registrations";
-
-        var resourceMethod = model.RegisterMethods.FirstOrDefault(m => m.PrimaryParameterKind == PrimaryParameterKind.None);
-
-        var templateModel = new
-        {
-            Namespace = ns,
-            RegistryName = model.TypeName,
-            RegistryFullName = model.ContainingNamespace + "." + model.TypeName,
-            CategoryKey = model.Key,
-            ModNameSnakeCase = ToSnakeCase(settings.ModName),
-            HasResourceMethod = resourceMethod is not null,
-            ResourceMethodName = resourceMethod?.FunctionName ?? string.Empty,
-            Entries = yamlEntries.Select(e => new
-            {
-                Id = e.Id,
-                PropertyName = ToPascalCase(e.Id)
-            }).ToArray(),
-            MethodProviders = methodProviders.Select(mp => new
-            {
-                Id = mp.Id,
-                PropertyName = ToPascalCase(mp.Id),
-                RegistryMethodName = mp.RegistryMethodName,
-                ProviderFullName = $"global::{mp.ProviderContainingType}.{mp.ProviderMethodName}",
-                Parameters = mp.Parameters.Select((p, idx) => new { Type = p.paramType, IsNullable = p.isNullable, Var = $"p{idx}" }).ToArray()
-            }).ToArray(),
-            TypeProviders = typeProviders.Select(tp => new
-            {
-                Id = tp.Id,
-                PropertyName = ToPascalCase(tp.Id),
-                RegistryMethodName = tp.RegistryMethodName,
-                TypeFullName = $"global::{tp.ProvidedTypeFullName}"
-            }).ToArray()
-        };
-
-        return FluidHelper.TryRenderTemplate("Modding.RegistryRegistrations.liquid", templateModel, out code);
-    }
-
-    internal static bool RenderRegistryIdContainer(RegistryModel model, out string code, out string fileName)
-    {
-        fileName = $"{ToPascalCase(model.Key)}ID.g.cs";
-
-        var templateModel = new
-        {
-            CategoryPascal = ToPascalCase(model.Key)
-        };
-
-        return FluidHelper.TryRenderTemplate("Modding.RegistryIdContainer.liquid", templateModel, out code);
-    }
-
-    internal static bool RenderRegistryIdExtensions(RegistryModel model, ImmutableArray<FileRegistrationEntry> yamlEntries, ImmutableArray<MethodRegistrationEntry> methodProviders, ImmutableArray<TypeRegistrationEntry> typeProviders, ModBuildSettings settings, out string code, out string fileName)
-    {
-        fileName = $"{model.TypeName}.IdExtensions.g.cs";
-
-        if (yamlEntries.IsDefaultOrEmpty && methodProviders.IsDefaultOrEmpty && typeProviders.IsDefaultOrEmpty)
-        {
-            code = string.Empty;
-            return false;
-        }
-
-        var categoryPascal = ToPascalCase(model.Key);
-        var modName = settings.ModName;
-        var modStructName = modName + categoryPascal + "IDs";
-        var registrationsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
-            ? model.ContainingNamespace + ".Registrations"
-            : settings.SgOutputNamespace + ".Registrations";
-        var extensionsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
-            ? model.ContainingNamespace + ".IdExtensions"
-            : settings.SgOutputNamespace + ".IdExtensions";
-
-        var templateModel = new
-        {
-            ExtensionsNamespace = extensionsNs,
-            CategoryPascal = categoryPascal,
-            ModName = modName,
-            ModStructName = modStructName,
-            RegistrationsNamespace = registrationsNs,
-            RegistryName = model.TypeName,
-            YamlEntries = yamlEntries.Select(e => new { PropertyName = ToPascalCase(e.Id) }).ToArray(),
-            MethodEntries = methodProviders.Select(mp => new { PropertyName = ToPascalCase(mp.Id) }).ToArray(),
-            TypeEntries = typeProviders.Select(tp => new { PropertyName = ToPascalCase(tp.Id) }).ToArray()
-        };
-
-        return FluidHelper.TryRenderTemplate("Modding.RegistryIdExtensions.liquid", templateModel, out code);
-    }
-
-    
     internal static void OutputRegistryAttributes(SourceProductionContext context, RegistryModel model)
     {
         if (RenderRegistryAttributes(model, out var code, out var fileName))
@@ -185,6 +184,30 @@ public partial class RegistryGenerator
         if (RenderRegistryConfigurator(models, settings, out var code, out var fileName))
         {
             context.AddSource(fileName, code);
+        }
+    }
+
+    internal static void OutputRegistryIdFramework(SourceProductionContext context, (RegistryModel model, ModBuildSettings settings) arg)
+    {
+        if (RenderRegistryIdContainer(arg.model, arg.settings, out var code1, out var file1))
+            context.AddSource(file1, code1);
+        if (RenderRegistryIdExtensionsFramework(arg.model, arg.settings, out var code2, out var file2))
+            context.AddSource(file2, code2);
+    }
+
+    internal static void OutputRegistrationsUnit(SourceProductionContext context, (RegistrationUnit unit, ModBuildSettings settings) arg)
+    {
+        if (RenderRegistryRegistrationsUnit(arg.unit, arg.settings, out var code, out var file))
+        {
+            context.AddSource(file, code);
+        }
+    }
+
+    internal static void OutputIdPropertiesUnit(SourceProductionContext context, (RegistrationUnit unit, ModBuildSettings settings) arg)
+    {
+        if (RenderRegistryIdPropertiesUnit(arg.unit, arg.settings, out var code, out var file))
+        {
+            context.AddSource(file, code);
         }
     }
 }

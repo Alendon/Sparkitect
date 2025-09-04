@@ -23,10 +23,16 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
         AnalyzerConfigFiles.Add(("/TestConfig.editorconfig", 
             """
             is_global = true
-            build_property.ModName = TestMod
-            build_property.RootNamespace = DiTest
+            build_property.ModName = Sample Test Mod
+            build_property.ModId = sample_test
+            build_property.RootNamespace = SampleTest
+            build_property.SgOutputNamespace = SampleTest.Generated
             """));
     }
+    
+    public override ModBuildSettings BuildSettings => new("Sample Test Mod", "sample_test",
+        "SampleTest", false, "SampleTest.Generated");
+    
     
     [Test]
     public async Task SingletonGenerator_FullRun_NoDependencies(CancellationToken token)
@@ -80,9 +86,7 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
             new SingletonModel("global::DiTest.TestService_Factory")
         );
 
-        var buildSettings = new ModBuildSettings("TestMod", "DiTest", false, "");
-
-        var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, buildSettings);
+        var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, BuildSettings);
 
         await Assert.That(containerModel.ConfiguratorClassName).IsEqualTo("DiTestConfigurator");
         await Assert.That(containerModel.Namespace).IsEqualTo("DiTest");
@@ -98,9 +102,7 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
             new SingletonModel("global::DiTest.TestService_Factory")
         );
 
-        var buildSettings = new ModBuildSettings("TestMod", "", false, "");
-
-        var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, buildSettings);
+        var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, BuildSettings);
 
         await Assert.That(containerModel.ConfiguratorClassName).IsEqualTo("GeneratedConfigurator");
         await Assert.That(containerModel.Namespace).IsEqualTo("Generated");

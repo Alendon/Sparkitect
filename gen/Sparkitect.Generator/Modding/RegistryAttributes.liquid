@@ -4,13 +4,15 @@ namespace {{ Namespace }};
 public partial class {{ RegistryName }}
 {
 {% for method in Methods -%}
-    public class {{ method }}Attribute(string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
+    public class {{ method.Name }}Attribute(string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
     {
         public bool GroupAtRoot { get; set; } = false;
+{%- for f in method.Files -%}
+        public string{% if f.IsNullable %}?{% endif %} {{ f.Prop }} { get; set; }
+{%- endfor %}
     }
 {%- unless forloop.last %}
 
 {% endunless -%}
 {% endfor %}
 }
-

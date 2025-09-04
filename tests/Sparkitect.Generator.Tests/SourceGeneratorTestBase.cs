@@ -28,6 +28,8 @@ public abstract class SourceGeneratorTestBase<TSourceGenerator>
         verifySettings.UseDirectory("TestResults");
     }
     
+    public abstract ModBuildSettings BuildSettings { get; }
+    
     private static readonly Lazy<Workspace> Workspace = new(CreateWorkspace);
 
     /// <summary>

@@ -31,4 +31,20 @@
         <Compile Remove="**/TestResults/**/*.cs" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_RegistrationsUnit_TypeEntry_Snapshot.received.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_RegistrationsUnit_Snapshot.verified.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_RegistrationsUnit_Snapshot.received.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdPropertiesUnit_Snapshot.verified.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdPropertiesUnit_Snapshot.received.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdExtensions_Framework_UsesPascalCaseModId_Snapshot.verified.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdExtensions_Framework_UsesPascalCaseModId_Snapshot.received.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdExtensions_Framework_Snapshot.verified.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdExtensions_Framework_Snapshot.received.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdContainer_Framework_Snapshot.verified.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdContainer_Framework_Snapshot.received.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.RenderRegistryAttributes_SingleFile_Snapshot.verified.txt" />
+      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.RenderRegistryAttributes_SingleFile_Snapshot.received.txt" />
+    </ItemGroup>
+
 </Project>

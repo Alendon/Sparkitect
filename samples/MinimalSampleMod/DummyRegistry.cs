@@ -1,5 +1,6 @@
 ﻿using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
+using DummyRegistryValue = MinimalSampleMod.DummyRegistry.RegisterValueAttribute;
 
 namespace MinimalSampleMod;
 
@@ -49,6 +50,7 @@ public static class RegistryExample
     // If they are not annotated nullable, the startup fails if these types cannot be found in the container.
     [DummyRegistry.RegisterValue("hello1")]
     public static string SomeValueToRegister(object dummyDiObject) => "Hello World " + dummyDiObject;
+
 
     //The RegisterGenericValueAttribute is currently not generated. @Codex fix this issue
     [DummyRegistry.RegisterGenericValue("hello2")]

@@ -62,13 +62,7 @@ namespace MinimalSampleMod.DI
 
 namespace Sparkitect.Modding.IDs
 {
-    // One empty stub class for holding the ID Values, get generated per RegistryCategory from the assembly which adds the registry
-    public static class DummyID
-    {
-
-    }
-
-    
+   
     public static class DummyIDExtension
     {
         // For each Mod one or multiple extensions can be created per ID Value Container

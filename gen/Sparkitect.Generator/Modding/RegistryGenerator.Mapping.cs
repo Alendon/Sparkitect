@@ -8,9 +8,9 @@ public partial class RegistryGenerator
 {
     internal class RegistryMap
     {
-        private readonly Dictionary<string, RegistryModel> _registryModels;
+        private readonly Dictionary<string, (RegistryModel Model, bool IsCurrentCompilation)> _registryModels;
 
-        private RegistryMap(Dictionary<string, RegistryModel> registryModels)
+        private RegistryMap(Dictionary<string, (RegistryModel Model, bool IsCurrentCompilation)> registryModels)
         {
             _registryModels = registryModels;
         }
@@ -18,16 +18,26 @@ public partial class RegistryGenerator
         public static RegistryMap Create(
             (ImmutableArray<RegistryModel> Left, ImmutableValueArray<RegistryModel> Right) valueTuple)
         {
-            Dictionary<string, RegistryModel> models = [];
-            
+            Dictionary<string, (RegistryModel, bool)> models = [];
+
+            // Left: current compilation
             foreach (var registryModel in valueTuple.Left)
             {
-                models.Add(Combine(registryModel.ContainingNamespace, registryModel.TypeName), registryModel);
+                var key = Combine(registryModel.ContainingNamespace, registryModel.TypeName);
+                models[key] = (registryModel, true);
             }
-            
+
+            // Right: from referenced assemblies
             foreach (var registryModel in valueTuple.Right)
             {
-                models.Add(Combine(registryModel.ContainingNamespace, registryModel.TypeName), registryModel);
+                var key = Combine(registryModel.ContainingNamespace, registryModel.TypeName);
+                if (models.TryGetValue(key, out var existing))
+                {
+                    // Prefer current compilation when clashing
+                    if (existing.Item2)
+                        continue;
+                }
+                models[key] = (registryModel, false);
             }
 
             return new RegistryMap(models);
@@ -40,7 +50,12 @@ public partial class RegistryGenerator
             model = null;
             if (!metadataName.EndsWith(suffix)) return false;
             var accessor = metadataName.Substring(0, metadataName.LastIndexOf(suffix, StringComparison.Ordinal));
-            return _registryModels.TryGetValue(accessor, out model);
+            if (_registryModels.TryGetValue(accessor, out var tuple))
+            {
+                model = tuple.Model;
+                return true;
+            }
+            return false;
         }
 
         public bool TryGetValue(string @namespace, string typeName, out RegistryModel model)
@@ -50,23 +65,36 @@ public partial class RegistryGenerator
         
         public bool TryGetValue(string fullName, out RegistryModel model)
         {
-            return _registryModels.TryGetValue(fullName, out model);
+            if (_registryModels.TryGetValue(fullName, out var tuple))
+            {
+                model = tuple.Model;
+                return true;
+            }
+            model = null!;
+            return false;
         }
 
         public bool TryGetByTypeName(string typeName, out RegistryModel? model)
         {
             model = null;
+            RegistryModel? candidateFromCurrent = null;
+            RegistryModel? candidateFromRefs = null;
+
             foreach (var kvp in _registryModels)
             {
                 var lastDot = kvp.Key.LastIndexOf('.') + 1;
                 var simple = lastDot > 0 && lastDot < kvp.Key.Length ? kvp.Key.Substring(lastDot) : kvp.Key;
                 if (string.Equals(simple, typeName, StringComparison.Ordinal))
                 {
-                    model = kvp.Value;
-                    return true;
+                    if (kvp.Value.IsCurrentCompilation)
+                        candidateFromCurrent = kvp.Value.Model;
+                    else if (candidateFromRefs is null)
+                        candidateFromRefs = kvp.Value.Model;
                 }
             }
-            return false;
+
+            model = candidateFromCurrent ?? candidateFromRefs;
+            return model is not null;
         }
         
         
@@ -86,7 +114,7 @@ public partial class RegistryGenerator
 
             foreach (var kvp in _registryModels)
             {
-                if (!other._registryModels.TryGetValue(kvp.Key, out var value) || !kvp.Value.Equals(value))
+                if (!other._registryModels.TryGetValue(kvp.Key, out var value) || !kvp.Value.Model.Equals(value.Model))
                 {
                     return false;
                 }
@@ -103,7 +131,8 @@ public partial class RegistryGenerator
 
             foreach (var value in _registryModels)
             {
-                hashCode.Add(value);
+                hashCode.Add(value.Key);
+                hashCode.Add(value.Value.Model);
             }
 
             return hashCode.ToHashCode();

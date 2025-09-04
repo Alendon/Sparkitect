@@ -1,0 +1,13 @@
+namespace {{ ExtensionsNamespace }};
+
+public static partial class IdExtensions
+{
+    extension(global::Sparkitect.Modding.IDs.{{ CategoryPascal }}ID)
+    {
+        public static {{ ModStructName }} {{ ModNamePascal }} => default;
+    }
+}
+
+public readonly partial struct {{ ModStructName }}
+{
+}

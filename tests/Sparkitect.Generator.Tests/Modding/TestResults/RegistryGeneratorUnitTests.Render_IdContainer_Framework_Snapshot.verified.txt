@@ -1,0 +1,6 @@
+﻿namespace Sparkitect.Modding.IDs;
+
+public static class DummyID
+{
+}
+

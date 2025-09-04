@@ -1,0 +1,9 @@
+namespace {{ ExtensionsNamespace }};
+
+public readonly partial struct {{ ModStructName }}
+{
+{% for entry in Entries -%}
+    public global::Sparkitect.Modding.Identification {{ entry.PropertyName }} => global::{{ RegistrationsNamespace }}.{{ RegistryName }}Registrations_{{ SourceTag }}.{{ entry.PropertyName }};
+{% endfor -%}
+}
+

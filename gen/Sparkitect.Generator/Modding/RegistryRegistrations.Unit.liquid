@@ -1,0 +1,42 @@
+namespace {{ Namespace }};
+
+using Sparkitect.Modding;
+using Sparkitect.DI;
+using Sparkitect.DI.Container;
+
+[global::Sparkitect.DI.RegistrationsEntrypoint]
+public class {{ RegistryName }}Registrations_{{ SourceTag }}(global::Sparkitect.Modding.IIdentificationManager identificationManager{% if UseResourceManager %}, global::Sparkitect.Modding.IResourceManager resourceManager{% endif %}) : global::Sparkitect.DI.Registrations<global::{{ RegistryFullName }}>
+{
+    public override string CategoryIdentifier => "{{ CategoryKey }}";
+
+{% for entry in Entries -%}
+    public static global::Sparkitect.Modding.Identification {{ entry.PropertyName }} { get; private set; }
+{% endfor %}
+
+    public override void PrePhaseRegistration(global::{{ RegistryFullName }} registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
+
+    public override void MainPhaseRegistration(global::{{ RegistryFullName }} registry, global::Sparkitect.DI.Container.ICoreContainer container)
+    {
+{% for e in Entries -%}
+        {{ e.PropertyName }} = identificationManager.RegisterObject("{{ ModNameSnakeCase }}", "{{ CategoryKey }}", "{{ e.Id }}");
+{% if e.Files and e.Files.size > 0 -%}
+        {%- for f in e.Files %}
+        resourceManager.SetResource({{ e.PropertyName }}, "{{ f.fileId }}", "{{ f.fileName }}");
+        {%- endfor %}
+{% endif -%}
+{% if e.Kind == "Method" -%}
+        // TODO: DI param resolution is not yet implemented for unit generation
+        var _value_{{ e.PropertyName }} = {{ e.ProviderFullName }}();
+        registry.{{ e.MethodName }}({{ e.PropertyName }}, _value_{{ e.PropertyName }});
+{% elsif e.Kind == "Type" -%}
+        registry.{{ e.MethodName }}<{{ e.TypeFullName }}>({{ e.PropertyName }});
+{% elsif e.Kind == "Resource" -%}
+        {%- if e.MethodName != "" %}registry.{{ e.MethodName }}({{ e.PropertyName }});{%- endif %}
+{% endif -%}
+
+{% endfor -%}
+    }
+
+    public override void PostPhaseRegistration(global::{{ RegistryFullName }} registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
+}
+

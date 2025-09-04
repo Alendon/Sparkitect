@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.Testing;
@@ -16,6 +17,7 @@ public class LogEnricherTests : SourceGeneratorTestBase<LogEnricherGenerator>
         ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("Serilog", "4.2.0")]);
     }
 
+    public override ModBuildSettings BuildSettings => throw new NotImplementedException();
 
     [Test]
     public async Task SingleLogStatement(CancellationToken token)
