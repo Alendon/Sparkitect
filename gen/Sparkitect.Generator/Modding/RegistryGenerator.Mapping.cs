@@ -8,9 +8,9 @@ public partial class RegistryGenerator
 {
     internal class RegistryMap
     {
-        private readonly Dictionary<string, (RegistryModel Model, bool IsCurrentCompilation)> _registryModels;
+        private readonly Dictionary<string, RegistryModel> _registryModels;
 
-        private RegistryMap(Dictionary<string, (RegistryModel Model, bool IsCurrentCompilation)> registryModels)
+        internal RegistryMap(Dictionary<string, RegistryModel> registryModels)
         {
             _registryModels = registryModels;
         }
@@ -18,89 +18,35 @@ public partial class RegistryGenerator
         public static RegistryMap Create(
             (ImmutableArray<RegistryModel> Left, ImmutableValueArray<RegistryModel> Right) valueTuple)
         {
-            Dictionary<string, (RegistryModel, bool)> models = [];
+            Dictionary<string, RegistryModel> models = [];
 
             // Left: current compilation
             foreach (var registryModel in valueTuple.Left)
             {
                 var key = Combine(registryModel.ContainingNamespace, registryModel.TypeName);
-                models[key] = (registryModel, true);
+                models[key] = registryModel;
             }
 
             // Right: from referenced assemblies
             foreach (var registryModel in valueTuple.Right)
             {
                 var key = Combine(registryModel.ContainingNamespace, registryModel.TypeName);
-                if (models.TryGetValue(key, out var existing))
-                {
-                    // Prefer current compilation when clashing
-                    if (existing.Item2)
-                        continue;
-                }
-                models[key] = (registryModel, false);
+                models[key] = registryModel;
             }
 
             return new RegistryMap(models);
         }
 
-        public bool TryGetValueByMetadataName(string metadataName, out RegistryModel? model)
+        public bool TryGetByFullName(string typeName, string? @namespace, out RegistryModel? model)
         {
-            const string suffix = "_Metadata";
-            
-            model = null;
-            if (!metadataName.EndsWith(suffix)) return false;
-            var accessor = metadataName.Substring(0, metadataName.LastIndexOf(suffix, StringComparison.Ordinal));
-            if (_registryModels.TryGetValue(accessor, out var tuple))
-            {
-                model = tuple.Model;
-                return true;
-            }
-            return false;
-        }
-
-        public bool TryGetValue(string @namespace, string typeName, out RegistryModel model)
-        {
-            return TryGetValue(Combine(@namespace, typeName), out model);
+            return TryGetByFullName($"{(@namespace is null ? "" : $"{@namespace}.")}{typeName}", out model);
         }
         
-        public bool TryGetValue(string fullName, out RegistryModel model)
+        public bool TryGetByFullName(string fullName, out RegistryModel? model)
         {
-            if (_registryModels.TryGetValue(fullName, out var tuple))
-            {
-                model = tuple.Model;
-                return true;
-            }
-            model = null!;
-            return false;
-        }
-
-        public bool TryGetByTypeName(string typeName, out RegistryModel? model)
-        {
-            model = null;
-            RegistryModel? candidateFromCurrent = null;
-            RegistryModel? candidateFromRefs = null;
-
-            foreach (var kvp in _registryModels)
-            {
-                var lastDot = kvp.Key.LastIndexOf('.') + 1;
-                var simple = lastDot > 0 && lastDot < kvp.Key.Length ? kvp.Key.Substring(lastDot) : kvp.Key;
-                if (string.Equals(simple, typeName, StringComparison.Ordinal))
-                {
-                    if (kvp.Value.IsCurrentCompilation)
-                        candidateFromCurrent = kvp.Value.Model;
-                    else if (candidateFromRefs is null)
-                        candidateFromRefs = kvp.Value.Model;
-                }
-            }
-
-            model = candidateFromCurrent ?? candidateFromRefs;
-            return model is not null;
+            return _registryModels.TryGetValue(fullName, out model);
         }
         
-        
-
-
-
         public override bool Equals(object? obj)
         {
             return obj is RegistryMap other && Equals(other);
@@ -114,7 +60,7 @@ public partial class RegistryGenerator
 
             foreach (var kvp in _registryModels)
             {
-                if (!other._registryModels.TryGetValue(kvp.Key, out var value) || !kvp.Value.Model.Equals(value.Model))
+                if (!other._registryModels.TryGetValue(kvp.Key, out var value) || !kvp.Value.Equals(value))
                 {
                     return false;
                 }
@@ -132,7 +78,7 @@ public partial class RegistryGenerator
             foreach (var value in _registryModels)
             {
                 hashCode.Add(value.Key);
-                hashCode.Add(value.Value.Model);
+                hashCode.Add(value.Value);
             }
 
             return hashCode.ToHashCode();

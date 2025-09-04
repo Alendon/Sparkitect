@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -15,6 +16,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        //Debugger.Launch();
+
         var buildSettings = context.GetModBuildSettings();
 
         var symbolRegistryModelsProvider = context.SyntaxProvider.ForAttributeWithMetadataName(RegistryMarkerAttribute,
@@ -56,13 +59,18 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         // Resource files: keep parse as a separate result carrying path + entries
         var resourceFileRegistrationProvider = context.AdditionalTextsProvider
-            .Where(x => x.Path.EndsWith(ResourceFileSuffix))
-            .Select((text, cancellation) => (text.Path, Entries: ParseResourceYaml(text, cancellation)));
+            .Where(x =>
+                x.Path.EndsWith(ResourceFileSuffix))
+            .Select((text, cancellation) => (
+                text.Path,
+                Entries:
+                ParseResourceYaml(text, cancellation)));
 
         // Provider attribute usages: scan all attributes to capture provider candidates
         var providerCandidateProvider = context.SyntaxProvider.CreateSyntaxProvider(
                 static (n, _) => n is AttributeSyntax,
-                static (ctx, cancellationToken) => TryBuildProviderCandidate(ctx.Node, ctx.SemanticModel, cancellationToken))
+                static (ctx, cancellationToken) =>
+                    TryBuildProviderCandidate(ctx.Node, ctx.SemanticModel, cancellationToken))
             .NotNull();
 
         // Registration units from provider attributes (grouped per registry)
@@ -76,7 +84,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
         // Registration units from resource files (grouped per registry across all files)
         var resourceUnitsProvider = resourceFileRegistrationProvider
             .Combine(registryMapProvider)
-            .Select(static (pair, _) => BuildUnitsForResourceFile(pair.Left.Path, pair.Left.Entries, pair.Right))
+            .Select(static (pair, _) => 
+                BuildUnitsForResourceFile(pair.Left.Entries, pair.Right))
             .Collect()
             .SelectMany(static (allUnits, _) =>
             {
@@ -86,6 +95,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 {
                     foreach (var u in units) flat.Add(u);
                 }
+
                 return GroupUnitsByRegistry([..flat], SourceKind.Yaml, "Resources");
             });
 
@@ -114,69 +124,66 @@ public partial class RegistryGenerator : IIncrementalGenerator
         var sourceText = text.GetText(cancellation);
         if (sourceText is null) return result.ToImmutableValueArray();
 
-        try
+
+        var deserializer = new DeserializerBuilder()
+            .WithNamingConvention(CamelCaseNamingConvention.Instance)
+            .Build();
+
+        var raw = sourceText.ToString();
+
+        var root = deserializer.Deserialize<Dictionary<string, List<ResourceYamlEntry>>>(raw);
+        if (root is not null)
         {
-            var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(CamelCaseNamingConvention.Instance)
-                .Build();
-
-            var raw = sourceText.ToString();
-            
-            var root = deserializer.Deserialize<Dictionary<string, List<ResourceYamlEntry>>>(raw);
-            if (root is not null)
+            foreach (var registry in root)
             {
-                foreach (var registry in root)
+                if (string.IsNullOrWhiteSpace(registry.Key) || registry.Value is null) continue;
+
+                foreach (var entry in registry.Value)
                 {
-                    if (string.IsNullOrWhiteSpace(registry.Key) || registry.Value is null) continue;
+                    if (string.IsNullOrWhiteSpace(entry.Id)) continue;
 
-                    foreach (var entry in registry.Value)
+                    var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
+                    if (entry.Files is not null)
                     {
-                        if (string.IsNullOrWhiteSpace(entry.Id)) continue;
-
-                        var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
-                        if (entry.Files is not null)
+                        foreach (var file in entry.Files.OrderBy(kvp => kvp.Key))
                         {
-                            foreach (var file in entry.Files.OrderBy(kvp => kvp.Key))
-                            {
-                                files.Add((file.Key, file.Value));
-                            }
+                            files.Add((file.Key, file.Value));
                         }
-
-                        // Single-file support: map to implicit key "default"
-                        if (!string.IsNullOrWhiteSpace(entry.File))
-                        {
-                            files.Add(("default", entry.File));
-                        }
-
-                        result.Add(new FileRegistrationEntry(
-                            registry.Key,
-                            entry.Id!,
-                            files.ToImmutableValueArray()
-                        ));
                     }
+
+                    // Single-file support: map to implicit key "default"
+                    if (!string.IsNullOrWhiteSpace(entry.File))
+                    {
+                        files.Add(("default", entry.File));
+                    }
+
+                    var methodSplitIndex = registry.Key.LastIndexOf('.');
+
+                    result.Add(new FileRegistrationEntry(
+                        registry.Key.Substring(0, methodSplitIndex),
+                        registry.Key.Substring(methodSplitIndex+1),
+                        entry.Id!,
+                        files.ToImmutableValueArray()
+                    ));
                 }
             }
         }
-        catch
-        {
-            //The file is invalid. This should be caught by the Analyzer
-            return new ImmutableValueArray<FileRegistrationEntry>();
-        }
+
 
         return result.ToImmutableValueArray();
     }
 
     internal static ImmutableValueArray<RegistrationUnit> BuildUnitsForResourceFile(
-        string sourcePath,
         ImmutableValueArray<FileRegistrationEntry> entries,
         RegistryMap regMap)
     {
         // Group by registry model from metadata class; avoid global Collect by local grouping only within this file
-        var map = new Dictionary<string, (RegistryModel model, ImmutableValueArray<RegistrationEntry>.Builder builder)>();
+        var map =
+            new Dictionary<string, (RegistryModel model, ImmutableValueArray<RegistrationEntry>.Builder builder)>();
 
         foreach (var e in entries)
         {
-            if (!regMap.TryGetValueByMetadataName(e.MetadataClass, out var model) || model is null)
+            if (!regMap.TryGetByFullName(e.RegistryClass, out var model) || model is null)
                 continue;
             var key = model.ContainingNamespace + "." + model.TypeName;
             if (!map.TryGetValue(key, out var bucket))
@@ -184,11 +191,10 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 bucket = (model, new ImmutableValueArray<RegistrationEntry>.Builder());
             }
 
-            // Resource entries: kind None → Resource; method name is the resource method in model if present, else empty
-            var resMethod = model.RegisterMethods.FirstOrDefault(m => m.PrimaryParameterKind == PrimaryParameterKind.None)?.FunctionName ?? string.Empty;
 
             var files = e.Files.ToImmutableValueArray();
-            var entry = new RegistrationEntry(e.Id, EntryKind.Resource, resMethod, string.Empty, string.Empty, files, []);
+            var entry = new RegistrationEntry(e.Id, EntryKind.Resource, e.MethodName, string.Empty, string.Empty, files,
+                []);
             bucket.builder.Add(entry);
             map[key] = bucket;
         }
@@ -221,7 +227,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
         return units.ToImmutableValueArray();
     }
 
-    internal static ImmutableArray<RegistrationUnit> GroupUnitsByRegistry(ImmutableArray<RegistrationUnit> units, SourceKind kind, string sourceTag)
+    internal static ImmutableArray<RegistrationUnit> GroupUnitsByRegistry(ImmutableArray<RegistrationUnit> units,
+        SourceKind kind, string sourceTag)
     {
         var map = new Dictionary<RegistryModel, ImmutableValueArray<RegistrationEntry>.Builder>();
 

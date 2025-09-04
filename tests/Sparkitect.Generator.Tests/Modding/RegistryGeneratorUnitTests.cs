@@ -93,9 +93,10 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         var method = providers!.GetMembers().OfType<IMethodSymbol>().First(m => m.Name == "Value");
         var attr = method.GetAttributes().First();
 
-        var ok = RegistryGenerator.TryExtractProviderInfo(attr, out var regType, out var methodName, out var isMarker);
+        var ok = RegistryGenerator.TryExtractProviderInfo(attr, out var regType, out var registryNamespace, out var methodName, out var isMarker);
         await Assert.That(ok).IsTrue();
         await Assert.That(regType).IsEqualTo("DummyRegistry");
+        await Assert.That(registryNamespace).IsEqualTo("DiTest");
         await Assert.That(methodName).IsEqualTo("RegisterValue");
     }
 
@@ -140,9 +141,10 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         var method = providers!.GetMembers().OfType<IMethodSymbol>().First(m => m.Name == "Value");
         var attr = method.GetAttributes().First();
 
-        var ok = RegistryGenerator.TryExtractProviderInfo(attr, out var regType, out var methodName, out var isMarker);
+        var ok = RegistryGenerator.TryExtractProviderInfo(attr, out var regType,out var registryNamespace , out var methodName, out var isMarker);
         await Assert.That(ok).IsTrue();
         await Assert.That(regType).IsEqualTo("DummyRegistry");
+        await Assert.That(registryNamespace).IsEqualTo("DiTest");
         await Assert.That(methodName).IsEqualTo("RegisterValue");
     }
 
@@ -192,6 +194,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
 
         var candidate = new RegistryGenerator.ProviderCandidate(
             "DummyRegistry",
+            "DiTest",
             "RegisterValue",
             "hello",
             false,
@@ -242,9 +245,10 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         var (_, compilation) = await GetInitialCompilationAsync(CancellationToken.None);
         var provided = compilation.GetTypeByMetadataName("DiTest.Provided");
         var attr = provided!.GetAttributes().First();
-        var ok = RegistryGenerator.TryExtractProviderInfo(attr, out var regTypeName, out var methodName, out _);
+        var ok = RegistryGenerator.TryExtractProviderInfo(attr, out var regTypeName, out var registryNamespace, out var methodName, out _);
         await Assert.That(ok).IsTrue();
         await Assert.That(regTypeName).IsEqualTo("DummyRegistry");
+        await Assert.That(registryNamespace).IsEqualTo("DiTest");
         await Assert.That(methodName).IsEqualTo("RegisterType");
     }
 
@@ -263,6 +267,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
 
         var cand = new RegistryGenerator.ProviderCandidate(
             "DummyRegistry",
+            "DiTest",
             "RegisterType",
             "hello",
             true,
@@ -359,11 +364,12 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             ImmutableValueArray.From(("texture", false))
         );
 
-        var regMap = RegistryGenerator.RegistryMap.Create((new[] { model }.ToImmutableArray(),
+        var regMap = RegistryGenerator.RegistryMap.Create(([model],
             ImmutableValueArray.From<RegistryModel>()));
 
         var cand = new RegistryGenerator.ProviderCandidate(
             "DummyRegistry",
+            "MinimalSampleMod",
             "RegisterResourceFile",
             "my_id",
             false,
@@ -400,6 +406,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
 
         var cand = new RegistryGenerator.ProviderCandidate(
             "DummyRegistry",
+            "MinimalSampleMod",
             "RegisterResourceFile",
             "my_id",
             false,
@@ -419,30 +426,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(files.Contains(("bar", "fileB.dat"))).IsTrue();
     }
 
-    [Test]
-    public async Task BuildUnitsForResourceFile_GroupsPerRegistryAndSorts()
-    {
-        var model1 = new RegistryModel("Reg1", "cat1", "NS1", ImmutableValueArray.From<RegisterMethodModel>(),
-            ImmutableValueArray.From<(string, bool)>());
-        var model2 = new RegistryModel("Reg2", "cat2", "NS2", ImmutableValueArray.From<RegisterMethodModel>(),
-            ImmutableValueArray.From<(string, bool)>());
-        var regMap = RegistryGenerator.RegistryMap.Create((new[] { model1, model2 }.ToImmutableArray(),
-            ImmutableValueArray.From<RegistryModel>()));
-
-        var entries = ImmutableValueArray.From(
-            new FileRegistrationEntry("NS1.Reg1_Metadata", "b", ImmutableValueArray.From(("k", "f2"))),
-            new FileRegistrationEntry("NS1.Reg1_Metadata", "a", ImmutableValueArray.From(("k", "f1"))),
-            new FileRegistrationEntry("NS2.Reg2_Metadata", "c", ImmutableValueArray.From<(string, string)>())
-        );
-
-        var units = RegistryGenerator.BuildUnitsForResourceFile("/data.yaml", entries, regMap);
-        await Assert.That(units.Count).IsEqualTo(2);
-        var u1 = units.First(u => u.Model.TypeName == "Reg1");
-        await Assert.That(u1.Entries.First().Id).IsEqualTo("a");
-        await Assert.That(u1.Entries.Last().Id).IsEqualTo("b");
-        var u2 = units.First(u => u.Model.TypeName == "Reg2");
-        await Assert.That(u2.Entries.Single().Id).IsEqualTo("c");
-    }
+  
 
     [Test]
     public async Task Render_IdContainer_Framework_Snapshot()

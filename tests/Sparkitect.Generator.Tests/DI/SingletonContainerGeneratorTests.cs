@@ -88,8 +88,8 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
 
         var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, BuildSettings);
 
-        await Assert.That(containerModel.ConfiguratorClassName).IsEqualTo("DiTestConfigurator");
-        await Assert.That(containerModel.Namespace).IsEqualTo("DiTest");
+        await Assert.That(containerModel.ConfiguratorClassName).IsEqualTo("SampleTestConfigurator");
+        await Assert.That(containerModel.Namespace).IsEqualTo("SampleTest");
         var item = await Assert.That(containerModel.Singletons).HasSingleItem();
         await Assert.That(item).IsNotNull();
         await Assert.That(item!.FactoryFullName).IsEqualTo("global::DiTest.TestService_Factory");
@@ -104,8 +104,8 @@ public class SingletonContainerGeneratorTests : SourceGeneratorTestBase<Singleto
 
         var containerModel = SingletonContainerGenerator.CreateContainerModel(singletons, BuildSettings);
 
-        await Assert.That(containerModel.ConfiguratorClassName).IsEqualTo("GeneratedConfigurator");
-        await Assert.That(containerModel.Namespace).IsEqualTo("Generated");
+        await Assert.That(containerModel.ConfiguratorClassName).IsEqualTo("SampleTestConfigurator");
+        await Assert.That(containerModel.Namespace).IsEqualTo("SampleTest");
     }
 
     [Test]

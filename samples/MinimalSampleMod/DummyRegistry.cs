@@ -66,6 +66,6 @@ public static class RegistryExample
     {
         // Utilize the extension to have a statically typed access to the Hello Identification
         // While maintaining a coherent/easy access
-        Identification helloId = DummyID.MinimalSampleMod.Hello1;
+        Identification helloId = DummyID.MinimalSampleMod.Hello4;
     }
 }

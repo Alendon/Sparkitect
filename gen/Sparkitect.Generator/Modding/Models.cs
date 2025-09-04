@@ -27,7 +27,7 @@ public record TypeRegistrationEntry(
     string Id,
     string ProvidedTypeFullName);
 
-public record FileRegistrationEntry(string MetadataClass, string Id,  ImmutableValueArray<(string fileId, string fileName)> Files);
+public record FileRegistrationEntry(string RegistryClass, string MethodName, string Id, ImmutableValueArray<(string fileId, string fileName)> Files);
 
 
 /// <summary>

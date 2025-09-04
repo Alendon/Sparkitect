@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
@@ -33,7 +34,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             build_property.SgOutputNamespace = SampleTest.Generated
             """));
     }
-    
+
     public override ModBuildSettings BuildSettings => new("Sample Test Mod", "sample_test",
         "SampleTest", false, "SampleTest.Generated");
 
@@ -286,13 +287,14 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     {
         var models = ImmutableArray<RegistryModel>.Empty;
 
-        var success = RegistryGenerator.RenderRegistryConfigurator(models, BuildSettings, out var code, out var fileName);
+        var success =
+            RegistryGenerator.RenderRegistryConfigurator(models, BuildSettings, out var code, out var fileName);
 
         await Assert.That(success).IsFalse();
         await Assert.That(fileName).IsEqualTo("RegistryConfigurator.g.cs");
         await Assert.That(code).IsEmpty();
     }
-    
+
     [Test]
     public async Task ParseResourceYaml_NullSourceText_ReturnsEmpty()
     {
@@ -321,10 +323,33 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
 
         await Assert.That(result).HasCount().EqualTo(1);
         var entry = result.First();
-        await Assert.That(entry.MetadataClass).IsEqualTo("MinimalSampleMod.DummyRegistry.Register");
+        await Assert.That(entry.RegistryClass).IsEqualTo("MinimalSampleMod.DummyRegistry");
+        await Assert.That(entry.MethodName).IsEqualTo("Register");
         await Assert.That(entry.Id).IsEqualTo("test");
         await Assert.That(entry.Files).HasSingleItem();
         await Assert.That(entry.Files.Contains(("default", "test.abc"))).IsTrue();
+    }
+
+    [Test]
+    public async Task BuildUnitsForResourceFile_SingleEntry()
+    {
+        var entries = ImmutableValueArray.From(
+            new FileRegistrationEntry("MinimalSampleMod.DummyRegistry", "RegisterResourceFile", "hello4",
+                ImmutableValueArray.From(("default", "exclusive.txt"))));
+
+        var map = new RegistryGenerator.RegistryMap(
+            new Dictionary<string, RegistryModel>
+            {
+                {
+                    "MinimalSampleMod.DummyRegistry", new RegistryModel("DummyRegistry", "dummy", "MinimalSampleMod",
+                        ImmutableValueArray.From(new RegisterMethodModel(
+                            "RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, [])), [])
+                }
+            });
+
+        var units = RegistryGenerator.BuildUnitsForResourceFile(entries, map);
+
+        await Assert.That(units).HasSingleItem();
     }
 
     [Test]
@@ -353,11 +378,13 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(result).HasCount().EqualTo(3);
 
         var entry1 = result.First(e => e.Id == "entry1");
-        await Assert.That(entry1.MetadataClass).IsEqualTo("TestMod.Registry1.Register");
+        await Assert.That(entry1.RegistryClass).IsEqualTo("TestMod.Registry1");
+        await Assert.That(entry1.MethodName).IsEqualTo("Register");
         await Assert.That(entry1.Files.Contains(("config", "config.json"))).IsTrue();
 
         var entry3 = result.First(e => e.Id == "entry3");
-        await Assert.That(entry3.MetadataClass).IsEqualTo("TestMod.Registry2.Register");
+        await Assert.That(entry3.RegistryClass).IsEqualTo("TestMod.Registry2");
+        await Assert.That(entry3.MethodName).IsEqualTo("Register");
         await Assert.That(entry3.Files.Contains(("image", "image.png"))).IsTrue();
     }
 
@@ -377,9 +404,9 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
 
         await Assert.That(result).HasCount().EqualTo(1);
         var entry = result.First();
-        await Assert.That(entry.MetadataClass).IsEqualTo("MinimalSampleMod.DummyRegistry.RegisterResourceFile");
+        await Assert.That(entry.RegistryClass).IsEqualTo("MinimalSampleMod.DummyRegistry");
+        await Assert.That(entry.MethodName).IsEqualTo("RegisterResourceFile");
         await Assert.That(entry.Id).IsEqualTo("entry1");
         await Assert.That(entry.Files).HasCount().EqualTo(0);
     }
-
 }

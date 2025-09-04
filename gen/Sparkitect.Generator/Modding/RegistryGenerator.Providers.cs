@@ -17,6 +17,7 @@ public partial class RegistryGenerator
 
     internal sealed record ProviderCandidate(
         string RegistryTypeName,
+        string? RegistryNamespace,
         string MethodName,
         string Id,
         bool IsTypeProvider,
@@ -27,16 +28,21 @@ public partial class RegistryGenerator
         ImmutableValueArray<(string paramType, bool isNullable)> DiParameters);
 
     internal static bool TryExtractProviderInfo(AttributeData attribute,
-        out string registryTypeName, out string methodName, out bool isRegisterMarker)
+        out string registryTypeName, out string? registryNamespace, out string methodName, out bool isRegisterMarker)
     {
         registryTypeName = string.Empty;
         methodName = string.Empty;
         isRegisterMarker = false;
+        registryNamespace = null;
 
         var attrClass = attribute.AttributeClass;
         if (attrClass is null)
         {
             return false;
+        }
+
+        if (attribute.AttributeClass is IErrorTypeSymbol errorSymbol)
+        {
         }
 
         // Determine if attribute implements IRegisterMarker
@@ -47,25 +53,13 @@ public partial class RegistryGenerator
         var name = attrClass.Name;
         methodName = TrimAttributeSuffix(name);
 
-        // Try to derive registry type name from the containing type (nested attribute)
-        if (attrClass.ContainingType is not null)
-        {
-            registryTypeName = attrClass.ContainingType.Name;
-            return true;
-        }
+        var containingType = attrClass.ContainingType;
+        if (containingType is null) return false;
 
-        // Fallback: try display string to extract nested pattern Foo.BarAttribute -> Foo
-        var display = attrClass.ToDisplayString();
-        var lastDot = display.LastIndexOf('.')
-                      - (display.EndsWith("Attribute") ? "Attribute".Length : 0);
-        if (lastDot > 0)
-        {
-            var before = display.Substring(0, display.LastIndexOf('.'));
-            var simpleLastDot = before.LastIndexOf('.');
-            registryTypeName = simpleLastDot >= 0 ? before.Substring(simpleLastDot + 1) : before;
-        }
+        registryTypeName = containingType.Name;
+        registryNamespace = containingType.ContainingNamespace?.ToDisplayString(DisplayFormats.NamespaceAndType);
 
-        return !string.IsNullOrEmpty(registryTypeName) && !string.IsNullOrEmpty(methodName);
+        return attribute.AttributeClass is IErrorTypeSymbol || isRegisterMarker;
     }
 
     private static string TrimAttributeSuffix(string name)
@@ -96,7 +90,8 @@ public partial class RegistryGenerator
             a.ApplicationSyntaxReference?.Span.Equals(attrSyntax.Span) == true);
         if (attributeData is null) return null;
 
-        if (!TryExtractProviderInfo(attributeData, out var registryTypeName, out var methodName, out var isMarker))
+        if (!TryExtractProviderInfo(attributeData, out var registryTypeName, out string? registryNamespace,
+                out var methodName, out var isMarker))
             return null;
 
         // Parse constructor and named args syntactically to be resilient to error types
@@ -140,6 +135,7 @@ public partial class RegistryGenerator
 
         return new ProviderCandidate(
             registryTypeName,
+            registryNamespace,
             methodName,
             id,
             isTypeProvider,
@@ -152,7 +148,7 @@ public partial class RegistryGenerator
 
     internal static RegistrationUnit? MapProviderCandidateToUnit(ProviderCandidate cand, RegistryMap regMap)
     {
-        if (!regMap.TryGetByTypeName(cand.RegistryTypeName, out var model) || model is null)
+        if (!regMap.TryGetByFullName(cand.RegistryTypeName, cand.RegistryNamespace, out var model) || model is null)
             return null;
 
         var isSingleFile = model.ResourceFiles.Count == 1;
@@ -180,7 +176,9 @@ public partial class RegistryGenerator
 
         var files = filesBuilder.ToImmutableValueArray();
 
-        var kind = cand.IsPropertyProvider ? EntryKind.Property : (cand.IsTypeProvider ? EntryKind.Type : EntryKind.Method);
+        var kind = cand.IsPropertyProvider
+            ? EntryKind.Property
+            : (cand.IsTypeProvider ? EntryKind.Type : EntryKind.Method);
 
         var entry = new RegistrationEntry(
             cand.Id,
@@ -219,7 +217,8 @@ public partial class RegistryGenerator
         {
             if (arg.NameEquals is null && arg.NameColon is null)
             {
-                if (arg.Expression is LiteralExpressionSyntax lit && lit.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression))
+                if (arg.Expression is LiteralExpressionSyntax lit &&
+                    lit.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression))
                 {
                     id = lit.Token.ValueText;
                     break;
@@ -239,7 +238,8 @@ public partial class RegistryGenerator
             if (arg.NameEquals is { } nameEq)
             {
                 var prop = nameEq.Name.Identifier.ValueText;
-                if (arg.Expression is LiteralExpressionSyntax lit && lit.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression))
+                if (arg.Expression is LiteralExpressionSyntax lit &&
+                    lit.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression))
                 {
                     var value = lit.Token.ValueText;
                     if (!string.IsNullOrWhiteSpace(value))
@@ -251,5 +251,4 @@ public partial class RegistryGenerator
         files = builder.ToImmutableValueArray();
         return true;
     }
-
 }
