@@ -15,9 +15,19 @@ public static partial class TestData
             [Key] public required string Identifier { get; set; }
         }
         
+        [AttributeUsage(AttributeTargets.Assembly)]
         public class RegistryMetadataAttribute<TMetadata> : Attribute where TMetadata : class;
         
-        public interface IRegistry;
+        [AttributeUsage(AttributeTargets.Method)]
+        public class RegistryMethodAttribute : Attribute;
+        
+        [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+        public class UseResourceFileAttribute : Attribute
+        {
+            public required string Identifier { get; set; }
+            public bool Required { get; set; } = false;
+        }
+        
         
         
         """);

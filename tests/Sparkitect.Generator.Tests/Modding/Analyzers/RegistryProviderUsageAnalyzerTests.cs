@@ -1,0 +1,275 @@
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
+using Sparkitect.Generator.Modding.Analyzers;
+
+namespace Sparkitect.Generator.Tests.Modding.Analyzers;
+
+public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<RegistryProviderUsageAnalyzer>
+{
+    [Before(Test)]
+    public void Setup()
+    {
+        TestSources.Add(TestData.GlobalUsings);
+        TestSources.Add(TestData.ModdingCode);
+        TestSources.Add(TestData.SparkitectCore);
+    }
+
+    [Test]
+    public async Task Smoke_NoDiagnostics_OnEmpty()
+    {
+        TestSources.Add(("Empty.cs", "namespace N { class C { } }"));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task SupportedDiagnostics_ContainsExpected()
+    {
+        var analyzer = new RegistryProviderUsageAnalyzer();
+        var ids = analyzer.SupportedDiagnostics.Select(d => d.Id).ToArray();
+        await Assert.That(ids.Contains("SPARK2020")).IsTrue();
+        await Assert.That(ids.Contains("SPARK2031")).IsTrue();
+    }
+
+    [Test]
+    public async Task MissingId_Reports_2020()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        public static class Providers
+        {
+            [DummyRegistry.RegisterValue()] // id missing
+            public static string NoId() => "x";
+        }
+        """;
+
+        TestSources.Add(("P1.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2020", 1);
+    }
+
+    [Test]
+    public async Task NonStaticProviderMethod_Reports_2021()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        public class Providers
+        {
+            [DummyRegistry.RegisterValue("ok")]
+            public string Value() => "x"; // non-static
+        }
+        """;
+
+        TestSources.Add(("P2.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2021", 1);
+    }
+
+    [Test]
+    public async Task UnknownRegistry_Reports_2022()
+    {
+        var code = """
+        using Sparkitect.Modding;
+        
+        namespace DiTest;
+        
+        // Define a valid registry so attribute pattern is recognizable
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+        
+        public static class Providers
+        {
+            [MissingRegistry.RegisterValue("ok")] // Unknown registry type
+            public static string Value() => "x";
+        }
+        """;
+
+        TestSources.Add(("P3.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2022", 1);
+    }
+
+    [Test]
+    public async Task UnknownMethod_Reports_2023()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        public static class Providers
+        {
+            [DummyRegistry.DoesNotExist("ok")]
+            public static string Value() => "x";
+        }
+        """;
+
+        TestSources.Add(("P4.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2023", 1);
+    }
+
+    [Test]
+    public async Task Id_NotSnakeCase_Reports_2031()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        public static class Providers
+        {
+            [DummyRegistry.RegisterValue("Bad-Id")] // not snake_case
+            public static string Value() => "x";
+        }
+        """;
+
+        TestSources.Add(("P5.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2031", 1);
+    }
+
+    [Test]
+    public async Task KindMismatch_TypeProvider_ToValueMethod_Reports_2024()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        [DummyRegistry.RegisterValue("ok")]
+        public class Provided { }
+        """;
+
+        TestSources.Add(("P6.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2024", 1);
+    }
+
+    [Test]
+    public async Task IncompatibleReturnType_Reports_2025()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        public static class Providers
+        {
+            [DummyRegistry.RegisterValue("ok")]
+            public static int Value() => 42; // expected string
+        }
+        """;
+
+        TestSources.Add(("P7.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2025", 1);
+    }
+
+    [Test]
+    public async Task GenericConstraintViolation_Reports_2026()
+    {
+        var code = """
+        using Sparkitect.Modding;
+        using System;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterType<T>(Identification id) where T : IDisposable { }
+        }
+
+        [DummyRegistry.RegisterType("ok")]
+        public class Provided { } // does not implement IDisposable
+        """;
+
+        TestSources.Add(("P8.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2026", 1);
+    }
+
+    [Test]
+    public async Task DiParameterGuidance_Reports_2032()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        public class Concrete { }
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        public static class Providers
+        {
+            [DummyRegistry.RegisterValue("ok")]
+            public static string Value(Concrete dep) => "x"; // Non-abstract and not nullable
+        }
+        """;
+
+        TestSources.Add(("P9.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2032", 1);
+    }
+}

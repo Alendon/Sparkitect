@@ -41,10 +41,6 @@ public partial class RegistryGenerator
             return false;
         }
 
-        if (attribute.AttributeClass is IErrorTypeSymbol errorSymbol)
-        {
-        }
-
         // Determine if attribute implements IRegisterMarker
         isRegisterMarker = attrClass.AllInterfaces.Any(i =>
             i.ToDisplayString(DisplayFormats.NamespaceAndType) == RegisterMarkerInterface);

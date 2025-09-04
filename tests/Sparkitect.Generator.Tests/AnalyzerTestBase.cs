@@ -47,6 +47,11 @@ public abstract class AnalyzerTestBase<TAnalyzer>
     public List<(string Path, object Content)> AnalyzerConfigFiles { get; } = new();
 
     /// <summary>
+    /// Additional files (e.g., YAML) supplied to analyzers.
+    /// </summary>
+    public List<(string Path, object Content)> AdditionalFiles { get; } = new();
+
+    /// <summary>
     /// Gets or sets the target C# language version for the compilation.
     /// </summary>
     public LanguageVersion LanguageVersion { get; set; } = LanguageVersion.Latest;
@@ -79,9 +84,16 @@ public abstract class AnalyzerTestBase<TAnalyzer>
         var compilation = await CreateCompilationAsync(cancellationToken);
         var analyzer = new TAnalyzer();
 
+        var additional = AdditionalFiles
+            .Select(f => new TextAdditionalFile(f.Path, GetSourceText(f.Content, f.Path)))
+            .Cast<AdditionalText>()
+            .ToImmutableArray();
+
+        var options = new AnalyzerOptions(additional);
+
         var compilationWithAnalyzers = compilation.WithAnalyzers(
             ImmutableArray.Create<DiagnosticAnalyzer>(analyzer),
-            new CompilationWithAnalyzersOptions(null, null, true, false));
+            new CompilationWithAnalyzersOptions(options, null, true, false));
 
         var diagnostics = await compilationWithAnalyzers.GetAllDiagnosticsAsync(cancellationToken);
 
@@ -200,5 +212,20 @@ public abstract class AnalyzerTestBase<TAnalyzer>
         var commandLineArguments = CSharpCommandLineParser.Default.Parse(args,
             baseDirectory: Environment.CurrentDirectory, sdkDirectory: Environment.CurrentDirectory);
         return commandLineArguments.CompilationOptions.SpecificDiagnosticOptions;
+    }
+
+    private sealed class TextAdditionalFile : AdditionalText
+    {
+        private readonly SourceText _text;
+        private readonly string _path;
+
+        public TextAdditionalFile(string path, SourceText text)
+        {
+            _path = path;
+            _text = text;
+        }
+
+        public override string Path => _path;
+        public override SourceText? GetText(CancellationToken cancellationToken = default) => _text;
     }
 }
