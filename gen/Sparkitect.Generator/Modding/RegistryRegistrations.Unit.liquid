@@ -18,25 +18,35 @@ public class {{ RegistryName }}Registrations_{{ SourceTag }}(global::Sparkitect.
     public override void MainPhaseRegistration(global::{{ RegistryFullName }} registry, global::Sparkitect.DI.Container.ICoreContainer container)
     {
 {% for e in Entries -%}
-        {{ e.PropertyName }} = identificationManager.RegisterObject("{{ ModNameSnakeCase }}", "{{ CategoryKey }}", "{{ e.Id }}");
+        {
+            {{ e.PropertyName }} = identificationManager.RegisterObject("{{ ModNameSnakeCase }}", "{{ CategoryKey }}", "{{ e.Id }}");
 {% if e.Files and e.Files.size > 0 -%}
-        {%- for f in e.Files %}
-        resourceManager.SetResource({{ e.PropertyName }}, "{{ f.fileId }}", "{{ f.fileName }}");
-        {%- endfor %}
+            {%- for f in e.Files %}
+            resourceManager.SetResource({{ e.PropertyName }}, "{{ f.fileId }}", "{{ f.fileName }}");
+            {%- endfor %}
 {% endif -%}
 {% if e.Kind == "Method" -%}
-        // TODO: DI param resolution is not yet implemented for unit generation
-        var _value_{{ e.PropertyName }} = {{ e.ProviderFullName }}();
-        registry.{{ e.MethodName }}({{ e.PropertyName }}, _value_{{ e.PropertyName }});
+            {%- for p in e.DiParams %}
+            {%- if p.IsNullable -%}
+            container.TryResolve<{{ p.Type }}>(out var arg_{{ forloop.index0 }});
+            {%- else -%}
+            if(!container.TryResolve<{{ p.Type }}>(out var arg_{{ forloop.index0 }}))
+                throw new global::System.InvalidOperationException("Missing dependency {{ p.Type }} for provider {{ e.ProviderFullName }}");
+            {%- endif -%}
+            {%- endfor %}
+            var value = {{ e.ProviderFullName }}({%- for p in e.DiParams -%}{% if forloop.index0 > 0 %}, {% endif %}arg_{{ forloop.index0 }}{%- endfor -%});
+            registry.{{ e.MethodName }}({{ e.PropertyName }}, value);
+{% elsif e.Kind == "Property" -%}
+            var value = {{ e.ProviderFullName }};
+            registry.{{ e.MethodName }}({{ e.PropertyName }}, value);
 {% elsif e.Kind == "Type" -%}
-        registry.{{ e.MethodName }}<{{ e.TypeFullName }}>({{ e.PropertyName }});
+            registry.{{ e.MethodName }}<{{ e.TypeFullName }}>({{ e.PropertyName }});
 {% elsif e.Kind == "Resource" -%}
-        {%- if e.MethodName != "" %}registry.{{ e.MethodName }}({{ e.PropertyName }});{%- endif %}
+            {%- if e.MethodName != "" %}registry.{{ e.MethodName }}({{ e.PropertyName }});{%- endif %}
 {% endif -%}
-
+        }
 {% endfor -%}
     }
 
     public override void PostPhaseRegistration(global::{{ RegistryFullName }} registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
 }
-

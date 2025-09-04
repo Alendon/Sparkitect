@@ -27,8 +27,8 @@ public abstract class SourceGeneratorTestBase<TSourceGenerator>
         ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
         verifySettings.UseDirectory("TestResults");
     }
-    
-    public abstract ModBuildSettings BuildSettings { get; }
+
+    public virtual ModBuildSettings BuildSettings => throw new NotImplementedException();
     
     private static readonly Lazy<Workspace> Workspace = new(CreateWorkspace);
 

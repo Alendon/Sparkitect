@@ -1,4 +1,5 @@
-﻿using Sparkitect.Modding;
+﻿using MinimalSampleMod.CompilerGenerated.IdExtensions;
+using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using DummyRegistryValue = MinimalSampleMod.DummyRegistry.RegisterValueAttribute;
 
@@ -49,36 +50,22 @@ public static class RegistryExample
     // The parameters of this function are trying to be fetched from the DI core container
     // If they are not annotated nullable, the startup fails if these types cannot be found in the container.
     [DummyRegistry.RegisterValue("hello1")]
-    public static string SomeValueToRegister(object dummyDiObject) => "Hello World " + dummyDiObject;
+    public static string SomeValueToRegister() => "Hello World ";
 
 
-    //The RegisterGenericValueAttribute is currently not generated. @Codex fix this issue
     [DummyRegistry.RegisterGenericValue("hello2")]
-    public static string SomeGenericValueToRegister(string dummyDiObject) => "Hello World " + dummyDiObject;
+    public static string SomeGenericValueToRegister() => "Hello World ";
 
-    //The RegisterTypeAttribute is currently not generated. @Codex fix this issue
     [DummyRegistry.RegisterType("hello3")]
     public class SampleType
     {
         
     }
     
-    /*
-     * @Codex The current resource yaml parsing is more a stub than really usable
-     * Your task is to also fix on this.
-     * A yaml file can either has a "registries" root entry, which contains a list of registry entry
-     * Or it starts directly with a singular registry root entry
-     * The yaml content should be minimal, and only contain what is actually needed
-     * The main usage is to define new id's and associate files with it
-     * Depending on the Registry configuration, either a single file or multiple (determined by key)
-     * 
-     */
-    
-    
     public static void UsageSample()
     {
         // Utilize the extension to have a statically typed access to the Hello Identification
         // While maintaining a coherent/easy access
-        Identification helloId = DummyID.SampleMod.Hello1;
+        Identification helloId = DummyID.MinimalSampleMod.Hello1;
     }
 }

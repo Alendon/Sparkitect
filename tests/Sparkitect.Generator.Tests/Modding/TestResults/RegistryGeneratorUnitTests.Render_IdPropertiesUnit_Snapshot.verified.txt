@@ -2,6 +2,6 @@
 
 public readonly partial struct SampleTestModDummyIDs
 {
-public global::Sparkitect.Modding.Identification Hello => global::SampleTest.Generated.Registrations.DummyRegistryRegistrations_abcd.Hello;
+public global::Sparkitect.Modding.Identification Hello => global::SampleTest.Generated.Registrations.DummyRegistryRegistrations_Resources.Hello;
 }
 

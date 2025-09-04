@@ -1,0 +1,49 @@
+﻿namespace SampleTest.Generated.Registrations;
+
+using Sparkitect.Modding;
+using Sparkitect.DI;
+using Sparkitect.DI.Container;
+
+[global::Sparkitect.DI.RegistrationsEntrypoint]
+public class DummyRegistryRegistrations_Providers(global::Sparkitect.Modding.IIdentificationManager identificationManager, global::Sparkitect.Modding.IResourceManager resourceManager) : global::Sparkitect.DI.Registrations<global::MinimalSampleMod.DummyRegistry>
+{
+    public override string CategoryIdentifier => "dummy";
+
+public static global::Sparkitect.Modding.Identification Hello3 { get; private set; }
+public static global::Sparkitect.Modding.Identification Hello4 { get; private set; }
+public static global::Sparkitect.Modding.Identification Hello5 { get; private set; }
+public static global::Sparkitect.Modding.Identification Hello6 { get; private set; }
+
+
+    public override void PrePhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
+
+    public override void MainPhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container)
+    {
+{
+            Hello3 = identificationManager.RegisterObject("sample _test _mod", "dummy", "hello3");
+
+            resourceManager.SetResource(Hello3, "test1", "test.txt");
+registry.RegisterType<global::MinimalSampleMod.RegistryExample.SampleType>(Hello3);
+}
+{
+            Hello4 = identificationManager.RegisterObject("sample _test _mod", "dummy", "hello4");
+container.TryResolve<global::Sparkitect.SomeType1>(out var arg_0);if(!container.TryResolve<global::Sparkitect.SomeType2>(out var arg_1))
+                throw new global::System.InvalidOperationException("Missing dependency global::Sparkitect.SomeType2 for provider global::MinimalSampleMod.RegistryExample.SampleType.GetObjectDi");
+            var value = global::MinimalSampleMod.RegistryExample.SampleType.GetObjectDi(arg_0, arg_1);
+            registry.RegisterObject(Hello4, value);
+}
+{
+            Hello5 = identificationManager.RegisterObject("sample _test _mod", "dummy", "hello5");
+
+            var value = global::MinimalSampleMod.RegistryExample.SampleType.SampleTypeGetObject();
+            registry.RegisterObject(Hello5, value);
+}
+{
+            Hello6 = identificationManager.RegisterObject("sample _test _mod", "dummy", "hello6");
+var value = global::MinimalSampleMod.RegistryExample.SampleType.SampleTypeGetObjectProp;
+            registry.RegisterObject(Hello6, value);
+}
+}
+
+    public override void PostPhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
+}

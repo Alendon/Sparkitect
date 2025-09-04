@@ -8,7 +8,8 @@ public partial class RegistryGenerator
 {
     internal static bool RenderRegistryRegistrationsUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
     {
-        fileName = $"{unit.Model.TypeName}Registrations_{unit.SourceTag}.g.cs";
+        var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
+        fileName = $"{unit.Model.TypeName}Registrations_{suffix}.g.cs";
 
         var ns = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
             ? unit.Model.ContainingNamespace + ".Registrations"
@@ -24,7 +25,8 @@ public partial class RegistryGenerator
                 MethodName = e.MethodName,
                 ProviderFullName = string.IsNullOrWhiteSpace(e.ProviderContainingType) ? string.Empty : $"global::{e.ProviderContainingType}.{e.ProviderMemberName}",
                 TypeFullName = e.ProviderMemberName.StartsWith("global::") ? e.ProviderMemberName : (string.IsNullOrWhiteSpace(e.ProviderMemberName) ? string.Empty : $"global::{e.ProviderMemberName}"),
-                Files = e.Files.OrderBy(f => f.fileId).Select(f => new { fileId = f.fileId, fileName = f.fileName }).ToArray()
+                Files = e.Files.OrderBy(f => f.fileId).Select(f => new { fileId = f.fileId, fileName = f.fileName }).ToArray(),
+                DiParams = e.DiParameters.Select(p => new { Type = p.paramType.StartsWith("global::") ? p.paramType : $"global::{p.paramType}", IsNullable = p.isNullable }).ToArray()
             })
             .ToArray();
 
@@ -37,7 +39,7 @@ public partial class RegistryGenerator
             RegistryFullName = unit.Model.ContainingNamespace + "." + unit.Model.TypeName,
             CategoryKey = unit.Model.Key,
             ModNameSnakeCase = ToSnakeCase(settings.ModName),
-            SourceTag = unit.SourceTag,
+            SourceTag = suffix,
             UseResourceManager = useResourceManager,
             Entries = entries
         };
@@ -81,7 +83,8 @@ public partial class RegistryGenerator
 
     internal static bool RenderRegistryIdPropertiesUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
     {
-        fileName = $"{unit.Model.TypeName}.IdProperties_{unit.SourceTag}.g.cs";
+        var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
+        fileName = $"{unit.Model.TypeName}.IdProperties_{suffix}.g.cs";
 
         var categoryPascal = ToPascalCase(unit.Model.Key);
         var registrationsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
@@ -97,7 +100,7 @@ public partial class RegistryGenerator
             ModStructName = ToPascalCase(settings.ModName) + categoryPascal + "IDs",
             RegistrationsNamespace = registrationsNs,
             RegistryName = unit.Model.TypeName,
-            SourceTag = unit.SourceTag,
+            SourceTag = suffix,
             Entries = unit.Entries.OrderBy(e => e.Id).Select(e => new { PropertyName = ToPascalCase(e.Id) }).ToArray()
         };
 

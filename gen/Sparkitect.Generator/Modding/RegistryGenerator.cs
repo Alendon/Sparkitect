@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -61,20 +62,32 @@ public partial class RegistryGenerator : IIncrementalGenerator
         // Provider attribute usages: scan all attributes to capture provider candidates
         var providerCandidateProvider = context.SyntaxProvider.CreateSyntaxProvider(
                 static (n, _) => n is AttributeSyntax,
-                static (ctx, cancellationToken) => TryBuildProviderCandidate(ctx, cancellationToken))
+                static (ctx, cancellationToken) => TryBuildProviderCandidate(ctx.Node, ctx.SemanticModel, cancellationToken))
             .NotNull();
 
-        // Registration units from provider attributes (no Collect)
+        // Registration units from provider attributes (grouped per registry)
         var providerUnitsProvider = providerCandidateProvider
             .Combine(registryMapProvider)
             .Select(static (pair, _) => MapProviderCandidateToUnit(pair.Left, pair.Right))
-            .NotNull();
+            .NotNull()
+            .Collect()
+            .SelectMany(static (units, _) => GroupUnitsByRegistry(units, SourceKind.Provider, "Providers"));
 
-        // Registration units from resource files (no Collect for units; flatten per-file groups)
+        // Registration units from resource files (grouped per registry across all files)
         var resourceUnitsProvider = resourceFileRegistrationProvider
             .Combine(registryMapProvider)
             .Select(static (pair, _) => BuildUnitsForResourceFile(pair.Left.Path, pair.Left.Entries, pair.Right))
-            .SelectMany(static (units, _) => units);
+            .Collect()
+            .SelectMany(static (allUnits, _) =>
+            {
+                // Flatten per-file units then group by registry
+                var flat = new List<RegistrationUnit>();
+                foreach (var units in allUnits)
+                {
+                    foreach (var u in units) flat.Add(u);
+                }
+                return GroupUnitsByRegistry([..flat], SourceKind.Yaml, "Resources");
+            });
 
         // Outputs per registry: ID framework (always present)
         context.RegisterSourceOutput(symbolRegistryModelsProvider.Combine(buildSettings),
@@ -175,7 +188,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             var resMethod = model.RegisterMethods.FirstOrDefault(m => m.PrimaryParameterKind == PrimaryParameterKind.None)?.FunctionName ?? string.Empty;
 
             var files = e.Files.ToImmutableValueArray();
-            var entry = new RegistrationEntry(e.Id, EntryKind.Resource, resMethod, string.Empty, string.Empty, files);
+            var entry = new RegistrationEntry(e.Id, EntryKind.Resource, resMethod, string.Empty, string.Empty, files, []);
             bucket.builder.Add(entry);
             map[key] = bucket;
         }
@@ -193,18 +206,60 @@ public partial class RegistryGenerator : IIncrementalGenerator
                     x.MethodName,
                     x.ProviderContainingType,
                     x.ProviderMemberName,
-                    x.Files.ToImmutableValueArray()
+                    x.Files.ToImmutableValueArray(),
+                    x.DiParameters
                 ))
                 .ToImmutableValueArray();
 
             units.Add(new RegistrationUnit(
                 kvp.Value.model,
                 SourceKind.Yaml,
-                ComputeStableTag(sourcePath, 0),
+                "Resources",
                 sortedEntries));
         }
 
         return units.ToImmutableValueArray();
+    }
+
+    internal static ImmutableArray<RegistrationUnit> GroupUnitsByRegistry(ImmutableArray<RegistrationUnit> units, SourceKind kind, string sourceTag)
+    {
+        var map = new Dictionary<RegistryModel, ImmutableValueArray<RegistrationEntry>.Builder>();
+
+        foreach (var unit in units)
+        {
+            if (unit.SourceKind != kind) continue;
+            if (!map.TryGetValue(unit.Model, out var builder))
+            {
+                builder = new ImmutableValueArray<RegistrationEntry>.Builder();
+                map[unit.Model] = builder;
+            }
+
+            foreach (var e in unit.Entries)
+            {
+                // Ensure files within entry are ordered by fileId for determinism
+                var orderedFiles = e.Files.OrderBy(f => f.fileId).ToImmutableValueArray();
+                builder.Add(new RegistrationEntry(
+                    e.Id,
+                    e.Kind,
+                    e.MethodName,
+                    e.ProviderContainingType,
+                    e.ProviderMemberName,
+                    orderedFiles,
+                    e.DiParameters));
+            }
+        }
+
+        var result = new List<RegistrationUnit>();
+        foreach (var kv in map)
+        {
+            var orderedEntries = kv.Value
+                .OrderBy(x => x.Id)
+                .ToImmutableValueArray();
+
+            result.Add(new RegistrationUnit(kv.Key, kind, sourceTag, orderedEntries));
+        }
+
+        return [..result];
     }
 
 

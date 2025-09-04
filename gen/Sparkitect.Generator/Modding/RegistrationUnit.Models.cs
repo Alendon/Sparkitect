@@ -8,13 +8,15 @@ public readonly record struct RegistrationEntry(
     string MethodName,
     string ProviderContainingType,
     string ProviderMemberName,
-    ImmutableValueArray<(string fileId, string fileName)> Files);
+    ImmutableValueArray<(string fileId, string fileName)> Files,
+    ImmutableValueArray<(string paramType, bool isNullable)> DiParameters);
 
 public enum EntryKind
 {
     Method,
     Type,
-    Resource
+    Resource,
+    Property
 }
 
 public sealed record RegistrationUnit(
@@ -28,4 +30,3 @@ public enum SourceKind
     Provider,
     Yaml
 }
-

@@ -5,23 +5,22 @@ using Sparkitect.DI;
 using Sparkitect.DI.Container;
 
 [global::Sparkitect.DI.RegistrationsEntrypoint]
-public class DummyRegistryRegistrations_abcd(global::Sparkitect.Modding.IIdentificationManager identificationManager, global::Sparkitect.Modding.IResourceManager resourceManager) : global::Sparkitect.DI.Registrations<global::MinimalSampleMod.DummyRegistry>
+public class DummyRegistryRegistrations_Providers(global::Sparkitect.Modding.IIdentificationManager identificationManager) : global::Sparkitect.DI.Registrations<global::MinimalSampleMod.DummyRegistry>
 {
     public override string CategoryIdentifier => "dummy";
 
-public static global::Sparkitect.Modding.Identification Hello { get; private set; }
+public static global::Sparkitect.Modding.Identification Hello3 { get; private set; }
 
 
     public override void PrePhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
 
     public override void MainPhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container)
     {
-Hello = identificationManager.RegisterObject("sample _test _mod", "dummy", "hello");
-
-        resourceManager.SetResource(Hello, "default", "f.txt");
-registry.RegisterResourceFile(Hello);
+{
+            Hello3 = identificationManager.RegisterObject("sample _test _mod", "dummy", "hello3");
+registry.RegisterType<global::MinimalSampleMod.RegistryExample.SampleType>(Hello3);
+}
 }
 
     public override void PostPhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
 }
-

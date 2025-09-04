@@ -1,1 +1,28 @@
-﻿
+﻿namespace SampleTest.Generated.Registrations;
+
+using Sparkitect.Modding;
+using Sparkitect.DI;
+using Sparkitect.DI.Container;
+
+[global::Sparkitect.DI.RegistrationsEntrypoint]
+public class DummyRegistryRegistrations_Resources(global::Sparkitect.Modding.IIdentificationManager identificationManager, global::Sparkitect.Modding.IResourceManager resourceManager) : global::Sparkitect.DI.Registrations<global::MinimalSampleMod.DummyRegistry>
+{
+    public override string CategoryIdentifier => "dummy";
+
+public static global::Sparkitect.Modding.Identification Hello { get; private set; }
+
+
+    public override void PrePhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
+
+    public override void MainPhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container)
+    {
+{
+            Hello = identificationManager.RegisterObject("sample _test _mod", "dummy", "hello");
+
+            resourceManager.SetResource(Hello, "default", "f.txt");
+registry.RegisterResourceFile(Hello);
+}
+}
+
+    public override void PostPhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
+}

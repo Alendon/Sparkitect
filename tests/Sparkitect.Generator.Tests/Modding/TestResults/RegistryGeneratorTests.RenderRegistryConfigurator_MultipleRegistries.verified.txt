@@ -1,4 +1,4 @@
-﻿namespace DiTest.Generated;
+﻿namespace SampleTest.Generated;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.DI.RegistryConfigurator]

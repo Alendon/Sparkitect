@@ -20,11 +20,11 @@ public partial class RegistryGenerator
         string MethodName,
         string Id,
         bool IsTypeProvider,
+        bool IsPropertyProvider,
         string ProviderContainingTypeFullName,
         string ProviderMethodOrTypeName,
         ImmutableValueArray<ProviderFileArg> Files,
-        string SourcePath,
-        int SourceSpanStart);
+        ImmutableValueArray<(string paramType, bool isNullable)> DiParameters);
 
     internal static bool TryExtractProviderInfo(AttributeData attribute,
         out string registryTypeName, out string methodName, out bool isRegisterMarker)
@@ -73,19 +73,20 @@ public partial class RegistryGenerator
         return name.EndsWith("Attribute") ? name.Substring(0, name.Length - "Attribute".Length) : name;
     }
 
-    internal static ProviderCandidate? TryBuildProviderCandidate(GeneratorSyntaxContext context,
+    internal static ProviderCandidate? TryBuildProviderCandidate(SyntaxNode node, SemanticModel semanticModel,
         CancellationToken cancellationToken)
     {
-        if (context.Node is not AttributeSyntax attrSyntax) return null;
+        if (node is not AttributeSyntax attrSyntax) return null;
 
-        // Determine declaration target (method or class)
+        // Determine declaration target (method, property or class)
         var decl = attrSyntax.Parent?.Parent;
         if (decl is null) return null;
 
         ISymbol? targetSymbol = decl switch
         {
-            MethodDeclarationSyntax mds => context.SemanticModel.GetDeclaredSymbol(mds, cancellationToken),
-            ClassDeclarationSyntax cds => context.SemanticModel.GetDeclaredSymbol(cds, cancellationToken),
+            MethodDeclarationSyntax mds => semanticModel.GetDeclaredSymbol(mds, cancellationToken),
+            PropertyDeclarationSyntax pds => semanticModel.GetDeclaredSymbol(pds, cancellationToken),
+            ClassDeclarationSyntax cds => semanticModel.GetDeclaredSymbol(cds, cancellationToken),
             _ => null
         };
         if (targetSymbol is null) return null;
@@ -98,30 +99,32 @@ public partial class RegistryGenerator
         if (!TryExtractProviderInfo(attributeData, out var registryTypeName, out var methodName, out var isMarker))
             return null;
 
-        // Extract identifier (first ctor arg)
-        if (attributeData.ConstructorArguments.Length == 0 ||
-            attributeData.ConstructorArguments[0].Value is not string id || string.IsNullOrWhiteSpace(id))
+        // Parse constructor and named args syntactically to be resilient to error types
+        if (!TryParseProviderArguments(attrSyntax, out var id, out var files))
             return null;
 
-        // Collect file named arguments (only provided string values)
-        var filesBuilder = new ImmutableValueArray<ProviderFileArg>.Builder();
-        foreach (var kvp in attributeData.NamedArguments)
-        {
-            var (propName, typed) = (kvp.Key, kvp.Value);
-            if (typed.Value is string s && !string.IsNullOrWhiteSpace(s))
-            {
-                filesBuilder.Add(new ProviderFileArg(propName, s));
-            }
-        }
-
         bool isTypeProvider = targetSymbol is INamedTypeSymbol;
+        bool isPropertyProvider = targetSymbol is IPropertySymbol;
         string containerFullName;
         string methodOrTypeName;
+        var diParamsBuilder = new ImmutableValueArray<(string paramType, bool isNullable)>.Builder();
 
         if (targetSymbol is IMethodSymbol ms)
         {
             containerFullName = ms.ContainingType.ToDisplayString(DisplayFormats.NamespaceAndType);
             methodOrTypeName = ms.Name;
+
+            foreach (var p in ms.Parameters)
+            {
+                var typeName = p.Type.ToDisplayString(DisplayFormats.NamespaceAndType);
+                var isNullable = p.NullableAnnotation == NullableAnnotation.Annotated;
+                diParamsBuilder.Add((typeName, isNullable));
+            }
+        }
+        else if (targetSymbol is IPropertySymbol ps)
+        {
+            containerFullName = ps.ContainingType.ToDisplayString(DisplayFormats.NamespaceAndType);
+            methodOrTypeName = ps.Name;
         }
         else if (targetSymbol is INamedTypeSymbol nts)
         {
@@ -140,11 +143,11 @@ public partial class RegistryGenerator
             methodName,
             id,
             isTypeProvider,
+            isPropertyProvider,
             containerFullName,
             methodOrTypeName,
-            filesBuilder.ToImmutableValueArray(),
-            attrSyntax.SyntaxTree.FilePath ?? string.Empty,
-            attrSyntax.Span.Start);
+            files,
+            diParamsBuilder.ToImmutableValueArray());
     }
 
     internal static RegistrationUnit? MapProviderCandidateToUnit(ProviderCandidate cand, RegistryMap regMap)
@@ -177,7 +180,7 @@ public partial class RegistryGenerator
 
         var files = filesBuilder.ToImmutableValueArray();
 
-        var kind = cand.IsTypeProvider ? EntryKind.Type : EntryKind.Method;
+        var kind = cand.IsPropertyProvider ? EntryKind.Property : (cand.IsTypeProvider ? EntryKind.Type : EntryKind.Method);
 
         var entry = new RegistrationEntry(
             cand.Id,
@@ -185,7 +188,8 @@ public partial class RegistryGenerator
             cand.MethodName,
             cand.ProviderContainingTypeFullName,
             cand.ProviderMethodOrTypeName,
-            files);
+            files,
+            cand.DiParameters);
 
         var entries = new ImmutableValueArray<RegistrationEntry>.Builder();
         entries.Add(entry);
@@ -193,20 +197,59 @@ public partial class RegistryGenerator
         return new RegistrationUnit(
             model,
             SourceKind.Provider,
-            ComputeStableTag(cand.SourcePath, cand.SourceSpanStart),
+            "Providers",
             entries.ToImmutableValueArray());
     }
 
-    internal static string ComputeStableTag(string path, int spanStart)
+    internal static bool TryParseProviderArguments(AttributeSyntax attrSyntax, out string id,
+        out ImmutableValueArray<ProviderFileArg> files)
     {
-        unchecked
+        id = string.Empty;
+        var builder = new ImmutableValueArray<ProviderFileArg>.Builder();
+
+        var argList = attrSyntax.ArgumentList;
+        if (argList is null)
         {
-            int hash = 17;
-            hash = hash * 31 + (path?.GetHashCode() ?? 0);
-            hash = hash * 31 + spanStart.GetHashCode();
-            return Math.Abs(hash).ToString("x");
+            files = builder.ToImmutableValueArray();
+            return false;
         }
+
+        // Positional first argument is the ID
+        foreach (var arg in argList.Arguments)
+        {
+            if (arg.NameEquals is null && arg.NameColon is null)
+            {
+                if (arg.Expression is LiteralExpressionSyntax lit && lit.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression))
+                {
+                    id = lit.Token.ValueText;
+                    break;
+                }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            files = builder.ToImmutableValueArray();
+            return false;
+        }
+
+        // Named arguments represent files
+        foreach (var arg in argList.Arguments)
+        {
+            if (arg.NameEquals is { } nameEq)
+            {
+                var prop = nameEq.Name.Identifier.ValueText;
+                if (arg.Expression is LiteralExpressionSyntax lit && lit.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression))
+                {
+                    var value = lit.Token.ValueText;
+                    if (!string.IsNullOrWhiteSpace(value))
+                        builder.Add(new ProviderFileArg(prop, value));
+                }
+            }
+        }
+
+        files = builder.ToImmutableValueArray();
+        return true;
     }
 
-    // Intentionally no grouping here to keep pipeline simple and testable; this returns per-candidate transformations only.
 }
