@@ -24,17 +24,17 @@ public static class RegistryDiagnostics
 
     public static readonly DiagnosticDescriptor DuplicateCategoryKey =
         new("SPARK2004", "Duplicate registry category Identifier",
-            "Multiple registries declare the same category Identifier '{0}'. Category keys must be unique",
+            "Multiple registries declare the same category Identifier '{0}'. Category keys must be unique.",
             Category, DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor DuplicateRegistryTypeNames =
         new("SPARK2005", "Duplicate registry type names across namespaces",
-            "Multiple registries named '{0}' exist in different namespaces. Prefer unique type names to avoid confusion",
+            "Multiple registries named '{0}' exist in different namespaces. Prefer unique type names to avoid confusion.",
             Category, DiagnosticSeverity.Warning, true);
 
     public static readonly DiagnosticDescriptor CategoryIdentifierNotSnakeCase =
         new("SPARK2006", "Category Identifier must be snake_case",
-            "Registry Identifier '{0}' is invalid. Use snake_case (letters and underscores only)",
+            "Registry Identifier '{0}' is invalid. Use snake_case (letters and underscores only).",
             Category, DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor RegistryMethodOutsideRegistry =
@@ -64,7 +64,7 @@ public static class RegistryDiagnostics
 
     public static readonly DiagnosticDescriptor DuplicateRegistryMethodName =
         new("SPARK2015", "Duplicate registry method name",
-            "Duplicate registry method name '{0}' in '{1}'. Method names must be unique per registry",
+            "Duplicate registry method name '{0}' in '{1}'. Method names must be unique per registry.",
             Category, DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor UseResourceFileMissingIdentifier =
@@ -115,12 +115,12 @@ public static class RegistryDiagnostics
 
     public static readonly DiagnosticDescriptor DuplicateRegistrationId =
         new("SPARK2030", "Duplicate registration id",
-            "Duplicate registration id '{0}' for registry '{1}'. Each id must be unique",
+            "Duplicate registration id '{0}' for registry '{1}'. Each id must be unique.",
             Category, DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor RegistrationIdNotSnakeCase =
         new("SPARK2031", "Registration id must be snake_case",
-            "Registration id '{0}' is invalid. Use snake_case (letters and underscores only)",
+            "Registration id '{0}' is invalid. Use snake_case (letters and underscores only).",
             Category, DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor DiParameterShouldBeAbstract =
@@ -151,7 +151,7 @@ public static class RegistryDiagnostics
 
     public static readonly DiagnosticDescriptor YamlUnknownFileKey =
         new("SPARK2043", "Unknown file key in YAML",
-            "File key '{0}' in '{1}' is not declared by registry '{2}'. Valid keys: {3}",
+            "File key '{0}' in '{1}' is not declared by registry '{2}'. Valid keys: {3}.",
             Category, DiagnosticSeverity.Warning, true);
 
     public static readonly DiagnosticDescriptor YamlMissingRequiredFileKey =

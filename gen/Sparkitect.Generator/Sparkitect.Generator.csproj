@@ -13,9 +13,11 @@
     
     <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" Condition="Exists('$(SolutionDir)build\LocalNuGetPublish.targets')" />
     
-    <ItemGroup>
+  <ItemGroup>
+        <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+        <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-    </ItemGroup>
+  </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.0" PrivateAssets="all" />
@@ -30,7 +32,6 @@
         <PackageReference Include="Parlot" Version="1.4.0" PrivateAssets="all" GeneratePathProperty="true" />
         <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions" Version="9.0.7" PrivateAssets="all" GeneratePathProperty="true" />
         <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" PrivateAssets="all" GeneratePathProperty="true"/>
-        <PackageReference Include="System.Text.Json" Version="9.0.7" PrivateAssets="all" GeneratePathProperty="true" />
         <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" PrivateAssets="all" GeneratePathProperty="true" />
         <PackageReference Include="YamlDotNet" Version="16.3.0" PrivateAssets="all" GeneratePathProperty="true" />
 
