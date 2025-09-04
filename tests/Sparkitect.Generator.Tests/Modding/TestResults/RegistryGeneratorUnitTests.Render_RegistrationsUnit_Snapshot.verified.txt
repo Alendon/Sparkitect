@@ -17,7 +17,7 @@ public static global::Sparkitect.Modding.Identification Hello { get; private set
     public override void MainPhaseRegistration(global::MinimalSampleMod.DummyRegistry registry, global::Sparkitect.DI.Container.ICoreContainer container)
     {
 {
-            Hello = identificationManager.RegisterObject("sample _test _mod", "dummy", "hello");
+            Hello = identificationManager.RegisterObject("sample_test", "dummy", "hello");
 
             resourceManager.SetResource(Hello, "default", "f.txt");
 registry.RegisterResourceFile(Hello);

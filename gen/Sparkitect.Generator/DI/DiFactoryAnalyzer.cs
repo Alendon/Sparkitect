@@ -48,7 +48,7 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
             // Validate constructor dependencies
             foreach (var parameter in constructor.Parameters)
             {
-                ValidateParameterDependency(context, type, parameter);
+                ValidateParameterDependency(context, parameter);
             }
         }
 
@@ -64,7 +64,7 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
             ValidateRequiredPropertyInitOnly(context, property);
 
             // Check if dependency is abstract/interface
-            ValidatePropertyDependency(context, type, property);
+            ValidatePropertyDependency(context, property);
         }
 
         // Validate KeyedFactory specific rules
@@ -107,7 +107,7 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static void ValidateParameterDependency(SymbolAnalysisContext context, INamedTypeSymbol containingType,
+    private static void ValidateParameterDependency(SymbolAnalysisContext context,
         IParameterSymbol parameter)
     {
         if (parameter.Type is not INamedTypeSymbol paramType) return;
@@ -120,7 +120,7 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
             paramType.ToDisplayString()));
     }
 
-    private static void ValidatePropertyDependency(SymbolAnalysisContext context, INamedTypeSymbol containingType,
+    private static void ValidatePropertyDependency(SymbolAnalysisContext context,
         IPropertySymbol property)
     {
         if (property.Type is not INamedTypeSymbol propType) return;

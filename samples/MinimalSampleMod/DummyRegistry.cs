@@ -1,7 +1,6 @@
 ﻿using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
-using DummyRegistryValue = MinimalSampleMod.DummyRegistry.RegisterValueAttribute;
 
 namespace MinimalSampleMod;
 
@@ -66,6 +65,6 @@ public static class RegistryExample
     {
         // Utilize the extension to have a statically typed access to the Hello Identification
         // While maintaining a coherent/easy access
-        Identification helloId = DummyID.MinimalSampleMod.Hello4;
+        Identification helloId = DummyID.MinimalSampleMod.Hello1;
     }
 }

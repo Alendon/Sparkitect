@@ -19,7 +19,7 @@ public class {{ RegistryName }}Registrations_{{ SourceTag }}(global::Sparkitect.
     {
 {% for e in Entries -%}
         {
-            {{ e.PropertyName }} = identificationManager.RegisterObject("{{ ModNameSnakeCase }}", "{{ CategoryKey }}", "{{ e.Id }}");
+            {{ e.PropertyName }} = identificationManager.RegisterObject("{{ ModId }}", "{{ CategoryKey }}", "{{ e.Id }}");
 {% if e.Files and e.Files.size > 0 -%}
             {%- for f in e.Files %}
             resourceManager.SetResource({{ e.PropertyName }}, "{{ f.fileId }}", "{{ f.fileName }}");

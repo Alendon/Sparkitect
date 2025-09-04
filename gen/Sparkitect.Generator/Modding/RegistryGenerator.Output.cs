@@ -38,7 +38,7 @@ public partial class RegistryGenerator
             RegistryName = unit.Model.TypeName,
             RegistryFullName = unit.Model.ContainingNamespace + "." + unit.Model.TypeName,
             CategoryKey = unit.Model.Key,
-            ModNameSnakeCase = ToSnakeCase(settings.ModName),
+            ModId = settings.ModId,
             SourceTag = suffix,
             UseResourceManager = useResourceManager,
             Entries = entries
@@ -60,20 +60,16 @@ public partial class RegistryGenerator
     internal static bool RenderRegistryIdExtensionsFramework(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
     {
         var categoryPascal = ToPascalCase(model.Key);
-        var modPascal = ToPascalCase(settings.ModName);
-        var registrationsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
-            ? model.ContainingNamespace + ".Registrations"
-            : settings.SgOutputNamespace + ".Registrations";
-        var extensionsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
-            ? model.ContainingNamespace + ".IdExtensions"
-            : settings.SgOutputNamespace + ".IdExtensions";
+        var modPascal = ToPascalCase(settings.ModId);
+        var registrationsNs = settings.SgOutputNamespace;
+        var extensionsNs = settings.SgOutputNamespace;
 
         fileName = $"{model.TypeName}.IdFramework.g.cs";
         var tpl = new
         {
             ExtensionsNamespace = extensionsNs,
             CategoryPascal = categoryPascal,
-            ModNamePascal = modPascal,
+            ModIdPascal = modPascal,
             ModStructName = modPascal + categoryPascal + "IDs",
             RegistrationsNamespace = registrationsNs,
             RegistryName = model.TypeName
@@ -97,7 +93,7 @@ public partial class RegistryGenerator
         var tpl = new
         {
             ExtensionsNamespace = extensionsNs,
-            ModStructName = ToPascalCase(settings.ModName) + categoryPascal + "IDs",
+            ModStructName = ToPascalCase(settings.ModId) + categoryPascal + "IDs",
             RegistrationsNamespace = registrationsNs,
             RegistryName = unit.Model.TypeName,
             SourceTag = suffix,

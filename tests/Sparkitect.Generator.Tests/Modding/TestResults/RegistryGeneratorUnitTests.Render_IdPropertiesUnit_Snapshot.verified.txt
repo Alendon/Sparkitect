@@ -1,6 +1,6 @@
 ﻿namespace SampleTest.Generated.IdExtensions;
 
-public readonly partial struct SampleTestModDummyIDs
+public readonly partial struct SampleTestDummyIDs
 {
 public global::Sparkitect.Modding.Identification Hello => global::SampleTest.Generated.Registrations.DummyRegistryRegistrations_Resources.Hello;
 }

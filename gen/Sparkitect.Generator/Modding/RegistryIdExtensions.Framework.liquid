@@ -1,10 +1,10 @@
-namespace {{ ExtensionsNamespace }};
+namespace {{ ExtensionsNamespace }}.IdExtensions;
 
-public static partial class IdExtensions
+public static partial class {{ CategoryPascal }}Extensions
 {
     extension(global::Sparkitect.Modding.IDs.{{ CategoryPascal }}ID)
     {
-        public static {{ ModStructName }} {{ ModNamePascal }} => default;
+        public static {{ ModStructName }} {{ ModIdPascal }} => default;
     }
 }
 

@@ -9,24 +9,6 @@ public record RegistryModel(
     ImmutableValueArray<RegisterMethodModel> RegisterMethods,
     ImmutableValueArray<(string identifier, bool optional)> ResourceFiles);
 
-
-
-public record MethodRegistrationEntry(
-    string RegistryNamespace,
-    string RegistryTypeName,
-    string RegistryMethodName,
-    string Id,
-    string ProviderContainingType,
-    string ProviderMethodName,
-    ImmutableValueArray<(string paramType, bool isNullable)> Parameters);
-
-public record TypeRegistrationEntry(
-    string RegistryNamespace,
-    string RegistryTypeName,
-    string RegistryMethodName,
-    string Id,
-    string ProvidedTypeFullName);
-
 public record FileRegistrationEntry(string RegistryClass, string MethodName, string Id, ImmutableValueArray<(string fileId, string fileName)> Files);
 
 
