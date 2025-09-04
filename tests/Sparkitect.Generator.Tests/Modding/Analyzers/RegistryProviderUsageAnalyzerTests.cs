@@ -272,4 +272,64 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         var diagnostics = await RunAnalyzerAsync();
         await AssertDiagnosticCount(diagnostics, "SPARK2032", 1);
     }
+
+    [Test]
+    public async Task DuplicateIdsWithinRegistry_Reports_2030()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        public static class Providers
+        {
+            [DummyRegistry.RegisterValue("dup")]
+            public static string A() => "x";
+
+            [DummyRegistry.RegisterValue("dup")]
+            public static string B() => "y";
+        }
+        """;
+
+        TestSources.Add(("P10.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2030", 1);
+    }
+
+    [Test]
+    public async Task DuplicateNormalizedPropertyNames_Reports_2050()
+    {
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace DiTest;
+
+        [Registry(Identifier = "dummy")]
+        public class DummyRegistry : IRegistry
+        {
+            [RegistryMethod]
+            public void RegisterValue(Identification id, string value) { }
+        }
+
+        public static class Providers
+        {
+            [DummyRegistry.RegisterValue("some_id")]
+            public static string A() => "x";
+
+            [DummyRegistry.RegisterValue("some__id")]
+            public static string B() => "y";
+        }
+        """;
+
+        TestSources.Add(("P11.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK2050", 1);
+    }
 }

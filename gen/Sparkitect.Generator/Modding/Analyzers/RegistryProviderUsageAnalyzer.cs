@@ -32,7 +32,107 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
 
+        // Per-attribute immediate checks
         context.RegisterSyntaxNodeAction(AnalyzeAttribute, SyntaxKind.Attribute);
+
+        // Aggregated checks across the compilation (duplicate ids and normalized names)
+        context.RegisterCompilationStartAction(startCtx =>
+        {
+            var byRegistry = new System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Concurrent.ConcurrentBag<Seen>>();
+
+            startCtx.RegisterSyntaxNodeAction(ctx =>
+            {
+                if (ctx.Node is not AttributeSyntax attrSyntax) return;
+
+                var decl = attrSyntax.Parent?.Parent;
+                if (decl is null) return;
+                ISymbol? targetSymbol = decl switch
+                {
+                    MethodDeclarationSyntax mds => ctx.SemanticModel.GetDeclaredSymbol(mds, ctx.CancellationToken),
+                    PropertyDeclarationSyntax pds => ctx.SemanticModel.GetDeclaredSymbol(pds, ctx.CancellationToken),
+                    ClassDeclarationSyntax cds => ctx.SemanticModel.GetDeclaredSymbol(cds, ctx.CancellationToken),
+                    _ => null
+                };
+                if (targetSymbol is null) return;
+
+                var attrData = targetSymbol.GetAttributes().FirstOrDefault(a =>
+                    a.ApplicationSyntaxReference?.Span.Equals(attrSyntax.Span) == true);
+                if (attrData is null) return;
+
+                if (!RegistryGenerator.TryExtractProviderInfo(attrData, out var regTypeName, out var registryNamespace,
+                        out var methodName, out _))
+                    return;
+
+                if (!RegistryGenerator.TryParseProviderArguments(attrSyntax, out var id, out _))
+                    return; // no id -> nothing to aggregate
+
+                var comp = ctx.SemanticModel.Compilation;
+                INamedTypeSymbol? registryType = null;
+                if (!string.IsNullOrWhiteSpace(regTypeName))
+                {
+                    if (!string.IsNullOrWhiteSpace(registryNamespace))
+                    {
+                        registryType = comp.GetTypeByMetadataName($"{registryNamespace}.{regTypeName}");
+                    }
+                    registryType ??= comp.GlobalNamespace.GetNamespaceMembers()
+                        .SelectMany(AllTypes)
+                        .FirstOrDefault(t => t.Name == regTypeName && t.AllInterfaces.Any(i =>
+                            i.ToDisplayString(DisplayFormats.NamespaceAndType) == "Sparkitect.Modding.IRegistry"));
+                }
+                if (registryType is null) return;
+
+                var regKey = registryType.ContainingNamespace?.ToDisplayString() is { Length: > 0 } ns
+                    ? $"{ns}.{registryType.Name}"
+                    : registryType.Name;
+
+                var pascal = Sparkitect.Generator.Modding.RegistryGenerator.ToPascalCase(id);
+
+                var bag = byRegistry.GetOrAdd(regKey, _ => new System.Collections.Concurrent.ConcurrentBag<Seen>());
+                bag.Add(new Seen(id, pascal, attrSyntax.GetLocation(), registryType.Name));
+
+            }, SyntaxKind.Attribute);
+
+            startCtx.RegisterCompilationEndAction(endCtx =>
+            {
+                foreach (var kv in byRegistry)
+                {
+                    var items = kv.Value.ToArray();
+                    var registryName = items.FirstOrDefault().RegistryName ?? kv.Key;
+
+                    // SPARK2030: duplicate ids within registry
+                    foreach (var grp in items.GroupBy(x => x.Id))
+                    {
+                        if (grp.Count() <= 1) continue;
+                        var first = grp.First();
+                        foreach (var dup in grp.Skip(1))
+                        {
+                            endCtx.ReportDiagnostic(Diagnostic.Create(
+                                RegistryDiagnostics.DuplicateRegistrationId,
+                                dup.Location,
+                                dup.Id,
+                                registryName));
+                        }
+                    }
+
+                    // SPARK2050: duplicate normalized property names
+                    foreach (var grp in items.GroupBy(x => x.Pascal))
+                    {
+                        if (grp.Count() <= 1) continue;
+                        var first = grp.First();
+                        foreach (var dup in grp.Skip(1))
+                        {
+                            endCtx.ReportDiagnostic(Diagnostic.Create(
+                                RegistryDiagnostics.DuplicateNormalizedPropertyName,
+                                dup.Location,
+                                first.Id,
+                                dup.Id,
+                                grp.Key,
+                                registryName));
+                        }
+                    }
+                }
+            });
+        });
     }
 
     private static void AnalyzeAttribute(SyntaxNodeAnalysisContext ctx)
@@ -303,4 +403,6 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
 
         return false;
     }
+
+    private readonly record struct Seen(string Id, string Pascal, Location Location, string RegistryName);
 }
