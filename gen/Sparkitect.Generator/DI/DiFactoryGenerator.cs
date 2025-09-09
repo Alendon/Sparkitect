@@ -39,7 +39,6 @@ public class DiFactoryGenerator : IIncrementalGenerator
                 {
                     FactoryType.Service => ExtractServiceFactoryModelData(classSymbol),
                     FactoryType.Factory => ExtractKeyedFactoryModelData(classSymbol),
-                    FactoryType.Entrypoint => ExtractEntrypointFactoryModelData(classSymbol),
                     _ => null
                 };
             }).NotNull();
@@ -53,11 +52,6 @@ public class DiFactoryGenerator : IIncrementalGenerator
             {
                 case ServiceFactoryModel singletonModel:
                     if (RenderServiceFactory(singletonModel, out code, out fileName))
-                        context.AddSource(fileName, code);
-                    break;
-
-                case EntrypointFactoryModel entrypointModel:
-                    if (RenderEntrypointFactory(entrypointModel, out code, out fileName))
                         context.AddSource(fileName, code);
                     break;
 
@@ -104,37 +98,6 @@ public class DiFactoryGenerator : IIncrementalGenerator
                 .ToImmutableValueArray(),
             requiredProperties.Select(x =>
                     new RequiredProperty(x.Type.ToDisplayString(), x.SetMethod!.Name,
-                        x.NullableAnnotation == NullableAnnotation.Annotated))
-                .ToImmutableValueArray()
-        );
-    }
-
-    internal static EntrypointFactoryModel? ExtractEntrypointFactoryModelData(INamedTypeSymbol classSymbol)
-    {
-        var factoryAttribute = classSymbol.GetAttributes().FirstOrDefault(x => FindFactoryMarker(x) is not null);
-        if (factoryAttribute is null) return null;
-
-        var factoryMarker = FindFactoryMarker(factoryAttribute);
-        var baseType = factoryMarker?.TypeArguments.FirstOrDefault();
-        var constructor = classSymbol.Constructors.FirstOrDefault();
-
-        if (baseType is null || constructor is null) return null;
-
-        var requiredProperties = classSymbol.GetMembers().OfType<IPropertySymbol>().Where(x => x.SetMethod is not null)
-            .Where(x => x.IsRequired);
-
-        return new EntrypointFactoryModel(
-            baseType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-            classSymbol.Name,
-            classSymbol.ContainingNamespace.ToDisplayString(),
-            constructor.Parameters
-                .Select(x =>
-                    new ConstructorArgument(x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                        x.NullableAnnotation == NullableAnnotation.Annotated))
-                .ToImmutableValueArray(),
-            requiredProperties.Select(x =>
-                    new RequiredProperty(x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                        x.SetMethod!.Name,
                         x.NullableAnnotation == NullableAnnotation.Annotated))
                 .ToImmutableValueArray()
         );
@@ -212,12 +175,7 @@ public class DiFactoryGenerator : IIncrementalGenerator
         return null;
     }
 
-    internal static bool RenderEntrypointFactory(EntrypointFactoryModel model, out string code, out string fileName)
-    {
-        fileName = $"{model.ImplementationTypeName}_EntrypointFactory.g.cs";
-
-        return FluidHelper.TryRenderTemplate("DI.EntrypointFactory.liquid", model, out code);
-    }
+    
 
     internal static bool RenderKeyedFactory(KeyedFactoryModel model, out string code, out string fileName)
     {

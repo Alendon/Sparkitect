@@ -7,11 +7,13 @@ namespace Sparkitect.DI.Container;
 internal sealed class CoreContainer : ICoreContainer
 {
     private readonly Dictionary<Type, object> _instances;
+    private ICoreContainer? _parentContainer;
     private bool _disposed;
     
-    public CoreContainer(Dictionary<Type, object> instances)
+    public CoreContainer(Dictionary<Type, object> instances, ICoreContainer? parentContainer)
     {
         _instances = instances ?? throw new ArgumentNullException(nameof(instances));
+        _parentContainer = parentContainer;
         _disposed = false;
     }
     
@@ -34,7 +36,7 @@ internal sealed class CoreContainer : ICoreContainer
         if (serviceType is null)
             throw new ArgumentNullException(nameof(serviceType));
             
-        if (!_instances.TryGetValue(serviceType, out var instance))
+        if (!TryResolve(serviceType, out var instance))
             throw new DependencyResolutionException($"No registration found for service {serviceType.Name}");
             
         return instance;
@@ -61,10 +63,10 @@ internal sealed class CoreContainer : ICoreContainer
             return false;
         }
         
-        return _instances.TryGetValue(serviceType, out service);
+        return _parentContainer?.TryResolve(serviceType, out service) is true || _instances.TryGetValue(serviceType, out service);
     }
     
-    public IReadOnlyDictionary<Type, object> GetRegisteredInstances()
+    public IReadOnlyDictionary<Type, object> GetCurrentRegisteredInstances()
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(CoreContainer));
@@ -95,6 +97,7 @@ internal sealed class CoreContainer : ICoreContainer
         }
         
         _instances.Clear();
+        _parentContainer = null;
         _disposed = true;
     }
 }

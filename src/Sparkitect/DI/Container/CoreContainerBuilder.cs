@@ -50,7 +50,7 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
         ValidateDependencyGraph();
         InstantiateServices();
 
-        return new CoreContainer(_instances);
+        return new CoreContainer(_instances, _parentContainer);
     }
 
     public bool TryResolveInternal<T>([NotNullWhen(true)] out T? instance) where T : class

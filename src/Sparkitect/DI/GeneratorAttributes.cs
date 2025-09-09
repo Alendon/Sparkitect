@@ -4,8 +4,7 @@ namespace Sparkitect.DI.GeneratorAttributes;
 public enum FactoryGenerationType
 {
     Service,
-    Factory,
-    Entrypoint
+    Factory
 }
 
 [AttributeUsage(AttributeTargets.Class)]
@@ -15,9 +14,6 @@ public class FactoryGenerationTypeAttribute(FactoryGenerationType generationType
 /// Marker interface for factory attributes that generate service factories
 /// </summary>
 public interface IFactoryMarker<TExposedType> where TExposedType : class;
-
-[FactoryGenerationType(FactoryGenerationType.Entrypoint)]
-public class EntrypointFactoryAttribute<TBase> : Attribute, IFactoryMarker<TBase> where TBase : class;
 
 /// <summary>
 /// Marks a property parameter (/named argument) as the key for a KeyedFactory.

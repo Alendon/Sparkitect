@@ -37,9 +37,10 @@ public interface ICoreContainer : IDisposable
     bool TryResolve(Type serviceType, out object? service);
     
     /// <summary>
-    /// Gets a read-only dictionary of all registered service instances in the container.
+    /// Gets a read-only dictionary of all registered service instances in this container.
+    /// This does not include instances registered in parent containers
     /// </summary>
     /// <returns>A dictionary mapping service types to their instances</returns>
     /// <exception cref="ObjectDisposedException">Thrown when the container has been disposed</exception>
-    IReadOnlyDictionary<Type, object> GetRegisteredInstances();
+    IReadOnlyDictionary<Type, object> GetCurrentRegisteredInstances();
 }

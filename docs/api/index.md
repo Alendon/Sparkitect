@@ -20,7 +20,7 @@ The Sparkitect Engine codebase is organized into the following primary namespace
 
 - **Sparkitect.DI** - Dependency injection framework
   - [CoreConfigurator](xref:Sparkitect.DI.CoreConfigurator) - Base class for IoC configuration
-  - [IIoCRegistryBuilder](xref:Sparkitect.DI.IIoCRegistryBuilder) - Interface for registry builders
+  - [IRegistryConfigurator](xref:Sparkitect.DI.IRegistryConfigurator) - Interface for registry configuration
 
 - **Sparkitect.ECS** - Entity Component System implementation
   - [Entity](xref:Sparkitect.ECS.Entity) - Entity representation
@@ -48,8 +48,7 @@ The Sparkitect Engine codebase is organized into the following primary namespace
 
 ### Third-Party Libraries
 
-- **DryIoc** - Dependency injection container
-- **ImTools** - Immutable collections and utilities
+The core DI used by Sparkitect is custom-built for the engine and modding requirements.
 
 ## Using the API Reference
 

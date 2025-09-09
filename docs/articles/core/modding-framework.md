@@ -125,7 +125,7 @@ The Modding Framework is tightly integrated with other core systems:
       
       public override string CategoryIdentifier => "category_name";
       
-      public override void MainPhaseRegistration(MyRegistry registry)
+      public override void MainPhaseRegistration(MyRegistry registry, ICoreContainer container)
       {
           var id = _identificationManager.RegisterObject("my_mod", "category_name", "my_object");
           registry.RegisterSomething(id, "additional data");

@@ -13,12 +13,7 @@ public record ServiceFactoryModel(
 /// <summary>
 /// Model for generating entrypoint factories that share a common base type
 /// </summary>
-public record EntrypointFactoryModel(
-    string BaseType,
-    string ImplementationTypeName,
-    string ImplementationNamespace,
-    ImmutableValueArray<ConstructorArgument> ConstructorArguments,
-    ImmutableValueArray<RequiredProperty> RequiredProperties);
+// Entrypoint factories removed; configuration entrypoints are discovered at runtime
 
 /// <summary>
 /// Model for generating keyed factories with string or Identification-based keys

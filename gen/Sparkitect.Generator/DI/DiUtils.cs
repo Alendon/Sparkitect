@@ -55,7 +55,6 @@ public static class DiUtils
         {
             "Sparkitect.DI.GeneratorAttributes.FactoryGenerationType.Service" => FactoryType.Service,
             "Sparkitect.DI.GeneratorAttributes.FactoryGenerationType.Factory" => FactoryType.Factory,
-            "Sparkitect.DI.GeneratorAttributes.FactoryGenerationType.Entrypoint" => FactoryType.Entrypoint,
             _ => FactoryType.None
         };
     }
@@ -94,6 +93,5 @@ enum FactoryType
 {
     None,
     Service,
-    Factory,
-    Entrypoint
+    Factory
 }

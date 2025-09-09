@@ -54,15 +54,14 @@ The `IdentificationManager` handles bidirectional mapping between these represen
 
 ### Registry Definition
 
-Registries are defined and added using the `IoCRegistryBuilderEntrypoint`:
+Registries are defined and added using an `IRegistryConfigurator`:
 
 ```csharp
-[IoCRegistryBuilderEntrypoint]
-public class MyRegistryBuilder : IIoCRegistryBuilder
+public class RegistryConfigurator : IRegistryConfigurator
 {
-    public void ConfigureRegistries(IRegistryProxy registryProxy)
+    public void ConfigureRegistries(IFactoryContainerBuilder<IRegistry> registryBuilder)
     {
-        registryProxy.AddRegistry<MyRegistry>("category_name");
+        // registryBuilder.Register(new MyRegistry_KeyedFactory());
     }
 }
 ```
@@ -84,7 +83,7 @@ public class MyRegistrations : Registrations<MyRegistry>
     
     public override string CategoryIdentifier => "category_name";
     
-    public override void MainPhaseRegistration(MyRegistry registry)
+    public override void MainPhaseRegistration(MyRegistry registry, ICoreContainer container)
     {
         var id = _identificationManager.RegisterObject("my_mod", "category_name", "my_object");
         registry.RegisterSomething(id, "additional data");

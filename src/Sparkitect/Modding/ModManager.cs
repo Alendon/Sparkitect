@@ -247,6 +247,12 @@ internal class ModManager : IModManager
             });
         }
 
+        foreach (var newLoadedMod in newLoadedMods)
+        {
+            _loadedMods.Add(newLoadedMod.Manifest.Id, newLoadedMod);
+        }
+        
+        
         using var configurationContainer = CreateEntrypointContainer<CoreConfigurator>(modIds.ToArray());
         var configurators = configurationContainer.ResolveMany();
         var coreContainerBuilder = new CoreContainerBuilder(CurrentCoreContainer);
@@ -264,10 +270,7 @@ internal class ModManager : IModManager
         };
 
         _loadedModGroups.Push(modGroup);
-        foreach (var newLoadedMod in newLoadedMods)
-        {
-            _loadedMods.Add(newLoadedMod.Manifest.Id, newLoadedMod);
-        }
+        
 
         Log.Information("Loaded {ModCount} mods", _loadedMods.Count);
     }
@@ -336,7 +339,8 @@ internal class ModManager : IModManager
     public IEntrypointContainer<T> CreateEntrypointContainer<T>(OneOf<All, IEnumerable<string>> modsToInclude)
         where T : class, BaseConfigurationEntrypoint
     {
-        var containerBuilder = new EntrypointContainerBuilder<T>(CurrentCoreContainer);
+        var entrypointAttribute = T.EntrypointAttributeType;
+        var instances = new List<T>();
 
         var modIds = modsToInclude.Match(
             _ => _loadedMods.Keys,
@@ -345,24 +349,45 @@ internal class ModManager : IModManager
         foreach (var modId in modIds)
         {
             var mod = _loadedMods[modId];
-            var entrypointAttribute = T.EntrypointFactoryAttributeType;
 
-            var entrypointFactoryTypes = mod.Assembly.GetTypes()
+            // Find all types marked with the entrypoint attribute and assignable to T
+            var candidateTypes = mod.Assembly.GetTypes()
                 .Where(t => t.GetCustomAttributes(false).Any(a => a.GetType() == entrypointAttribute))
-                .Where(t => typeof(IEntrypointFactory<T>).IsAssignableFrom(t) &&
-                            t is { IsInterface: false, IsAbstract: false });
+                .Where(t => typeof(T).IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false })
+                .ToArray();
 
+            // Order entrypoints deterministically (stub for now)
+            var orderedTypes = OrderEntrypoints<T>(candidateTypes);
 
-            //TODO Future, when mod dependencies are implemented, we will need to have ordered entrypoints
-
-            foreach (var entrypointFactoryType in entrypointFactoryTypes)
+            foreach (var type in orderedTypes)
             {
-                containerBuilder.Register((Activator.CreateInstance(entrypointFactoryType) as IEntrypointFactory<T>)!);
+                // Only support parameterless constructors for configuration entrypoints
+                var ctor = type.GetConstructor(Type.EmptyTypes);
+                if (ctor is null)
+                {
+                    Log.Warning("Skipping entrypoint type {Type} without parameterless constructor", type.FullName);
+                    continue;
+                }
+
+                if (Activator.CreateInstance(type) is T instance)
+                {
+                    instances.Add(instance);
+                }
+                else
+                {
+                    Log.Warning("Failed to instantiate entrypoint type {Type}", type.FullName);
+                }
             }
         }
 
-        return containerBuilder.Build();
+        return new EntrypointContainer<T>(instances);
     }
+
+    // TODO: When mod dependencies and ordering semantics are implemented,
+    //       this method should apply a deterministic ordering for entrypoint execution.
+    //       For now, it returns the input unchanged.
+    private static IEnumerable<Type> OrderEntrypoints<T>(IEnumerable<Type> types) where T : class, BaseConfigurationEntrypoint
+        => types;
 
     private class LoadedModGroup
     {

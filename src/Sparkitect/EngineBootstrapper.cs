@@ -48,11 +48,6 @@ public class EngineBootstrapper
             Log.Information("Starting game loop");
             bootstrapper.RunGame();
         }
-        catch (Exception ex)
-        {
-            Log.Fatal(ex, "Fatal error during engine bootstrap");
-            throw;
-        }
         finally
         {
             Log.Information("Cleaning up resources");
@@ -186,8 +181,8 @@ public class EngineBootstrapper
         }
 
         var container = _modManager.CurrentCoreContainer;
-/*
-        if (container.TryResolve(out IRegistryManager registryManager))
+
+        if (container.TryResolve(out IRegistryManager? registryManager))
         {
             Log.Debug("Processing registries");
             registryManager.ProcessRegistry();
@@ -197,7 +192,7 @@ public class EngineBootstrapper
         {
             Log.Error("Registry manager is null");
             throw new InvalidOperationException("Registry manager has not been initialized");
-        }*/
+        }
     }
 
     /// <summary>

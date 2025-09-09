@@ -17,7 +17,7 @@ public class CoreContainerTests
             { typeof(ITestService), new TestService() }
         };
         
-        var container = new CoreContainer(instances);
+        var container = new CoreContainer(instances, null);
         
         // Act
         var service = container.Resolve<ITestService>();
@@ -32,7 +32,7 @@ public class CoreContainerTests
     {
         // Arrange
         var instances = new Dictionary<Type, object>();
-        var container = new CoreContainer(instances);
+        var container = new CoreContainer(instances, null);
         
         // Act & Assert
         await Assert.That(() => container.Resolve<ITestService>()).Throws<DependencyResolutionException>();
@@ -47,7 +47,7 @@ public class CoreContainerTests
             { typeof(ITestService), new TestService() }
         };
         
-        var container = new CoreContainer(instances);
+        var container = new CoreContainer(instances, null);
         
         // Act
         var result = container.TryResolve<ITestService>(out var service);
@@ -63,7 +63,7 @@ public class CoreContainerTests
     {
         // Arrange
         var instances = new Dictionary<Type, object>();
-        var container = new CoreContainer(instances);
+        var container = new CoreContainer(instances, null);
         
         // Act
         var result = container.TryResolve<ITestService>(out var service);
@@ -83,7 +83,7 @@ public class CoreContainerTests
             { typeof(IDisposableTestService), disposableService }
         };
         
-        var container = new CoreContainer(instances);
+        var container = new CoreContainer(instances, null);
         
         // Act
         container.Dispose();
@@ -101,7 +101,7 @@ public class CoreContainerTests
             { typeof(ITestService), new TestService() }
         };
         
-        var container = new CoreContainer(instances);
+        var container = new CoreContainer(instances, null);
         container.Dispose();
         
         // Act & Assert
@@ -121,10 +121,10 @@ public class CoreContainerTests
             { typeof(IDependencyService), dependencyService }
         };
         
-        var container = new CoreContainer(instances);
+        var container = new CoreContainer(instances, null);
         
         // Act
-        var registeredInstances = container.GetRegisteredInstances();
+        var registeredInstances = container.GetCurrentRegisteredInstances();
         
         // Assert
         await Assert.That(registeredInstances).IsNotNull();

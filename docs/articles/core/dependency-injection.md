@@ -18,8 +18,8 @@ The DI system currently utilizes 3 different types of containers, specialized fo
 Changing this later to a more general variation or allowing more customization is intended to be possible but currently not planned.
 
 Container Types:
-- CoreContainer: Pure Singleton Container. Providing implementations to interfaces. The need for more special cases in this container is currently not identified.
-- EntrypointContainer: Providing a way for mods to expose "Entrypoints", eg mod code execution before/outside of the registry system. This is intended to be the primary way to invoke mod code from the engine/other mods
+- CoreContainer: Pure singleton container that provides implementations to interfaces.
+- EntrypointContainer: Container holding discovered ConfigurationEntrypoints (e.g., CoreConfigurator, registry configurators, registrations) and allowing sequential processing by the engine.
 - FactoryContainer: An object factory container based on keyed registrations and optional object caching/recycling facility.
 
 ### Core Container
@@ -40,10 +40,8 @@ Once a container is created, it cannot be modified. Similarly, sub-containers ca
 
 ### Entrypoint Container
 
-Manages Entrypoints of a singular base type and allows fetching all registered implementations.
-The idea is that the used entrypoint base type, exposes one or multiple functions which can then be executed sequentially.
-
-The registry system uses this behaviour to execute the code for adding new registry types and object registrations.
+Holds instances of a single ConfigurationEntrypoint base type and allows fetching all discovered implementations.
+The engine uses this to execute configurators and registrations in a deterministic sequence (ordering rules to be added).
 
 ### Factory Container
 
@@ -96,7 +94,11 @@ internal class XmlProcessor : IProcessor
 }
 ```
 
-All factory attributes (`SingletonAttribute`, `KeyedFactoryAttribute`, `EntrypointFactoryAttribute`) implement the `IFactoryMarker<T>` interface, which signals to the source generator that factory code should be generated. The generators automatically create factory classes that handle dependency resolution, instantiation, and property injection based on these attributes.
+Factory attributes that generate code are:
+- `SingletonAttribute<T>` for singleton services
+- `KeyedFactoryAttribute<T>` for keyed factories
+
+ConfigurationEntrypoints are not generated; they’re discovered at runtime via discovery attributes and instantiated via parameterless constructors.
 
 
 ## Entrypoint System
@@ -108,7 +110,7 @@ The DI system uses a discoverable entrypoint pattern for modular configuration. 
 
 ### ConfigurationEntrypoint Base Class
 
-The `ConfigurationEntrypoint<TAttribute>` pattern is a key architectural component:
+The `ConfigurationEntrypoint<TAttribute>` pattern underpins configurator discovery. It exposes the discovery attribute type and is implemented by entrypoint base types such as `CoreConfigurator`, `IRegistryConfigurator`, and `Registrations`.
 
 ```csharp
 public interface ConfigurationEntrypoint<TDiscoveryAttribute> : BaseConfigurationEntrypoint
@@ -118,14 +120,7 @@ public interface ConfigurationEntrypoint<TDiscoveryAttribute> : BaseConfiguratio
 }
 ```
 
-Classes that implement this interface and are marked with the corresponding attribute are automatically discovered during engine initialization. This pattern is designed to work with a source generator system (currently in development) that will streamline configuration by:
-
-1. Finding all classes marked with discovery attributes
-2. Generating efficient lookup code 
-3. Auto-registering these components in the appropriate containers
-
-> [!NOTE]
-> All implementations of the ConfigurationEntrypoint pattern are designed to work with source generators in future updates. The current implementation uses runtime reflection, but this will be replaced by compile-time code generation.
+ConfigurationEntrypoints must have parameterless constructors. DI is provided through method parameters (e.g., `ICoreContainer`), not through constructor injection.
 
 ### Available Entrypoints
 
@@ -169,20 +164,20 @@ public class MyConfigurator : CoreConfigurator
 
 Manual CoreConfigurator implementations are still supported but are not recommended as they require manual maintenance when services are added or removed.
 
-#### IoCRegistryBuilder
+#### Registry Configurator
 
 ```csharp
-[IoCRegistryBuilderEntrypoint]
-public class MyRegistryBuilder : IIoCRegistryBuilder
+public class RegistryConfigurator : IRegistryConfigurator
 {
-    public void ConfigureRegistries(IRegistryProxy registryProxy)
+    public void ConfigureRegistries(IFactoryContainerBuilder<IRegistry> registryBuilder)
     {
-        registryProxy.AddRegistry<MyRegistry>("category_name");
+        // Add registry factories here
+        // registryBuilder.Register(new MyRegistry_KeyedFactory());
     }
 }
 ```
 
-Adds registries to the registry system.
+Adds registries to the registry system using a factory container builder.
 
 #### Registrations
 
@@ -192,9 +187,9 @@ public class MyRegistrations : Registrations<MyRegistry>
 {
     public override string CategoryIdentifier => "category_name";
     
-    public override void MainPhaseRegistration(MyRegistry registry)
+    public override void MainPhaseRegistration(MyRegistry registry, ICoreContainer container)
     {
-        // Registration logic here
+        // Registration logic here; resolve services through container if needed
     }
 }
 ```
@@ -207,7 +202,7 @@ Handles object registration within specific registries.
 
 Components are added to DI containers through several methods:
 
-1. **Source-Generated Factories**: Classes marked with attributes like `[Singleton<T>]`, `[KeyedFactory<T>]`, or `[EntrypointFactory<T>]` automatically generate factory classes
+1. **Source-Generated Factories**: Classes marked with attributes like `[Singleton<T>]` or `[KeyedFactory<T>]` automatically generate factory classes
 2. **Registry Base Classes**: Classes that extend registry-specific base classes  
 3. **Container Builder**: Explicit registration using the container builder API with generated factories
 
@@ -218,12 +213,12 @@ The `Registrations<TRegistry>` class provides type-safe registry operations:
 ```csharp
 public abstract class Registrations<TRegistry> : Registrations where TRegistry : IRegistry
 {
-    public sealed override void MainPhaseRegistration(IRegistry registry)
+    public sealed override void MainPhaseRegistration(IRegistry registry, ICoreContainer container)
     {
-        MainPhaseRegistration((TRegistry) registry);
+        MainPhaseRegistration((TRegistry) registry, container);
     }
 
-    public abstract void MainPhaseRegistration(TRegistry registry);
+    public abstract void MainPhaseRegistration(TRegistry registry, ICoreContainer container);
 }
 ```
 
@@ -305,15 +300,14 @@ The DI system is tightly coupled with the modding framework:
 ### Creating Services
 
 - Use `[Singleton<T>]` for single-instance services
-- Use `[KeyedFactory<T>]` for services that need key-based resolution  
-- Use `[EntrypointFactory<T>]` for discoverable entrypoint implementations
+- Use `[KeyedFactory<T>]` for services that need key-based resolution
 - Declare dependencies through constructor parameters and required properties
 - For keyed factories, use either `Key = "value"` or `KeyPropertyName = nameof(Property)` with a static property
 
-### When to Use the Entrypoint Pattern
+### When to Use Configuration Entrypoints
 
 - Use `CoreConfigurator` for registering core services
-- Use `IIoCRegistryBuilder` to define new registry categories
+- Use `IRegistryConfigurator` to define new registry categories
 - Use `Registrations<T>` for registering objects within specific registries
 
 ### Container Management

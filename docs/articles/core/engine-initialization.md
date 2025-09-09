@@ -86,12 +86,11 @@ After mods are loaded, the RegistryManager initiates registry processing:
 
 1. **Category Phase**: Registry categories are registered and initialized
    ```csharp
-   [IoCRegistryBuilderEntrypoint]
-   public class MyRegistryBuilder : IIoCRegistryBuilder
+   public class RegistryConfigurator : IRegistryConfigurator
    {
-       public void ConfigureRegistries(IRegistryProxy registryProxy)
+       public void ConfigureRegistries(IFactoryContainerBuilder<IRegistry> registryBuilder)
        {
-           registryProxy.AddRegistry<MyRegistry>("category_name");
+           // registryBuilder.Register(new MyRegistry_KeyedFactory());
        }
    }
    ```
