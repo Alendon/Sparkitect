@@ -1,4 +1,6 @@
-﻿using Sparkitect.DI.GeneratorAttributes;
+﻿using Serilog;
+using Serilog.Core;
+using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.Modding;
 
 namespace MinimalSampleMod;
@@ -8,11 +10,11 @@ public class DummyValueManager : IDummyValueManager
 {
     public void AddDummyValue(Identification id, string value)
     {
-        throw new NotImplementedException();
+        Log.Information("Registering value '{Value}' for '{Id}'", value, id);
     }
 
     public string GetDummyValue(Identification id)
     {
-        throw new NotImplementedException();
+        return "";
     }
 }

@@ -38,6 +38,20 @@ public partial class DummyRegistry(IDummyValueManager dummyValueManager) : IRegi
     {
     }
     
+    public void Unregister(Identification id)
+    {
+        // Sample implementation placeholder
+    }
+
+    public void PreRegister()
+    {
+        
+    }
+
+    public void PostRegister()
+    {
+        
+    }
 }
 
 public static class RegistryExample

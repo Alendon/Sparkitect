@@ -3,9 +3,7 @@
 //manages the registry of categories (actual registries) and objects
 public interface IRegistryManager
 {
-    void ProcessRegistry(
-        RegistryPhase registryPhase = RegistryPhase.Category | RegistryPhase.ObjectPre | RegistryPhase.ObjectMain |
-                                      RegistryPhase.ObjectPost);
+    void ProcessRegistry();
     
     //TODO add unregistration method
 }

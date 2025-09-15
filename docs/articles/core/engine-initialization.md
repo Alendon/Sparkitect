@@ -101,18 +101,11 @@ After mods are loaded, the RegistryManager initiates registry processing:
    [RegistrationsEntrypoint]
    public class MyRegistrations : Registrations<MyRegistry>
    {
-       private readonly IIdentificationManager _identificationManager;
-       
-       public MyRegistrations(IIdentificationManager identificationManager)
-       {
-           _identificationManager = identificationManager;
-       }
-       
        public override string CategoryIdentifier => "category_name";
        
        public override void MainPhaseRegistration(MyRegistry registry)
        {
-           var id = _identificationManager.RegisterObject("my_mod", "category_name", "my_object");
+           var id = IdentificationManager.RegisterObject("my_mod", "category_name", "my_object");
            registry.RegisterSomething(id, "additional data");
        }
    }

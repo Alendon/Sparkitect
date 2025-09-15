@@ -5,32 +5,30 @@ using Sparkitect.DI;
 using Sparkitect.DI.Container;
 
 [global::Sparkitect.DI.RegistrationsEntrypoint]
-public class {{ RegistryName }}Registrations_{{ SourceTag }}(global::Sparkitect.Modding.IIdentificationManager identificationManager{% if UseResourceManager %}, global::Sparkitect.Modding.IResourceManager resourceManager{% endif %}) : global::Sparkitect.DI.Registrations<global::{{ RegistryFullName }}>
+public class {{ RegistryName }}Registrations_{{ SourceTag }} : global::Sparkitect.DI.Registrations<global::{{ RegistryFullName }}>
 {
     public override string CategoryIdentifier => "{{ CategoryKey }}";
 
 {% for entry in Entries -%}
     public static global::Sparkitect.Modding.Identification {{ entry.PropertyName }} { get; private set; }
 {% endfor %}
-
-    public override void PrePhaseRegistration(global::{{ RegistryFullName }} registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
-
-    public override void MainPhaseRegistration(global::{{ RegistryFullName }} registry, global::Sparkitect.DI.Container.ICoreContainer container)
+    
+    public override void ProcessRegistrations(global::{{ RegistryFullName }} registry)
     {
 {% for e in Entries -%}
         {
-            {{ e.PropertyName }} = identificationManager.RegisterObject("{{ ModId }}", "{{ CategoryKey }}", "{{ e.Id }}");
+            {{ e.PropertyName }} = IdentificationManager.RegisterObject("{{ ModId }}", "{{ CategoryKey }}", "{{ e.Id }}");
 {% if e.Files and e.Files.size > 0 -%}
             {%- for f in e.Files %}
-            resourceManager.SetResource({{ e.PropertyName }}, "{{ f.fileId }}", "{{ f.fileName }}");
+            ResourceManager?.SetResource({{ e.PropertyName }}, "{{ f.fileId }}", "{{ f.fileName }}");
             {%- endfor %}
 {% endif -%}
 {% if e.Kind == "Method" -%}
             {%- for p in e.DiParams %}
             {%- if p.IsNullable -%}
-            container.TryResolve<{{ p.Type }}>(out var arg_{{ forloop.index0 }});
+            Container.TryResolve<{{ p.Type }}>(out var arg_{{ forloop.index0 }});
             {%- else -%}
-            if(!container.TryResolve<{{ p.Type }}>(out var arg_{{ forloop.index0 }}))
+            if(!Container.TryResolve<{{ p.Type }}>(out var arg_{{ forloop.index0 }}))
                 throw new global::System.InvalidOperationException("Missing dependency {{ p.Type }} for provider {{ e.ProviderFullName }}");
             {%- endif -%}
             {%- endfor %}
@@ -46,7 +44,5 @@ public class {{ RegistryName }}Registrations_{{ SourceTag }}(global::Sparkitect.
 {% endif -%}
         }
 {% endfor -%}
-    }
-
-    public override void PostPhaseRegistration(global::{{ RegistryFullName }} registry, global::Sparkitect.DI.Container.ICoreContainer container) { }
+    } 
 }

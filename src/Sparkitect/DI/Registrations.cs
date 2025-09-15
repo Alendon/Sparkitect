@@ -7,30 +7,28 @@ namespace Sparkitect.DI;
 public abstract class Registrations : ConfigurationEntrypoint<RegistrationsEntrypointAttribute>
 {
     public abstract string CategoryIdentifier { get; }
-    
-    public virtual void PrePhaseRegistration(IRegistry registry, ICoreContainer container) { }
-    public abstract void MainPhaseRegistration(IRegistry registry, ICoreContainer container);
-    public virtual void PostPhaseRegistration(IRegistry registry, ICoreContainer container) { }
+
+    protected ICoreContainer Container { get; private set; } = null!;
+    protected IIdentificationManager IdentificationManager { get; private set; } = null!;
+    protected IResourceManager ResourceManager { get; private set; } = null!;
+
+    public void Initialize(ICoreContainer container)
+    {
+        Container = container;
+        
+        IdentificationManager = container.Resolve<IIdentificationManager>();
+        ResourceManager = container.Resolve<IResourceManager>();
+    }
+
+    public abstract void ProcessRegistrations(IRegistry registry);
 }
 
 public abstract class Registrations<TRegistry> : Registrations where TRegistry : IRegistry
 {
-    public sealed override void PrePhaseRegistration(IRegistry registry, ICoreContainer container)
+    public sealed override void ProcessRegistrations(IRegistry registry)
     {
-        PrePhaseRegistration((TRegistry) registry, container);
+        ProcessRegistrations((TRegistry)registry);
     }
 
-    public sealed override void MainPhaseRegistration(IRegistry registry, ICoreContainer container)
-    {
-        MainPhaseRegistration((TRegistry) registry, container);
-    }
-
-    public sealed override void PostPhaseRegistration(IRegistry registry, ICoreContainer container)
-    {
-        PostPhaseRegistration((TRegistry) registry, container);
-    }
-
-    public abstract void PrePhaseRegistration(TRegistry registry, ICoreContainer container);
-    public abstract void MainPhaseRegistration(TRegistry registry, ICoreContainer container);
-    public abstract void PostPhaseRegistration(TRegistry registry, ICoreContainer container);
+    public abstract void ProcessRegistrations(TRegistry registry);
 }

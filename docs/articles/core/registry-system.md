@@ -66,6 +66,8 @@ public class RegistryConfigurator : IRegistryConfigurator
 }
 ```
 
+> Note: Category identifiers (string IDs) must be globally unique. Duplicate category IDs or references to missing categories result in exceptions during registry processing.
+
 ### Object Registration
 
 Objects are registered through the typed `Registrations` classes:
@@ -74,18 +76,12 @@ Objects are registered through the typed `Registrations` classes:
 [RegistrationsEntrypoint]
 public class MyRegistrations : Registrations<MyRegistry>
 {
-    private readonly IIdentificationManager _identificationManager;
-    
-    public MyRegistrations(IIdentificationManager identificationManager)
-    {
-        _identificationManager = identificationManager;
-    }
-    
     public override string CategoryIdentifier => "category_name";
     
-    public override void MainPhaseRegistration(MyRegistry registry, ICoreContainer container)
+    public override void MainPhaseRegistration(MyRegistry registry)
     {
-        var id = _identificationManager.RegisterObject("my_mod", "category_name", "my_object");
+        // Access DI via base properties after Initialize() has been called
+        var id = IdentificationManager.RegisterObject("my_mod", "category_name", "my_object");
         registry.RegisterSomething(id, "additional data");
     }
 }
@@ -96,7 +92,7 @@ public class MyRegistrations : Registrations<MyRegistry>
 The Registry System is tightly integrated with the DI system:
 
 - Registry classes are registered and resolved through DI
-- Registry operations receive required dependencies through constructor injection
+- Registrations receive dependencies through base properties after `Initialize(ICoreContainer)`
 - Registry processing uses dedicated DI containers
 
 ## Future Development

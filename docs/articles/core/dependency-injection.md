@@ -187,14 +187,27 @@ public class MyRegistrations : Registrations<MyRegistry>
 {
     public override string CategoryIdentifier => "category_name";
     
-    public override void MainPhaseRegistration(MyRegistry registry, ICoreContainer container)
+    public override void MainPhaseRegistration(MyRegistry registry)
     {
-        // Registration logic here; resolve services through container if needed
+        // Registration logic here; dependencies available via base properties after Initialize
+        // Example: var id = IdentificationManager.RegisterObject("my_mod", "category_name", "my_object");
     }
 }
 ```
 
 Handles object registration within specific registries.
+
+Registrations receive dependencies via a one-time initialization call invoked by the engine:
+
+```csharp
+// Engine calls this before Pre/Main/Post methods
+myRegistrations.Initialize(coreContainer);
+
+// Inside your registration class, use:
+// - Container: ICoreContainer
+// - IdentificationManager: IIdentificationManager
+// - ResourceManager?: IResourceManager (optional)
+```
 
 ## Service Registration
 
@@ -213,12 +226,12 @@ The `Registrations<TRegistry>` class provides type-safe registry operations:
 ```csharp
 public abstract class Registrations<TRegistry> : Registrations where TRegistry : IRegistry
 {
-    public sealed override void MainPhaseRegistration(IRegistry registry, ICoreContainer container)
+    public sealed override void MainPhaseRegistration(IRegistry registry)
     {
-        MainPhaseRegistration((TRegistry) registry, container);
+        MainPhaseRegistration((TRegistry) registry);
     }
 
-    public abstract void MainPhaseRegistration(TRegistry registry, ICoreContainer container);
+    public abstract void MainPhaseRegistration(TRegistry registry);
 }
 ```
 
