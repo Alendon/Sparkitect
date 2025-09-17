@@ -6,6 +6,7 @@ using Serilog;
 using Serilog.Exceptions;
 using Serilog.Formatting.Compact;
 using Sparkitect.DI.Container;
+using Sparkitect.GameState;
 
 namespace Sparkitect;
 
@@ -104,6 +105,7 @@ public class EngineBootstrapper
         builder.Register<CliArgumentHandler_Factory>();
         builder.Register<IdentificationManager_Factory>();
         builder.Register<ModManager_Factory>();
+        builder.Register<GameStateManager_Factory>();
 
         try
         {
@@ -200,11 +202,20 @@ public class EngineBootstrapper
     /// </summary>
     public void RunGame()
     {
-        // Currently a placeholder until the game state system is implemented
+        // Placeholder until the game state system is implemented
         Log.Information("Game is running...");
 
-        // In a real implementation, this would initialize the game state system
-        // and transition to the first game state
+        // Try to resolve the scaffolded GameStateManager
+        var container = _modManager?.CurrentCoreContainer;
+        if (container is not null && container.TryResolve(out IGameStateManager? gsm))
+        {
+            Log.Information("GameStateManager resolved (scaffold). No loop implemented yet.");
+            // gsm.SetInitial("bootstrap"); // left unset intentionally
+        }
+        else
+        {
+            Log.Debug("GameStateManager not available yet");
+        }
     }
 
     /// <summary>

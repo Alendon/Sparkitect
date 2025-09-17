@@ -4,7 +4,7 @@ using Serilog;
 
 namespace Sparkitect.DI.Container;
 
-internal sealed class CoreContainer : ICoreContainer
+internal class CoreContainer : ICoreContainer
 {
     private readonly Dictionary<Type, object> _instances;
     private ICoreContainer? _parentContainer;

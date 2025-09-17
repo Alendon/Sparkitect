@@ -1,110 +1,126 @@
 ﻿# Game State Planning
 
-This document is for planning the game state system, to be implemented into the Sparkitect Engine.
+This document describes the planned Game State System for the Sparkitect Engine.
 
-##  Goal
-The goal of the game state system, is to provide mechanic with which developers can define states,
-in which the game can be, with each of them having different configurations/services exposed.
-And to provide an easy, reliable and extendable way of working with them.
+## Goal
+Provide a clean, reliable, and extensible mechanism to define engine/game states with distinct configurations and services, and to manage deterministic transitions between them.
+
+## Core Concepts
+- State: Registered by the Registry System (category: "State"). A State has a string id (mapped to an Identification) and exactly one parent. The bootstrap/root state is handled outside of the Registry System.
+- State Module: Registered by the Registry System (category: "State Bundle"). A State is defined as an ordered composition of State Modules plus a parent reference.
+- Component ownership: Features and Transitions are owned by the State Module and activated per State; they are not shared across states by default.
+- Registry integration: Registries are stateless proxy classes. Registry containers/instances are built as needed during processing and then discarded. Category lifetime is bound to the owning module; numeric IDs are ephemeral and may be reassigned when modules reappear.
 
 ## Atomic Components
-The following components are the atomic elements in the game state system.
-States are not necessarily directly composed of them, this would be way to tedious,
-Instead we need to add some kind of "composite component", which can be viewed as a building block containing multiple atomic components.
+The following are the atomic elements the system orchestrates. States compose them via State Modules.
 
 ### State Bound Service
+A State Bound Service is a DI service instantiated only when the State that includes its defining Module is active. These are singletons within the active State’s scope.
 
-A State Bound Service, is a DI Service which is only instantiated in the Container Hierarchy if an GameState requires it.
-Currently the Engine only supports these kind of DI Services as Singletons.
-A State Bound Service can expose a "Facade" to Features and Transitions
-This allows Features and Transitions to access logic of State Bound Services, which is not exposed otherwise.
+- The service class is decorated as a state-bound service and can expose one optional Facade interface for Features/Transitions.
+- Services are added to a specific State Module explicitly by code in that module (a list of used service API types). Both the service decoration and the module usage must agree; the generator validates this.
+- Public DI exposes only the "exposed" service interfaces. Facades are available only to generated wrappers for Features/Transitions.
+- A dedicated source generator and a derived StateContainer builder handle multi-interface mapping so exposed interface and facade resolve to the same instance.
 
-Sample Implementation of how an implementation can be marked as a State Bound Service
-This sample is missing how the association between the Service and the Game State is done.
+Sample (shape indicative):
 ```csharp
-//Defining a State Bound Service with only a public API
-[StateBoundService<IMyServiceExposed>]
-public class MyService : IMyServiceExposed
+// Service class declares it belongs to a specific state module and exposes an optional facade
+[StateService<CoreModule, IMyServiceExposed>(Facade = typeof(IMyServiceFacade))]
+internal sealed class MyService : IMyServiceExposed, IMyServiceFacade
 {
-    /* Implementation */
+    // Implementation
 }
 
-//Defining a State Bound Service with an facaded API
-//Transitions/Features can query both IMyServiceExposed and IMyServiceFacaded
-[StateBoundService<IMyServiceExposed, IMyServiceFacaded>]
-public class MyService : IMyServiceExposed, IMyServiceFacaded
+// The module explicitly references the exposed API type as “used”
+[StateModule("core")]
+internal sealed partial class CoreModule
 {
-    /* Implementation */
+    public static readonly Type[] UsedServices =
+    {
+        typeof(IMyServiceExposed)
+    };
 }
 ```
 
 ### Feature
+Features implement the state’s main loop work. They are stateless and sync (no async in the first iteration). All resolution/invocation boilerplate is generated; no reflection is used.
 
-Features are the components which compose the main loop of game states.
-Features themself are designed to be stateless, they access State through the exposed DI Container.
-
-In the simplest Form, a Feature is a static method, containing the DI Parameters as Method Parameters.
-A Source Generator will be created, to create boilerplate code for resolving the parameters and calling the function,
-to avoid computationally intensive code like Reflection.
-
-Sample of how a Feature is implemented:
+- Declared as static methods, typically inside the State Module class. Annotated with a key and optional ordering.
+- Generated wrappers resolve dependencies once per container change and then call the method each frame.
+- Missing non-nullable DI parameters are hard errors; nullable parameters are treated as optional.
 
 ```csharp
-[RegisterFeature("sample")]
-internal static void ProcessMyService(IMyServiceExposed publicApi, IMyServiceFacaded facededApi)
+[Feature("sample")]
+internal static void Tick(IMyServiceExposed api, IMyServiceFacade? facade)
 {
-    publicApi.DoSomethingPublic();
-    facededApi.DoFeatureRelatedWork();
+    api.DoSomethingPublic();
+    facade?.DoFeatureRelatedWork();
 }
 ```
 
-By using a static function, the function itself could be placed directly in the MyService class if wanted,
-without creating errors, if the implementation is replaced with a new one.
-
-A Source Generator would later create a wrapper class, which can be without additionally cost instantiated by the
-State Management. This Wrapper Class would fetch all service objects in its initialization function.
-For the actually Feature Invocation, the cached service objects can directly be used without cost.
-
 ### Transition
+Transitions execute around state changes. They are static methods owned by a State Module and keyed like features. Triggers (first iteration):
 
-Transitions are components, which executes when the Game State is switching or updating.
-Transitions in its simplest form are, like Features, just static methods.
-They can be configured to trigger at different kind of state changes.
+- Removed: Module present in old state, not in new
+- Unchanged.Before: Module present in both states (before rebuild)
+- Unchanged.After: Module present in both states (after rebuild)
+- Add: Module present in new state, not in old
 
-A Transition is always related to one or multiple Services which it "manages".
-A Transition is not directly related to a specific State or Feature.
+Transitions can access the relevant side’s container; unchanged transitions split to allow coordinated teardown/build-up. All wrappers are generated; no reflection is used.
 
-## State Hierarchy
+## Component Activation per State
+By default, when a State includes a State Module, all of that module’s Features and Transitions are active. States can refine this by specifying an activation policy per module:
 
-States have an enforced hierarchy by the DI System.
-The DI System only allows creating new Child Containers or fully disposing containers.
-It is not possible to modify an existing container.
+- All (default) – activate all components
+- Include(keys)/Exclude(keys) – select components by keys
+- Groups – modules may declare named groups of feature/transition keys, and states can reference groups
 
-This places a critical restriction on the Hierarchy of the Services used in States.
+Keys must be public const string values; analyzers enforce key validity and uniqueness within a module and trigger group. Activation applies per trigger group as well (Removed, Unchanged.Before, Unchanged.After, Add).
 
-Sample:
+This allows shared modules across very different states while tailoring behavior without duplicating modules.
+
+## State Container and Hierarchy
+- A State has a single container that holds all services of all included modules for that State.
+- The DI system remains immutable; container changes happen only at state boundaries.
+- Facades are only accessible to generated wrappers for features/transitions; public DI exposes only exposed interfaces.
+
+Example hierarchy concept:
 ```
 - RootState (Core Engine Components)
-    - DesktopGameState (Core Engine Components, Rendering Services)
-        - MainMenuState (Core Engine Components, Rendering Services, Main Manu Services)
-        - LocalGame (Core Engine Components, Rendering Services, Game Services)
-        - Client Game (Core Engine Components, Rendering Services, Game Services, Networking Services)
-    - Server Game State (Core Engine Components, Game Services, Networking Services)
+    - DesktopGameState (Core Engine Components, Rendering Module)
+        - MainMenuState (… + Main Menu Module)
+        - LocalGame (… + Game Module)
+        - ClientGame (… + Game Module + Networking Module)
+    - ServerGame (Core Engine Components + Game Module + Networking Module)
 ```
 
-This Hierarchy does not include Features and Transitions.
-As Features and Transitions are stateless themself, they get there State by the current Set of Services which are injected each call.
-The Wrapper Classes of Features and Transitions are freshly initialized when Service Changes are done.
+## Transition Sequence (A → B)
+1. Compute module diff:
+   - Removed = A\B; Unchanged = A∩B; Added = B\A
+2. Determine cross-module and intra-module ordering. Ordering applies per trigger group: Removed, Unchanged.Before, Unchanged.After, Add
+3. Phase 1 (old):
+   - Run Removed transitions on Removed modules against the old container (restricted to old-state active keys)
+   - Run Unchanged.Before transitions on Unchanged modules against the old container (restricted to old-state active keys)
+4. Build:
+   - Perform required registry/mod operations via Core State Module transitions
+   - Build the new State container (Unchanged + Added modules)
+5. Phase 2 (new):
+   - Run Add transitions on Added modules against the new container (restricted to new-state active keys)
+   - Run Unchanged.After transitions on Unchanged modules against the new container (restricted to new-state active keys)
 
-In the Hierarchy of the sample, all Child States are always just extending the Parent State.
-Assuming the MainMenuState is the current State, to start a local game, 
-a request is issued to the Game State System, to switch to LocalGame.
-The Transition Path between Main Menu and Local Game is through the Desktop Game State.
-EG first the Main Menu Services are teared down. 
-For this we assume a Transition exists, which is defined to manage the Main Menu Services
-and to shut them gracefully down.
-Afterwards the current Container is disposed and the Hierarchy effectively "points to" the Desktop Game State.
-Then the Child Container specific to the Local Game State is instantiated, and the associated Transitions for the new Services executed.
-Afterwards the Main Loop Feature execution for the Local Game Starts.
+All failures (including ordering cycles, missing dependencies, transition exceptions) panic.
 
+## Ordering
+- Cross-module ordering: Modules may declare BeforeModule/AfterModule relationships
+- Intra-module ordering: Individual features/transitions may declare Before/After key relationships
+- Per-trigger ordering: the trigger groups are ordered independently using the above rules
+- Keys must be public const string; analyzers validate constraints
+
+## Payloads (Overview)
+State changes are requested via a generic API and extended with source-generated, strongly-typed helpers per state using C# 14 extensions. Payloads are composed from module-defined pieces keyed by string. Details will be finalized with the implementation.
+
+## Determinism and Generation Rules
+- No reflection in engine paths. All discovery and invocation uses source generation and entrypoint infrastructure
+- Sort inputs and resolve ordering deterministically; cycles result in panic
+- Generated code places output in the configured `SgOutputNamespace` when provided
 
