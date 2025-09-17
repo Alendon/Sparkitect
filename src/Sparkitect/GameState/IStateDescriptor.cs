@@ -9,5 +9,5 @@ public interface IStateDescriptor
 
     static abstract IReadOnlyList<Identification> Modules { get; }
 
-    static abstract IReadOnlyDictionary<Identification, ActivationPolicy>? Activation { get; }
+    static abstract IReadOnlyDictionary<Identification, StateActivationPolicy>? Activation { get; }
 }

@@ -1,4 +1,7 @@
-﻿using Sparkitect.Modding;
+﻿using System;
+using System.Collections.Generic;
+using Sparkitect.GameState;
+using Sparkitect.Modding;
 
 namespace Sparkitect.GameState.Samples.States;
 
@@ -6,4 +9,8 @@ namespace Sparkitect.GameState.Samples.States;
 public class Desktop : IStateDescriptor
 {
     public static Identification ParentId => Identification.Empty;
+
+    public static IReadOnlyList<Identification> Modules => Array.Empty<Identification>();
+
+    public static IReadOnlyDictionary<Identification, StateActivationPolicy>? Activation => null;
 }

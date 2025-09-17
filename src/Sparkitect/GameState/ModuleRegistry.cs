@@ -1,6 +1,6 @@
 ﻿using Sparkitect.Modding;
 
-namespace Sparkitect.GameState.Samples;
+namespace Sparkitect.GameState;
 
 [Registry(Identifier = "state_module")]
 public partial class ModuleRegistry(IGameStateManager gameStateManager) : IRegistry

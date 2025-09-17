@@ -1,5 +1,4 @@
-﻿using Sparkitect.GameState.Samples;
-using Sparkitect.Modding;
+﻿using Sparkitect.Modding;
 
 namespace Sparkitect.GameState;
 
