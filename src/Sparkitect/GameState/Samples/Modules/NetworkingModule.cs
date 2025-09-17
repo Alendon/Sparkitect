@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
 
-namespace Sparkitect.GameState.Samples;
+namespace Sparkitect.GameState.Samples.Modules;
 
 [PublicAPI]
-[StateModule("networking")]
+[ModuleRegistry.Register("networking")]
 [OrderAfterModule(typeof(GameModule))]
-public sealed partial class NetworkingModule
+public sealed partial class NetworkingModule : IStateModule
 {
     public const string Key_NetworkTick = "network_tick";
 

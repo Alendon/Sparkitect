@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
 
-namespace Sparkitect.GameState.Samples;
+namespace Sparkitect.GameState.Samples.Modules;
 
 [PublicAPI]
-[StateModule("game")]
+[ModuleRegistry.Register("game")]
 [OrderAfterModule(typeof(RenderingModule))]
-public sealed partial class GameModule
+public sealed partial class GameModule : IStateModule
 {
     public const string Key_SimulationTick = "simulation_tick";
 

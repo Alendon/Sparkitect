@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Sparkitect.Modding;
 
 namespace Sparkitect.GameState;
 
@@ -19,13 +20,12 @@ public sealed class ActivationPolicy
 }
 
 [PublicAPI]
-public sealed class StateDescriptor
+public sealed class StateDescriptor // Move the content of this class to IStateDescriptor
 {
-    public required string Id { get; init; }
-    public string? ParentId { get; init; }
+    public Identification? ParentId { get; init; }
 
     // Ordered modules for this state
-    public required IReadOnlyList<StateModuleDescriptor> Modules { get; init; }
+    public required IReadOnlyList<Identification> Modules { get; init; }
 
     // Optional per-module activation policies (by module id)
     public IReadOnlyDictionary<string, ActivationPolicy>? Activation { get; init; }

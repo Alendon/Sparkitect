@@ -3,13 +3,6 @@ using JetBrains.Annotations;
 namespace Sparkitect.GameState;
 
 [PublicAPI]
-[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class StateModuleAttribute(string id) : Attribute
-{
-    public string Id { get; } = id;
-}
-
-[PublicAPI]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 public sealed class OrderBeforeModuleAttribute(Type moduleType) : Attribute
 {

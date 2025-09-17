@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Sparkitect.GameState.Samples.Modules;
 
 namespace Sparkitect.GameState.Samples;
 

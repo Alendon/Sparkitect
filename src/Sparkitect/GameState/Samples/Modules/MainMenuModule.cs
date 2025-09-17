@@ -1,11 +1,11 @@
 using JetBrains.Annotations;
 
-namespace Sparkitect.GameState.Samples;
+namespace Sparkitect.GameState.Samples.Modules;
 
 [PublicAPI]
-[StateModule("mainmenu")]
+[ModuleRegistry.Register("main_menu")]
 [OrderAfterModule(typeof(RenderingModule))]
-public sealed partial class MainMenuModule
+public sealed partial class MainMenuModule : IStateModule
 {
     public const string Key_MenuTick = "menu_tick";
 

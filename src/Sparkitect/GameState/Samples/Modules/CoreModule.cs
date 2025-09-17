@@ -1,10 +1,10 @@
 using JetBrains.Annotations;
 
-namespace Sparkitect.GameState.Samples;
+namespace Sparkitect.GameState.Samples.Modules;
 
 [PublicAPI]
-[StateModule("core")]
-public sealed partial class CoreModule
+[ModuleRegistry.Register("core")]
+public sealed partial class CoreModule : IStateModule
 {
     public const string Key_Remove = "remove";
     public const string Key_Before = "before";
