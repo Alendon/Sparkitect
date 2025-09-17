@@ -3,10 +3,10 @@
 namespace Sparkitect.GameState;
 
 [Registry(Identifier = "state_module")]
-public partial class ModuleRegistry(IGameStateManager gameStateManager) : IRegistry
+public partial class ModuleRegistry(IGameStateManagerRegistryFacade gameStateManager) : IRegistry
 {
     [RegistryMethod]
-    public void Register<TStateModule>(Identification id) where TStateModule : class, IStateModule
+    public void RegisterModule<TStateModule>(Identification id) where TStateModule : class, IStateModule
     {
         gameStateManager.AddStateModule<TStateModule>(id);
     }

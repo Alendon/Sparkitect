@@ -25,9 +25,8 @@ public sealed class OrderBeforeAttribute(string key) : Attribute
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
-public sealed class OrderAfterAttribute(string key) : Attribute
+public sealed class OrderAfterAttribute<TStateMethod> : Attribute where TStateMethod : class, IStateMethod, new()
 {
-    public string Key { get; } = key;
 }
 
 public enum TransitionTrigger
@@ -40,10 +39,9 @@ public enum TransitionTrigger
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class TransitionAttribute(TransitionTrigger trigger, string key) : Attribute
+public sealed class TransitionAttribute(TransitionTrigger trigger) : Attribute
 {
     public TransitionTrigger Trigger { get; } = trigger;
-    public string Key { get; } = key;
 }
 
 [PublicAPI]

@@ -12,7 +12,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
     {
         TestSources.Add(TestData.GlobalUsings);
         TestSources.Add(TestData.ModdingCode);
-        TestSources.Add(TestData.SparkitectCore);
+        TestSources.Add(TestData.Sparkitect);
     }
 
     [Test]

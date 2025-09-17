@@ -13,7 +13,7 @@ public interface IModManager
 {
     //TODO adjust to expose a "hierarchy" of loaded mods. Eg first a group of engine mods get loaded and later a group of game mods
     
-    ICoreContainer CurrentCoreContainer { get; }
+    
 
     /// <summary>
     /// Gets a collection of all loaded mods

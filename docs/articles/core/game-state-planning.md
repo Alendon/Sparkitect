@@ -35,7 +35,7 @@ internal sealed class MyService : IMyServiceExposed, IMyServiceFacade
 [StateModule("core")]
 internal sealed partial class CoreModule
 {
-    public static readonly Type[] UsedServices =
+    public static readonly Type[] ExposedServices =
     {
         typeof(IMyServiceExposed)
     };

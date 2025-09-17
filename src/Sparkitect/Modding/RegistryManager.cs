@@ -5,22 +5,19 @@ using Serilog;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.GeneratorAttributes;
+using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
 
+[FacadeToRegistry<IRegistryManagerFacade>]
 [Singleton<IRegistryManager>]
-internal class RegistryManager : IRegistryManager
+internal class RegistryManager : IRegistryManager, IRegistryManagerFacade
 {
-    private readonly IModManager _modManager;
-    private readonly IIdentificationManager _identificationManager;
+    internal required IModManager _modManager { get; init; }
+    internal required IIdentificationManager _identificationManager { get; init; }
+    internal required IGameStateManager _gameStateManager { get; init; }
 
     private int lastProcessedModGroup = -1;
-
-    public RegistryManager(IModManager modManager, IIdentificationManager identificationManager)
-    {
-        _modManager = modManager;
-        _identificationManager = identificationManager;
-    }
 
 
     public void ProcessRegistry()
@@ -94,7 +91,7 @@ internal class RegistryManager : IRegistryManager
         // Initialize with container
         foreach (var reg in registrations)
         {
-            reg.Initialize(_modManager.CurrentCoreContainer);
+            reg.Initialize(_gameStateManager.CurrentCoreContainer);
         }
 
         foreach (var reg in registrations)
@@ -142,7 +139,7 @@ internal class RegistryManager : IRegistryManager
             _modManager.CreateEntrypointContainer<IRegistryConfigurator>(mods);
 
         var containerBuilder =
-            new FactoryContainerBuilder<IRegistry>(_modManager.CurrentCoreContainer, FactoryKeyType.String);
+            new FactoryContainerBuilder<IRegistry>(_gameStateManager.CurrentCoreContainer, FactoryKeyType.String);
 
         configurators.ProcessMany(c => c.ConfigureRegistries(containerBuilder));
 

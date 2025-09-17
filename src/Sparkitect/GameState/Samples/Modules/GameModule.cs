@@ -4,7 +4,7 @@ using Sparkitect.GameState;
 namespace Sparkitect.GameState.Samples.Modules;
 
 [PublicAPI]
-[ModuleRegistry.Register("game")]
+[ModuleRegistry.RegisterModule("game")]
 [OrderAfterModule(typeof(RenderingModule))]
 public sealed partial class GameModule : IStateModule
 {
@@ -16,5 +16,7 @@ public sealed partial class GameModule : IStateModule
         // Simulation tick placeholder
         _ = ctx;
     }
+
+    public static IReadOnlyList<Type> ExposedServices => [];
 }
 

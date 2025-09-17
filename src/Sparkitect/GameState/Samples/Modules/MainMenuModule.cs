@@ -4,7 +4,7 @@ using Sparkitect.GameState;
 namespace Sparkitect.GameState.Samples.Modules;
 
 [PublicAPI]
-[ModuleRegistry.Register("main_menu")]
+[ModuleRegistry.RegisterModule("main_menu")]
 [OrderAfterModule(typeof(RenderingModule))]
 public sealed partial class MainMenuModule : IStateModule
 {
@@ -16,5 +16,7 @@ public sealed partial class MainMenuModule : IStateModule
         // Main menu UI/logic placeholder
         _ = ctx;
     }
+
+    public static IReadOnlyList<Type> ExposedServices => [];
 }
 

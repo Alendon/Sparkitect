@@ -8,7 +8,7 @@ public class RegistryAttribute : Attribute, IFactoryMarker<IRegistry>
     [Key] public required string Identifier { get; set; }
 }
 
-[AttributeUsage(AttributeTargets.Assembly)]
+[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
 public class RegistryMetadataAttribute<TMetadata> : Attribute where TMetadata : class;
 
 [AttributeUsage(AttributeTargets.Method)]
@@ -20,3 +20,6 @@ public class UseResourceFileAttribute : Attribute
     public required string Identifier { get; set; }
     public bool Required { get; set; } = false;
 }
+
+[AttributeUsage(AttributeTargets.Class)]
+public class FacadeToRegistryAttribute<TFacade> : Attribute where TFacade : class;

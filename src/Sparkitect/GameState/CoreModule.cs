@@ -1,10 +1,11 @@
 using JetBrains.Annotations;
-using Sparkitect.GameState;
+using Sparkitect.Modding;
+using Sparkitect.Utils;
 
-namespace Sparkitect.GameState.Samples.Modules;
+namespace Sparkitect.GameState;
 
 [PublicAPI]
-[ModuleRegistry.Register("core")]
+[ModuleRegistry.RegisterModule("core")]
 public sealed partial class CoreModule : IStateModule
 {
     public const string Key_Remove = "remove";
@@ -12,28 +13,37 @@ public sealed partial class CoreModule : IStateModule
     public const string Key_Add = "add";
     public const string Key_After = "after";
 
-    [Transition(TransitionTrigger.Removed, Key_Remove)]
+    public static IReadOnlyList<Type> ExposedServices =>
+    [
+        typeof(IModManager),
+        typeof(ICliArgumentHandler),
+        typeof(IGameStateManager),
+        typeof(IIdentificationManager)
+    ];
+
+
+    [Transition(TransitionTrigger.Removed)]
     public static void OnRemove(TransitionContext ctx)
     {
         // Core registry/mod deactivation logic placeholder
         _ = ctx;
     }
 
-    [Transition(TransitionTrigger.UnchangedBefore, Key_Before)]
+    [Transition(TransitionTrigger.UnchangedBefore)]
     public static void OnUnchangedBefore(TransitionContext ctx)
     {
         // Core pre-rebuild work placeholder
         _ = ctx;
     }
 
-    [Transition(TransitionTrigger.Add, Key_Add)]
+    [Transition(TransitionTrigger.Add)]
     public static void OnAdd(TransitionContext ctx)
     {
         // Core registry/mod activation logic placeholder
         _ = ctx;
     }
 
-    [Transition(TransitionTrigger.UnchangedAfter, Key_After)]
+    [Transition(TransitionTrigger.UnchangedAfter)]
     public static void OnUnchangedAfter(TransitionContext ctx)
     {
         // Core post-rebuild work placeholder

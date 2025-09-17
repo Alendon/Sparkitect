@@ -17,7 +17,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
 
         TestSources.Add(TestData.GlobalUsings);
         TestSources.Add(TestData.DiAttributes);
-        TestSources.Add(TestData.SparkitectCore);
+        TestSources.Add(TestData.Sparkitect);
     }
 
     public override ModBuildSettings BuildSettings { get; }

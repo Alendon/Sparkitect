@@ -12,7 +12,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     {
         TestSources.Add(TestData.GlobalUsings);
         TestSources.Add(TestData.ModdingCode);
-        TestSources.Add(TestData.SparkitectCore);
+        TestSources.Add(TestData.Sparkitect);
     }
 
     [Test]

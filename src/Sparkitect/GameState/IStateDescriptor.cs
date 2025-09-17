@@ -8,6 +8,21 @@ public interface IStateDescriptor
     static abstract Identification ParentId { get; }
 
     static abstract IReadOnlyList<Identification> Modules { get; }
-
-    static abstract IReadOnlyDictionary<Identification, StateActivationPolicy>? Activation { get; }
 }
+
+public interface IStateDescriptorMethods
+{
+    public IReadOnlyList<IStateMethod> ContainingMethods { get; }
+}
+
+public interface IStateMethod
+{
+    public void Execute();
+    public void Initialize(IStateContainer container);
+    
+    /*
+     * Add the metadata here for the methods. To be able to properly sort them.
+     * Source Generation
+     */
+}
+

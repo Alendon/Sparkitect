@@ -13,7 +13,7 @@ public static partial class TestData
         global using System.Threading.Task;
         """);
 
-    public static (string, object) SparkitectCore => ("Core.cs",
+    public static (string, object) Sparkitect => ("Core.cs",
             """
                 using System.Runtime.InteropServices;
 
