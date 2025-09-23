@@ -9,7 +9,6 @@ using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
 
-[FacadeToRegistry<IRegistryManagerFacade>]
 [Singleton<IRegistryManager>]
 internal class RegistryManager : IRegistryManager, IRegistryManagerFacade
 {

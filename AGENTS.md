@@ -1,120 +1,174 @@
-# Repository Guidelines
+# Agent Guide for Sparkitect
 
-## Project Structure & Module Organization
-- `src/Sparkitect`: Main executable; enables nullable reference types and uses Roslyn source generators.
-- `gen/Sparkitect.Generator`: Source generator + analyzers used by the engine and samples.
-- `src/Sparkitect.Sdk`: MSBuild SDK tasks/targets consumed by mods.
-- `tests/`: Unit tests (`Sparkitect.Tests`) and generator tests (`Sparkitect.Generator.Tests`) with snapshots.
-- `benchmark/`: Microbenchmarks for performance validation.
-- `samples/MinimalSampleMod`: Minimal mod that references the generator.
-- `docs/`: DocFX site (`docs/docfx.json`) and articles.
+This guide explains how LLM agents should work in this repository. It captures authoritative rules for coding, generators, analyzers, packaging, and documentation, and reflects the current architecture and constraints of the project.
 
-## Build, Test, and Development Commands
-- Build solution: `dotnet build Sparkitect.sln -c Release`
-- Run engine: `dotnet run --project src/Sparkitect`
-- Run tests (all): `dotnet test -c Release`
-- Run benchmarks: `dotnet run -c Release --project benchmark/Sparkitect.Benchmark`
-- Build docs (requires docfx): `docfx docs/docfx.json`
+Status: authoritative for agent behavior and repo conventions; areas called out as “planning” are explicitly labeled.
 
-Notes
-- The repo pins the SDK via `global.json` (10.0.0); ensure `dotnet --version` matches.
-- Packages for projects that enable `<GeneratePackageOnBuild>true</GeneratePackageOnBuild>` are produced on build.
 
-## Coding Style & Naming Conventions
-- Language: C# (net10.0, preview where specified).
-- Indentation: 4 spaces; braces on new lines (standard C# style).
-- Naming: PascalCase for types/methods; camelCase for locals/params; interfaces prefixed with `I`; namespaces under `Sparkitect.*` for core project.
-- Nullability: enabled; treat nullable warnings seriously (some projects set `WarningsAsErrors=Nullable`).
-- Respect analyzer warnings (e.g., TUnit analyzers) and keep generator output namespaces consistent (`SgOutputNamespace` msbuild property).
+## Purpose and Scope
+- Audience: contributors and automation agents making structured changes (code, generators, SDK, docs).
+- Stage: early; core systems are in active development. Prefer minimal, deterministic changes that fit the existing patterns.
+- Hard constraint: do not attempt to run or rely on `dotnet` commands. Local execution via CLI is not enabled for agents in this repo.
 
-## Testing Guidelines
-- Framework: TUnit with async-friendly assertions; generator tests use Verify snapshots in `tests/**/TestResults`.
-- File naming: `*Tests.cs`; method naming: `Method_Scenario_Expected`.
-- Run: `dotnet test`; add/adjust tests with every behavior change. For snapshot updates, review diffs carefully and commit only intentional changes.
 
-## Commit & Pull Request Guidelines
-- Commits: Prefer Conventional Commits (e.g., `feat:`, `fix:`, `docs:`, `test:`). Keep messages imperative and scoped.
-- PRs: Include a clear description, linked issues, and rationale. Add test coverage, update docs when user-facing behavior or APIs change, and ensure CI passes.
+## Quick Rules of Engagement
+- Do not run `dotnet build/test/pack` or any `dotnet` command.
+- Prefer surgical patches over broad refactors; keep style consistent with nearby code.
+- Generators must be deterministic; analyzers report user errors; generators fail silently (emit nothing) rather than throw.
+- Respect nullability as errors; treat warnings accordingly (projects elevate nullable warnings).
+- If something is ambiguous, stop and ask early rather than guessing.
 
-## Source Generator & Analyzer Guidelines
 
-### Core Principles
-- Follow the incremental pipeline model: Input → Transform → Model → Output
-- All models must be value-equatable for proper caching
-- Keep transformations pure and stateless
-- Do Error Reporting in Roslyn Analyzers alongside the Generators
-- Generators silently fail but never throw exceptions (eg by returning null)
-- Use custom .NotNull extension method to automatically filter null values and transform type to non nullable
-- Determinism: avoid nondeterministic iteration (HashSet/Dictionary); sort inputs before emission; never depend on time/random.
+## Repository Map (high-level)
+- `src/Sparkitect`: engine core (DI, Modding, GameState, scaffolds for ECS/Graphics).
+- `gen/Sparkitect.Generator`: incremental source generators + analyzers, Fluid templates, utility `ImmutableValueArray<T>`.
+- `src/Sparkitect.Sdk`: MSBuild SDK for mod packaging + DevLauncher generation.
+- `samples/MinimalSampleMod`: minimal registry + DI sample.
+- `tests/`: unit tests (TUnit) + generator snapshot tests (Verify).
+- `docs/`: DocFX site (conceptual docs, may include planning content).
+- `benchmark/`: microbenchmarks (non-blocking).
 
-### Pipeline Architecture
-- Use `ForAttributeWithMetadataName` for attribute-driven generators (99x more efficient than CreateSyntaxProvider)
-- Extract symbols to value-equatable models immediately, never store ISymbol/SyntaxNode in models
-- Use `Collect()` sparingly - only when you need all items at once
-- Combine providers using `Combine()` for related data that needs to be processed together
-- Register outputs in the order of dependencies (e.g., attributes before metadata)
-- Only use `ImmutableValueArray<T>` (custom immutable collection with value equality) instead of regular collections
-- Never use any other collection type, for passing data between pipeline steps
-- Apply `WithComparer(...)` for custom DTO equality and `WithTrackingName(...)` on key providers.
-- Respect `CancellationToken` in transforms and syntax provider callbacks.
+Core vs Gameplay split:
+- Core: ModManager (+Registry), DI, State Management, bootstrap wiring.
+- Gameplay-level systems (ECS, Vulkan, Networking, etc.) are added via states; they are optional and may be omitted by mods.
 
-### Model Design
-- Use records or implement proper value equality for all models
-- Only use `ImmutableValueArray<T>`, never `ImmutableArray<T>` or other, for value comparison semantics
-- Keep models flat and simple when possible
-- Extract only the data you need from symbols (names, types as strings, not full symbols; BREAKS pipeline otherwise!!!)
-- Replace any `ValueCompareSet<T>` usage with `ImmutableValueArray<T>`; define whether semantics are set-like (order-insensitive) or ordered (pre-sort) and ensure hash/equality match.
 
-### Build Properties
-- Use GetModBuildSettings extension method, to access build settings provider
-- Extend Sdk.targets file, when adding more build settings
-- Expose every consumed MSBuild property via `<CompilerVisibleProperty>` so generators can read them.
+## Engine Bootstrap (authoritative)
+- `EngineBootstrapper` is intentionally minimal: initialize logging, initialize CLI args, enter the root state, clean up.
+- Any logic that can be performed by states must live in the state system, not in the bootstrapper.
+- Exception: components that must bind directly to `string[] args` (e.g., CLI argument handler) are initialized in the bootstrapper.
 
-### Code Generation
-- ALWAYS Use Fluid templates (.liquid files) for code generation
-- Follow naming convention: `{TypeName}_{Purpose}.g.cs`
-- Place generated code in appropriate namespaces using `SgOutputNamespace` MSBuild property
-- Always use full qualification for ALL types (global::)
-- Namespacing: when `SgOutputNamespace` is set, always use it; otherwise fall back to the containing namespace consistently.
-- Sort template inputs (methods, members, files) before rendering to keep outputs stable.
 
-### Additional Files
-- Filter strictly (e.g., `*.sparkres.yaml`) using `AdditionalTextsProvider`.
-- Parse only when content changes; transform to immutable DTOs; attach a comparer if needed.
-- Invalid content or schema violations must be reported by analyzers; do not throw or silently swallow in generators.
+## Dependency Injection (authoritative)
+- Runtime DI is custom (not DryIoc). Remove or ignore prior mentions of third-party DI in docs.
+- Containers are immutable once built; resolution flows through parent-first lookup.
+- Builder enforces: DAG for constructor deps; two-pass create→apply-properties for handling cycles via properties.
+- Nullability indicates optionality in generator-extracted ctor/property dependencies (optional when annotated).
 
-### Performance Best Practices
-- Batch related outputs when they share the same data source
-- Avoid heavy processing in Select operations - extract to separate methods
-- Cache expensive computations by ensuring proper value equality
+Factories
+- Singleton/service factories: generated `ClassName_Factory` implement `IServiceFactory`.
+- Keyed factories: generated `ClassName_KeyedFactory` implement `IKeyedFactory<TBase>`.
+- Key contract (current):
+  - Keys may be `string` or `Sparkitect.Modding.Identification`.
+  - Direct key via attribute property, or key via static property reference.
+  - OneOf-based key variants are obsolete (do not introduce or rely on them).
 
-### Common Anti-Patterns to Avoid
-- ❌ Don't modify existing user code
-- ❌ Don't perform I/O in transformations (except AdditionalTexts)
-- ❌ Don't use mutable state or static fields
-- ❌ Don't put non-equatable types in pipeline models
-- ❌ Don't scan for indirect interface implementations without marker attributes
+Analyzers vs Generators
+- Analyzers (e.g., SPARK1001–1008) validate inputs: single constructor, abstract/interface deps, required init-only, keyed factory key rules.
+- Generators must never throw; if inputs are invalid, emit nothing and let analyzers surface diagnostics.
 
-### Testing Source Generators
-- Use Verify for snapshot testing (`TestResults/*.verified.cs`)
-- Snapshots are always validated by the Developer, never by the LLM!!!
-- Test incremental behavior - unchanged inputs should reuse cached outputs
-- Test empty/null inputs and edge cases
-- Use `RegistryGeneratorTests` as reference for test patterns
-- Cover `.editorconfig` build options and `AdditionalTexts` scenarios.
-- Add incrementality tests for order-insensitivity and unrelated-change no-op.
 
-### Analyzer Guidelines
-- Analyzers should complement generators by validating user input
-- Report diagnostics for invalid attribute usage
-- Validate resource file formats (YAML, JSON) when used with generators
-- Use appropriate diagnostic severity levels (Error, Warning, Info)
-- Coverage (concise): DI constraints (single ctor, abstract/interface deps, required init-only); keyed-factory rules (exactly one key source, valid key type); registry rules (in namespace, unique names); resource schema (mutually exclusive `File` vs `Files`).
+## Modding and Registries (authoritative)
+Identification
+- Triad: ModId (string↔ushort), CategoryId (string↔ushort), ObjectId (string↔uint). See `IdentificationManager`.
+- Category identifiers (strings) must be globally unique.
 
-### RegistryGenerator Notes (temporary exceptions)
-- Aggregation: central configurator intentionally aggregates across registries; keep DTOs minimal/immutable and use `Collect()` only where truly required.
-- Attribute staging: emit dependent attributes first to stabilize later analysis; keep staged outputs deterministic.
+Registries
+- Define registries with `[Registry(Identifier = "snake_case")]` on partial classes implementing `IRegistry`.
+- Provider attributes are generated per-registry to support: method, property, type-based providers.
+- Resource YAML (`*.sparkres.yaml`) is used at compile time by the SG to generate code; it is not packaged into the mod.
+- The previous “registry phases” model is obsolete. Registrations are triggered by state transitions at developer-chosen moments. Phases may return later if needed, but are not core at this time.
 
-## Security & Configuration Tips
-- Never commit secrets. DocFX publishing runs via GitHub Actions—use repository secrets.
-- Local builds rely on the pinned SDK; avoid downgrading language features or frameworks.
+Facades
+- State facades and registry facades are provided via source-generated entrypoints that can be discovered/queried when required.
+- They are not baked into the core DI containers.
+
+
+## Game State (current intent; still evolving)
+- State management is the orchestration layer: transitional/setup states vs gameplay states with main loop.
+- `IStateContainerBuilder` supports mapping facades to services and building facade-aware containers.
+- State transitions are the hook to trigger registry runs deterministically.
+- This system is still being designed; keep changes minimal and aligned to existing patterns.
+
+
+## SDK & Packaging (authoritative)
+- The SDK (`Sparkitect.Sdk`) provides tasks:
+  - `GenerateModManifest` (manifest.json generation).
+  - `ParseDependencyFile` (detect direct/transitive deps from `.deps.json`).
+  - `CreateModArchive` (produces `.sparkmod`).
+- DevLauncher
+  - The SDK generates a DevLauncher source file so mods can be “Run” in the IDE.
+  - DevLauncher is required for local debug runs; it is not intended to be packaged into the mod archive.
+- Resource YAML
+  - `*.sparkres.yaml` files must be discoverable by the generator via AdditionalFiles; they are not included in the packaged output.
+
+
+## Source Generators & Pipeline Rules (authoritative)
+- Follow incremental model: Input → Transform → Model → Output.
+- Models must be value-equatable; avoid holding `ISymbol` or `SyntaxNode` in models.
+- Keep transforms pure/stateless; respect `CancellationToken`.
+- Use `ForAttributeWithMetadataName` for attribute-driven scans; `Collect()` sparingly.
+- Combine providers with `Combine()` only when coupled; register outputs in dependency order.
+- Always fully-qualify emitted types (`global::`) and sort inputs before rendering.
+- Template naming: `{TypeName}_{Purpose}.g.cs` and use `SgOutputNamespace` when provided.
+- Additional files: strictly filter (e.g., `*.sparkres.yaml`), parse on-change, attach comparers when needed.
+
+Determinism (generators)
+- Use `ImmutableValueArray<T>` for pipeline models and equality semantics.
+- Sort all inputs prior to emission; avoid nondeterministic iteration (e.g., enumerating `Dictionary`/`HashSet`).
+
+Common anti-patterns
+- Do not modify user code.
+- No I/O in transforms (AdditionalTexts is the exception).
+- No mutable static state in generators.
+- Do not store non-equatable types in pipeline models.
+- Do not depend on nondeterministic operations or clock/time/random.
+
+
+## Testing (authoritative)
+- Unit tests: TUnit.
+- Generator tests: Verify snapshot tests live under `tests/**/TestResults`.
+- Expectations for generator changes:
+  - Deterministic output; order-insensitivity where specified.
+  - Incrementality: unrelated changes should no-op.
+  - Snapshots are updated by the developer (not by the LLM agent).
+
+
+## Documentation Governance
+Because systems change frequently, separate “authoritative” docs from “planning” docs:
+- Use a front-matter or banner convention to mark each page’s status explicitly (e.g., `status: authoritative` or `status: planning`).
+- Prefer keeping normative rules in a small set of authoritative docs (like this file, and key generator/SDK readmes).
+- When code and docs conflict, code is the source of truth; open a follow-up task to align docs.
+
+## Do / Don’t (checklist)
+Do:
+- Fully qualify types in generated code; sort inputs before emit.
+- Treat nullability warnings as errors; mark truly-optional DI deps as nullable in signatures.
+- Keep generator transforms pure; report errors via analyzers.
+- Ask questions early for ambiguous requirements.
+
+Don’t:
+- Don’t run `dotnet` commands.
+- Don’t throw in generators; don’t perform I/O (except AdditionalTexts).
+- Don’t introduce nondeterminism; don’t depend on transient environment state.
+- Don’t modify existing user code when emitting generated code.
+
+
+## Build Properties (reference)
+Compiler-visible properties consumed by generators (no additions planned right now):
+- `ModName`
+- `ModIdentifier`
+- `RootNamespace`
+- `SgOutputNamespace`
+- `DisableLogEnrichmentGenerator` (default: enrichment enabled)
+
+
+## Current Limitations (context)
+- State system design is in-flight; transitional vs gameplay states and ordering rules are evolving.
+- ECS and Vulkan code are stubs and out-of-scope for now.
+- Registry phases are removed; state-driven registration is the model.
+
+
+## Agent Workflow (when implementing changes)
+1. Confirm scope and whether the change is authoritative or planning.
+2. For generators:
+   - Add/change models using `ImmutableValueArray<T>`.
+   - Ensure analyzers cover invalid input; make generator return no output on invalid input.
+   - Keep transforms pure; sort inputs; fully qualify output types.
+3. For SDK/targets:
+   - Keep tasks deterministic; don’t embed environment-specific paths beyond allowed inputs/props.
+4. For docs:
+   - Mark doc status (authoritative/planning); keep authoritative docs concise and normative.
+5. Validate locally by reasoning about tests and determinism; do not attempt to run `dotnet`.
+6. Submit focused patches; avoid unrelated changes.
+

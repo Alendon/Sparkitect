@@ -6,16 +6,14 @@ using Sparkitect.CompilerGenerated.IdExtensions;
 
 namespace Sparkitect.GameState.Samples.States;
 
-//This class represents the 
 [StateDescriptionRegistry.RegisterStateAbc("desktop")]
 public class Desktop : IStateDescriptor
 {
-    public static Identification ParentId => Identification.Empty;
+    public static Identification ParentId => StateID.Sparkitect.Entry;
 
     public static IReadOnlyList<Identification> Modules => new[]
     {
-        // Core + Rendering baseline for desktop states
-        StateModuleID.Sparkitect.Core,
+        // Rendering baseline for desktop states (Core is declared in EntryState)
         StateModuleID.Sparkitect.Rendering
     };
 }

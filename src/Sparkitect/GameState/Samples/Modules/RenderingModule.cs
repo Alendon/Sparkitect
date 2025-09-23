@@ -5,18 +5,27 @@ namespace Sparkitect.GameState.Samples.Modules;
 
 [PublicAPI]
 [ModuleRegistry.RegisterModule("rendering")]
-[OrderAfterModule(typeof(CoreModule))]
 public sealed partial class RenderingModule : IStateModule
 {
     public const string Key_RenderTick = "render_tick";
+    public const string Key_RenderInit = "render_init";
 
-    [Feature(Key_RenderTick)]
+    [StateFunction(Key_RenderTick)]
+    [PerFrame]
     public static void RenderTick(FeatureContext ctx)
     {
         // Rendering tick placeholder
         _ = ctx;
     }
 
-    public static IReadOnlyList<Type> ExposedServices => [];
+    [StateFunction(Key_RenderInit)]
+    [OnModuleEnter]
+    public static void RenderInit(FeatureContext ctx)
+    {
+        // Rendering init placeholder
+        _ = ctx;
+    }
+
+    public static IReadOnlyList<Type> UsedServices => [];
 }
 

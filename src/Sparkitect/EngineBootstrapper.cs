@@ -52,8 +52,8 @@ public class EngineBootstrapper
 
     private void EnterRootState()
     {
-        var sm = _coreContainer!.Resolve<IGameStateManager>() as GameStateManager;
-        sm!.EnterRootState(_coreContainer);
+        var gsm = _coreContainer!.Resolve<IGameStateManager>() as GameStateManager;
+        gsm!.EnterRootState(_coreContainer);
     }
 
     private const string LogDirectoryPath = "logs";
@@ -105,6 +105,7 @@ public class EngineBootstrapper
         builder.Register<CliArgumentHandler_Factory>();
         builder.Register<IdentificationManager_Factory>();
         builder.Register<ModManager_Factory>();
+        builder.Register<RegistryManager_Factory>();
         builder.Register<GameStateManager_Factory>();
 
         try

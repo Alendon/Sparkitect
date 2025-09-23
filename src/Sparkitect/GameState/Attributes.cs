@@ -4,16 +4,14 @@ namespace Sparkitect.GameState;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-public sealed class OrderBeforeModuleAttribute(Type moduleType) : Attribute
+public sealed class OrderModuleBeforeAttribute<TModule>() : Attribute where TModule : IStateModule
 {
-    public Type ModuleType { get; } = moduleType;
 }
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-public sealed class OrderAfterModuleAttribute(Type moduleType) : Attribute
+public sealed class OrderModuleAfterAttribute<TModule>() : Attribute where TModule : IStateModule
 {
-    public Type ModuleType { get; } = moduleType;
 }
 
 [PublicAPI]
@@ -25,41 +23,61 @@ public sealed class OrderBeforeAttribute(string key) : Attribute
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
-public sealed class OrderAfterAttribute<TStateMethod> : Attribute where TStateMethod : class, IStateMethod, new()
-{
-}
-
-public enum TransitionTrigger
-{
-    Removed,
-    UnchangedBefore,
-    UnchangedAfter,
-    Add
-}
-
-[PublicAPI]
-[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class TransitionAttribute(TransitionTrigger trigger) : Attribute
-{
-    public TransitionTrigger Trigger { get; } = trigger;
-}
-
-[PublicAPI]
-[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class FeatureAttribute(string key) : Attribute
+public sealed class OrderAfterAttribute(string key) : Attribute
 {
     public string Key { get; } = key;
 }
 
 [PublicAPI]
-[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-public sealed class StateServiceAttribute<TModule, TExposed> : Attribute
-    where TModule : class
-    where TExposed : class
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
+public sealed class OrderBeforeAttribute<TModuleOrState>(string key) : Attribute
 {
-    public Type ModuleType => typeof(TModule);
-    public Type ExposedType => typeof(TExposed);
-
-    public Type? Facade { get; init; }
+    public string Key { get; } = key;
 }
+
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
+public sealed class OrderAfterAttribute<TModuleOrState>(string key) : Attribute
+{
+    public string Key { get; } = key;
+}
+
+
+
+
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+public sealed class StateFunctionAttribute(string key) : Attribute
+{
+    public string Key { get; } = key;
+}
+
+
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+public sealed class PerFrameAttribute : Attribute;
+
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+public sealed class OnStateEnterAttribute : Attribute;
+
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+public sealed class OnStateExitAttribute : Attribute;
+
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+public sealed class OnModuleEnterAttribute : Attribute;
+
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+public sealed class OnModuleExitAttribute : Attribute;
+
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+public sealed class StateFacadeAttribute<TFacade> : Attribute where TFacade : class;
+
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+public sealed class StateServiceAttribute<TInterface> : Attribute where TInterface : class;
 

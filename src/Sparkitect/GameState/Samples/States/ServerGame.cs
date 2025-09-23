@@ -9,13 +9,9 @@ namespace Sparkitect.GameState.Samples.States;
 [StateDescriptionRegistry.RegisterStateAbc("server_game")]
 public class ServerGame : IStateDescriptor
 {
-    public static Identification ParentId => Identification.Empty; // direct child of root/bootstrap
+    public static Identification ParentId => StateID.Sparkitect.Entry;
 
-    public static IReadOnlyList<Identification> Modules => new[]
-    {
-        StateModuleID.Sparkitect.Core,
-        StateModuleID.Sparkitect.Game,
-        StateModuleID.Sparkitect.Networking
-    };
+    public static IReadOnlyList<Identification> Modules =>
+        [StateModuleID.Sparkitect.Networking, StateModuleID.Sparkitect.Ecs];
 }
 

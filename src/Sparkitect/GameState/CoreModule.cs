@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Serilog;
 using Sparkitect.Modding;
 using Sparkitect.Utils;
 
@@ -8,46 +9,67 @@ namespace Sparkitect.GameState;
 [ModuleRegistry.RegisterModule("core")]
 public sealed partial class CoreModule : IStateModule
 {
-    public const string Key_Remove = "remove";
-    public const string Key_Before = "before";
-    public const string Key_Add = "add";
-    public const string Key_After = "after";
-
-    public static IReadOnlyList<Type> ExposedServices =>
+    public const string Key_LoadRootMods = "load_root_mods";
+    public const string Key_RegisterNewStates = "register_new_states";
+    public const string Key_UnloadRootMods = "unload_root_mods";
+    public const string Key_UnregisterStates = "unregister_states";
+    
+    public static IReadOnlyList<Type> UsedServices =>
     [
         typeof(IModManager),
         typeof(ICliArgumentHandler),
         typeof(IGameStateManager),
-        typeof(IIdentificationManager)
+        typeof(IIdentificationManager),
+        typeof(IRegistryManager)
     ];
 
 
-    [Transition(TransitionTrigger.Removed)]
-    public static void OnRemove(TransitionContext ctx)
+    /*
+     * In future here will be additionall Feature and Transitions placed
+     * These can be referenced by the developers to be included into their Game State
+     * For example a Physics Module can declare all Transitions and Features it needs to function
+     * With this a developer can just put together their Game States
+     */
+
+
+    [StateFunction(Key_LoadRootMods)]
+    [OnModuleEnter]
+    internal static void LoadRootMods(IModManager modManager)
     {
-        // Core registry/mod deactivation logic placeholder
-        _ = ctx;
+        Log.Debug("Discovering mods");
+        modManager.DiscoverMods();
+
+        var modIds = modManager.DiscoveredArchives.Select(a => a.Id).ToArray();
+        Log.Information("Loading {ModCount} mods", modIds.Length);
+
+        modManager.LoadMods(modIds);
+        Log.Debug("Mods loaded successfully");
     }
 
-    [Transition(TransitionTrigger.UnchangedBefore)]
-    public static void OnUnchangedBefore(TransitionContext ctx)
+    [OnStateEnter]
+    [OrderAfter(Key_LoadRootMods)]
+    [StateFunction(Key_RegisterNewStates)]
+    internal static void ProcessStateRegistry(IRegistryManagerFacade registryManager)
     {
-        // Core pre-rebuild work placeholder
-        _ = ctx;
+        //TODO trigger ModuleRegistry and StateRegistry
+        throw new NotImplementedException();
     }
 
-    [Transition(TransitionTrigger.Add)]
-    public static void OnAdd(TransitionContext ctx)
+    [StateFunction(Key_UnregisterStates)]
+    [OnStateExit]
+    [OrderBefore(Key_UnloadRootMods)]
+    internal static void UnregisterStates(IRegistryManagerFacade registryManager)
     {
-        // Core registry/mod activation logic placeholder
-        _ = ctx;
+        throw new NotImplementedException();
     }
 
-    [Transition(TransitionTrigger.UnchangedAfter)]
-    public static void OnUnchangedAfter(TransitionContext ctx)
+    [StateFunction(Key_UnloadRootMods)]
+    [OnStateExit]
+    [OrderAfter(Key_UnregisterStates)]
+    internal static void UnloadRootMods(IModManager modManager)
     {
-        // Core post-rebuild work placeholder
-        _ = ctx;
+        throw new NotImplementedException();
     }
+    
+    
 }
-

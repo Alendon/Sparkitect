@@ -86,8 +86,8 @@ public class LogEnricherGenerator : IIncrementalGenerator
         {
             return;
         }
-
-        var fullClassName = $"{classSymbol!.ToDisplayString().Replace('.', '_')}_LogEnricher";
+        
+        var fullClassName = $"{classSymbol!.ToDisplayString().Replace('.', '_').Replace('<', '_').Replace('>', '_')}_LogEnricher";
         var className = classSymbol.Name;
 
         var model = new

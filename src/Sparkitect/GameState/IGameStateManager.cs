@@ -5,6 +5,7 @@ using Sparkitect.Modding;
 namespace Sparkitect.GameState;
 
 [PublicAPI]
+[RegistryFacade<IGameStateManagerRegistryFacade>]
 public interface IGameStateManager
 {
     

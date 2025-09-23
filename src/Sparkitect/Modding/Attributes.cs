@@ -21,5 +21,5 @@ public class UseResourceFileAttribute : Attribute
     public bool Required { get; set; } = false;
 }
 
-[AttributeUsage(AttributeTargets.Class)]
-public class FacadeToRegistryAttribute<TFacade> : Attribute where TFacade : class;
+[AttributeUsage(AttributeTargets.Interface)]
+public class RegistryFacadeAttribute<TFacade> : Attribute where TFacade : class;

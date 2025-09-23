@@ -13,9 +13,7 @@ public class LocalGame : IStateDescriptor
 
     public static IReadOnlyList<Identification> Modules => new[]
     {
-        StateModuleID.Sparkitect.Core,
-        StateModuleID.Sparkitect.Rendering,
-        StateModuleID.Sparkitect.Game
+        StateModuleID.Sparkitect.Ecs
     };
 }
 

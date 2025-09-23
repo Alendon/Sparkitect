@@ -6,17 +6,5 @@
 /// </summary>
 public interface IRegistry
 {
-    
-    /// <summary>
-    /// This method will be called before processing all registrations for this Registry
-    /// </summary>
-    void PreRegister();
-
-    /// <summary>
-    /// This method will be called after processing all registrations for this Registry
-    /// </summary>
-    void PostRegister();
-    
- 
     void Unregister(Identification id);
 }

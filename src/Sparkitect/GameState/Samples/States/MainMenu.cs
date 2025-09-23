@@ -10,11 +10,6 @@ public class MainMenu : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Desktop;
 
-    public static IReadOnlyList<Identification> Modules => new[]
-    {
-        StateModuleID.Sparkitect.Core,
-        StateModuleID.Sparkitect.Rendering,
-        StateModuleID.Sparkitect.MainMenu
-    };
+    public static IReadOnlyList<Identification> Modules => [];
 }
 

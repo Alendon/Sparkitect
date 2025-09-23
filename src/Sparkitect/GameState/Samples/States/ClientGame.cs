@@ -13,9 +13,10 @@ public class ClientGame : IStateDescriptor
 
     public static IReadOnlyList<Identification> Modules => new[]
     {
-        StateModuleID.Sparkitect.Core,
-        StateModuleID.Sparkitect.Rendering,
-        StateModuleID.Sparkitect.Game,
+        //Core and Rendering, are not needed to be specifically declared, as they live already in the parent desktop state
+        /*StateModuleID.Sparkitect.Core,
+        StateModuleID.Sparkitect.Rendering,*/
+        StateModuleID.Sparkitect.Ecs,
         StateModuleID.Sparkitect.Networking
     };
 }

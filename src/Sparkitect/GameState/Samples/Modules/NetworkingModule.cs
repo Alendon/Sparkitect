@@ -5,17 +5,17 @@ namespace Sparkitect.GameState.Samples.Modules;
 
 [PublicAPI]
 [ModuleRegistry.RegisterModule("networking")]
-[OrderAfterModule(typeof(GameModule))]
 public sealed partial class NetworkingModule : IStateModule
 {
     public const string Key_NetworkTick = "network_tick";
 
-    [Feature(Key_NetworkTick)]
+    [StateFunction(Key_NetworkTick)]
+    [PerFrame]
     public static void NetworkTick(FeatureContext ctx)
     {
         // Networking pump placeholder
         _ = ctx;
     }
 
-    public static IReadOnlyList<Type> ExposedServices => [];
+    public static IReadOnlyList<Type> UsedServices => [];
 }

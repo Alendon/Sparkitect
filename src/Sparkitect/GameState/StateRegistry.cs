@@ -19,15 +19,4 @@ public partial class StateDescriptionRegistry(IGameStateManagerRegistryFacade ga
         gameStateManager.RemoveStateDescriptor(id);
     }
     
-    
-    
-    public void PreRegister()
-    {
-        
-    }
-
-    public void PostRegister()
-    {
-        
-    }
 }

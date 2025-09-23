@@ -2,9 +2,14 @@ using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Serilog;
+using OneOf;
+using OneOf.Types;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.Modding;
+using Sparkitect.DI;
+using Sparkitect.CompilerGenerated.IdExtensions;
+using Sparkitect.Modding.IDs;
 
 namespace Sparkitect.GameState;
 
@@ -12,21 +17,28 @@ namespace Sparkitect.GameState;
 /// Scaffolding implementation. The full logic will be wired with SG, registries, and DI.
 /// </summary>
 [CreateServiceFactory<IGameStateManager>]
-[FacadeToRegistry<IGameStateManagerRegistryFacade>]
 internal sealed class GameStateManager : IGameStateManager, IGameStateManagerRegistryFacade
 {
+    /*
+     * We need to store in here, first all informations related to modules and states by Identification, to be able to
+     * construct states at runtime
+     *
+     * As well as a Stack of the current active states, which act hierarchically
+     */
+
+    public ICoreContainer CurrentCoreContainer => throw new NotImplementedException();
+    
+    internal required IModManager ModManager { get; init; }
 
     public void EnterRootState(ICoreContainer coreContainer)
     {
-        CurrentCoreContainer = coreContainer;
-
-        throw new NotImplementedException();
+        Log.Information("Entering Root State");
     }
 
-    public ICoreContainer CurrentCoreContainer { get; private set; } = null!;
 
     public void Request(Identification stateId, object? payload = null)
     {
+        //Function needs probably a different (generic) signature for a type safe payload
         throw new NotImplementedException();
     }
 

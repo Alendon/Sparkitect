@@ -2,5 +2,5 @@
 
 public interface IStateModule
 {
-    public static abstract IReadOnlyList<Type> ExposedServices { get; }
+    public static abstract IReadOnlyList<Type> UsedServices { get; }
 }
