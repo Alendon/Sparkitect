@@ -31,7 +31,7 @@ The Sparkitect Engine codebase is organized into the following primary namespace
 
 - **Sparkitect.GameState** - Game state management
   - [IGameStateManager](xref:Sparkitect.GameState.IGameStateManager) - Game state manager interface
-  - [IGameStateSystem](xref:Sparkitect.GameState.IGameStateSystem) - Game state system interface
+  - (planned) IGameStateSystem — effectively covered by IGameStateManager
 
 - **Sparkitect.Graphics.Vulkan** - Vulkan rendering implementation
   - [IVkEngine](xref:Sparkitect.Graphics.Vulkan.IVkEngine) - Vulkan engine interface

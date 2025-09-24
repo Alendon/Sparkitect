@@ -45,3 +45,5 @@ public class CreateServiceFactoryAttribute<TInterface> : Attribute, IFactoryMark
 
 [FactoryGenerationType(FactoryGenerationType.Service)]
 public class SingletonAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
+
+public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;

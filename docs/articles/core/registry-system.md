@@ -4,7 +4,7 @@ uid: articles.core.registry-system
 
 # Registry System
 
-The Registry System provides a centralized mechanism for tracking and managing game objects and resources. It ensures that all components can consistently reference objects across the engine and mods.
+The Registry System provides a mechanism for tracking and managing game objects and resources. It ensures that all components can consistently reference objects across the engine and mods.
 
 > [!NOTE]
 > The Registry System is currently in early development. This documentation provides a coarse outline of its structure and intended functionality.
@@ -13,23 +13,21 @@ The Registry System provides a centralized mechanism for tracking and managing g
 
 ### Registry Management Components
 
-The Registry System is composed of several key components:
+The Registry System includes:
 
-- **RegistryManager**: Coordinates the overall registry process and phases
+- **RegistryManager**: Coordinates registry build and teardown at the request of state logic
 - **IdentificationManager**: Handles the mapping between string IDs and numeric IDs
 - **Registry Categories**: Type-specific registries for different kinds of game objects
 - **Registry Entries**: The actual registered objects
 
-### Phase-Based Registration
+### Per-State Triggered Registration
 
-The registry system processes registrations in several distinct phases:
+Registries are triggered by state transitions rather than a single global pass. Unified state functions (declared in modules) drive when and how registries are invoked:
 
-1. **Category Phase**: Registers registry categories
-2. **Object Pre-Phase**: Pre-registration setup
-3. **Object Main Phase**: Primary object registration
-4. **Object Post-Phase**: Post-registration processing and cross-references
+- Enter events (e.g., `OnModuleEnter`, `OnStateEnter`) perform category discovery and object registrations required by the new configuration.
+- Exit events (e.g., `OnStateExit`, `OnModuleExit`) perform explicit unregistration/cleanup of objects tied to the leaving scope.
 
-This phase-based approach ensures dependencies between registered objects are properly handled.
+State logic is responsible for the ordering of registry calls using function ordering rules. This provides deterministic and composable registration.
 
 ## Identifier System
 
@@ -70,7 +68,7 @@ public class RegistryConfigurator : IRegistryConfigurator
 
 ### Object Registration
 
-Objects are registered through the typed `Registrations` classes:
+Objects are registered through typed `Registrations` classes. These are invoked by state logic during enter/exit events, not by a global pass:
 
 ```csharp
 [RegistrationsEntrypoint]
@@ -89,11 +87,11 @@ public class MyRegistrations : Registrations<MyRegistry>
 
 ## Integration with Dependency Injection
 
-The Registry System is tightly integrated with the DI system:
+The Registry System is integrated with DI:
 
 - Registry classes are registered and resolved through DI
 - Registrations receive dependencies through base properties after `Initialize(ICoreContainer)`
-- Registry processing uses dedicated DI containers
+- Registry operations are invoked within the current state’s DI context (old/new side as applicable), not a separate global container
 
 ## Future Development
 

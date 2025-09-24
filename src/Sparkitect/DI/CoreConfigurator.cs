@@ -6,7 +6,7 @@ namespace Sparkitect.DI;
 /// Interface for classes that configure the IoC container
 /// </summary>
 public abstract class CoreConfigurator 
-    : ConfigurationEntrypoint<CoreContainerConfiguratorEntrypointAttribute>
+    : IConfigurationEntrypoint<CoreContainerConfiguratorEntrypointAttribute>
 {
     /// <summary>
     /// Configures the IoC container with services

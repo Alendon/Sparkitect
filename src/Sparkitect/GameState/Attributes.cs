@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Sparkitect.DI.GeneratorAttributes;
 
 namespace Sparkitect.GameState;
 
@@ -75,7 +76,7 @@ public sealed class OnModuleExitAttribute : Attribute;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
-public sealed class StateFacadeAttribute<TFacade> : Attribute where TFacade : class;
+public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]

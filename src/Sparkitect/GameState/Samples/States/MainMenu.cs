@@ -9,6 +9,7 @@ namespace Sparkitect.GameState.Samples.States;
 public class MainMenu : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Desktop;
+    public static Identification Identification => StateID.Sparkitect.MainMenu;
 
     public static IReadOnlyList<Identification> Modules => [];
 }

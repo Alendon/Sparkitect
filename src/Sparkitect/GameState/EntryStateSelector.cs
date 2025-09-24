@@ -7,7 +7,7 @@ namespace Sparkitect.GameState;
 [AttributeUsage(AttributeTargets.Class)]
 public class EntryStateSelectorEntrypointAttribute : Attribute;
 
-public abstract class EntryStateSelector : ConfigurationEntrypoint<EntryStateSelectorEntrypointAttribute>
+public abstract class EntryStateSelector : IConfigurationEntrypoint<EntryStateSelectorEntrypointAttribute>
 {
     public abstract Identification SelectEntryState(ICoreContainer container);
 }

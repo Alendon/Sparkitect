@@ -10,10 +10,11 @@ namespace Sparkitect.GameState.Samples.States;
 public class LocalGame : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Desktop;
+    public static Identification Identification => StateID.Sparkitect.LocalGame;
 
-    public static IReadOnlyList<Identification> Modules => new[]
-    {
+    public static IReadOnlyList<Identification> Modules =>
+    [
         StateModuleID.Sparkitect.Ecs
-    };
+    ];
 }
 

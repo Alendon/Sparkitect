@@ -33,9 +33,6 @@ internal class CoreContainer : ICoreContainer
         if (_disposed)
             throw new ObjectDisposedException(nameof(CoreContainer));
             
-        if (serviceType is null)
-            throw new ArgumentNullException(nameof(serviceType));
-            
         if (!TryResolve(serviceType, out var instance))
             throw new DependencyResolutionException($"No registration found for service {serviceType.Name}");
             

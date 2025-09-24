@@ -4,7 +4,7 @@ using Sparkitect.Modding;
 namespace Sparkitect.DI;
 
 
-public abstract class Registrations : ConfigurationEntrypoint<RegistrationsEntrypointAttribute>
+public abstract class Registrations : IConfigurationEntrypoint<RegistrationsEntrypointAttribute>
 {
     public abstract string CategoryIdentifier { get; }
 

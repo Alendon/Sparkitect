@@ -17,5 +17,6 @@ namespace Sparkitect.GameState.Samples.States;
 public class EntryState : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
+    public static Identification Identification => StateID.Sparkitect.Entry;
     public static IReadOnlyList<Identification> Modules => [StateModuleID.Sparkitect.Core];
 }

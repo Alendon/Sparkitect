@@ -40,5 +40,5 @@ public interface IModManager
     /// <param name="modsToInclude">The mods to include in the container (All or specific mod IDs)</param>
     /// <returns>A new entrypoint container with discovered entrypoints</returns>
     [MustDisposeResource] IEntrypointContainer<T> CreateEntrypointContainer<T>(
-        OneOf<All, IEnumerable<string>> modsToInclude) where T : class, BaseConfigurationEntrypoint;
+        OneOf<All, IEnumerable<string>> modsToInclude) where T : class, IBaseConfigurationEntrypoint;
 }

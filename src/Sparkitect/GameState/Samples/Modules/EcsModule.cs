@@ -1,4 +1,7 @@
-﻿using Sparkitect.ECS;
+﻿using Sparkitect.CompilerGenerated.IdExtensions;
+using Sparkitect.ECS;
+using Sparkitect.Modding;
+using Sparkitect.Modding.IDs;
 
 namespace Sparkitect.GameState.Samples.Modules;
 
@@ -8,4 +11,5 @@ namespace Sparkitect.GameState.Samples.Modules;
 public sealed partial class EcsModule : IStateModule
 {
     public static IReadOnlyList<Type> UsedServices => [typeof(IArchetypeManager), typeof(IComponentManager), typeof(ISystemManager)];
+    public static Identification Identification => StateModuleID.Sparkitect.Ecs;
 }

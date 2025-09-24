@@ -80,39 +80,15 @@ public class MyConfigurator : CoreConfigurator
 }
 ```
 
-### Registry Processing
+### Registry Invocation
 
-After mods are loaded, the RegistryManager initiates registry processing:
+After mods are loaded, registries are invoked by unified state functions (enter/exit events) within the root/entry states rather than as a global pass. Typical flow:
 
-1. **Category Phase**: Registry categories are registered and initialized
-   ```csharp
-   public class RegistryConfigurator : IRegistryConfigurator
-   {
-       public void ConfigureRegistries(IFactoryContainerBuilder<IRegistry> registryBuilder)
-       {
-           // registryBuilder.Register(new MyRegistry_KeyedFactory());
-       }
-   }
-   ```
+1. State logic discovers and registers registry categories via `IRegistryConfigurator`.
+2. State logic performs object registrations through `Registrations` classes under the current state’s DI context.
+3. Corresponding exit functions explicitly unregister/cleanup objects tied to the leaving scope.
 
-2. **Object Pre-Phase**: Pre-registration setup operations
-3. **Object Main Phase**: Primary object registration
-   ```csharp
-   [RegistrationsEntrypoint]
-   public class MyRegistrations : Registrations<MyRegistry>
-   {
-       public override string CategoryIdentifier => "category_name";
-       
-       public override void MainPhaseRegistration(MyRegistry registry)
-       {
-           var id = IdentificationManager.RegisterObject("my_mod", "category_name", "my_object");
-           registry.RegisterSomething(id, "additional data");
-       }
-   }
-   ```
-4. **Object Post-Phase**: Post-registration processing and cross-references
-
-The registration process maps string identifiers to numeric IDs and handles the actual registry entries through specialized registry classes.
+This provides deterministic, per‑state control of registry work while keeping category and identifier semantics unchanged.
 
 ### Transition to First Game State
 
@@ -125,6 +101,7 @@ The engine uses a hierarchy of containers during initialization:
 1. **Core Container**: Minimal services needed for bootstrapping
 2. **Root Container**: Created after loading root mods, contains all services from root mods
 3. **Registry Container**: Specialized container for registry processing
+4. **State Container**: Built per state; child state containers use their parent state’s container as DI parent (children add services, parents remain unchanged)
 
 Once created, containers cannot be modified. Subsequent operations that need additional services create child containers rather than modifying existing ones.
 

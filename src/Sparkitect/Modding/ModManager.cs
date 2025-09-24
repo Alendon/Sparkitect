@@ -337,7 +337,7 @@ internal class ModManager : IModManager
     }
 
     public IEntrypointContainer<T> CreateEntrypointContainer<T>(OneOf<All, IEnumerable<string>> modsToInclude)
-        where T : class, BaseConfigurationEntrypoint
+        where T : class, IBaseConfigurationEntrypoint
     {
         var entrypointAttribute = T.EntrypointAttributeType;
         var instances = new List<T>();
@@ -386,7 +386,7 @@ internal class ModManager : IModManager
     // TODO: When mod dependencies and ordering semantics are implemented,
     //       this method should apply a deterministic ordering for entrypoint execution.
     //       For now, it returns the input unchanged.
-    private static IEnumerable<Type> OrderEntrypoints<T>(IEnumerable<Type> types) where T : class, BaseConfigurationEntrypoint
+    private static IEnumerable<Type> OrderEntrypoints<T>(IEnumerable<Type> types) where T : class, IBaseConfigurationEntrypoint
         => types;
 
     private class LoadedModGroup

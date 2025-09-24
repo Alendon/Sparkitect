@@ -278,7 +278,7 @@ if (container.TryResolve(typeof(IMyService), out var serviceObj))
 }
 
 // Get all registered instances
-var allServices = container.GetRegisteredInstances();
+var allServices = container.GetCurrentRegisteredInstances();
 ```
 
 ### Factory Container Access
@@ -329,3 +329,14 @@ The DI system is tightly coupled with the modding framework:
 - Properly dispose containers when finished
 - Create child containers for scoped operations
 - Allow the Game State system to manage container lifecycles
+
+## Planned: Unified Facade Integration
+
+Multiple subsystems require facade usage (e.g., registries and game states). To avoid bespoke patterns per subsystem, the DI system will provide a unified, attribute-driven facade mechanism integrated into container construction.
+
+- Interfaces declare their facade contract (e.g., `[StateFacade<TFacade>]`).
+- Implementations declare which service interface they provide to the state system (e.g., `[StateService<TInterface>]`).
+- Module/State declarations list the used service interfaces; source generators validate that corresponding implementations exist and implement required facades.
+- During state container build, facade mappings are applied so wrappers can resolve facades while public DI exposes only declared interfaces.
+
+This unified approach reduces duplication, centralizes validation in analyzers, and ensures deterministic facade mapping at build time. (Status: planned.)

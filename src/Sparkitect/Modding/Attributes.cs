@@ -22,4 +22,4 @@ public class UseResourceFileAttribute : Attribute
 }
 
 [AttributeUsage(AttributeTargets.Interface)]
-public class RegistryFacadeAttribute<TFacade> : Attribute where TFacade : class;
+public class RegistryFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;

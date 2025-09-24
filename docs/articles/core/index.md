@@ -18,7 +18,7 @@ The Modding Framework defines how mods are structured, loaded, and interact with
 
 ### Dependency Injection
 
-Dependency Injection (DI) is the primary mechanism for components to access and interact with each other. Sparkitect uses Dryloc as its DI framework, with additional tooling to streamline common patterns through source generation.
+Dependency Injection (DI) is the primary mechanism for components to access and interact with each other. Sparkitect uses a custom-built DI framework designed for modding and container chaining, with additional tooling to streamline common patterns through source generation.
 
 [Learn more about the Dependency Injection system](dependency-injection.md)
 

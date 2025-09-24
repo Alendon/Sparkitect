@@ -10,6 +10,7 @@ namespace Sparkitect.GameState.Samples.States;
 public class ServerGame : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Entry;
+    public static Identification Identification => StateID.Sparkitect.ServerGame;
 
     public static IReadOnlyList<Identification> Modules =>
         [StateModuleID.Sparkitect.Networking, StateModuleID.Sparkitect.Ecs];
