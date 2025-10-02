@@ -1,0 +1,17 @@
+namespace {{ Namespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.GameState.StateMethodAssociationEntrypoint]
+internal class {{ ClassName }} : global::Sparkitect.GameState.StateMethodAssociation
+{
+    public override void Configure(global::Sparkitect.GameState.StateMethodAssociationBuilder builder)
+    {
+{% for registration in Registrations %}
+        builder.Add(
+            {{ registration.ModuleIdentification }},
+            "{{ registration.FunctionKey }}",
+            typeof({{ registration.WrapperTypeName }}),
+            global::Sparkitect.GameState.StateMethodSchedule.{{ registration.Schedule }});
+{% endfor %}
+    }
+}

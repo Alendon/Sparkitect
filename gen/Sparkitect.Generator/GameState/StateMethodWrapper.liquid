@@ -1,0 +1,42 @@
+namespace {{ ModuleNamespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+public partial class {{ ModuleTypeName }}
+{
+    internal class {{ FunctionKey }}Wrapper : global::Sparkitect.GameState.IStateMethod
+    {
+{% for param in Parameters %}
+        private {{ param.ParameterType }} _param{{ param.Index }};
+{% endfor %}
+
+        public void Execute()
+        {
+            {{ MethodName }}(
+{% for param in Parameters %}
+    _param{{ param.Index }}  {% unless forloop.last %}, {%- endunless -%}
+{% endfor %}
+);
+        }
+
+        public void Initialize(global::Sparkitect.DI.Container.IFacadedCoreContainer container)
+        {
+{% for param in Parameters %}
+    {% if param.IsFacade %}
+            if(!container.TryResolveFacaded<{{ param.ParameterType }}>(out _param{{ param.Index }}))
+            {
+        {% unless param.IsOptional %}
+                throw new global::System.InvalidOperationException($"Failed to resolve facade dependency {{ param.ParameterType }} for state function {{ FunctionKey }}");
+        {% endunless %}
+            }
+    {% else %}
+            if(!container.TryResolve<{{ param.ParameterType }}>(out _param{{ param.Index }}))
+            {
+        {% unless param.IsOptional %}
+                throw new global::System.InvalidOperationException($"Failed to resolve dependency {{ param.ParameterType }} for state function {{ FunctionKey }}");
+        {% endunless %}
+            }
+    {% endif %}
+{% endfor %}
+        }
+    }
+}

@@ -25,6 +25,8 @@ public class ImmutableValueArray<T> : IReadOnlyCollection<T>, IEquatable<Immutab
     {
         _values = values;
     }
+    
+    public T this[int index] => _values[index];
 
     public IEnumerator<T> GetEnumerator()
     {
