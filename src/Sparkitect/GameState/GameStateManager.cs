@@ -244,6 +244,96 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return facadedContainer;
     }
 
+    private List<IStateMethod> BuildOrderedMethodList(
+        StateMethodSchedule schedule,
+        IEnumerable<Identification> activeModuleIds,
+        IEnumerable<Identification> activeStateIds,
+        IFacadedCoreContainer container)
+    {
+        // Get all methods for this schedule
+        if (!_methodsBySchedule.TryGetValue(schedule, out var allMethods))
+        {
+            return new List<IStateMethod>();
+        }
+
+        // Filter to active parents (modules or states)
+        var activeParents = new HashSet<Identification>(activeModuleIds.Concat(activeStateIds));
+        var activeMethods = allMethods
+            .Where(m => activeParents.Contains(m.Item1))
+            .ToList();
+
+        if (activeMethods.Count == 0)
+        {
+            return new List<IStateMethod>();
+        }
+
+        // Build ordering graph
+        var graph = new QuikGraph.AdjacencyGraph<(Identification, string), QuikGraph.Edge<(Identification, string)>>();
+
+        // Add vertices
+        foreach (var method in activeMethods)
+        {
+            graph.AddVertex(method);
+        }
+
+        // Add edges from ordering constraints
+        foreach (var constraint in _orderingConstraints)
+        {
+            var before = (constraint.Before.Parent, constraint.Before.Method);
+            var after = (constraint.After.Parent, constraint.After.Method);
+
+            // Only add edge if both vertices are in active set
+            if (graph.ContainsVertex(before) && graph.ContainsVertex(after))
+            {
+                graph.AddEdge(new QuikGraph.Edge<(Identification, string)>(before, after));
+            }
+        }
+
+        // Topological sort
+        List<(Identification, string)> sortedMethods;
+        try
+        {
+            sortedMethods = QuikGraph.Algorithms.TopologicalSortExtensions.TopologicalSort(graph).ToList();
+        }
+        catch (QuikGraph.NonAcyclicGraphException)
+        {
+            Log.Error("Circular dependency detected in state method ordering for schedule {Schedule}", schedule);
+            throw new InvalidOperationException($"Circular dependency in {schedule} method ordering");
+        }
+
+        // Reverse for exit schedules
+        if (schedule == StateMethodSchedule.OnStateExit || schedule == StateMethodSchedule.OnModuleExit)
+        {
+            sortedMethods.Reverse();
+        }
+
+        // Instantiate wrappers and initialize
+        var methods = new List<IStateMethod>();
+        foreach (var (parentId, methodKey) in sortedMethods)
+        {
+            if (_methodWrappers.TryGetValue((parentId, methodKey), out var wrapperType))
+            {
+                if (Activator.CreateInstance(wrapperType) is IStateMethod method)
+                {
+                    method.Initialize(container);
+                    methods.Add(method);
+                }
+            }
+        }
+
+        Log.Debug("Built ordered method list for {Schedule}: {Count} methods", schedule, methods.Count);
+
+        return methods;
+    }
+
+    private void ExecuteOrderedMethods(IReadOnlyList<IStateMethod> methods)
+    {
+        foreach (var method in methods)
+        {
+            method.Execute();
+        }
+    }
+
     public void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule
     {
         // Extract metadata using static abstract interface members
