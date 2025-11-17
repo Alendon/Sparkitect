@@ -93,3 +93,19 @@ public record OrderingRelationship(
     string BeforeMethodKey,
     string AfterParentId,
     string AfterMethodKey);
+
+/// <summary>
+/// Model for state service mapping output
+/// </summary>
+public record StateServiceMappingModel(
+    string Namespace,
+    string ClassName,
+    ImmutableValueArray<ServiceFacadeMapping> Mappings);
+
+/// <summary>
+/// Model for a single service-to-facade mapping
+/// </summary>
+public record ServiceFacadeMapping(
+    string InterfaceType,
+    string ServiceType,
+    ImmutableValueArray<string> FacadeTypes);

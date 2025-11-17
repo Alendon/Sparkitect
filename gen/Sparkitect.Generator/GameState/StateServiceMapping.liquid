@@ -1,0 +1,16 @@
+namespace {{ Namespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.GameState.StateServiceMappingEntrypoint]
+internal class {{ ClassName }} : global::Sparkitect.GameState.StateServiceMapping
+{
+    public override void Configure(global::Sparkitect.GameState.StateServiceMappingBuilder builder)
+    {
+{% for mapping in Mappings %}
+        builder.Add(
+            typeof({{ mapping.InterfaceType }}),
+            typeof({{ mapping.ServiceType }}),
+            [{% for facade in mapping.FacadeTypes %}typeof({{ facade }}){% unless forloop.last %}, {% endunless %}{% endfor %}]);
+{% endfor %}
+    }
+}
