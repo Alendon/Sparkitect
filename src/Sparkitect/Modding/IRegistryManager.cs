@@ -1,11 +1,27 @@
-﻿using Sparkitect.GameState;
-
 namespace Sparkitect.Modding;
 
-//manages the registry of categories (actual registries) and objects
-[StateFacade<IRegistryManagerFacade>]
+/// <summary>
+/// Manages registry processing and tracks which mods are registered per registry
+/// </summary>
 public interface IRegistryManager
 {
-    
-    //TODO add unregistration method
+    /// <summary>
+    /// Process a specific registry for the given mods
+    /// </summary>
+    void ProcessRegistry<TRegistry>(params Span<ushort> modIds) where TRegistry : class, IRegistry;
+
+    /// <summary>
+    /// Process a specific registry (by numeric ID) for the given mods
+    /// </summary>
+    void ProcessRegistry(ushort registryId, params Span<ushort> modIds);
+
+    /// <summary>
+    /// Process all currently loaded mods that have not yet been processed for the given registry
+    /// </summary>
+    void ProcessAllMissing<TRegistry>() where TRegistry : class, IRegistry;
+
+    /// <summary>
+    /// Unregister all mods currently processed for the given registry
+    /// </summary>
+    void UnregisterAllRemaining<TRegistry>() where TRegistry : class, IRegistry;
 }

@@ -1,10 +1,20 @@
-﻿using Sparkitect.DI.Container;
+using Sparkitect.DI.Container;
 using Sparkitect.Modding;
 
 namespace Sparkitect.DI;
 
+/// <summary>
+/// Base interface for runtime polymorphic access to registrations
+/// </summary>
+public interface IRegistrationsBase : IBaseConfigurationEntrypoint
+{
+    string CategoryIdentifier { get; }
+    void Initialize(ICoreContainer container);
+    void ProcessRegistrationsUntyped(IRegistry registry);
+}
 
-public abstract class Registrations : IConfigurationEntrypoint<RegistrationsEntrypointAttribute>
+public abstract class Registrations<TRegistry> : IRegistrationsBase, IConfigurationEntrypoint<RegistrationsEntrypointAttribute<TRegistry>>
+    where TRegistry : class, IRegistry
 {
     public abstract string CategoryIdentifier { get; }
 
@@ -15,20 +25,15 @@ public abstract class Registrations : IConfigurationEntrypoint<RegistrationsEntr
     public void Initialize(ICoreContainer container)
     {
         Container = container;
-        
+
         IdentificationManager = container.Resolve<IIdentificationManager>();
         ResourceManager = container.Resolve<IResourceManager>();
     }
 
-    public abstract void ProcessRegistrations(IRegistry registry);
-}
+    public abstract void ProcessRegistrations(TRegistry registry);
 
-public abstract class Registrations<TRegistry> : Registrations where TRegistry : IRegistry
-{
-    public sealed override void ProcessRegistrations(IRegistry registry)
+    void IRegistrationsBase.ProcessRegistrationsUntyped(IRegistry registry)
     {
         ProcessRegistrations((TRegistry)registry);
     }
-
-    public abstract void ProcessRegistrations(TRegistry registry);
 }

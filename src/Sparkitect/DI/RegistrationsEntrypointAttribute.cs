@@ -1,4 +1,5 @@
 ﻿using JetBrains.Annotations;
+using Sparkitect.Modding;
 
 namespace Sparkitect.DI;
 
@@ -7,6 +8,6 @@ namespace Sparkitect.DI;
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 [MeansImplicitUse]
-public class RegistrationsEntrypointAttribute : Attribute
+public class RegistrationsEntrypointAttribute<TRegistry> : Attribute where TRegistry : class, IRegistry
 {
 }
