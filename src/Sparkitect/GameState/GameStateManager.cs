@@ -181,6 +181,69 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return (exitStates, lca, enterStates);
     }
 
+    private IFacadedCoreContainer BuildStateContainer(ICoreContainer parentContainer, IEnumerable<Identification> moduleIds)
+    {
+        Log.Debug("Building state container for modules: {ModuleIds}", string.Join(", ", moduleIds));
+
+        // Collect all used services from modules
+        var usedServices = new HashSet<Type>();
+        foreach (var moduleId in moduleIds)
+        {
+            if (_modules.TryGetValue(moduleId, out var module))
+            {
+                foreach (var serviceType in module.UsedServices)
+                {
+                    usedServices.Add(serviceType);
+                }
+            }
+        }
+
+        // Query StateServiceMapping entrypoints to build facade map
+        var facadeMap = new Dictionary<Type, Type>();
+
+        using var mappingContainer = ModManager.CreateEntrypointContainer<StateServiceMapping>(new OneOf.Types.All());
+        var mappings = mappingContainer.ResolveMany();
+
+        foreach (var mapping in mappings)
+        {
+            var builder = new StateServiceMappingBuilder();
+            mapping.Configure(builder);
+
+            var serviceMappings = builder.Build();
+
+            foreach (var (interfaceType, (serviceType, facadeTypes)) in serviceMappings)
+            {
+                // Only include services used by these modules
+                if (usedServices.Contains(interfaceType))
+                {
+                    foreach (var facadeType in facadeTypes)
+                    {
+                        facadeMap[facadeType] = serviceType;
+                    }
+                }
+            }
+        }
+
+        // Build child container
+        // Note: Service factories for state services should already be registered via StateServiceFactoryGenerator
+        // and collected through configurator entrypoints. For now, we're just building the container
+        // with the parent, assuming services are already available in parent or will be added by states.
+        var containerBuilder = new CoreContainerBuilder(parentContainer);
+
+        // TODO: Register state-specific service factories here if needed
+        // This depends on how state services are registered - need to clarify registration mechanism
+
+        var coreContainer = containerBuilder.Build();
+
+        // Wrap in FacadedCoreContainer
+        var facadedContainer = new FacadedCoreContainer(coreContainer, facadeMap);
+
+        Log.Debug("Built state container with {ServiceCount} used services and {FacadeCount} facade mappings",
+            usedServices.Count, facadeMap.Count);
+
+        return facadedContainer;
+    }
+
     public void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule
     {
         // Extract metadata using static abstract interface members
