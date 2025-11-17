@@ -26,11 +26,7 @@ internal class RegistryManager : IRegistryManager
     public void ProcessRegistry<TRegistry>(params Span<ushort> modIds) where TRegistry : class, IRegistry
     {
         var registryId = GetRegistryId<TRegistry>();
-        ProcessRegistry(registryId, modIds);
-    }
 
-    public void ProcessRegistry(ushort registryId, params Span<ushort> modIds)
-    {
         if (modIds.Length == 0)
         {
             Log.Debug("ProcessRegistry called with no mods for registry {RegistryId}", registryId);
@@ -78,7 +74,7 @@ internal class RegistryManager : IRegistryManager
         // Process registrations for each mod
         foreach (var modIdString in modIdStrings)
         {
-            ProcessSingleModRegistration(registry, registryIdentifier, modIdString);
+            ProcessSingleModRegistration<TRegistry>(registry, registryIdentifier, modIdString);
 
             // Track that this mod is processed for this registry
             if (!_processedModsByRegistry.TryGetValue(registryId, out var processedMods))
@@ -94,6 +90,12 @@ internal class RegistryManager : IRegistryManager
         }
 
         Log.Debug("Completed processing registry {RegistryId} for {Count} mods", registryId, modIdStrings.Count);
+    }
+
+    public void ProcessRegistry(ushort registryId, params Span<ushort> modIds)
+    {
+        throw new NotSupportedException(
+            "Non-generic ProcessRegistry not supported. Use generic ProcessRegistry<TRegistry>() instead.");
     }
 
     public void ProcessAllMissing<TRegistry>() where TRegistry : class, IRegistry
@@ -122,7 +124,7 @@ internal class RegistryManager : IRegistryManager
         }
 
         Log.Information("Processing {Count} missing mods for registry {RegistryId}", missingMods.Length, registryId);
-        ProcessRegistry(registryId, missingMods);
+        ProcessRegistry<TRegistry>(missingMods);
     }
 
     public void UnregisterAllRemaining<TRegistry>() where TRegistry : class, IRegistry
@@ -194,30 +196,23 @@ internal class RegistryManager : IRegistryManager
         return registryId;
     }
 
-    private void ProcessSingleModRegistration(IRegistry registry, string registryIdentifier, string modId)
+    private void ProcessSingleModRegistration<TRegistry>(TRegistry registry, string registryIdentifier, string modId)
+        where TRegistry : class, IRegistry
     {
         // Query registrations for this specific registry type
-        // Note: Registrations<TRegistry> pattern not available here without generic context
-        // Need to process using category identifier
-
-        // For now, we'll need to process all registration entrypoints and filter by category
-        using var registrationsContainer = _modManager.CreateEntrypointContainer<IBaseConfigurationEntrypoint>(
+        // The generic attribute RegistrationsEntrypointAttribute<TRegistry> provides automatic filtering
+        using var registrationsContainer = _modManager.CreateEntrypointContainer<Registrations<TRegistry>>(
             OneOf<All, IEnumerable<string>>.FromT1(new[] { modId }));
 
-        var allEntrypoints = registrationsContainer.ResolveMany();
+        var registrations = registrationsContainer.ResolveMany();
 
-        // Filter to Registrations instances matching our category
-        foreach (var entrypoint in allEntrypoints)
+        foreach (var registration in registrations)
         {
-            if (entrypoint is not IRegistrationsBase registration)
-                continue;
-
-            if (registration.CategoryIdentifier != registryIdentifier)
-                continue;
-
-            // Initialize and process
+            // Initialize with current container
             registration.Initialize(_gameStateManager.CurrentCoreContainer);
-            registration.ProcessRegistrationsUntyped(registry);
+
+            // Process registrations with typed registry
+            registration.ProcessRegistrations(registry);
         }
     }
 

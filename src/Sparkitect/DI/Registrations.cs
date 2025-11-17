@@ -3,17 +3,7 @@ using Sparkitect.Modding;
 
 namespace Sparkitect.DI;
 
-/// <summary>
-/// Base interface for runtime polymorphic access to registrations
-/// </summary>
-public interface IRegistrationsBase : IBaseConfigurationEntrypoint
-{
-    string CategoryIdentifier { get; }
-    void Initialize(ICoreContainer container);
-    void ProcessRegistrationsUntyped(IRegistry registry);
-}
-
-public abstract class Registrations<TRegistry> : IRegistrationsBase, IConfigurationEntrypoint<RegistrationsEntrypointAttribute<TRegistry>>
+public abstract class Registrations<TRegistry> : IConfigurationEntrypoint<RegistrationsEntrypointAttribute<TRegistry>>
     where TRegistry : class, IRegistry
 {
     public abstract string CategoryIdentifier { get; }
@@ -31,9 +21,4 @@ public abstract class Registrations<TRegistry> : IRegistrationsBase, IConfigurat
     }
 
     public abstract void ProcessRegistrations(TRegistry registry);
-
-    void IRegistrationsBase.ProcessRegistrationsUntyped(IRegistry registry)
-    {
-        ProcessRegistrations((TRegistry)registry);
-    }
 }
