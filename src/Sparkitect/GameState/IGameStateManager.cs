@@ -8,10 +8,12 @@ namespace Sparkitect.GameState;
 [RegistryFacade<IGameStateManagerRegistryFacade>]
 public interface IGameStateManager
 {
-    
+
     ICoreContainer CurrentCoreContainer { get; }
-    
+
     void Request(Identification stateId, object? payload = null);
+
+    void Shutdown();
 }
 
 public interface IGameStateManagerRegistryFacade

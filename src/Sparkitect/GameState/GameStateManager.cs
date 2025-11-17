@@ -50,6 +50,89 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         // Process entrypoints to build method registry
         ProcessStateMethodAssociations();
         ProcessStateMethodOrdering();
+
+        // Initialize root state (hardcoded for now)
+        // Root state should be registered via registry system before this call
+        var rootStateId = StateID.Sparkitect.Root;
+
+        if (!_states.ContainsKey(rootStateId))
+        {
+            throw new InvalidOperationException("Root state not registered");
+        }
+
+        var rootStateMetadata = _states[rootStateId];
+
+        // Build root container with root modules
+        var rootContainer = BuildStateContainer(_currentContainer, rootStateMetadata.ModuleIds);
+
+        // Execute OnModuleEnter for root modules
+        var moduleEnterMethods = BuildOrderedMethodList(
+            StateMethodSchedule.OnModuleEnter,
+            rootStateMetadata.ModuleIds,
+            Array.Empty<Identification>(),
+            rootContainer);
+        ExecuteOrderedMethods(moduleEnterMethods);
+
+        // Execute OnStateEnter for root state
+        var stateEnterMethods = BuildOrderedMethodList(
+            StateMethodSchedule.OnStateEnter,
+            rootStateMetadata.ModuleIds,
+            new[] { rootStateId },
+            rootContainer);
+        ExecuteOrderedMethods(stateEnterMethods);
+
+        // Build PerFrame method list
+        var perFrameMethods = BuildOrderedMethodList(
+            StateMethodSchedule.PerFrame,
+            rootStateMetadata.ModuleIds,
+            new[] { rootStateId },
+            rootContainer);
+
+        // Push root state to stack
+        _stateStack.Push(new ActiveStateFrame(rootStateId, rootContainer, perFrameMethods));
+
+        Log.Information("Root state initialized, starting game loop");
+
+        // Run main loop (blocks until shutdown)
+        RunGameLoop();
+    }
+
+    private void RunGameLoop()
+    {
+        _isRunning = true;
+
+        while (_isRunning && _stateStack.Count > 0)
+        {
+            // Execute current state's PerFrame methods
+            var currentFrame = _stateStack.Peek();
+            ExecuteOrderedMethods(currentFrame.PerFrameMethods);
+
+            // Process pending state transition if any
+            if (_pendingStateTransition.HasValue)
+            {
+                var targetState = _pendingStateTransition.Value;
+                var payload = _pendingPayload;
+
+                _pendingStateTransition = null;
+                _pendingPayload = null;
+
+                ExecuteTransition(targetState, payload);
+            }
+
+            // Check shutdown flag
+            if (_shutdownRequested)
+            {
+                _isRunning = false;
+            }
+        }
+
+        Log.Information("Game loop ended");
+    }
+
+    public void Shutdown()
+    {
+        Log.Information("Shutdown requested");
+        _shutdownRequested = true;
     }
 
     private void ProcessStateMethodAssociations()
