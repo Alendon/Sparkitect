@@ -14,20 +14,32 @@ using Sparkitect.Modding.IDs;
 namespace Sparkitect.GameState;
 
 /// <summary>
-/// Scaffolding implementation. The full logic will be wired with SG, registries, and DI.
+/// Manages game state transitions, module lifecycle, and main loop execution
 /// </summary>
 [CreateServiceFactory<IGameStateManager>]
 internal sealed class GameStateManager : IGameStateManager, IGameStateManagerRegistryFacade
 {
-    /*
-     * We need to store in here, first all informations related to modules and states by Identification, to be able to
-     * construct states at runtime
-     *
-     * As well as a Stack of the current active states, which act hierarchically
-     */
+    // State/Module metadata storage
+    private readonly Dictionary<Identification, StateMetadata> _states = new();
+    private readonly Dictionary<Identification, ModuleMetadata> _modules = new();
 
-    public ICoreContainer CurrentCoreContainer => throw new NotImplementedException();
-    
+    // Method registry (populated from entrypoints)
+    private readonly Dictionary<(Identification ParentId, string MethodKey), Type> _methodWrappers = new();
+    private readonly Dictionary<StateMethodSchedule, List<(Identification ParentId, string MethodKey)>> _methodsBySchedule = new();
+
+    // Ordering constraints
+    private readonly List<OrderingEntry> _orderingConstraints = new();
+
+    // Active state tracking
+    private readonly Stack<ActiveStateFrame> _stateStack = new();
+    private ICoreContainer _currentContainer;
+    private bool _isRunning;
+    private bool _shutdownRequested;
+    private Identification? _pendingStateTransition;
+    private object? _pendingPayload;
+
+    public ICoreContainer CurrentCoreContainer => _currentContainer;
+
     internal required IModManager ModManager { get; init; }
 
     public void EnterRootState(ICoreContainer coreContainer)
