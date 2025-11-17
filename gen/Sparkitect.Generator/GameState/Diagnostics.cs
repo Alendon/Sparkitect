@@ -34,19 +34,9 @@ public static class Diagnostics
             "Ordering attribute references key '{0}' which could not be found in the specified context",
             "Sparkitect", DiagnosticSeverity.Warning, true);
 
-    public static readonly DiagnosticDescriptor OrderingCycleDetected =
-        new("SPARK3007", "Ordering cycle detected",
-            "A cycle was detected in state function ordering constraints involving '{0}'",
-            "Sparkitect", DiagnosticSeverity.Error, true);
-
     public static readonly DiagnosticDescriptor OrderingInvalidTargetType =
         new("SPARK3008", "Invalid ordering target type",
             "Generic ordering attribute on method '{0}' references type '{1}' which is not a valid module or state descriptor",
-            "Sparkitect", DiagnosticSeverity.Error, true);
-
-    public static readonly DiagnosticDescriptor ModuleOrderingCycleDetected =
-        new("SPARK3009", "Module ordering cycle detected",
-            "A cycle was detected in module ordering constraints involving '{0}'",
             "Sparkitect", DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor StateFunctionInvalidKey =
