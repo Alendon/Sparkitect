@@ -111,8 +111,74 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
     public void Request(Identification stateId, object? payload = null)
     {
-        //Function needs probably a different (generic) signature for a type safe payload
-        throw new NotImplementedException();
+        // Store pending transition to be applied after current loop iteration
+        _pendingStateTransition = stateId;
+        _pendingPayload = payload;
+
+        Log.Debug("State transition requested to {StateId}", stateId);
+    }
+
+    private List<Identification> GetAncestorChain(Identification stateId)
+    {
+        var chain = new List<Identification>();
+
+        var current = stateId;
+        while (!current.Equals(Identification.Empty))
+        {
+            chain.Add(current);
+
+            if (!_states.TryGetValue(current, out var metadata))
+            {
+                throw new InvalidOperationException($"State {current} not found in registry");
+            }
+
+            current = metadata.ParentId;
+        }
+
+        return chain;
+    }
+
+    private (List<Identification> ExitStates, Identification LCA, List<Identification> EnterStates) ComputeTransitionPath(
+        Identification fromStateId, Identification toStateId)
+    {
+        // Build ancestor chains
+        var fromChain = GetAncestorChain(fromStateId);
+        var toChain = GetAncestorChain(toStateId);
+
+        // Reverse to get root-to-leaf order
+        fromChain.Reverse();
+        toChain.Reverse();
+
+        // Find LCA (lowest common ancestor)
+        int lcaIndex = 0;
+        while (lcaIndex < fromChain.Count &&
+               lcaIndex < toChain.Count &&
+               fromChain[lcaIndex].Equals(toChain[lcaIndex]))
+        {
+            lcaIndex++;
+        }
+
+        // LCA is the last matching state
+        var lca = lcaIndex > 0 ? fromChain[lcaIndex - 1] : Identification.Empty;
+
+        // Exit states: from current back to LCA (excluding LCA)
+        var exitStates = new List<Identification>();
+        for (int i = fromChain.Count - 1; i >= lcaIndex; i--)
+        {
+            exitStates.Add(fromChain[i]);
+        }
+
+        // Enter states: from LCA to target (excluding LCA, including target)
+        var enterStates = new List<Identification>();
+        for (int i = lcaIndex; i < toChain.Count; i++)
+        {
+            enterStates.Add(toChain[i]);
+        }
+
+        Log.Debug("Computed transition path: exit {ExitCount} states, LCA={LCA}, enter {EnterCount} states",
+            exitStates.Count, lca, enterStates.Count);
+
+        return (exitStates, lca, enterStates);
     }
 
     public void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule
