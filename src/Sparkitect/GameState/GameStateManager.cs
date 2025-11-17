@@ -334,6 +334,116 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
     }
 
+    private void ExecuteTransition(Identification targetStateId, object? payload)
+    {
+        if (_stateStack.Count == 0)
+        {
+            throw new InvalidOperationException("Cannot execute transition: no active state");
+        }
+
+        var currentStateId = _stateStack.Peek().StateId;
+
+        Log.Information("Executing state transition from {FromState} to {ToState}", currentStateId, targetStateId);
+
+        var (exitStates, lca, enterStates) = ComputeTransitionPath(currentStateId, targetStateId);
+
+        // Exit Phase
+        foreach (var stateId in exitStates)
+        {
+            var frame = _stateStack.Pop();
+            var stateMetadata = _states[stateId];
+
+            Log.Debug("Exiting state {StateId}", stateId);
+
+            // Get active modules for this state
+            var activeModules = stateMetadata.ModuleIds;
+
+            // Determine departing modules (not in parent state)
+            var departingModules = activeModules.ToList();
+            if (!stateMetadata.ParentId.Equals(Identification.Empty) && _states.TryGetValue(stateMetadata.ParentId, out var parentMetadata))
+            {
+                departingModules = activeModules.Except(parentMetadata.ModuleIds).ToList();
+            }
+
+            // Execute OnStateExit methods
+            var stateExitMethods = BuildOrderedMethodList(
+                StateMethodSchedule.OnStateExit,
+                activeModules,
+                new[] { stateId },
+                (IFacadedCoreContainer)frame.Container);
+            ExecuteOrderedMethods(stateExitMethods);
+
+            // Execute OnModuleExit methods
+            if (departingModules.Count > 0)
+            {
+                var moduleExitMethods = BuildOrderedMethodList(
+                    StateMethodSchedule.OnModuleExit,
+                    departingModules,
+                    Array.Empty<Identification>(),
+                    (IFacadedCoreContainer)frame.Container);
+                ExecuteOrderedMethods(moduleExitMethods);
+            }
+
+            // Dispose container
+            frame.Container.Dispose();
+        }
+
+        // Enter Phase
+        foreach (var stateId in enterStates)
+        {
+            var stateMetadata = _states[stateId];
+
+            Log.Debug("Entering state {StateId}", stateId);
+
+            // Get active modules for this state
+            var activeModules = stateMetadata.ModuleIds;
+
+            // Determine arriving modules (not in parent state)
+            var arrivingModules = activeModules.ToList();
+            if (!stateMetadata.ParentId.Equals(Identification.Empty) && _states.TryGetValue(stateMetadata.ParentId, out var parentMetadata))
+            {
+                arrivingModules = activeModules.Except(parentMetadata.ModuleIds).ToList();
+            }
+
+            // Get parent container (from stack top, or current container if stack empty)
+            var parentContainer = _stateStack.Count > 0 ? _stateStack.Peek().Container : _currentContainer;
+
+            // Build new container for this state
+            var stateContainer = BuildStateContainer(parentContainer, activeModules);
+
+            // Execute OnModuleEnter methods
+            if (arrivingModules.Count > 0)
+            {
+                var moduleEnterMethods = BuildOrderedMethodList(
+                    StateMethodSchedule.OnModuleEnter,
+                    arrivingModules,
+                    Array.Empty<Identification>(),
+                    stateContainer);
+                ExecuteOrderedMethods(moduleEnterMethods);
+            }
+
+            // Execute OnStateEnter methods
+            var stateEnterMethods = BuildOrderedMethodList(
+                StateMethodSchedule.OnStateEnter,
+                activeModules,
+                new[] { stateId },
+                stateContainer);
+            ExecuteOrderedMethods(stateEnterMethods);
+
+            // Build PerFrame method list for this state
+            var perFrameMethods = BuildOrderedMethodList(
+                StateMethodSchedule.PerFrame,
+                activeModules,
+                new[] { stateId },
+                stateContainer);
+
+            // Push new state frame
+            _stateStack.Push(new ActiveStateFrame(stateId, stateContainer, perFrameMethods));
+        }
+
+        Log.Information("State transition complete: now in state {CurrentState}", targetStateId);
+    }
+
     public void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule
     {
         // Extract metadata using static abstract interface members
