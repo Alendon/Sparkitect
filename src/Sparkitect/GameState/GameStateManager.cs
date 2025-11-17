@@ -56,21 +56,55 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
     public void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule
     {
-        throw new NotImplementedException();
+        // Extract metadata using static abstract interface members
+        var moduleMetadata = new ModuleMetadata(
+            TStateModule.Identification,
+            TStateModule.UsedServices,
+            typeof(TStateModule));
+
+        _modules[id] = moduleMetadata;
+
+        Log.Debug("Registered module {ModuleId} ({ModuleType})", id, typeof(TStateModule).Name);
     }
 
     public void RemoveStateModule(Identification id)
     {
-        throw new NotImplementedException();
+        if (_modules.Remove(id))
+        {
+            Log.Debug("Unregistered module {ModuleId}", id);
+        }
     }
 
     public void AddStateDescriptor<TStateDescriptor>(Identification id) where TStateDescriptor : class, IStateDescriptor
     {
-        throw new NotImplementedException();
+        // Extract metadata using static abstract interface members
+        var parentId = TStateDescriptor.ParentId;
+        var modules = TStateDescriptor.Modules;
+
+        // Validate parent exists (except for root state)
+        if (!parentId.Equals(Identification.Empty) && !_states.ContainsKey(parentId))
+        {
+            throw new InvalidOperationException(
+                $"Cannot register state {id}: parent state {parentId} not found");
+        }
+
+        var stateMetadata = new StateMetadata(
+            TStateDescriptor.Identification,
+            parentId,
+            modules,
+            typeof(TStateDescriptor));
+
+        _states[id] = stateMetadata;
+
+        Log.Debug("Registered state {StateId} ({StateType}) with parent {ParentId}",
+            id, typeof(TStateDescriptor).Name, parentId);
     }
 
     public void RemoveStateDescriptor(Identification id)
     {
-        throw new NotImplementedException();
+        if (_states.Remove(id))
+        {
+            Log.Debug("Unregistered state {StateId}", id);
+        }
     }
 }
