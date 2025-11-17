@@ -11,7 +11,7 @@ internal class {{ ClassName }} : global::Sparkitect.GameState.StateMethodAssocia
             {{ registration.ModuleIdentification }},
             "{{ registration.FunctionKey }}",
             typeof({{ registration.WrapperTypeName }}),
-            global::Sparkitect.GameState.StateMethodSchedule.{{ registration.Schedule }});
+            global::Sparkitect.GameState.StateMethodSchedule.{{ registration.ScheduleName }});
 {% endfor %}
     }
 }

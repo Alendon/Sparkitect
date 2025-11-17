@@ -119,10 +119,13 @@ public class StateMethodGenerator : IIncrementalGenerator
         // Get module ordering
         var (moduleBefore, moduleAfter) = GetModuleOrderingConstraints(moduleType);
 
+        // Generate property access expression for Identification (not the type)
+        var identificationExpression = $"{moduleType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.{identificationProperty.Name}";
+
         return new StateModuleModel(
             moduleType.Name,
             moduleType.ContainingNamespace.ToDisplayString(),
-            identificationProperty.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            identificationExpression,
             functions.ToImmutableValueArray(),
             moduleBefore.ToImmutableValueArray(),
             moduleAfter.ToImmutableValueArray());
@@ -171,7 +174,7 @@ public class StateMethodGenerator : IIncrementalGenerator
                     module.ModuleIdentification,
                     function.FunctionKey,
                     $"global::{module.ModuleNamespace}.{module.ModuleTypeName}.{function.FunctionKey}Wrapper",
-                    function.Schedule));
+                    function.Schedule.ToString()));
             }
         }
 

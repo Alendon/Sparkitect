@@ -75,7 +75,7 @@ public record StateMethodRegistration(
     string ModuleIdentification,
     string FunctionKey,
     string WrapperTypeName,
-    StateMethodSchedule Schedule);
+    string ScheduleName);
 
 /// <summary>
 /// Model for the state method ordering output
