@@ -66,15 +66,21 @@ public static class StateUtils
         {
             var attrName = attr.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType);
 
-            return attrName switch
+            switch (attrName)
             {
-                PerFrameAttribute => StateMethodSchedule.PerFrame,
-                OnStateEnterAttribute => StateMethodSchedule.OnStateEnter,
-                OnStateExitAttribute => StateMethodSchedule.OnStateExit,
-                OnModuleEnterAttribute => StateMethodSchedule.OnModuleEnter,
-                OnModuleExitAttribute => StateMethodSchedule.OnModuleExit,
-                _ => (StateMethodSchedule?)null
-            };
+                case PerFrameAttribute:
+                    return StateMethodSchedule.PerFrame;
+                case OnStateEnterAttribute:
+                    return StateMethodSchedule.OnStateEnter;
+                case OnStateExitAttribute:
+                    return StateMethodSchedule.OnStateExit;
+                case OnModuleEnterAttribute:
+                    return StateMethodSchedule.OnModuleEnter;
+                case OnModuleExitAttribute:
+                    return StateMethodSchedule.OnModuleExit;
+                default:
+                    continue;
+            }
         }
 
         return null;

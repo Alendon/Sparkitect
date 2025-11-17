@@ -1,7 +1,6 @@
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.Exceptions;
-using TUnit.Assertions.AssertConditions.Throws;
 
 namespace Sparkitect.Tests.DI;
 

@@ -1,6 +1,7 @@
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sparkitect.Generator.DI;
 using static Sparkitect.Generator.DI.DiUtils;
 
 namespace Sparkitect.Generator.GameState;

@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Serilog;
 using OneOf;
 using OneOf.Types;
+using QuikGraph.Algorithms;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.Modding;
@@ -32,7 +33,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
     // Active state tracking
     private readonly Stack<ActiveStateFrame> _stateStack = new();
-    private ICoreContainer _currentContainer;
+    private ICoreContainer _currentContainer = null!;
     private bool _isRunning;
     private bool _shutdownRequested;
     private Identification? _pendingStateTransition;
@@ -150,7 +151,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
             var mappings = builder.Build();
 
-            foreach (var (key, wrapperType, schedule) in mappings)
+            foreach (var (key, wrapperType) in mappings)
             {
                 var (parentId, methodKey, scheduleType) = key;
 
@@ -376,7 +377,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         List<(Identification, string)> sortedMethods;
         try
         {
-            sortedMethods = QuikGraph.Algorithms.TopologicalSortExtensions.TopologicalSort(graph).ToList();
+            sortedMethods = graph.TopologicalSort().ToList();
         }
         catch (QuikGraph.NonAcyclicGraphException)
         {

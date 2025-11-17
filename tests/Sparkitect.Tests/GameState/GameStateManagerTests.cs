@@ -29,7 +29,7 @@ public class GameStateManagerTests
         // Act & Assert - should fail because parent state (TestRootState) not registered
         await Assert.That(() => gsm.AddStateDescriptor<TestChildState>(stateId))
             .Throws<InvalidOperationException>()
-            .WithMessage(message => message.Contains("parent state"));
+            .WithMessageContaining("parent state");
     }
 
     [Test]

@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Sparkitect.Generator.GameState.StateUtils;
+using StringSplitOptions = System.StringSplitOptions;
 
 namespace Sparkitect.Generator.GameState;
 
@@ -86,7 +87,7 @@ public class StateServiceMappingGenerator : IIncrementalGenerator
 
         // Determine output namespace (use first mapping's namespace or fallback)
         var firstNamespace = sortedMappings.FirstOrDefault()?.InterfaceType
-            .Split('.', StringSplitOptions.RemoveEmptyEntries)
+            .Split(['.'], StringSplitOptions.RemoveEmptyEntries)
             .FirstOrDefault();
         var outputNamespace = firstNamespace ?? "Sparkitect.CompilerGenerated";
 
