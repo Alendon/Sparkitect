@@ -79,6 +79,7 @@ public sealed class OnModuleExitAttribute : Attribute;
 public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
 
 [PublicAPI]
+[FactoryGenerationType(FactoryGenerationType.Service)]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-public sealed class StateServiceAttribute<TInterface> : Attribute where TInterface : class;
+public sealed class StateServiceAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
 
