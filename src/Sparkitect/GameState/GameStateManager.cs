@@ -20,19 +20,16 @@ namespace Sparkitect.GameState;
 [CreateServiceFactory<IGameStateManager>]
 internal sealed class GameStateManager : IGameStateManager, IGameStateManagerRegistryFacade
 {
-   
-
     /// <summary>
     /// Enter the Root Game State. To be called by the Engine Bootstrapper
     /// </summary>
     public void EnterRootState(ICoreContainer coreContainer)
     {
- 
         
     }
+    
 
-
-    public ICoreContainer CurrentCoreContainer { get; } = null!;
+    public ICoreContainer CurrentCoreContainer { get; set; } = null!;
     public void Request(Identification stateId, object? payload = null)
     {
         throw new NotImplementedException();

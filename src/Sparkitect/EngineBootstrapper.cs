@@ -1,4 +1,4 @@
-﻿using Sparkitect.DI.Exceptions;
+using Sparkitect.DI.Exceptions;
 using Sparkitect.Modding;
 using Sparkitect.Utils;
 using InterpolatedParsing;
@@ -18,6 +18,7 @@ public class EngineBootstrapper
     private ICoreContainer? _coreContainer;
     private IModManager? _modManager;
     private ICliArgumentHandler? _cliArgumentHandler;
+    private IGameStateManager? _gameStateManager;
 
     /// <summary>
     /// Main entry point for the application
@@ -125,6 +126,7 @@ public class EngineBootstrapper
         // Register service factories for base container services
         builder.Register<CliArgumentHandler_Factory>();
         builder.Register<IdentificationManager_Factory>();
+        builder.Register<ResourceManager_Factory>();
         builder.Register<ModManager_Factory>();
         builder.Register<RegistryManager_Factory>();
         builder.Register<GameStateManager_Factory>();
@@ -137,10 +139,10 @@ public class EngineBootstrapper
             // Resolve essential services
             _cliArgumentHandler = container.Resolve<ICliArgumentHandler>();
             _modManager = container.Resolve<IModManager>();
-            if (_modManager is ModManager modManager)
-            {
-                modManager.BaseCoreContainer = container;
-            }
+            _gameStateManager = container.Resolve<IGameStateManager>();
+
+            var internalGsm = (_gameStateManager as GameStateManager)!;
+            internalGsm.CurrentCoreContainer = _coreContainer;
             
             Log.Debug("Core container built successfully");
         }

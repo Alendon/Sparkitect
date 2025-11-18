@@ -46,16 +46,6 @@ internal class ModManager : IModManager
         }
     }
 
-
-    public ICoreContainer CurrentCoreContainer =>
-        _loadedModGroups.Count > 0 ? _loadedModGroups.Peek().CoreContainer : BaseCoreContainer;
-
-    internal ICoreContainer BaseCoreContainer
-    {
-        get => field ?? throw new InvalidOperationException("Base Core Container not set");
-        set;
-    } = null!;
-
     /// <summary>
     /// Gets a collection of all loaded mods
     /// </summary>
@@ -251,22 +241,11 @@ internal class ModManager : IModManager
         {
             _loadedMods.Add(newLoadedMod.Manifest.Id, newLoadedMod);
         }
-        
-        
-        using var configurationContainer = CreateEntrypointContainer<CoreConfigurator>(modIds.ToArray());
-        var configurators = configurationContainer.ResolveMany();
-        var coreContainerBuilder = new CoreContainerBuilder(CurrentCoreContainer);
-
-        foreach (var coreConfigurator in configurators)
-        {
-            coreConfigurator.ConfigureIoc(coreContainerBuilder);
-        }
 
         var modGroup = new LoadedModGroup()
         {
             LoadContextHandle = GCHandle.Alloc(loadContext, GCHandleType.Normal),
-            ModIds = modIds.ToArray(),
-            CoreContainer = coreContainerBuilder.Build()
+            ModIds = modIds.ToArray()
         };
 
         _loadedModGroups.Push(modGroup);
@@ -393,7 +372,6 @@ internal class ModManager : IModManager
     {
         public required GCHandle LoadContextHandle { get; init; }
         public required string[] ModIds { get; init; }
-        public required ICoreContainer CoreContainer { get; init; }
     }
 
     private class LoadedMod
