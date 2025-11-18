@@ -40,14 +40,14 @@ public sealed partial class CoreModule : IStateModule
     [OnModuleEnter]
     internal static void LoadRootMods(IModManager modManager)
     {
-        Log.Debug("Discovering mods");
-        modManager.DiscoverMods();
+        var modIds = modManager.DiscoveredArchives
+            .Select(a => a.Id)
+            .Where(id => id != ModManager.VirtualSparkitectModId)
+            .ToArray();
 
-        var modIds = modManager.DiscoveredArchives.Select(a => a.Id).ToArray();
-        Log.Information("Loading {ModCount} mods", modIds.Length);
-
+        Log.Information("Loading {ModCount} root mods", modIds.Length);
         modManager.LoadMods(modIds);
-        Log.Debug("Mods loaded successfully");
+        Log.Debug("Root mods loaded successfully");
     }
 
     [OnStateEnter]

@@ -39,23 +39,13 @@ public class EngineBootstrapper
             
             Log.Information("Initializing CLI arguments");
             bootstrapper.InitializeCliArguments(args);
-            
-            /*
-             * Refactoring: Full Core initialization before entering game state system
-             *
-             * The previous "approach" was to initialize everything to a point where root mods are already loaded
-             * As the gsm introduces heavy processing before root mods, we have to manually build up the core environment
-             * to initialize all internal services
-             * 
-             * CliArgumentHandler: No further Actions needed.
-             * IdentificationManager: No direct interaction. Allocates numeric IDs for the core mod, the 2 gsm related registries and their registered Objects
-             * ModManager: We need to populate the Internal Data to be in a valid state with only the core mod. Discovered Mods contain only the core mod. The core mod gets properly registered
-             * RegistryManager: Needs to be invoked to add the 2 gsm registries and processes their entries
-             * GameStateManager: Evaluation required if further actions are needed
-             *
-             * 
-             */
-            
+
+            Log.Information("Discovering mods");
+            bootstrapper.DiscoverMods();
+
+            Log.Information("Loading core mod");
+            bootstrapper.LoadCoreMod();
+
             Log.Information("Registering Root Gamestates");
             bootstrapper.ProcessGameStateRegistry();
             
@@ -179,6 +169,36 @@ public class EngineBootstrapper
 
         _cliArgumentHandler.Initialize(args);
         Log.Debug("CLI arguments initialized with {ArgCount} arguments", args.Length);
+    }
+
+    /// <summary>
+    /// Discovers all available mods from the mods folder
+    /// </summary>
+    public void DiscoverMods()
+    {
+        if (_modManager is null)
+        {
+            Log.Error("Mod manager is null");
+            throw new InvalidOperationException("Mod manager has not been initialized");
+        }
+
+        _modManager.DiscoverMods();
+        Log.Debug("Discovered {ModCount} mods", _modManager.DiscoveredArchives.Count);
+    }
+
+    /// <summary>
+    /// Loads the core mod to prepare for game state registration
+    /// </summary>
+    public void LoadCoreMod()
+    {
+        if (_modManager is null)
+        {
+            Log.Error("Mod manager is null");
+            throw new InvalidOperationException("Mod manager has not been initialized");
+        }
+
+        _modManager.LoadMods(ModManager.VirtualSparkitectModId);
+        Log.Debug("Core mod loaded");
     }
 
     /// <summary>
