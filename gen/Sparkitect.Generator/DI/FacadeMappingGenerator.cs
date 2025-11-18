@@ -33,18 +33,35 @@ public class FacadeMappingGenerator : IIncrementalGenerator
             if (interfaceMappings.IsEmpty)
                 return;
 
-            // Group mappings and generate configurator
-            var allFacadeMappings = interfaceMappings
-                .SelectMany(im => im.FacadeMappings.Select(fm =>
-                    new FacadeMapping(fm.FacadeType, im.ServiceInterfaceType)))
-                .ToImmutableArray();
+            // Group mappings by marker attribute type
+            var mappingsByMarker = new Dictionary<string, List<FacadeMapping>>();
 
-            if (allFacadeMappings.Length == 0)
-                return;
-
-            if (RenderFacadeConfigurator(allFacadeMappings, out var code, out var fileName))
+            foreach (var interfaceMapping in interfaceMappings)
             {
-                context.AddSource(fileName, code);
+                foreach (var facadeMapping in interfaceMapping.FacadeMappings)
+                {
+                    var markerAttributeType = facadeMapping.MarkerAttributeType;
+
+                    if (!mappingsByMarker.ContainsKey(markerAttributeType))
+                    {
+                        mappingsByMarker[markerAttributeType] = new List<FacadeMapping>();
+                    }
+
+                    mappingsByMarker[markerAttributeType].Add(
+                        new FacadeMapping(facadeMapping.FacadeType, interfaceMapping.ServiceInterfaceType, markerAttributeType));
+                }
+            }
+
+            // Generate one configurator per marker attribute type
+            foreach (var kvp in mappingsByMarker)
+            {
+                var markerAttributeType = kvp.Key;
+                var mappings = kvp.Value;
+
+                if (RenderFacadeConfigurator(mappings.ToImmutableArray(), markerAttributeType, out var code, out var fileName))
+                {
+                    context.AddSource(fileName, code);
+                }
             }
         });
     }
@@ -66,8 +83,14 @@ public class FacadeMappingGenerator : IIncrementalGenerator
             // Extract the facade type from the attribute's type argument
             if (attr.AttributeClass?.TypeArguments.FirstOrDefault() is INamedTypeSymbol facadeType)
             {
+                // Get the marker attribute type without type parameters (e.g., global::Sparkitect.GameState.StateFacadeAttribute)
+                // Use ConstructedFrom to get the unbound generic, then format without `1 suffix
+                var markerAttributeType = attr.AttributeClass.ConstructedFrom.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                    .Replace("`1", ""); // Remove generic arity suffix for clean type name
+
                 facadeMappings.Add(new FacadeTypeMapping(
-                    facadeType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
+                    facadeType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    markerAttributeType));
             }
         }
 
@@ -98,9 +121,15 @@ public class FacadeMappingGenerator : IIncrementalGenerator
         return false;
     }
 
-    internal static bool RenderFacadeConfigurator(ImmutableArray<FacadeMapping> mappings, out string code, out string fileName)
+    internal static bool RenderFacadeConfigurator(ImmutableArray<FacadeMapping> mappings, string markerAttributeType, out string code, out string fileName)
     {
-        fileName = "FacadeConfigurator.g.cs";
+        // Extract simple name from marker attribute for file naming (e.g., "StateFacadeAttribute" -> "StateFacade")
+        var markerSimpleName = markerAttributeType.Split('.').Last();
+        if (markerSimpleName.EndsWith("Attribute"))
+        {
+            markerSimpleName = markerSimpleName.Substring(0, markerSimpleName.Length - "Attribute".Length);
+        }
+        fileName = $"{markerSimpleName}Configurator.g.cs";
 
         // Sort mappings for determinism
         var sortedMappings = mappings
@@ -110,7 +139,8 @@ public class FacadeMappingGenerator : IIncrementalGenerator
 
         var model = new FacadeConfiguratorModel(
             "Sparkitect.CompilerGenerated.DI",
-            "GeneratedFacadeConfigurator",
+            $"Generated{markerSimpleName}Configurator",
+            markerAttributeType,
             sortedMappings.ToImmutableValueArray());
 
         return FluidHelper.TryRenderTemplate("DI.FacadeConfigurator.liquid", model, out code);
@@ -125,16 +155,19 @@ internal record InterfaceFacadeMapping(
     List<FacadeTypeMapping> FacadeMappings);
 
 /// <summary>
-/// Represents a single facade type
+/// Represents a single facade type with its marker attribute
 /// </summary>
-internal record FacadeTypeMapping(string FacadeType);
+internal record FacadeTypeMapping(
+    string FacadeType,
+    string MarkerAttributeType);
 
 /// <summary>
 /// Represents a single facade-to-service mapping
 /// </summary>
 public record FacadeMapping(
     string FacadeType,
-    string ServiceInterfaceType);
+    string ServiceInterfaceType,
+    string MarkerAttributeType);
 
 /// <summary>
 /// Model for generating the FacadeConfigurator entrypoint
@@ -142,4 +175,5 @@ public record FacadeMapping(
 public record FacadeConfiguratorModel(
     string Namespace,
     string ClassName,
+    string MarkerAttributeType,
     ImmutableValueArray<FacadeMapping> Mappings);

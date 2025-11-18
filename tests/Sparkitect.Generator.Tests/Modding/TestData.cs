@@ -27,8 +27,8 @@ public static partial class TestData
             public required string Identifier { get; set; }
             public bool Required { get; set; } = false;
         }
-        
-        
-        
+
+        [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = true)]
+        public sealed class RegistryFacadeAttribute<TFacade> : Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute<TFacade> where TFacade : class;
         """);
 }

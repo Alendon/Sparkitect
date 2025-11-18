@@ -282,11 +282,19 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             }
         }
 
-        // Query IFacadeConfigurator entrypoints to build facade map
+        // Query facade configurators for all marker types
         var facadeHolder = new DI.FacadeHolder();
-        using (var facadeConfiguratorContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator>(new OneOf.Types.All()))
+
+        // Query StateFacade configurators
+        using (var stateFacadeContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator<StateFacadeAttribute>>(new OneOf.Types.All()))
         {
-            facadeConfiguratorContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
+            stateFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
+        }
+
+        // Query RegistryFacade configurators (in case state services depend on registry facades)
+        using (var registryFacadeContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator<Modding.RegistryFacadeAttribute>>(new OneOf.Types.All()))
+        {
+            registryFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
         }
 
         // Get all facade mappings and filter to only include facades for services used by active modules

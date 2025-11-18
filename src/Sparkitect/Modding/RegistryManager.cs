@@ -57,12 +57,21 @@ internal class RegistryManager : IRegistryManager
 
         _registryFactory?.Dispose();
 
-        // Build facade map for registry dependencies
+        // Build facade map for registry dependencies from all facade types
         var facadeHolder = new DI.FacadeHolder();
-        using (var facadeConfiguratorContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator>(new All()))
+
+        // Query RegistryFacade configurators
+        using (var registryFacadeContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator<Modding.RegistryFacadeAttribute>>(new All()))
         {
-            facadeConfiguratorContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
+            registryFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
         }
+
+        // Query StateFacade configurators (in case registries depend on state services)
+        using (var stateFacadeContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator<GameState.StateFacadeAttribute>>(new All()))
+        {
+            stateFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
+        }
+
         var facadeMap = facadeHolder.GetFacadeMapping();
 
         // Create factory container builder with facade support
