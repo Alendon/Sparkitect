@@ -18,14 +18,32 @@ internal class {{ ImplementationTypeName }}_Factory : Sparkitect.DI.IServiceFact
     {% endfor %}
     ];
     
-    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container)
+    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         {% for argument in ConstructorArguments %}
-            if(!container.TryResolveInternal<{{ argument.Type }}>(out var arg_{{ forloop.index }}))
+            var argType_{{ forloop.index }} = typeof({{ argument.Type }});
+            if (facadeMap.TryGetValue(argType_{{ forloop.index }}, out var mappedType_{{ forloop.index }}))
+                argType_{{ forloop.index }} = mappedType_{{ forloop.index }};
+
+            {{ argument.Type }} arg_{{ forloop.index }} = default;
+            if (argType_{{ forloop.index }} == typeof({{ argument.Type }}))
             {
-            {% unless argument.IsOptional %}
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
-            {% endunless %}
+                if(!container.TryResolveInternal<{{ argument.Type }}>(out arg_{{ forloop.index }}))
+                {
+                {% unless argument.IsOptional %}
+                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+                {% endunless %}
+                }
+            }
+            else
+            {
+                if(!container.TryResolveInternal(argType_{{ forloop.index }}, out var resolved_{{ forloop.index }}))
+                {
+                {% unless argument.IsOptional %}
+                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+                {% endunless %}
+                }
+                arg_{{ forloop.index }} = ({{ argument.Type }})resolved_{{ forloop.index }};
             }
         {% endfor %}
 
@@ -34,7 +52,7 @@ internal class {{ ImplementationTypeName }}_Factory : Sparkitect.DI.IServiceFact
     arg_{{ forloop.index }}  {% unless forloop.last %}, {%- endunless -%}
 {% endfor %}
 );
-    
+
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
         static extern {{ ImplementationTypeName }} Constructor(
 {% for argument in ConstructorArguments %}
@@ -42,29 +60,55 @@ internal class {{ ImplementationTypeName }}_Factory : Sparkitect.DI.IServiceFact
 {% endfor %}
 );
     }
+
+    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container) => CreateInstance(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
     
-    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         if (instance is not {{ ImplementationTypeName }} typedInstance)
             throw new InvalidCastException($"Service of type {instance.GetType().Name} could not be cast to {nameof({{ ImplementationTypeName }})}");
 
     {% for argument in RequiredProperties %}
-        if(!container.TryResolveInternal<{{ argument.Type }}>(out var arg_{{ forloop.index }}))
+        var propType_{{ forloop.index }} = typeof({{ argument.Type }});
+        if (facadeMap.TryGetValue(propType_{{ forloop.index }}, out var mappedPropType_{{ forloop.index }}))
+            propType_{{ forloop.index }} = mappedPropType_{{ forloop.index }};
+
+        {{ argument.Type }} arg_{{ forloop.index }} = default;
+        if (propType_{{ forloop.index }} == typeof({{ argument.Type }}))
         {
-        {% unless argument.IsOptional %}
-            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
-        {% endunless %}
+            if(!container.TryResolveInternal<{{ argument.Type }}>(out arg_{{ forloop.index }}))
+            {
+            {% unless argument.IsOptional %}
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+            {% endunless %}
+            }
+            else
+            {
+                SetProperty_{{ forloop.index }}(typedInstance, arg_{{ forloop.index }});
+            }
         }
         else
         {
-            SetProperty_{{ forloop.index }}(typedInstance, arg_{{ forloop.index }});
+            if(!container.TryResolveInternal(propType_{{ forloop.index }}, out var resolved_{{ forloop.index }}))
+            {
+            {% unless argument.IsOptional %}
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+            {% endunless %}
+            }
+            else
+            {
+                arg_{{ forloop.index }} = ({{ argument.Type }})resolved_{{ forloop.index }};
+                SetProperty_{{ forloop.index }}(typedInstance, arg_{{ forloop.index }});
+            }
         }
     {% endfor %}
-    
+
     {% for argument in RequiredProperties %}
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "{{ argument.SetterName }}")]
         static extern void SetProperty_{{ forloop.index }}({{ ImplementationTypeName }} target, {{ argument.Type }} value);
     {% endfor %}
-        
+
     }
+
+    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container) => ApplyProperties(instance, container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
 }

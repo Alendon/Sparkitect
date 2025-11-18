@@ -27,8 +27,7 @@ public record StateFunctionModel(
 public record StateParameterModel(
     string ParameterName,
     string ParameterType,
-    bool IsOptional,
-    bool IsFacade);
+    bool IsOptional);
 
 /// <summary>
 /// Represents an ordering constraint on a state function

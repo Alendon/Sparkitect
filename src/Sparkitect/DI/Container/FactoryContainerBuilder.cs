@@ -75,15 +75,9 @@ internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     {
         var preparedFactories = new Dictionary<OneOf<Identification, string>, IKeyedFactory<TBase>>();
 
-        // Wrap container with facade support if facade map is provided
-        ICoreContainer containerForFactories = _facadeMap != null
-            ? new FacadedCoreContainer(_coreContainer, _facadeMap)
-            : _coreContainer;
-
-        // Prepare all factories
         foreach (var (key, factory) in _factories)
         {
-            factory.Prepare(containerForFactories);
+            factory.Prepare(_coreContainer, _facadeMap ?? new Dictionary<Type, Type>());
             preparedFactories[key] = factory;
         }
 

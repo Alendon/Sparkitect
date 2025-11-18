@@ -19,8 +19,15 @@ public interface IKeyedFactory<TBase> : IFactoryBase where TBase : class
     /// Prepares the factory by resolving and caching all dependencies
     /// </summary>
     /// <param name="container">The container to resolve dependencies from</param>
-    void Prepare(ICoreContainer container);
-    
+    /// <param name="facadeMap">Facade-to-service type mappings for dependency resolution</param>
+    void Prepare(ICoreContainer container, IReadOnlyDictionary<Type, Type> facadeMap);
+
+    /// <summary>
+    /// Prepares the factory by resolving and caching all dependencies
+    /// </summary>
+    /// <param name="container">The container to resolve dependencies from</param>
+    void Prepare(ICoreContainer container) => Prepare(container, new Dictionary<Type, Type>());
+
     /// <summary>
     /// Creates a new instance of the object using cached dependencies
     /// </summary>

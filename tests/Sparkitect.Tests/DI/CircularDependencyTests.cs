@@ -65,9 +65,9 @@ public class PropertyCircularService1Factory : IServiceFactory
         (typeof(ICircularService2),false)
     ];
     
-    public object CreateInstance(ICoreContainerBuilder container) => new PropertyCircularService1();
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap) => new PropertyCircularService1();
     
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
         var service = (PropertyCircularService1)instance;
         if (container.TryResolveInternal<ICircularService2>(out var dependency))
@@ -87,9 +87,9 @@ public class PropertyCircularService2Factory : IServiceFactory
         (typeof(ICircularService1), false)
     ];
     
-    public object CreateInstance(ICoreContainerBuilder container) => new PropertyCircularService2();
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap) => new PropertyCircularService2();
     
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
         var service = (PropertyCircularService2)instance;
         if (container.TryResolveInternal<ICircularService1>(out var dependency))

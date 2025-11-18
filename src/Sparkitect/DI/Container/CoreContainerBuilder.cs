@@ -11,10 +11,18 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
     private readonly Dictionary<Type, IServiceFactory> _registrations = [];
     private readonly Dictionary<Type, object> _instances = [];
     private readonly ICoreContainer? _parentContainer;
+    private readonly IReadOnlyDictionary<Type, Type>? _facadeMap;
 
     public CoreContainerBuilder(ICoreContainer? parentContainer)
     {
         _parentContainer = parentContainer;
+        _facadeMap = null;
+    }
+
+    public CoreContainerBuilder(ICoreContainer? parentContainer, IReadOnlyDictionary<Type, Type>? facadeMap)
+    {
+        _parentContainer = parentContainer;
+        _facadeMap = facadeMap;
     }
 
     public ICoreContainerBuilder Register<TServiceFactory>() where TServiceFactory : IServiceFactory, new()
@@ -71,6 +79,23 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
         return false;
     }
 
+    public bool TryResolveInternal(Type serviceType, out object? instance)
+    {
+        instance = null;
+
+        if (_parentContainer?.TryResolve(serviceType, out instance) is true)
+        {
+            return true;
+        }
+
+        if (_instances.TryGetValue(serviceType, out instance))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     private void ValidateDependencyGraph()
     {
         var graph = new AdjacencyGraph<Type, Edge<Type>>();
@@ -88,26 +113,27 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
 
             foreach (var (dependencyType, isOptional) in serviceFactory.GetConstructorDependencies())
             {
-                // If dependency exists in parent container, we can skip
-                if(_parentContainer?.TryResolve(dependencyType, out _) is true) continue;
-                
+                var resolvedDependencyType = dependencyType;
+                if (_facadeMap?.TryGetValue(dependencyType, out var mappedType) == true)
+                    resolvedDependencyType = mappedType;
+
+                if(_parentContainer?.TryResolve(resolvedDependencyType, out _) is true) continue;
+
                 if (isOptional)
                 {
-                    // Check if optional dependency exists, but don't fail if it doesn't
-                    if (_registrations.ContainsKey(dependencyType))
+                    if (_registrations.ContainsKey(resolvedDependencyType))
                     {
-                        graph.AddEdge(new Edge<Type>(dependencyType, serviceType));
+                        graph.AddEdge(new Edge<Type>(resolvedDependencyType, serviceType));
                     }
 
                     continue;
                 }
 
-                // For required dependencies, they must exist
-                if (!_registrations.ContainsKey(dependencyType))
+                if (!_registrations.ContainsKey(resolvedDependencyType))
                     throw new DependencyResolutionException(
-                        $"Missing dependency {dependencyType.Name} for {serviceType.Name}");
+                        $"Missing dependency {resolvedDependencyType.Name} for {serviceType.Name}");
 
-                graph.AddEdge(new Edge<Type>(dependencyType, serviceType));
+                graph.AddEdge(new Edge<Type>(resolvedDependencyType, serviceType));
             }
         }
 
@@ -126,12 +152,16 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
             {
                 if (isOptional)
                     continue;
-                
-                if(_parentContainer?.TryResolve(dependencyType, out _) is true) continue;
 
-                if (!_registrations.ContainsKey(dependencyType))
+                var resolvedDependencyType = dependencyType;
+                if (_facadeMap?.TryGetValue(dependencyType, out var mappedType) == true)
+                    resolvedDependencyType = mappedType;
+
+                if(_parentContainer?.TryResolve(resolvedDependencyType, out _) is true) continue;
+
+                if (!_registrations.ContainsKey(resolvedDependencyType))
                     throw new DependencyResolutionException(
-                        $"Missing property dependency {dependencyType.Name} for {serviceType.Name}");
+                        $"Missing property dependency {resolvedDependencyType.Name} for {serviceType.Name}");
             }
         }
     }
@@ -153,11 +183,14 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
 
             foreach (var (dependencyType, _) in serviceFactory.GetConstructorDependencies())
             {
-                if (_registrations.ContainsKey(dependencyType))
+                var resolvedDependencyType = dependencyType;
+                if (_facadeMap?.TryGetValue(dependencyType, out var mappedType) == true)
+                    resolvedDependencyType = mappedType;
+
+                if (_registrations.ContainsKey(resolvedDependencyType))
                 {
-                    graph.AddEdge(new Edge<Type>(dependencyType, serviceType));
+                    graph.AddEdge(new Edge<Type>(resolvedDependencyType, serviceType));
                 }
-                // Don't add edges for optional dependencies that don't exist
             }
         }
 
@@ -171,7 +204,7 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
         {
             var serviceFactory = _registrations[serviceType];
 
-            var instance = serviceFactory.CreateInstance(this);
+            var instance = serviceFactory.CreateInstance(this, _facadeMap ?? new Dictionary<Type, Type>());
             _instances[serviceType] = instance;
         }
 
@@ -181,8 +214,7 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
             var serviceFactory = _registrations[serviceType];
             var instance = _instances[serviceType];
 
-            // Apply property dependencies
-            serviceFactory.ApplyProperties(instance, this);
+            serviceFactory.ApplyProperties(instance, this, _facadeMap ?? new Dictionary<Type, Type>());
         }
     }
 }

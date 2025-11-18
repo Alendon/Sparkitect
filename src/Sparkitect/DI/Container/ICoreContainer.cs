@@ -43,4 +43,39 @@ public interface ICoreContainer : IDisposable
     /// <returns>A dictionary mapping service types to their instances</returns>
     /// <exception cref="ObjectDisposedException">Thrown when the container has been disposed</exception>
     IReadOnlyDictionary<Type, object> GetCurrentRegisteredInstances();
+
+    TService ResolveMapped<TService>(IReadOnlyDictionary<Type, Type> map) where TService : class
+    {
+        if (map.TryGetValue(typeof(TService), out var mappedType))
+        {
+            TryResolve(mappedType, out var service);
+            return (service as TService)!;
+        }
+
+        return Resolve<TService>();
+    }
+
+
+    bool TryResolveMapped<TService>([NotNullWhen(true)] out TService? service, IReadOnlyDictionary<Type, Type> map)
+        where TService : class
+    {
+        if (map.TryGetValue(typeof(TService), out var mappedType) && TryResolve(mappedType, out var untypedService) && untypedService is TService tService)
+        {
+            service = tService;
+            return true;
+        }
+
+        return TryResolve(out service);
+    }
+
+
+    bool TryResolveMapped(Type serviceType, out object? service, IReadOnlyDictionary<Type, Type> map)
+    {
+        if (map.TryGetValue(serviceType, out var mappedType) && TryResolve(mappedType, out service) && serviceType.IsAssignableTo(service?.GetType()))
+        {
+            return true;
+        }
+
+        return TryResolve(serviceType, out service);
+    }
 }

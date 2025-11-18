@@ -119,7 +119,6 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
         await Assert.That(function.Schedule).IsEqualTo(StateMethodSchedule.PerFrame);
         await Assert.That(function.Parameters).HasCount().EqualTo(1);
         await Assert.That(function.Parameters[0].ParameterType).IsEqualTo("global::GameStateTest.ITestService");
-        await Assert.That(function.Parameters[0].IsFacade).IsFalse();
     }
 
     [Test]
@@ -160,6 +159,5 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
 
         var function = model.Functions[0];
         await Assert.That(function.Parameters).HasCount().EqualTo(1);
-        await Assert.That(function.Parameters[0].IsFacade).IsTrue();
     }
 }

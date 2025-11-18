@@ -13,9 +13,9 @@ public class TestServiceFactory : IServiceFactory
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
-    public object CreateInstance(ICoreContainerBuilder container) => new TestService();
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap) => new TestService();
 
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
     }
 }
@@ -28,9 +28,9 @@ public class OverrideTestServiceFactory : IServiceFactory
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
-    public object CreateInstance(ICoreContainerBuilder container) => new OverrideTestService();
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap) => new OverrideTestService();
 
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
     }
 }
@@ -43,9 +43,9 @@ public class DuplicateTestServiceFactory : IServiceFactory
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
-    public object CreateInstance(ICoreContainerBuilder container) => new TestService();
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap) => new TestService();
 
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
     }
 }
@@ -58,9 +58,9 @@ public class DependencyServiceFactory : IServiceFactory
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [];
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
-    public object CreateInstance(ICoreContainerBuilder container) => new DependencyService();
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap) => new DependencyService();
 
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
     }
 }
@@ -73,7 +73,7 @@ public class DependentServiceFactory : IServiceFactory
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [(typeof(IDependencyService), false)];
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
-    public object CreateInstance(ICoreContainerBuilder container)
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
         if (!container.TryResolveInternal<IDependencyService>(out var dependency))
             throw new DependencyResolutionException("Failed to resolve dependency IDependencyService");
@@ -81,7 +81,7 @@ public class DependentServiceFactory : IServiceFactory
         return new DependentService(dependency);
     }
 
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
     }
 }
@@ -94,7 +94,7 @@ public class CircularService1Factory : IServiceFactory
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [(typeof(ICircularService2), false)];
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
-    public object CreateInstance(ICoreContainerBuilder container)
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
         if (!container.TryResolveInternal<ICircularService2>(out var dependency))
             throw new DependencyResolutionException("Failed to resolve dependency ICircularService2");
@@ -102,7 +102,7 @@ public class CircularService1Factory : IServiceFactory
         return new CircularService1(dependency);
     }
 
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
     }
 }
@@ -115,7 +115,7 @@ public class CircularService2Factory : IServiceFactory
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [(typeof(ICircularService1), false)];
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
-    public object CreateInstance(ICoreContainerBuilder container)
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
         if (!container.TryResolveInternal<ICircularService1>(out var dependency))
             throw new DependencyResolutionException("Failed to resolve dependency ICircularService1");
@@ -123,7 +123,7 @@ public class CircularService2Factory : IServiceFactory
         return new CircularService2(dependency);
     }
 
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
     }
 }
@@ -140,9 +140,9 @@ public class ServiceWithOptionalPropertyDependencyFactory : IServiceFactory
         (typeof(IDependencyService), true)
     ];
 
-    public object CreateInstance(ICoreContainerBuilder container) => new ServiceWithOptionalPropertyDependency();
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap) => new ServiceWithOptionalPropertyDependency();
 
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
         var service = (ServiceWithOptionalPropertyDependency)instance;
         if (container.TryResolveInternal<IDependencyService>(out var dependency))
@@ -158,7 +158,7 @@ public class ServiceWithOptionalConstructorDependencyFactory : IServiceFactory
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [(typeof(IDependencyService), true)];
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [];
 
-    public object CreateInstance(ICoreContainerBuilder container)
+    public object CreateInstance(ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
         if (container.TryResolveInternal<IDependencyService>(out var dependency))
             return new ServiceWithOptionalConstructorDependency(dependency);
@@ -166,7 +166,7 @@ public class ServiceWithOptionalConstructorDependencyFactory : IServiceFactory
         return new ServiceWithOptionalConstructorDependency();
     }
 
-    public void ApplyProperties(object instance, ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, ICoreContainerBuilder container, IReadOnlyDictionary<Type, Type> facadeMap)
     {
     }
 }

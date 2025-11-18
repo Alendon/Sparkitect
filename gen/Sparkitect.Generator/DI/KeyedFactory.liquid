@@ -35,21 +35,19 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
     {% endfor %}
     ];
     
-    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container)
+    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
-        // Resolve and cache constructor dependencies
         {% for argument in ConstructorArguments %}
-            if(!container.TryResolve<{{ argument.Type }}>(out _arg_{{ forloop.index }}))
+            if(!container.TryResolveMapped<{{ argument.Type }}>(out _arg_{{ forloop.index }}, facadeMap))
             {
             {% unless argument.IsOptional %}
                 throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
             {% endunless %}
             }
         {% endfor %}
-        
-        // Resolve and cache property dependencies
+
         {% for argument in RequiredProperties %}
-            if(!container.TryResolve<{{ argument.Type }}>(out _prop_{{ forloop.index }}))
+            if(!container.TryResolveMapped<{{ argument.Type }}>(out _prop_{{ forloop.index }}, facadeMap))
             {
             {% unless argument.IsOptional %}
                 throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
@@ -57,6 +55,8 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
             }
         {% endfor %}
     }
+
+    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container) => Prepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
     
     public {{ BaseType }} CreateInstance()
     {

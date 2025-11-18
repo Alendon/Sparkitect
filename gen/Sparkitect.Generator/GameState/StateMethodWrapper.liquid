@@ -17,24 +17,15 @@ public partial class {{ ModuleTypeName }}
 );
         }
 
-        public void Initialize(global::Sparkitect.DI.Container.IFacadedCoreContainer container)
+        public void Initialize(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
         {
 {% for param in Parameters %}
-    {% if param.IsFacade %}
-            if(!container.TryResolveFacaded<{{ param.ParameterType }}>(out _param{{ param.Index }}))
-            {
-        {% unless param.IsOptional %}
-                throw new global::System.InvalidOperationException($"Failed to resolve facade dependency {{ param.ParameterType }} for state function {{ FunctionKey }}");
-        {% endunless %}
-            }
-    {% else %}
-            if(!container.TryResolve<{{ param.ParameterType }}>(out _param{{ param.Index }}))
+            if(!container.TryResolveMapped<{{ param.ParameterType }}>(out _param{{ param.Index }}, facadeMap))
             {
         {% unless param.IsOptional %}
                 throw new global::System.InvalidOperationException($"Failed to resolve dependency {{ param.ParameterType }} for state function {{ FunctionKey }}");
         {% endunless %}
             }
-    {% endif %}
 {% endfor %}
         }
     }

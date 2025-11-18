@@ -22,6 +22,6 @@ public interface IStateDescriptorMethods
 public interface IStateMethod
 {
     public void Execute();
-    public void Initialize(IFacadedCoreContainer container);
+    public void Initialize(ICoreContainer container, IReadOnlyDictionary<Type, Type> facadeMap);
 }
 

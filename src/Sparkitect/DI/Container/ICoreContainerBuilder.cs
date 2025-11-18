@@ -43,4 +43,13 @@ public interface ICoreContainerBuilder
     /// <param name="instance">The resolved service instance, or null if not found</param>
     /// <returns>True if the service was resolved successfully, false otherwise</returns>
     bool TryResolveInternal<T>([NotNullWhen(true)] out T? instance) where T : class;
+
+    /// <summary>
+    /// Attempts to resolve a service during the container building phase using a runtime type.
+    /// Used internally for facade-mapped dependency resolution.
+    /// </summary>
+    /// <param name="serviceType">The type of service to resolve</param>
+    /// <param name="instance">The resolved service instance, or null if not found</param>
+    /// <returns>True if the service was resolved successfully, false otherwise</returns>
+    bool TryResolveInternal(Type serviceType, out object? instance);
 }

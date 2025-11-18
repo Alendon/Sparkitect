@@ -98,8 +98,7 @@ public class StateMethodGenerator : IIncrementalGenerator
                 .Select(p => new StateParameterModel(
                     p.Name,
                     p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    p.NullableAnnotation == NullableAnnotation.Annotated,
-                    IsFacadeType(p.Type, compilation)))
+                    p.NullableAnnotation == NullableAnnotation.Annotated))
                 .ToImmutableValueArray();
 
             // Extract ordering constraints
@@ -146,8 +145,7 @@ public class StateMethodGenerator : IIncrementalGenerator
                 Index = i,
                 p.ParameterName,
                 p.ParameterType,
-                p.IsOptional,
-                p.IsFacade
+                p.IsOptional
             }).ToArray()
         };
 
