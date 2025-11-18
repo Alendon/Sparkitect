@@ -2,7 +2,7 @@ namespace {{ Namespace }};
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.DI.FacadeConfiguratorEntrypoint<{{MarkerAttributeType}}>]
-internal class {{ ClassName }} : global::Sparkitect.DI.IFacadeConfigurator<{{MarkerAttributeType}}>
+internal class {{ ClassName }} : {{ InterfaceName }}
 {
     public void ConfigureFacades(global::Sparkitect.DI.IFacadeHolder facadeHolder)
     {

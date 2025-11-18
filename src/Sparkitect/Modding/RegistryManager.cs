@@ -61,13 +61,13 @@ internal class RegistryManager : IRegistryManager
         var facadeHolder = new DI.FacadeHolder();
 
         // Query RegistryFacade configurators
-        using (var registryFacadeContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator<Modding.RegistryFacadeAttribute>>(new All()))
+        using (var registryFacadeContainer = ModManager.CreateEntrypointContainer<DI.IRegistryFacadeConfigurator>(new All()))
         {
             registryFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
         }
 
         // Query StateFacade configurators (in case registries depend on state services)
-        using (var stateFacadeContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator<GameState.StateFacadeAttribute>>(new All()))
+        using (var stateFacadeContainer = ModManager.CreateEntrypointContainer<DI.IStateFacadeConfigurator>(new All()))
         {
             stateFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
         }

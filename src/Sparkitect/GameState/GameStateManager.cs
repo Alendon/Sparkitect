@@ -286,13 +286,13 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         var facadeHolder = new DI.FacadeHolder();
 
         // Query StateFacade configurators
-        using (var stateFacadeContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator<StateFacadeAttribute>>(new OneOf.Types.All()))
+        using (var stateFacadeContainer = ModManager.CreateEntrypointContainer<DI.IStateFacadeConfigurator>(new OneOf.Types.All()))
         {
             stateFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
         }
 
         // Query RegistryFacade configurators (in case state services depend on registry facades)
-        using (var registryFacadeContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator<Modding.RegistryFacadeAttribute>>(new OneOf.Types.All()))
+        using (var registryFacadeContainer = ModManager.CreateEntrypointContainer<DI.IRegistryFacadeConfigurator>(new OneOf.Types.All()))
         {
             registryFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
         }

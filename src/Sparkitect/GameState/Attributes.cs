@@ -78,6 +78,13 @@ public sealed class OnModuleExitAttribute : Attribute;
 [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
 public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
 
+/// <summary>
+/// Non-generic marker attribute for StateFacade entrypoint discovery
+/// </summary>
+[PublicAPI]
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class StateFacadeAttribute : Attribute;
+
 [PublicAPI]
 [FactoryGenerationType(FactoryGenerationType.Service)]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]

@@ -23,3 +23,9 @@ public class UseResourceFileAttribute : Attribute
 
 [AttributeUsage(AttributeTargets.Interface)]
 public class RegistryFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+
+/// <summary>
+/// Non-generic marker attribute for RegistryFacade entrypoint discovery
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class RegistryFacadeAttribute : Attribute;

@@ -52,12 +52,19 @@ public class FacadeMappingGenerator : IIncrementalGenerator
                 }
             }
 
-            // Generate one configurator per marker attribute type
+            // Generate interface and configurator per marker attribute type
             foreach (var kvp in mappingsByMarker)
             {
                 var markerAttributeType = kvp.Key;
                 var mappings = kvp.Value;
 
+                // Generate the concrete facade configurator interface (e.g., IRegistryFacadeConfigurator)
+                if (RenderFacadeConfiguratorInterface(markerAttributeType, out var interfaceCode, out var interfaceFileName))
+                {
+                    context.AddSource(interfaceFileName, interfaceCode);
+                }
+
+                // Generate the configurator implementation
                 if (RenderFacadeConfigurator(mappings.ToImmutableArray(), markerAttributeType, out var code, out var fileName))
                 {
                     context.AddSource(fileName, code);
@@ -121,15 +128,24 @@ public class FacadeMappingGenerator : IIncrementalGenerator
         return false;
     }
 
+    internal static bool RenderFacadeConfiguratorInterface(string markerAttributeType, out string code, out string fileName)
+    {
+        var configuratorInterfaceName = GetConfiguratorInterfaceName(markerAttributeType);
+        fileName = $"{configuratorInterfaceName}.g.cs";
+
+        var model = new FacadeConfiguratorInterfaceModel(
+            "Sparkitect.DI",
+            configuratorInterfaceName,
+            markerAttributeType);
+
+        return FluidHelper.TryRenderTemplate("DI.FacadeConfiguratorInterface.liquid", model, out code);
+    }
+
     internal static bool RenderFacadeConfigurator(ImmutableArray<FacadeMapping> mappings, string markerAttributeType, out string code, out string fileName)
     {
-        // Extract simple name from marker attribute for file naming (e.g., "StateFacadeAttribute" -> "StateFacade")
-        var markerSimpleName = markerAttributeType.Split('.').Last();
-        if (markerSimpleName.EndsWith("Attribute"))
-        {
-            markerSimpleName = markerSimpleName.Substring(0, markerSimpleName.Length - "Attribute".Length);
-        }
-        fileName = $"{markerSimpleName}Configurator.g.cs";
+        var configuratorInterfaceName = GetConfiguratorInterfaceName(markerAttributeType);
+        var configuratorSimpleName = configuratorInterfaceName.Substring(1); // Remove 'I' prefix
+        fileName = $"{configuratorSimpleName}.g.cs";
 
         // Sort mappings for determinism
         var sortedMappings = mappings
@@ -139,11 +155,25 @@ public class FacadeMappingGenerator : IIncrementalGenerator
 
         var model = new FacadeConfiguratorModel(
             "Sparkitect.CompilerGenerated.DI",
-            $"Generated{markerSimpleName}Configurator",
+            $"Generated{configuratorSimpleName}",
             markerAttributeType,
+            $"global::{configuratorInterfaceName}",
             sortedMappings.ToImmutableValueArray());
 
         return FluidHelper.TryRenderTemplate("DI.FacadeConfigurator.liquid", model, out code);
+    }
+
+    private static string GetConfiguratorInterfaceName(string markerAttributeType)
+    {
+        // Extract simple name from marker attribute (e.g., "StateFacadeAttribute" -> "StateFacade")
+        var markerSimpleName = markerAttributeType.Split('.').Last();
+        if (markerSimpleName.EndsWith("Attribute"))
+        {
+            markerSimpleName = markerSimpleName.Substring(0, markerSimpleName.Length - "Attribute".Length);
+        }
+
+        // Follow naming convention: {Subject}FacadeAttribute -> I{Subject}FacadeConfigurator
+        return $"I{markerSimpleName}Configurator";
     }
 }
 
@@ -170,10 +200,19 @@ public record FacadeMapping(
     string MarkerAttributeType);
 
 /// <summary>
+/// Model for generating the FacadeConfiguratorInterface
+/// </summary>
+public record FacadeConfiguratorInterfaceModel(
+    string Namespace,
+    string InterfaceName,
+    string MarkerAttributeType);
+
+/// <summary>
 /// Model for generating the FacadeConfigurator entrypoint
 /// </summary>
 public record FacadeConfiguratorModel(
     string Namespace,
     string ClassName,
     string MarkerAttributeType,
+    string InterfaceName,
     ImmutableValueArray<FacadeMapping> Mappings);
