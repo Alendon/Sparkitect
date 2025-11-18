@@ -1,15 +1,18 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Modding;
 
 /// <summary>
 /// Manages registry processing and tracks which mods are registered per registry
 /// </summary>
+[PublicAPI]
 public interface IRegistryManager
 {
     /// <summary>
     /// Process a specific registry for the given mods
     /// </summary>
     void ProcessRegistry<TRegistry>(params Span<ushort> modIds) where TRegistry : class, IRegistry;
-    
+
     /// <summary>
     /// Process all currently loaded mods that have not yet been processed for the given registry
     /// </summary>
