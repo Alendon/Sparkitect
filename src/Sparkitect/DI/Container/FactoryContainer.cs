@@ -14,6 +14,8 @@ internal sealed class FactoryContainer<TBase> : IFactoryContainer<TBase>
 {
     private readonly Dictionary<OneOf<Identification, string>, IKeyedFactory<TBase>> _factories;
     private bool _disposed;
+    public IReadOnlyDictionary<OneOf<Identification, string>, Type> Metadata { get; }
+    
     
     /// <summary>
     /// Creates a new factory container with the given prepared factories
@@ -23,6 +25,8 @@ internal sealed class FactoryContainer<TBase> : IFactoryContainer<TBase>
     {
         _factories = factories ?? throw new ArgumentNullException(nameof(factories));
         _disposed = false;
+
+        Metadata = _factories.ToDictionary(x => x.Key, x => x.Value.ImplementationType);
     }
     
     /// <summary>
@@ -68,7 +72,8 @@ internal sealed class FactoryContainer<TBase> : IFactoryContainer<TBase>
         instance = null;
         return false;
     }
-    
+
+
     /// <summary>
     /// Disposes the container and all disposable factory instances
     /// </summary>

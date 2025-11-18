@@ -18,7 +18,9 @@ public partial class DummyRegistry(IDummyValueManager dummyValueManager) : IRegi
     {
         dummyValueManager.AddDummyValue(id, value);
     }
-    
+
+    public static string Identifier => "dummy";
+
     // It is allowed, to define a single generic argument for method/property registries
     [RegistryMethod]
     public void RegisterGenericValue<SomeType>(Identification id, SomeType value)

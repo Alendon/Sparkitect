@@ -1,7 +1,6 @@
 ﻿//HintName: TestModule_update_Wrapper.g.cs
 namespace GameStateTest;
 
-[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 public partial class TestModule
 {
     internal class updateWrapper : global::Sparkitect.GameState.IStateMethod
@@ -16,9 +15,9 @@ public partial class TestModule
         {
             Update(
 
-    _param0  ,
-    _param1  
-);
+                _param0  ,
+                _param1  
+            );
         }
 
         public void Initialize(global::Sparkitect.DI.Container.IFacadedCoreContainer container)

@@ -3,7 +3,7 @@
 namespace Sparkitect.Modding;
 
 [FactoryGenerationType(FactoryGenerationType.Factory)]
-public class RegistryAttribute : Attribute, IFactoryMarker<IRegistry>
+public class RegistryAttribute : Attribute, IFactoryMarker<IRegistryBase>
 {
     [Key] public required string Identifier { get; set; }
 }

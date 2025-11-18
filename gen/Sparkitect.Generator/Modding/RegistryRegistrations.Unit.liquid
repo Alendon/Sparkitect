@@ -4,7 +4,7 @@ using Sparkitect.Modding;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 
-[global::Sparkitect.DI.RegistrationsEntrypoint]
+[global::Sparkitect.DI.RegistrationsEntrypoint<global::{{ RegistryFullName }}>]
 public class {{ RegistryName }}Registrations_{{ SourceTag }} : global::Sparkitect.DI.Registrations<global::{{ RegistryFullName }}>
 {
     public override string CategoryIdentifier => "{{ CategoryKey }}";

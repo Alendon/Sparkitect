@@ -1,10 +1,16 @@
 ﻿namespace Sparkitect.Modding;
 
+public interface IRegistryBase
+{
+    void Unregister(Identification id);
+}
+
 /// <summary>
 /// Base interface for registry declarations
 /// The implementing class must be partial and be annotated with the <see cref="RegistryAttribute"/>
 /// </summary>
-public interface IRegistry
+public interface IRegistry : IRegistryBase
 {
-    void Unregister(Identification id);
+    static abstract string Identifier { get; }
 }
+

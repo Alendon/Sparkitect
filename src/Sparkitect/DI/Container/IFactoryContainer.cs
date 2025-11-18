@@ -25,4 +25,6 @@ public interface IFactoryContainer<TBase> : IDisposable where TBase : class
     /// <param name="instance">The created instance if found</param>
     /// <returns>True if the factory was found and instance created successfully</returns>
     bool TryResolve(OneOf<Identification, string> key, [NotNullWhen(true)] out TBase? instance);
+    
+    IReadOnlyDictionary<OneOf<Identification, string>, Type> Metadata { get; }
 }

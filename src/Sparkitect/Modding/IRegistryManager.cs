@@ -9,12 +9,7 @@ public interface IRegistryManager
     /// Process a specific registry for the given mods
     /// </summary>
     void ProcessRegistry<TRegistry>(params Span<ushort> modIds) where TRegistry : class, IRegistry;
-
-    /// <summary>
-    /// Process a specific registry (by numeric ID) for the given mods
-    /// </summary>
-    void ProcessRegistry(ushort registryId, params Span<ushort> modIds);
-
+    
     /// <summary>
     /// Process all currently loaded mods that have not yet been processed for the given registry
     /// </summary>
@@ -24,4 +19,6 @@ public interface IRegistryManager
     /// Unregister all mods currently processed for the given registry
     /// </summary>
     void UnregisterAllRemaining<TRegistry>() where TRegistry : class, IRegistry;
+
+    void AddRegistry<TRegistry>() where TRegistry : class, IRegistry;
 }

@@ -1,6 +1,5 @@
 ﻿namespace MinimalSampleMod;
 
-[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 public partial class DummyRegistry
 {
 public class RegisterValueAttribute(string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker

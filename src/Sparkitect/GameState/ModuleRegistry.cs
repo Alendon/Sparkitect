@@ -10,9 +10,10 @@ public partial class ModuleRegistry(IGameStateManagerRegistryFacade gameStateMan
     {
         gameStateManager.AddStateModule<TStateModule>(id);
     }
-    
-    
-    
+
+    public static string Identifier => "state_module";
+
+
     public void PreRegister()
     {
     }

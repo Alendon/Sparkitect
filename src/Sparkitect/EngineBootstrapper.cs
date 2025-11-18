@@ -40,6 +40,25 @@ public class EngineBootstrapper
             Log.Information("Initializing CLI arguments");
             bootstrapper.InitializeCliArguments(args);
             
+            /*
+             * Refactoring: Full Core initialization before entering game state system
+             *
+             * The previous "approach" was to initialize everything to a point where root mods are already loaded
+             * As the gsm introduces heavy processing before root mods, we have to manually build up the core environment
+             * to initialize all internal services
+             * 
+             * CliArgumentHandler: No further Actions needed.
+             * IdentificationManager: No direct interaction. Allocates numeric IDs for the core mod, the 2 gsm related registries and their registered Objects
+             * ModManager: We need to populate the Internal Data to be in a valid state with only the core mod. Discovered Mods contain only the core mod. The core mod gets properly registered
+             * RegistryManager: Needs to be invoked to add the 2 gsm registries and processes their entries
+             * GameStateManager: Evaluation required if further actions are needed
+             *
+             * 
+             */
+            
+            Log.Information("Registering Root Gamestates");
+            bootstrapper.ProcessGameStateRegistry();
+            
             Log.Information("Enter Root State");
             bootstrapper.EnterRootState();
         }
@@ -54,6 +73,18 @@ public class EngineBootstrapper
     {
         var gsm = _coreContainer!.Resolve<IGameStateManager>() as GameStateManager;
         gsm!.EnterRootState(_coreContainer);
+    }
+
+    private void ProcessGameStateRegistry()
+    {
+        var registryManager = _coreContainer!.Resolve<IRegistryManager>() as RegistryManager;
+        
+        
+        registryManager!.AddRegistry<StateDescriptionRegistry>();
+        registryManager.AddRegistry<ModuleRegistry>();
+        
+        registryManager.ProcessAllMissing<StateDescriptionRegistry>();
+        registryManager.ProcessAllMissing<ModuleRegistry>();
     }
 
     private const string LogDirectoryPath = "logs";

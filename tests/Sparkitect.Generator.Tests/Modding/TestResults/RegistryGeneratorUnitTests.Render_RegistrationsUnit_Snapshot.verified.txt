@@ -4,7 +4,7 @@ using Sparkitect.Modding;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 
-[global::Sparkitect.DI.RegistrationsEntrypoint]
+[global::Sparkitect.DI.RegistrationsEntrypoint<global::MinimalSampleMod.DummyRegistry>]
 public class DummyRegistryRegistrations_Resources : global::Sparkitect.DI.Registrations<global::MinimalSampleMod.DummyRegistry>
 {
     public override string CategoryIdentifier => "dummy";

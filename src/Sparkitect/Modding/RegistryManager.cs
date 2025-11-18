@@ -1,7 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using OneOf;
 using OneOf.Types;
 using Serilog;
+using Sparkitect.CompilerGenerated;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.GeneratorAttributes;
@@ -12,16 +14,66 @@ namespace Sparkitect.Modding;
 [Singleton<IRegistryManager>]
 internal class RegistryManager : IRegistryManager
 {
-    internal required IModManager _modManager { get; init; }
-    internal required IIdentificationManager _identificationManager { get; init; }
-    internal required IGameStateManager _gameStateManager { get; init; }
+    internal required IModManager ModManager { get; init; }
+    internal required IIdentificationManager IdentificationManager { get; init; }
+    internal required IGameStateManager GameStateManager { get; init; }
 
     // Track which mods are processed per registry (registry category ID -> set of mod IDs)
     private readonly Dictionary<ushort, HashSet<ushort>> _processedModsByRegistry = new();
 
-    // Cache for registry configurator output (rebuild when mod set changes)
-    private IFactoryContainer<IRegistry>? _registryContainerCache;
-    private HashSet<string>? _cachedModSet;
+
+    private HashSet<string>? _lastModSet;
+    private IFactoryContainer<IRegistryBase>? _registryFactory;
+    
+    public void AddRegistry<TRegistry>() where TRegistry : class, IRegistry
+    {
+        UpdateCache();
+        var stringId = TRegistry.Identifier;
+
+        if (!_registryFactory.Metadata.ContainsKey(stringId))
+        {
+            throw new InvalidOperationException($"No DI Metadata for {typeof(TRegistry)} found");
+        }
+
+        var numericId = IdentificationManager.RegisterCategory(stringId);
+        _processedModsByRegistry.Add(numericId, []);
+    }
+
+    [MemberNotNull(nameof(_registryFactory))]
+    internal void UpdateCache(ICoreContainer? coreContainer = null)
+    {
+        var modSet = ModManager.LoadedMods;
+        if (_lastModSet?.SetEquals(modSet) is true && _registryFactory is not null) return;
+        
+        if (_lastModSet is null)
+        {
+            _lastModSet = new HashSet<string>(modSet);
+        }
+        else
+        {
+            _lastModSet.Clear();
+            _lastModSet.UnionWith(modSet);
+        }
+
+        _registryFactory?.Dispose();
+        var builder =
+            new FactoryContainerBuilder<IRegistryBase>(coreContainer ?? GameStateManager.CurrentCoreContainer, FactoryKeyType.String);
+        using var configuratorContainer = ModManager.CreateEntrypointContainer<IRegistryConfigurator>(new All());
+        configuratorContainer.ProcessMany(x => x.ConfigureRegistries(builder));
+
+        _registryFactory = builder.Build();
+    }
+
+    private TRegistry CreateRegistryInstance<TRegistry>() where TRegistry : class, IRegistry
+    {
+        UpdateCache();
+        _registryFactory.TryResolve(TRegistry.Identifier, out var instance);
+        if (instance is not TRegistry typedInstance)
+            throw new InvalidOperationException(
+                $"Resolved Instance {instance} is not of expected type {typeof(TRegistry)}");
+
+        return typedInstance;
+    }
 
     public void ProcessRegistry<TRegistry>(params Span<ushort> modIds) where TRegistry : class, IRegistry
     {
@@ -37,7 +89,7 @@ internal class RegistryManager : IRegistryManager
         var modIdStrings = new List<string>();
         foreach (var modId in modIds)
         {
-            if (_identificationManager.TryGetModId(modId, out var modIdString))
+            if (IdentificationManager.TryGetModId(modId, out var modIdString))
             {
                 modIdStrings.Add(modIdString);
             }
@@ -54,7 +106,7 @@ internal class RegistryManager : IRegistryManager
         }
 
         // Get registry identifier string
-        if (!_identificationManager.TryGetCategoryId(registryId, out var registryIdentifier))
+        if (!IdentificationManager.TryGetCategoryId(registryId, out var registryIdentifier))
         {
             throw new InvalidOperationException($"Registry ID {registryId} not found in identification manager");
         }
@@ -62,19 +114,12 @@ internal class RegistryManager : IRegistryManager
         Log.Debug("Processing registry {RegistryId} ({RegistryIdentifier}) for mods: {ModIds}",
             registryId, registryIdentifier, string.Join(", ", modIdStrings));
 
-        // Get or build registry container
-        var registryContainer = GetOrBuildRegistryContainer();
-
-        // Resolve the specific registry by identifier
-        if (!registryContainer.TryResolve(registryIdentifier, out var registry))
-        {
-            throw new InvalidOperationException($"Registry '{registryIdentifier}' not found in container");
-        }
+        var registry = CreateRegistryInstance<TRegistry>();
 
         // Process registrations for each mod
         foreach (var modIdString in modIdStrings)
         {
-            ProcessSingleModRegistration<TRegistry>(registry, registryIdentifier, modIdString);
+            ProcessSingleModRegistration(registry, registryIdentifier, modIdString);
 
             // Track that this mod is processed for this registry
             if (!_processedModsByRegistry.TryGetValue(registryId, out var processedMods))
@@ -83,7 +128,7 @@ internal class RegistryManager : IRegistryManager
                 _processedModsByRegistry[registryId] = processedMods;
             }
 
-            if (_identificationManager.TryGetModId(modIdString, out var numericModId))
+            if (IdentificationManager.TryGetModId(modIdString, out var numericModId))
             {
                 processedMods.Add(numericModId);
             }
@@ -92,19 +137,13 @@ internal class RegistryManager : IRegistryManager
         Log.Debug("Completed processing registry {RegistryId} for {Count} mods", registryId, modIdStrings.Count);
     }
 
-    public void ProcessRegistry(ushort registryId, params Span<ushort> modIds)
-    {
-        throw new NotSupportedException(
-            "Non-generic ProcessRegistry not supported. Use generic ProcessRegistry<TRegistry>() instead.");
-    }
-
     public void ProcessAllMissing<TRegistry>() where TRegistry : class, IRegistry
     {
         var registryId = GetRegistryId<TRegistry>();
 
         // Get all loaded mods
-        var allLoadedMods = _modManager.LoadedMods
-            .Select(modId => _identificationManager.TryGetModId(modId, out var numericId) ? numericId : (ushort?)null)
+        var allLoadedMods = ModManager.LoadedMods
+            .Select(modId => IdentificationManager.TryGetModId(modId, out var numericId) ? numericId : (ushort?)null)
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
             .ToHashSet();
@@ -137,31 +176,25 @@ internal class RegistryManager : IRegistryManager
             return;
         }
 
-        if (!_identificationManager.TryGetCategoryId(registryId, out var registryIdentifier))
+        if (!IdentificationManager.TryGetCategoryId(registryId, out var registryIdentifier))
         {
             throw new InvalidOperationException($"Registry ID {registryId} not found in identification manager");
         }
 
         Log.Information("Unregistering {Count} mods for registry {RegistryId}", processedMods.Count, registryId);
 
-        // Get registry container
-        var registryContainer = GetOrBuildRegistryContainer();
-
-        if (!registryContainer.TryResolve(registryIdentifier, out var registry))
-        {
-            throw new InvalidOperationException($"Registry '{registryIdentifier}' not found in container");
-        }
+        var registry = CreateRegistryInstance<TRegistry>();
 
         // Unregister all objects from each mod
         var modsToUnregister = processedMods.ToArray(); // Copy to avoid modification during iteration
         foreach (var modId in modsToUnregister)
         {
-            var objectIds = _identificationManager.GetAllObjectIdsOfModAndCategory(modId, registryId).ToArray();
+            var objectIds = IdentificationManager.GetAllObjectIdsOfModAndCategory(modId, registryId).ToArray();
 
             foreach (var objectId in objectIds)
             {
                 registry.Unregister(objectId);
-                _identificationManager.UnregisterObject(objectId);
+                IdentificationManager.UnregisterObject(objectId);
             }
 
             processedMods.Remove(modId);
@@ -188,7 +221,7 @@ internal class RegistryManager : IRegistryManager
             throw new InvalidOperationException($"Registry type {registryType.Name} [Registry] attribute missing Identifier property");
         }
 
-        if (!_identificationManager.TryGetCategoryId(identifier, out var registryId))
+        if (!IdentificationManager.TryGetCategoryId(identifier, out var registryId))
         {
             throw new InvalidOperationException($"Registry identifier '{identifier}' not found in identification manager. Category must be registered first.");
         }
@@ -201,7 +234,7 @@ internal class RegistryManager : IRegistryManager
     {
         // Query registrations for this specific registry type
         // The generic attribute RegistrationsEntrypointAttribute<TRegistry> provides automatic filtering
-        using var registrationsContainer = _modManager.CreateEntrypointContainer<Registrations<TRegistry>>(
+        using var registrationsContainer = ModManager.CreateEntrypointContainer<Registrations<TRegistry>>(
             OneOf<All, IEnumerable<string>>.FromT1(new[] { modId }));
 
         var registrations = registrationsContainer.ResolveMany();
@@ -209,40 +242,10 @@ internal class RegistryManager : IRegistryManager
         foreach (var registration in registrations)
         {
             // Initialize with current container
-            registration.Initialize(_gameStateManager.CurrentCoreContainer);
+            registration.Initialize(GameStateManager.CurrentCoreContainer);
 
             // Process registrations with typed registry
             registration.ProcessRegistrations(registry);
         }
-    }
-
-    [MustDisposeResource]
-    private IFactoryContainer<IRegistry> GetOrBuildRegistryContainer()
-    {
-        // Check if cache is valid (mod set unchanged)
-        var currentModSet = _modManager.LoadedMods.ToHashSet();
-
-        if (_registryContainerCache != null && _cachedModSet != null && _cachedModSet.SetEquals(currentModSet))
-        {
-            return _registryContainerCache;
-        }
-
-        // Rebuild cache
-        Log.Debug("Rebuilding registry container cache");
-
-        _registryContainerCache?.Dispose();
-
-        using var configurators = _modManager.CreateEntrypointContainer<IRegistryConfigurator>(new All());
-
-        var containerBuilder = new FactoryContainerBuilder<IRegistry>(
-            _gameStateManager.CurrentCoreContainer,
-            FactoryKeyType.String);
-
-        configurators.ProcessMany(c => c.ConfigureRegistries(containerBuilder));
-
-        _registryContainerCache = containerBuilder.Build();
-        _cachedModSet = currentModSet;
-
-        return _registryContainerCache;
     }
 }

@@ -7,7 +7,7 @@ namespace Sparkitect.DI;
 
 public interface IRegistryConfigurator : IConfigurationEntrypoint<RegistryConfiguratorAttribute>
 {
-    void ConfigureRegistries(IFactoryContainerBuilder<IRegistry> registryBuilder);
+    void ConfigureRegistries(IFactoryContainerBuilder<IRegistryBase> registryBuilder);
 }
 
 

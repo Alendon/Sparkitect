@@ -53,7 +53,7 @@ public sealed partial class CoreModule : IStateModule
     [OnStateEnter]
     [OrderAfter(Key_LoadRootMods)]
     [StateFunction(Key_RegisterNewStates)]
-    internal static void ProcessStateRegistry(IRegistryManagerFacade registryManager)
+    internal static void ProcessStateRegistry(IRegistryManager registryManager)
     {
         //TODO trigger ModuleRegistry and StateRegistry
         throw new NotImplementedException();
@@ -62,7 +62,7 @@ public sealed partial class CoreModule : IStateModule
     [StateFunction(Key_UnregisterStates)]
     [OnStateExit]
     [OrderBefore(Key_UnloadRootMods)]
-    internal static void UnregisterStates(IRegistryManagerFacade registryManager)
+    internal static void UnregisterStates(IRegistryManager registryManager)
     {
         throw new NotImplementedException();
     }
