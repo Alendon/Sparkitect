@@ -30,21 +30,19 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
         (typeof(global::DiTest.ISerializer), false) 
     ];
     
-    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container)
+    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
-        // Resolve and cache constructor dependencies
         
-            if(!container.TryResolve<global::DiTest.ILogger>(out _arg_1))
+            if(!container.TryResolveMapped<global::DiTest.ILogger>(out _arg_1, facadeMap))
             {
             
                 throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<XmlProcessor, global::DiTest.ILogger>();
             
             }
         
+
         
-        // Resolve and cache property dependencies
-        
-            if(!container.TryResolve<global::DiTest.ISerializer>(out _prop_1))
+            if(!container.TryResolveMapped<global::DiTest.ISerializer>(out _prop_1, facadeMap))
             {
             
                 throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<XmlProcessor, global::DiTest.ISerializer>();
@@ -52,6 +50,8 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
             }
         
     }
+
+    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container) => Prepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
     
     public global::DiTest.IProcessor CreateInstance()
     {

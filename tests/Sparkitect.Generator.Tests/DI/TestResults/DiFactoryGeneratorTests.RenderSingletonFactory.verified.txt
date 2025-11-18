@@ -18,19 +18,53 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
         (typeof(global::DiTest.IDependencyD), true) 
     ];
     
-    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container)
+    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         
-            if(!container.TryResolveInternal<global::DiTest.IDependencyA>(out var arg_1))
+            var argType_1 = typeof(global::DiTest.IDependencyA);
+            if (facadeMap.TryGetValue(argType_1, out var mappedType_1))
+                argType_1 = mappedType_1;
+
+            global::DiTest.IDependencyA arg_1 = default;
+            if (argType_1 == typeof(global::DiTest.IDependencyA))
             {
-            
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyA>();
-            
+                if(!container.TryResolveInternal<global::DiTest.IDependencyA>(out arg_1))
+                {
+                
+                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyA>();
+                
+                }
+            }
+            else
+            {
+                if(!container.TryResolveInternal(argType_1, out var resolved_1))
+                {
+                
+                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyA>();
+                
+                }
+                arg_1 = (global::DiTest.IDependencyA)resolved_1;
             }
         
-            if(!container.TryResolveInternal<global::DiTest.IDependencyB>(out var arg_2))
+            var argType_2 = typeof(global::DiTest.IDependencyB);
+            if (facadeMap.TryGetValue(argType_2, out var mappedType_2))
+                argType_2 = mappedType_2;
+
+            global::DiTest.IDependencyB arg_2 = default;
+            if (argType_2 == typeof(global::DiTest.IDependencyB))
             {
-            
+                if(!container.TryResolveInternal<global::DiTest.IDependencyB>(out arg_2))
+                {
+                
+                }
+            }
+            else
+            {
+                if(!container.TryResolveInternal(argType_2, out var resolved_2))
+                {
+                
+                }
+                arg_2 = (global::DiTest.IDependencyB)resolved_2;
             }
         
 
@@ -39,7 +73,7 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
     arg_1  ,
     arg_2  
 );
-    
+
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
         static extern TestService Constructor(
 
@@ -47,34 +81,78 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
     global::DiTest.IDependencyB arg_2  
 );
     }
+
+    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container) => CreateInstance(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
     
-    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container)
+    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         if (instance is not TestService typedInstance)
             throw new InvalidCastException($"Service of type {instance.GetType().Name} could not be cast to {nameof(TestService)}");
 
     
-        if(!container.TryResolveInternal<global::DiTest.IDependencyC>(out var arg_1))
+        var propType_1 = typeof(global::DiTest.IDependencyC);
+        if (facadeMap.TryGetValue(propType_1, out var mappedPropType_1))
+            propType_1 = mappedPropType_1;
+
+        global::DiTest.IDependencyC arg_1 = default;
+        if (propType_1 == typeof(global::DiTest.IDependencyC))
         {
-        
-            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyC>();
-        
+            if(!container.TryResolveInternal<global::DiTest.IDependencyC>(out arg_1))
+            {
+            
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyC>();
+            
+            }
+            else
+            {
+                SetProperty_1(typedInstance, arg_1);
+            }
         }
         else
         {
-            SetProperty_1(typedInstance, arg_1);
+            if(!container.TryResolveInternal(propType_1, out var resolved_1))
+            {
+            
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyC>();
+            
+            }
+            else
+            {
+                arg_1 = (global::DiTest.IDependencyC)resolved_1;
+                SetProperty_1(typedInstance, arg_1);
+            }
         }
     
-        if(!container.TryResolveInternal<global::DiTest.IDependencyD>(out var arg_2))
+        var propType_2 = typeof(global::DiTest.IDependencyD);
+        if (facadeMap.TryGetValue(propType_2, out var mappedPropType_2))
+            propType_2 = mappedPropType_2;
+
+        global::DiTest.IDependencyD arg_2 = default;
+        if (propType_2 == typeof(global::DiTest.IDependencyD))
         {
-        
+            if(!container.TryResolveInternal<global::DiTest.IDependencyD>(out arg_2))
+            {
+            
+            }
+            else
+            {
+                SetProperty_2(typedInstance, arg_2);
+            }
         }
         else
         {
-            SetProperty_2(typedInstance, arg_2);
+            if(!container.TryResolveInternal(propType_2, out var resolved_2))
+            {
+            
+            }
+            else
+            {
+                arg_2 = (global::DiTest.IDependencyD)resolved_2;
+                SetProperty_2(typedInstance, arg_2);
+            }
         }
     
-    
+
     
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_C")]
         static extern void SetProperty_1(TestService target, global::DiTest.IDependencyC value);
@@ -82,6 +160,8 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_D")]
         static extern void SetProperty_2(TestService target, global::DiTest.IDependencyD value);
     
-        
+
     }
+
+    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container) => ApplyProperties(instance, container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
 }

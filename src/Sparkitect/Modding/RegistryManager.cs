@@ -58,9 +58,9 @@ internal class RegistryManager : IRegistryManager
         _registryFactory?.Dispose();
 
         
-        var facadeHolder = new DI.FacadeHolder();
-        
-        using (var registryFacadeContainer = ModManager.CreateEntrypointContainer<DI.IRegistryFacadeConfigurator>(new All()))
+        var facadeHolder = new FacadeHolder();
+
+        using (var registryFacadeContainer = ModManager.CreateEntrypointContainer<IRegistryFacadeConfigurator>(new All()))
         {
             registryFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
         }

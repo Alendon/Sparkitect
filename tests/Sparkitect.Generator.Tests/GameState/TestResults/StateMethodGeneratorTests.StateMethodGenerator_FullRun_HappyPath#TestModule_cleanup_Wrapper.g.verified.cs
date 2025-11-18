@@ -11,10 +11,10 @@ public partial class TestModule
         {
             Cleanup(
 
-            );
+);
         }
 
-        public void Initialize(global::Sparkitect.DI.Container.IFacadedCoreContainer container)
+        public void Initialize(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
         {
 
         }

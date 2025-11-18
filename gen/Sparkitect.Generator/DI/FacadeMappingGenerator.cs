@@ -10,12 +10,11 @@ namespace Sparkitect.Generator.DI;
 [Generator]
 public class FacadeMappingGenerator : IIncrementalGenerator
 {
-    private const string FacadeMarkerAttributeBase = "Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute`1";
+    private const string FacadeMarkerName = "Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Find all interfaces that have at least one FacadeMarker-derived attribute
-        var interfacesWithFacadesProvider = context.SyntaxProvider.CreateSyntaxProvider(
+        var interfacesWithFacadesProvider = context.SyntaxProvider.CreateSyntaxProvider<InterfaceFacadeMapping?>(
             predicate: (node, _) => node is InterfaceDeclarationSyntax,
             transform: (syntaxContext, _) =>
             {
@@ -23,9 +22,8 @@ public class FacadeMappingGenerator : IIncrementalGenerator
                     return null;
 
                 return ExtractFacadeMappings(interfaceSymbol);
-            }).Where(m => m is not null && m.FacadeMappings.Count > 0)!;
+            }).NotNull();
 
-        // Collect all interface mappings and generate entrypoint per assembly
         var allMappingsProvider = interfacesWithFacadesProvider.Collect();
 
         context.RegisterSourceOutput(allMappingsProvider, (context, interfaceMappings) =>
@@ -90,10 +88,9 @@ public class FacadeMappingGenerator : IIncrementalGenerator
             // Extract the facade type from the attribute's type argument
             if (attr.AttributeClass?.TypeArguments.FirstOrDefault() is INamedTypeSymbol facadeType)
             {
-                // Get the marker attribute type without type parameters (e.g., global::Sparkitect.GameState.StateFacadeAttribute)
-                // Use ConstructedFrom to get the unbound generic, then format without `1 suffix
-                var markerAttributeType = attr.AttributeClass.ConstructedFrom.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                    .Replace("`1", ""); // Remove generic arity suffix for clean type name
+                var markerAttributeType = attr.AttributeClass.ConstructedFrom.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                        .WithGenericsOptions(SymbolDisplayGenericsOptions.None));
 
                 facadeMappings.Add(new FacadeTypeMapping(
                     facadeType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -114,12 +111,11 @@ public class FacadeMappingGenerator : IIncrementalGenerator
         if (attribute.AttributeClass is null)
             return false;
 
-        // Check if the attribute inherits from FacadeMarkerAttribute<T>
         var currentType = attribute.AttributeClass.BaseType;
         while (currentType != null)
         {
-            var originalDefinition = currentType.OriginalDefinition?.ToDisplayString(DisplayFormats.NamespaceAndType);
-            if (originalDefinition == FacadeMarkerAttributeBase)
+            var originalDefinition = currentType.OriginalDefinition.ToDisplayString(DisplayFormats.NamespaceAndType);
+            if (originalDefinition == FacadeMarkerName)
                 return true;
 
             currentType = currentType.BaseType;
@@ -131,10 +127,11 @@ public class FacadeMappingGenerator : IIncrementalGenerator
     internal static bool RenderFacadeConfiguratorInterface(string markerAttributeType, out string code, out string fileName)
     {
         var configuratorInterfaceName = GetConfiguratorInterfaceName(markerAttributeType);
+        var markerNamespace = ExtractNamespace(markerAttributeType);
         fileName = $"{configuratorInterfaceName}.g.cs";
 
         var model = new FacadeConfiguratorInterfaceModel(
-            "Sparkitect.DI",
+            markerNamespace,
             configuratorInterfaceName,
             markerAttributeType);
 
@@ -144,20 +141,20 @@ public class FacadeMappingGenerator : IIncrementalGenerator
     internal static bool RenderFacadeConfigurator(ImmutableArray<FacadeMapping> mappings, string markerAttributeType, out string code, out string fileName)
     {
         var configuratorInterfaceName = GetConfiguratorInterfaceName(markerAttributeType);
-        var configuratorSimpleName = configuratorInterfaceName.Substring(1); // Remove 'I' prefix
+        var configuratorSimpleName = configuratorInterfaceName.Substring(1);
+        var markerNamespace = ExtractNamespace(markerAttributeType);
         fileName = $"{configuratorSimpleName}.g.cs";
 
-        // Sort mappings for determinism
         var sortedMappings = mappings
             .OrderBy(m => m.ServiceInterfaceType)
             .ThenBy(m => m.FacadeType)
             .ToArray();
 
         var model = new FacadeConfiguratorModel(
-            "Sparkitect.CompilerGenerated.DI",
+            $"{markerNamespace}.CompilerGenerated.DI",
             $"Generated{configuratorSimpleName}",
             markerAttributeType,
-            $"global::{configuratorInterfaceName}",
+            $"global::{markerNamespace}.{configuratorInterfaceName}",
             sortedMappings.ToImmutableValueArray());
 
         return FluidHelper.TryRenderTemplate("DI.FacadeConfigurator.liquid", model, out code);
@@ -165,15 +162,23 @@ public class FacadeMappingGenerator : IIncrementalGenerator
 
     private static string GetConfiguratorInterfaceName(string markerAttributeType)
     {
-        // Extract simple name from marker attribute (e.g., "StateFacadeAttribute" -> "StateFacade")
         var markerSimpleName = markerAttributeType.Split('.').Last();
         if (markerSimpleName.EndsWith("Attribute"))
         {
             markerSimpleName = markerSimpleName.Substring(0, markerSimpleName.Length - "Attribute".Length);
         }
 
-        // Follow naming convention: {Subject}FacadeAttribute -> I{Subject}FacadeConfigurator
         return $"I{markerSimpleName}Configurator";
+    }
+
+    private static string ExtractNamespace(string fullyQualifiedType)
+    {
+        var typeWithoutGlobal = fullyQualifiedType.StartsWith("global::")
+            ? fullyQualifiedType.Substring("global::".Length)
+            : fullyQualifiedType;
+
+        var lastDotIndex = typeWithoutGlobal.LastIndexOf('.');
+        return lastDotIndex > 0 ? typeWithoutGlobal.Substring(0, lastDotIndex) : string.Empty;
     }
 }
 
