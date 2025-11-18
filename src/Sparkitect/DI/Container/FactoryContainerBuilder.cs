@@ -16,13 +16,14 @@ public enum FactoryKeyType
 /// Builder for creating factory containers
 /// </summary>
 /// <typeparam name="TBase">The base type for objects created by the factories</typeparam>
-internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase> 
+internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     where TBase : class
 {
     private readonly ICoreContainer _coreContainer;
     private readonly FactoryKeyType _allowedKeyType;
+    private readonly IReadOnlyDictionary<Type, Type>? _facadeMap;
     private readonly Dictionary<OneOf<Identification, string>, IKeyedFactory<TBase>> _factories = [];
-    
+
     /// <summary>
     /// Creates a new factory container builder with the given core container and key type constraint
     /// </summary>
@@ -32,6 +33,20 @@ internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     {
         _coreContainer = coreContainer ?? throw new ArgumentNullException(nameof(coreContainer));
         _allowedKeyType = allowedKeyType;
+        _facadeMap = null;
+    }
+
+    /// <summary>
+    /// Creates a new factory container builder with the given core container, key type constraint, and facade map
+    /// </summary>
+    /// <param name="coreContainer">The core container to resolve dependencies from</param>
+    /// <param name="allowedKeyType">The key type that this builder accepts (locks the key type)</param>
+    /// <param name="facadeMap">Facade-to-service type mappings for dependency resolution</param>
+    public FactoryContainerBuilder(ICoreContainer coreContainer, FactoryKeyType allowedKeyType, IReadOnlyDictionary<Type, Type> facadeMap)
+    {
+        _coreContainer = coreContainer ?? throw new ArgumentNullException(nameof(coreContainer));
+        _allowedKeyType = allowedKeyType;
+        _facadeMap = facadeMap;
     }
     
     /// <summary>
@@ -59,14 +74,19 @@ internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     public IFactoryContainer<TBase> Build()
     {
         var preparedFactories = new Dictionary<OneOf<Identification, string>, IKeyedFactory<TBase>>();
-        
+
+        // Wrap container with facade support if facade map is provided
+        ICoreContainer containerForFactories = _facadeMap != null
+            ? new FacadedCoreContainer(_coreContainer, _facadeMap)
+            : _coreContainer;
+
         // Prepare all factories
         foreach (var (key, factory) in _factories)
         {
-            factory.Prepare(_coreContainer);
+            factory.Prepare(containerForFactories);
             preparedFactories[key] = factory;
         }
-        
+
         return new FactoryContainer<TBase>(preparedFactories);
     }
     

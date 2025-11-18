@@ -1,0 +1,13 @@
+namespace {{ Namespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.DI.FacadeConfiguratorEntrypoint]
+internal class {{ ClassName }} : global::Sparkitect.DI.IFacadeConfigurator
+{
+    public void ConfigureFacades(global::Sparkitect.DI.IFacadeHolder facadeHolder)
+    {
+{% for mapping in Mappings %}
+        facadeHolder.AddFacade(typeof({{ mapping.FacadeType }}), typeof({{ mapping.ServiceInterfaceType }}));
+{% endfor %}
+    }
+}

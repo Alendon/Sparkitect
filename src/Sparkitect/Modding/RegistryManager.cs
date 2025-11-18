@@ -11,7 +11,7 @@ using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
 
-[Singleton<IRegistryManager>]
+[CreateServiceFactory<IRegistryManager>]
 internal class RegistryManager : IRegistryManager
 {
     internal required IModManager ModManager { get; init; }
@@ -56,8 +56,21 @@ internal class RegistryManager : IRegistryManager
         }
 
         _registryFactory?.Dispose();
-        var builder =
-            new FactoryContainerBuilder<IRegistryBase>(coreContainer ?? GameStateManager.CurrentCoreContainer, FactoryKeyType.String);
+
+        // Build facade map for registry dependencies
+        var facadeHolder = new DI.FacadeHolder();
+        using (var facadeConfiguratorContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator>(new All()))
+        {
+            facadeConfiguratorContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
+        }
+        var facadeMap = facadeHolder.GetFacadeMapping();
+
+        // Create factory container builder with facade support
+        var builder = new FactoryContainerBuilder<IRegistryBase>(
+            coreContainer ?? GameStateManager.CurrentCoreContainer,
+            FactoryKeyType.String,
+            facadeMap);
+
         using var configuratorContainer = ModManager.CreateEntrypointContainer<IRegistryConfigurator>(new All());
         configuratorContainer.ProcessMany(x => x.ConfigureRegistries(builder));
 

@@ -68,9 +68,9 @@ public class EngineBootstrapper
     private void ProcessGameStateRegistry()
     {
         var registryManager = _coreContainer!.Resolve<IRegistryManager>() as RegistryManager;
+        registryManager!.UpdateCache(_coreContainer);
         
-        
-        registryManager!.AddRegistry<StateDescriptionRegistry>();
+        registryManager.AddRegistry<StateDescriptionRegistry>();
         registryManager.AddRegistry<ModuleRegistry>();
         
         registryManager.ProcessAllMissing<StateDescriptionRegistry>();

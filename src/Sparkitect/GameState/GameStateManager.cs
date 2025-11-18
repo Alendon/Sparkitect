@@ -282,31 +282,18 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             }
         }
 
-        // Query StateServiceMapping entrypoints to build facade map
-        var facadeMap = new Dictionary<Type, Type>();
-
-        using var mappingContainer = ModManager.CreateEntrypointContainer<StateServiceMapping>(new OneOf.Types.All());
-        var mappings = mappingContainer.ResolveMany();
-
-        foreach (var mapping in mappings)
+        // Query IFacadeConfigurator entrypoints to build facade map
+        var facadeHolder = new DI.FacadeHolder();
+        using (var facadeConfiguratorContainer = ModManager.CreateEntrypointContainer<DI.IFacadeConfigurator>(new OneOf.Types.All()))
         {
-            var builder = new StateServiceMappingBuilder();
-            mapping.Configure(builder);
-
-            var serviceMappings = builder.Build();
-
-            foreach (var (interfaceType, (serviceType, facadeTypes)) in serviceMappings)
-            {
-                // Only include services used by these modules
-                if (usedServices.Contains(interfaceType))
-                {
-                    foreach (var facadeType in facadeTypes)
-                    {
-                        facadeMap[facadeType] = serviceType;
-                    }
-                }
-            }
+            facadeConfiguratorContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
         }
+
+        // Get all facade mappings and filter to only include facades for services used by active modules
+        var allFacadeMappings = facadeHolder.GetFacadeMapping();
+        var facadeMap = allFacadeMappings
+            .Where(kvp => usedServices.Contains(kvp.Value))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         // Build child container
         // Note: Service factories for state services should already be registered via StateServiceFactoryGenerator
