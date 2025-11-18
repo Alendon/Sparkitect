@@ -20,7 +20,12 @@ public static partial class TestData
         /// Marker interface for factory attributes that generate service factories
         /// </summary>
         public interface IFactoryMarker<TExposedType> where TExposedType : class;
-        
+
+        /// <summary>
+        /// Base marker attribute for facade types
+        /// </summary>
+        public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;
+
         /// <summary>
         /// Marks a property parameter (/named argument) as the key for a KeyedFactory.
         /// The parameter must be of type string

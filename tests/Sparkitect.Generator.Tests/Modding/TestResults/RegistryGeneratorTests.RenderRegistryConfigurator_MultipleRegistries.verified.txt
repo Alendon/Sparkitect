@@ -4,7 +4,7 @@
 [global::Sparkitect.DI.RegistryConfigurator]
 public class RegistryConfigurator : global::Sparkitect.DI.IRegistryConfigurator
 {
-    public void ConfigureRegistries(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistry> registryBuilder)
+    public void ConfigureRegistries(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> registryBuilder)
     {
         registryBuilder.Register(new global::DiTest.TestRegistry1_KeyedFactory());
         registryBuilder.Register(new global::DiTest.Nested.TestRegistry2_KeyedFactory());

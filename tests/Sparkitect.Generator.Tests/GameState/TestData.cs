@@ -4,6 +4,8 @@ public static partial class TestData
 {
     public static (string, object) GameStateAttributes => ("GameStateAttributes.cs",
         """
+        using Sparkitect.DI.GeneratorAttributes;
+
         namespace Sparkitect.GameState;
 
         // Core interfaces
@@ -23,7 +25,7 @@ public static partial class TestData
         public interface IStateMethod
         {
             void Execute();
-            void Initialize(Sparkitect.DI.Container.IFacadedCoreContainer container);
+            void Initialize(Sparkitect.DI.Container.ICoreContainer container, System.Collections.Generic.IReadOnlyDictionary<System.Type, System.Type> facadeMap);
         }
 
         // Schedule enum
@@ -116,19 +118,18 @@ public static partial class TestData
 
         namespace Sparkitect.DI.Container
         {
-            public interface IFacadedCoreContainer
+            public interface ICoreContainer
             {
-                bool TryResolve<T>(out T result);
-                bool TryResolveFacaded<T>(out T result);
+                bool TryResolve<T>(out T result) where T : class;
+                bool TryResolveMapped<T>(out T result, System.Collections.Generic.IReadOnlyDictionary<System.Type, System.Type> facadeMap) where T : class;
             }
         }
 
-        namespace Sparkitect.DI.GeneratorAttributes
-        {
-            public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;
-        }
-
         [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
-        public sealed class StateFacadeAttribute<TFacade> : Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute<TFacade> where TFacade : class;
+        public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+
+        [FactoryGenerationType(FactoryGenerationType.Service)]
+        [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+        public sealed class StateServiceAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
         """);
 }

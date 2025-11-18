@@ -12,6 +12,7 @@ public class StateServiceFactoryGeneratorTests : SourceGeneratorTestBase<StateSe
     {
         TestSources.Add(TestData.GlobalUsings);
         TestSources.Add(TestData.Sparkitect);
+        TestSources.Add(TestData.DiAttributes);
         TestSources.Add(TestData.GameStateAttributes);
     }
 

@@ -12,6 +12,7 @@ public class FacadeMappingGeneratorTests : SourceGeneratorTestBase<FacadeMapping
     {
         TestSources.Add(TestData.GlobalUsings);
         TestSources.Add(TestData.Sparkitect);
+        TestSources.Add(TestData.DiAttributes);
         TestSources.Add(TestData.GameStateAttributes);
         TestSources.Add(TestData.ModdingCode);
     }

@@ -25,7 +25,7 @@ public static class DiUtils
     {
         var attributeClass = attributeData.AttributeClass;
         if (attributeClass is null) return null;
-
+        
         // Check if the attribute class implements IFactoryMarker<T>
         foreach (var iface in attributeClass.AllInterfaces)
         {
