@@ -9,10 +9,10 @@ public sealed class StateMethodAssociationEntrypointAttribute : Attribute;
 public enum StateMethodSchedule
 {
     PerFrame,
-    OnStateEnter,
-    OnStateExit,
-    OnModuleEnter,
-    OnModuleExit
+    OnCreate,
+    OnDestroy,
+    OnFrameEnter,
+    OnFrameExit
 }
 
 public sealed class StateMethodAssociationBuilder

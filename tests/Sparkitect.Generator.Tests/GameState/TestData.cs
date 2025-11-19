@@ -32,10 +32,10 @@ public static partial class TestData
         public enum StateMethodSchedule
         {
             PerFrame,
-            OnStateEnter,
-            OnStateExit,
-            OnModuleEnter,
-            OnModuleExit
+            OnCreate,
+            OnDestroy,
+            OnFrameEnter,
+            OnFrameExit
         }
 
         // State function attribute
@@ -50,16 +50,16 @@ public static partial class TestData
         public sealed class PerFrameAttribute : Attribute;
 
         [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-        public sealed class OnStateEnterAttribute : Attribute;
+        public sealed class OnCreateAttribute : Attribute;
 
         [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-        public sealed class OnStateExitAttribute : Attribute;
+        public sealed class OnDestroyAttribute : Attribute;
 
         [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-        public sealed class OnModuleEnterAttribute : Attribute;
+        public sealed class OnFrameEnterAttribute : Attribute;
 
         [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-        public sealed class OnModuleExitAttribute : Attribute;
+        public sealed class OnFrameExitAttribute : Attribute;
 
         // Ordering attributes
         [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]

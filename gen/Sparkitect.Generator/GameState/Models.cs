@@ -52,10 +52,10 @@ public enum OrderingDirection
 public enum StateMethodSchedule
 {
     PerFrame,
-    OnStateEnter,
-    OnStateExit,
-    OnModuleEnter,
-    OnModuleExit
+    OnCreate,
+    OnDestroy,
+    OnFrameEnter,
+    OnFrameExit
 }
 
 /// <summary>

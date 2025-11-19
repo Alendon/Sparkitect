@@ -23,7 +23,7 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test")]
                 public static void TestMethod() { }
@@ -47,11 +47,11 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test")]
                 [PerFrame]
-                [OnStateEnter]
+                [OnFrameEnter]
                 public static void TestMethod() { }
             }
             """;
@@ -73,7 +73,7 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test")]
                 [PerFrame]
@@ -98,14 +98,14 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("duplicate")]
                 [PerFrame]
                 public static void Method1() { }
 
                 [StateFunction("duplicate")]
-                [OnStateEnter]
+                [OnFrameEnter]
                 public static void Method2() { }
             }
             """;
@@ -130,7 +130,7 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [typeof(ConcreteService)];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test")]
                 [PerFrame]
@@ -157,7 +157,7 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [typeof(IService)];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test")]
                 [PerFrame]
@@ -184,7 +184,7 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test")]
                 [PerFrame]
@@ -210,13 +210,13 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class OtherModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [];
+                public static Span<Identification> RequiredModules => [];
             }
 
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test")]
                 [PerFrame]
@@ -242,7 +242,7 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("")]
                 [PerFrame]
@@ -290,7 +290,7 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             public class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Empty;
-                public static IReadOnlyList<Type> UsedServices => [typeof(IService)];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("valid_function")]
                 [PerFrame]
@@ -303,5 +303,54 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
         var diagnostics = await RunAnalyzerAsync();
 
         await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task StateFunctionInDescriptor_NoDiagnostic()
+    {
+        var code = """
+            using Sparkitect.GameState;
+            using Sparkitect.Modding;
+
+            public interface IService { }
+
+            public class TestDescriptor : IStateDescriptor
+            {
+                public static Identification ParentId => Identification.Empty;
+                public static Identification Identification => Identification.Empty;
+                public static IReadOnlyList<Identification> Modules => [];
+
+                [StateFunction("descriptor_function")]
+                [OnFrameEnter]
+                public static void DescriptorFunction(IService service) { }
+            }
+            """;
+
+        TestSources.Add(("TestDescriptor.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task StateFunctionNotInModuleOrDescriptor_ReportsError()
+    {
+        var code = """
+            using Sparkitect.GameState;
+
+            public class NotAModuleOrDescriptor
+            {
+                [StateFunction("test")]
+                [PerFrame]
+                public static void TestMethod() { }
+            }
+            """;
+
+        TestSources.Add(("NotValid.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK3011", 1);
     }
 }

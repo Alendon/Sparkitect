@@ -39,7 +39,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
                 public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("init")]
-                [OnModuleEnter]
+                [OnCreate]
                 public static void Initialize(ITestService service)
                 {
                 }
@@ -52,7 +52,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
                 }
 
                 [StateFunction("cleanup")]
-                [OnModuleExit]
+                [OnDestroy]
                 [OrderBefore("update")]
                 public static void Cleanup()
                 {
@@ -65,7 +65,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
                 public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("process")]
-                [OnStateEnter]
+                [OnFrameEnter]
                 [OrderAfter<TestModule>("init")]
                 public static void Process()
                 {
@@ -107,7 +107,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
 
         await Assert.That(type).IsNotNull();
 
-        var model = StateMethodGenerator.ExtractStateModuleModel(type!, compilation, token);
+        var model = StateMethodGenerator.ExtractStateParentModel(type!, compilation, token);
 
         await Assert.That(model).IsNotNull();
         await Assert.That(model!.ModuleTypeName).IsEqualTo("TestModule");
@@ -140,7 +140,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
                 public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test_func")]
-                [OnStateEnter]
+                [OnFrameEnter]
                 public static void TestFunction(ITestFacade facade)
                 {
                 }
@@ -152,12 +152,83 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
 
         await Assert.That(type).IsNotNull();
 
-        var model = StateMethodGenerator.ExtractStateModuleModel(type!, compilation, token);
+        var model = StateMethodGenerator.ExtractStateParentModel(type!, compilation, token);
 
         await Assert.That(model).IsNotNull();
         await Assert.That(model!.Functions).HasCount().EqualTo(1);
 
         var function = model.Functions[0];
         await Assert.That(function.Parameters).HasCount().EqualTo(1);
+    }
+
+    [Test]
+    public async Task StateMethodGenerator_StateDescriptorWithFunction_GeneratesWrapper(CancellationToken token)
+    {
+        TestSources.Add(("TestDescriptor.cs",
+            """
+            using Sparkitect.GameState;
+            using Sparkitect.Modding;
+
+            namespace GameStateTest;
+
+            public interface ITestService { }
+
+            public sealed partial class DesktopState : IStateDescriptor
+            {
+                public static Identification ParentId => Identification.Create(1, 1, 0);
+                public static Identification Identification => Identification.Create(1, 1, 1);
+                public static IReadOnlyList<Identification> Modules => [];
+
+                [StateFunction("desktop_init")]
+                [OnFrameEnter]
+                public static void Initialize(ITestService service)
+                {
+                }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+        await Verifier.Verify(driverRunResult, verifySettings);
+    }
+
+    [Test]
+    public async Task ExtractStateParentModel_StateDescriptor_ExtractsCorrectly(CancellationToken token)
+    {
+        TestSources.Add(("TestDescriptor.cs",
+            """
+            using Sparkitect.GameState;
+            using Sparkitect.Modding;
+
+            namespace GameStateTest;
+
+            public sealed class DesktopState : IStateDescriptor
+            {
+                public static Identification ParentId => Identification.Create(1, 1, 0);
+                public static Identification Identification => Identification.Create(1, 1, 1);
+                public static IReadOnlyList<Identification> Modules => [];
+
+                [StateFunction("desktop_init")]
+                [OnFrameEnter]
+                public static void Initialize()
+                {
+                }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("GameStateTest.DesktopState");
+
+        await Assert.That(type).IsNotNull();
+
+        var model = StateMethodGenerator.ExtractStateParentModel(type!, compilation, token);
+
+        await Assert.That(model).IsNotNull();
+        await Assert.That(model!.ModuleTypeName).IsEqualTo("DesktopState");
+        await Assert.That(model.ModuleNamespace).IsEqualTo("GameStateTest");
+        await Assert.That(model.Functions).HasCount().EqualTo(1);
+
+        var function = model.Functions[0];
+        await Assert.That(function.FunctionKey).IsEqualTo("desktop_init");
+        await Assert.That(function.Schedule).IsEqualTo(StateMethodSchedule.OnFrameEnter);
     }
 }

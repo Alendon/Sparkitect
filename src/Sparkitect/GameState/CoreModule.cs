@@ -29,7 +29,7 @@ public sealed partial class CoreModule : IStateModule
 
 
     [StateFunction(Key_LoadRootMods)]
-    [OnModuleEnter]
+    [OnCreate]
     internal static void LoadRootMods(IModManager modManager)
     {
         var modIds = modManager.DiscoveredArchives
@@ -42,7 +42,7 @@ public sealed partial class CoreModule : IStateModule
         Log.Debug("Root mods loaded successfully");
     }
 
-    [OnStateEnter]
+    [OnFrameEnter]
     [OrderAfter(Key_LoadRootMods)]
     [StateFunction(Key_RegisterNewStates)]
     internal static void ProcessStateRegistry(IRegistryManager registryManager)
@@ -52,7 +52,7 @@ public sealed partial class CoreModule : IStateModule
     }
 
     [StateFunction(Key_UnregisterStates)]
-    [OnStateExit]
+    [OnFrameExit]
     [OrderBefore(Key_UnloadRootMods)]
     internal static void UnregisterStates(IRegistryManager registryManager)
     {
@@ -60,7 +60,7 @@ public sealed partial class CoreModule : IStateModule
     }
 
     [StateFunction(Key_UnloadRootMods)]
-    [OnStateExit]
+    [OnFrameExit]
     [OrderAfter(Key_UnregisterStates)]
     internal static void UnloadRootMods(IModManager modManager)
     {

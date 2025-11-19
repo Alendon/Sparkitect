@@ -22,7 +22,7 @@ public sealed partial class RenderingModule : IStateModule
     }
 
     [StateFunction(Key_RenderInit)]
-    [OnModuleEnter]
+    [OnCreate]
     public static void RenderInit(FeatureContext ctx)
     {
         // Rendering init placeholder

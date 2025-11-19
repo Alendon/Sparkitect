@@ -51,12 +51,12 @@ One function type covers both “per-frame work” and “on-change work”. Sch
 
 Scheduling kinds (v1):
 - PerFrame: runs every tick while active
-- OnModuleEnter: runs once when a module first becomes active along the current path (new side)
-- OnModuleExit: runs once when a module ceases to be active (old side)
-- OnStateEnter: runs whenever the leaf state changes (new side)
-- OnStateExit: runs when leaving a leaf state (old side)
+- OnCreate: lifecycle hook - runs when module/state container is created (module creation phase)
+- OnDestroy: lifecycle hook - runs when module/state container is destroyed (module destruction phase)
+- OnFrameEnter: transition hook - runs when state becomes the active leaf (entering frame)
+- OnFrameExit: transition hook - runs when leaving the active leaf position (exiting frame)
 
-Note: Scheduling is expressed via attributes (e.g., `[PerFrame]`, `[OnStateEnter]`, `[OnModuleExit]`) rather than an enum. This enables v2 extensibility for mod‑provided triggers without breaking existing code.
+Note: Scheduling is expressed via attributes (e.g., `[PerFrame]`, `[OnFrameEnter]`, `[OnDestroy]`) rather than an enum. This enables v2 extensibility for mod‑provided triggers without breaking existing code.
 
 Analyzer requirement (v1): Every `[StateFunction]` must also have exactly one scheduling attribute. A common base marker (e.g., `StateScheduleAttribute`) is used so analyzers can verify the presence of a scheduling attribute. Functions without one are invalid in v1 (v2 may allow manual invocation).
 
@@ -76,10 +76,10 @@ public static class UiModule
     public const string Pump = "ui_pump";
 
     [StateFunction(InitRoot)]
-    [OnModuleEnter] // new side container
+    [OnCreate] // lifecycle - module creation
     public static void InitializeUiRoot(IStateContainer container)
     {
-        // One-time UI root setup for the module’s lifetime in this path
+        // One-time UI root setup for the module's lifetime in this path
     }
 
     [StateFunction(Pump)]
@@ -96,7 +96,7 @@ public static class GameplayModule
     public const string HudExit = "hud_exit";
 
     [StateFunction(HudEnter)]
-    [OnStateEnter]
+    [OnFrameEnter]
     [OrderAfter<UiModule>(UiModule.InitRoot)]
     public static void SetupHud(IStateContainer container, IStateDataAccessor<GameplayHudData> hud)
     {
@@ -104,7 +104,7 @@ public static class GameplayModule
     }
 
     [StateFunction(HudExit)]
-    [OnStateExit]
+    [OnFrameExit]
     [OrderBefore<UiModule>(UiModule.InitRoot)] // runs before UI root teardown if that occurs
     public static void TeardownHud(IStateContainer oldContainer, IStateDataAccessor<GameplayHudData> hud)
     {

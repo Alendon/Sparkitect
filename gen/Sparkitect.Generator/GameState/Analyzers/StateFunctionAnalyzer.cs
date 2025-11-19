@@ -35,8 +35,8 @@ public class StateFunctionAnalyzer : DiagnosticAnalyzer
     {
         if (context.Symbol is not INamedTypeSymbol type) return;
 
-        // Check if type implements IStateModule
-        bool isModule = IsStateModule(type);
+        // Check if type implements IStateModule or IStateDescriptor
+        bool isModuleOrDescriptor = IsStateModule(type) || IsStateDescriptor(type);
 
         // Get all methods in the type
         var methods = type.GetMembers().OfType<IMethodSymbol>();
@@ -50,8 +50,8 @@ public class StateFunctionAnalyzer : DiagnosticAnalyzer
             if (stateFunctionAttr is null)
                 continue;
 
-            // Validate method is in a module
-            if (!isModule)
+            // Validate method is in a module or descriptor
+            if (!isModuleOrDescriptor)
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     StateFunctionNotInModule,
@@ -116,10 +116,10 @@ public class StateFunctionAnalyzer : DiagnosticAnalyzer
         {
             var attrName = attr.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType);
             return attrName == PerFrameAttribute ||
-                   attrName == OnStateEnterAttribute ||
-                   attrName == OnStateExitAttribute ||
-                   attrName == OnModuleEnterAttribute ||
-                   attrName == OnModuleExitAttribute;
+                   attrName == OnCreateAttribute ||
+                   attrName == OnDestroyAttribute ||
+                   attrName == OnFrameEnterAttribute ||
+                   attrName == OnFrameExitAttribute;
         }).ToList();
 
         if (schedulingAttrs.Count == 0)

@@ -17,10 +17,10 @@ public static class StateUtils
 
     // Scheduling attributes
     internal const string PerFrameAttribute = "Sparkitect.GameState.PerFrameAttribute";
-    internal const string OnStateEnterAttribute = "Sparkitect.GameState.OnStateEnterAttribute";
-    internal const string OnStateExitAttribute = "Sparkitect.GameState.OnStateExitAttribute";
-    internal const string OnModuleEnterAttribute = "Sparkitect.GameState.OnModuleEnterAttribute";
-    internal const string OnModuleExitAttribute = "Sparkitect.GameState.OnModuleExitAttribute";
+    internal const string OnCreateAttribute = "Sparkitect.GameState.OnCreateAttribute";
+    internal const string OnDestroyAttribute = "Sparkitect.GameState.OnDestroyAttribute";
+    internal const string OnFrameEnterAttribute = "Sparkitect.GameState.OnFrameEnterAttribute";
+    internal const string OnFrameExitAttribute = "Sparkitect.GameState.OnFrameExitAttribute";
 
     // Ordering attributes
     internal const string OrderBeforeAttribute = "Sparkitect.GameState.OrderBeforeAttribute";
@@ -70,14 +70,14 @@ public static class StateUtils
             {
                 case PerFrameAttribute:
                     return StateMethodSchedule.PerFrame;
-                case OnStateEnterAttribute:
-                    return StateMethodSchedule.OnStateEnter;
-                case OnStateExitAttribute:
-                    return StateMethodSchedule.OnStateExit;
-                case OnModuleEnterAttribute:
-                    return StateMethodSchedule.OnModuleEnter;
-                case OnModuleExitAttribute:
-                    return StateMethodSchedule.OnModuleExit;
+                case OnCreateAttribute:
+                    return StateMethodSchedule.OnCreate;
+                case OnDestroyAttribute:
+                    return StateMethodSchedule.OnDestroy;
+                case OnFrameEnterAttribute:
+                    return StateMethodSchedule.OnFrameEnter;
+                case OnFrameExitAttribute:
+                    return StateMethodSchedule.OnFrameExit;
                 default:
                     continue;
             }

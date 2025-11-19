@@ -65,7 +65,7 @@ public interface ITimeApi { }    // What public DI sees
 internal class TimeService : ITimeApi, ITimeFacade { }
 ```
 
-**Scheduling:** `[PerFrame]`, `[OnModuleEnter]`, `[OnModuleExit]`, `[OnStateEnter]`, `[OnStateExit]`
+**Scheduling:** `[PerFrame]`, `[OnCreate]`, `[OnDestroy]`, `[OnFrameEnter]`, `[OnFrameExit]`
 **Ordering:** `[OrderBefore("fn")]` or `[OrderBefore<ModuleType>("fn")]` for cross-scope
 
 ### 3. Registry System

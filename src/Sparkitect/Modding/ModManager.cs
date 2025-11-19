@@ -29,7 +29,7 @@ internal class ModManager : IModManager
     private readonly IIdentificationManager _identificationManager;
 
     private const string AddModDirsArgument = "addModDirs";
-    public const string VirtualSparkitectModId = "sparkitect.core";
+    public const string VirtualSparkitectModId = "sparkitect";
 
     public ModManager(ICliArgumentHandler cliArgumentHandler,
         IIdentificationManager identificationManager)

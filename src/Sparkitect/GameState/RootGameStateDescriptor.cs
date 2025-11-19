@@ -13,6 +13,13 @@ public partial class RootGameStateDescriptor : IStateDescriptor
     public static IReadOnlyList<Identification> Modules => [StateModuleID.Sparkitect.Core];
 
     public static Identification Identification => StateID.Sparkitect.Root;
+
+    public const string Key_SampleAction = "sample_action";
     
-    
+    [StateFunction(Key_SampleAction)]
+    [PerFrame]
+    internal static void LoadRootMods()
+    {
+        
+    }
 }

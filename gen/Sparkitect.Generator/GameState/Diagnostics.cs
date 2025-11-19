@@ -6,7 +6,7 @@ public static class Diagnostics
 {
     public static readonly DiagnosticDescriptor StateFunctionMissingSchedule =
         new("SPARK3001", "StateFunction missing schedule attribute",
-            "Method '{0}' marked with [StateFunction] must have exactly one scheduling attribute ([PerFrame], [OnStateEnter], [OnStateExit], [OnModuleEnter], or [OnModuleExit])",
+            "Method '{0}' marked with [StateFunction] must have exactly one scheduling attribute ([PerFrame], [OnCreate], [OnDestroy], [OnFrameEnter], or [OnFrameExit])",
             "Sparkitect", DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor StateFunctionMultipleSchedules =
@@ -45,8 +45,8 @@ public static class Diagnostics
             "Sparkitect", DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor StateFunctionNotInModule =
-        new("SPARK3011", "StateFunction not in module",
-            "Method '{0}' marked with [StateFunction] must be declared within a type that implements IStateModule",
+        new("SPARK3011", "StateFunction not in module or descriptor",
+            "Method '{0}' marked with [StateFunction] must be declared within a type that implements IStateModule or IStateDescriptor",
             "Sparkitect", DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor StateServiceInterfaceNotImplemented =

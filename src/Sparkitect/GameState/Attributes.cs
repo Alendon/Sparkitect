@@ -60,19 +60,19 @@ public sealed class PerFrameAttribute : Attribute;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class OnStateEnterAttribute : Attribute;
+public sealed class OnCreateAttribute : Attribute;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class OnStateExitAttribute : Attribute;
+public sealed class OnDestroyAttribute : Attribute;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class OnModuleEnterAttribute : Attribute;
+public sealed class OnFrameEnterAttribute : Attribute;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class OnModuleExitAttribute : Attribute;
+public sealed class OnFrameExitAttribute : Attribute;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]

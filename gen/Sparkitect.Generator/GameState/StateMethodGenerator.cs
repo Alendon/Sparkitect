@@ -23,11 +23,28 @@ public class StateMethodGenerator : IIncrementalGenerator
                 if (!IsStateModule(classSymbol))
                     return null;
 
-                return ExtractStateModuleModel(classSymbol, syntaxContext.SemanticModel.Compilation, cancellationToken);
+                return ExtractStateParentModel(classSymbol, syntaxContext.SemanticModel.Compilation, cancellationToken);
             }).Where(m => m is not null)!;
 
-        // Collect all modules for association and ordering generation
-        var allModulesProvider = stateModulesProvider.Collect();
+        // Find all types implementing IStateDescriptor
+        var stateDescriptorsProvider = context.SyntaxProvider.CreateSyntaxProvider(
+            predicate: (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
+            transform: (syntaxContext, cancellationToken) =>
+            {
+                if (syntaxContext.SemanticModel.GetDeclaredSymbol(syntaxContext.Node, cancellationToken) is not INamedTypeSymbol classSymbol)
+                    return null;
+
+                if (!IsStateDescriptor(classSymbol))
+                    return null;
+
+                return ExtractStateParentModel(classSymbol, syntaxContext.SemanticModel.Compilation, cancellationToken);
+            }).Where(m => m is not null)!;
+
+        // Combine modules and descriptors
+        var allParentsProvider = stateModulesProvider
+            .Collect()
+            .Combine(stateDescriptorsProvider.Collect())
+            .Select((pair, _) => pair.Left.Concat(pair.Right).ToImmutableArray());
 
         // Register output for individual module wrapper classes
         context.RegisterSourceOutput(stateModulesProvider, (context, model) =>
@@ -43,39 +60,53 @@ public class StateMethodGenerator : IIncrementalGenerator
             }
         });
 
-        // Register output for StateMethodAssociation configurator
-        context.RegisterSourceOutput(allModulesProvider, (context, modules) =>
+        // Register output for individual descriptor wrapper classes
+        context.RegisterSourceOutput(stateDescriptorsProvider, (context, model) =>
         {
-            if (modules.Length == 0) return;
+            if (model is null) return;
 
-            if (RenderStateMethodAssociation(modules, out var code, out var fileName))
+            foreach (var function in model.Functions)
+            {
+                if (RenderStateMethodWrapper(model, function, out var code, out var fileName))
+                {
+                    context.AddSource(fileName, code);
+                }
+            }
+        });
+
+        // Register output for StateMethodAssociation configurator
+        context.RegisterSourceOutput(allParentsProvider, (context, parents) =>
+        {
+            if (parents.Length == 0) return;
+
+            if (RenderStateMethodAssociation(parents, out var code, out var fileName))
             {
                 context.AddSource(fileName, code);
             }
         });
 
         // Register output for StateMethodOrdering configurator
-        context.RegisterSourceOutput(allModulesProvider, (context, modules) =>
+        context.RegisterSourceOutput(allParentsProvider, (context, parents) =>
         {
-            if (modules.Length == 0) return;
+            if (parents.Length == 0) return;
 
-            if (RenderStateMethodOrdering(modules, out var code, out var fileName))
+            if (RenderStateMethodOrdering(parents, out var code, out var fileName))
             {
                 context.AddSource(fileName, code);
             }
         });
     }
 
-    internal static StateModuleModel? ExtractStateModuleModel(INamedTypeSymbol moduleType, Compilation compilation, System.Threading.CancellationToken cancellationToken)
+    internal static StateModuleModel? ExtractStateParentModel(INamedTypeSymbol parentType, Compilation compilation, System.Threading.CancellationToken cancellationToken)
     {
-        // Get module identification
-        var identificationProperty = moduleType.GetMembers("Identification").OfType<IPropertySymbol>().FirstOrDefault();
+        // Get parent identification (module or descriptor)
+        var identificationProperty = parentType.GetMembers("Identification").OfType<IPropertySymbol>().FirstOrDefault();
         if (identificationProperty is null)
             return null;
 
         // Extract functions
         var functions = new List<StateFunctionModel>();
-        var methods = moduleType.GetMembers().OfType<IMethodSymbol>();
+        var methods = parentType.GetMembers().OfType<IMethodSymbol>();
 
         foreach (var method in methods)
         {
@@ -116,14 +147,14 @@ public class StateMethodGenerator : IIncrementalGenerator
             return null;
 
         // Get module ordering
-        var (moduleBefore, moduleAfter) = GetModuleOrderingConstraints(moduleType);
+        var (moduleBefore, moduleAfter) = GetModuleOrderingConstraints(parentType);
 
         // Generate property access expression for Identification (not the type)
-        var identificationExpression = $"{moduleType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.{identificationProperty.Name}";
+        var identificationExpression = $"{parentType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.{identificationProperty.Name}";
 
         return new StateModuleModel(
-            moduleType.Name,
-            moduleType.ContainingNamespace.ToDisplayString(),
+            parentType.Name,
+            parentType.ContainingNamespace.ToDisplayString(),
             identificationExpression,
             functions.ToImmutableValueArray(),
             moduleBefore.ToImmutableValueArray(),
