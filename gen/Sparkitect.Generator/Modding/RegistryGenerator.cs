@@ -16,7 +16,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        //Debugger.Launch();
+        Debugger.Launch();
 
         var buildSettings = context.GetModBuildSettings();
 

@@ -44,6 +44,14 @@
       <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdContainer_Framework_Snapshot.received.txt" />
       <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.RenderRegistryAttributes_SingleFile_Snapshot.verified.txt" />
       <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.RenderRegistryAttributes_SingleFile_Snapshot.received.txt" />
+      <None Remove="GameState\TestResults\StateServiceFactoryGeneratorTests.StateServiceFactoryGenerator_ServiceWithDependencies_GeneratesFactory#TestStateService_Factory.g.verified.cs" />
+      <None Remove="GameState\TestResults\StateServiceFactoryGeneratorTests.StateServiceFactoryGenerator_ServiceWithDependencies_GeneratesFactory#TestStateService_Factory.g.received.cs" />
+      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_SingleFacadeInterface_GeneratesConfigurator#StateFacadeConfigurator.g.verified.cs" />
+      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleInterfacesWithFacades_GeneratesUnifiedConfigurator#IStateFacadeConfigurator.g.received.cs" />
+      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleFacadesOnInterface_GeneratesAllMappings#StateFacadeConfigurator.g.verified.cs" />
+      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleFacadesOnInterface_GeneratesAllMappings#RegistryFacadeConfigurator.g.verified.cs" />
+      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleFacadesOnInterface_GeneratesAllMappings#IStateFacadeConfigurator.g.verified.cs" />
+      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleFacadesOnInterface_GeneratesAllMappings#IStateFacadeConfigurator.g.received.cs" />
     </ItemGroup>
 
 </Project>
