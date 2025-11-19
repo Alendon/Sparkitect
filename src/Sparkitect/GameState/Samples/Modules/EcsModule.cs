@@ -10,6 +10,6 @@ namespace Sparkitect.GameState.Samples.Modules;
 [OrderModuleAfter<NetworkingModule>]
 public sealed partial class EcsModule : IStateModule
 {
-    public static IReadOnlyList<Type> UsedServices => [typeof(IArchetypeManager), typeof(IComponentManager), typeof(ISystemManager)];
+    public static Span<Identification> RequiredModules => [];
     public static Identification Identification => StateModuleID.Sparkitect.Ecs;
 }

@@ -16,15 +16,7 @@ public sealed partial class CoreModule : IStateModule
     public const string Key_UnloadRootMods = "unload_root_mods";
     public const string Key_UnregisterStates = "unregister_states";
     
-    public static IReadOnlyList<Type> UsedServices =>
-    [
-        typeof(IModManager),
-        typeof(ICliArgumentHandler),
-        typeof(IGameStateManager),
-        typeof(IIdentificationManager),
-        typeof(IRegistryManager)
-    ];
-
+    public static Span<Identification> RequiredModules => [];
     public static Identification Identification => StateModuleID.Sparkitect.Core;
 
 

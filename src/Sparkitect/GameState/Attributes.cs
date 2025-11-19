@@ -88,5 +88,7 @@ public sealed class StateFacadeAttribute : Attribute;
 [PublicAPI]
 [FactoryGenerationType(FactoryGenerationType.Service)]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-public sealed class StateServiceAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
+public sealed class StateServiceAttribute<TInterface, TModule> : Attribute, IFactoryMarker<TInterface>
+    where TInterface : class
+    where TModule : IStateModule;
 

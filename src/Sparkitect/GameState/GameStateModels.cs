@@ -17,7 +17,7 @@ internal sealed record StateMetadata(
 /// </summary>
 internal sealed record ModuleMetadata(
     Identification Id,
-    IReadOnlyList<Type> UsedServices,
+    IReadOnlyList<Identification> RequiredModules,
     Type ModuleType);
 
 /// <summary>

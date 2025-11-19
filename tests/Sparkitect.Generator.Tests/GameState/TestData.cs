@@ -12,7 +12,7 @@ public static partial class TestData
         public interface IStateModule
         {
             static abstract Sparkitect.Modding.Identification Identification { get; }
-            static abstract IReadOnlyList<Type> UsedServices { get; }
+            static abstract Span<Sparkitect.Modding.Identification> RequiredModules { get; }
         }
 
         public interface IStateDescriptor
@@ -130,6 +130,25 @@ public static partial class TestData
 
         [FactoryGenerationType(FactoryGenerationType.Service)]
         [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-        public sealed class StateServiceAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
+        public sealed class StateServiceAttribute<TInterface, TModule> : Attribute, IFactoryMarker<TInterface>
+            where TInterface : class
+            where TModule : IStateModule;
+
+        [AttributeUsage(AttributeTargets.Class)]
+        public sealed class StateModuleServiceConfiguratorEntrypointAttribute : Attribute;
+
+        public interface IStateModuleServiceConfigurator
+        {
+            Type ModuleType { get; }
+            void ConfigureServices(Sparkitect.DI.Container.ICoreContainerBuilder builder);
+        }
+
+        namespace Sparkitect.DI.Container
+        {
+            public interface ICoreContainerBuilder
+            {
+                void Register<TFactory>();
+            }
+        }
         """);
 }

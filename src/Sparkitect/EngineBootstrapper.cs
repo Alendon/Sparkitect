@@ -63,19 +63,22 @@ public class EngineBootstrapper
     private void EnterRootState()
     {
         var gsm = _coreContainer!.Resolve<IGameStateManager>() as GameStateManager;
-        gsm!.EnterRootState(_coreContainer);
+        gsm!.EnterRootState();
     }
 
     private void ProcessGameStateRegistry()
     {
         var registryManager = _coreContainer!.Resolve<IRegistryManager>() as RegistryManager;
         registryManager!.UpdateCache(_coreContainer);
-        
+
         registryManager.AddRegistry<StateDescriptionRegistry>();
         registryManager.AddRegistry<ModuleRegistry>();
-        
+
         registryManager.ProcessAllMissing<StateDescriptionRegistry>();
         registryManager.ProcessAllMissing<ModuleRegistry>();
+
+        var gsm = _coreContainer.Resolve<IGameStateManager>() as GameStateManager;
+        gsm!.FinalizeRegistrations();
     }
 
     private const string LogDirectoryPath = "logs";
@@ -142,7 +145,7 @@ public class EngineBootstrapper
             _gameStateManager = container.Resolve<IGameStateManager>();
 
             var internalGsm = (_gameStateManager as GameStateManager)!;
-            internalGsm.CurrentCoreContainer = _coreContainer;
+            internalGsm.RootContainer = _coreContainer;
             
             Log.Debug("Core container built successfully");
         }

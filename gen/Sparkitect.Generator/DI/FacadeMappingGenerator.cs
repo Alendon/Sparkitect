@@ -14,6 +14,35 @@ public class FacadeMappingGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        var markerAttributeProvider = context.SyntaxProvider.CreateSyntaxProvider<string?>(
+            predicate: (node, _) => node is ClassDeclarationSyntax,
+            transform: (syntaxContext, _) =>
+            {
+                if (syntaxContext.SemanticModel.GetDeclaredSymbol(syntaxContext.Node) is not INamedTypeSymbol classSymbol)
+                    return null;
+
+                if (IsFacadeMarkerAttributeClass(classSymbol))
+                {
+                    return classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat
+                        .WithGenericsOptions(SymbolDisplayGenericsOptions.None));
+                }
+
+                return null;
+            }).NotNull();
+
+        var allMarkerAttributesProvider = markerAttributeProvider.Collect();
+
+        context.RegisterSourceOutput(allMarkerAttributesProvider, (context, markerAttributeTypes) =>
+        {
+            foreach (var markerAttributeType in markerAttributeTypes.Distinct())
+            {
+                if (RenderFacadeConfiguratorInterface(markerAttributeType, out var interfaceCode, out var interfaceFileName))
+                {
+                    context.AddSource(interfaceFileName, interfaceCode);
+                }
+            }
+        });
+
         var interfacesWithFacadesProvider = context.SyntaxProvider.CreateSyntaxProvider<InterfaceFacadeMapping?>(
             predicate: (node, _) => node is InterfaceDeclarationSyntax,
             transform: (syntaxContext, _) =>
@@ -50,17 +79,11 @@ public class FacadeMappingGenerator : IIncrementalGenerator
                 }
             }
 
-            // Generate interface and configurator per marker attribute type
+            // Generate configurator per marker attribute type
             foreach (var kvp in mappingsByMarker)
             {
                 var markerAttributeType = kvp.Key;
                 var mappings = kvp.Value;
-
-                // Generate the concrete facade configurator interface (e.g., IRegistryFacadeConfigurator)
-                if (RenderFacadeConfiguratorInterface(markerAttributeType, out var interfaceCode, out var interfaceFileName))
-                {
-                    context.AddSource(interfaceFileName, interfaceCode);
-                }
 
                 // Generate the configurator implementation
                 if (RenderFacadeConfigurator(mappings.ToImmutableArray(), markerAttributeType, out var code, out var fileName))
@@ -69,6 +92,24 @@ public class FacadeMappingGenerator : IIncrementalGenerator
                 }
             }
         });
+    }
+
+    private static bool IsFacadeMarkerAttributeClass(INamedTypeSymbol classSymbol)
+    {
+        if (classSymbol.TypeKind != TypeKind.Class)
+            return false;
+
+        var currentType = classSymbol.BaseType;
+        while (currentType != null)
+        {
+            var originalDefinition = currentType.OriginalDefinition.ToDisplayString(DisplayFormats.NamespaceAndType);
+            if (originalDefinition == FacadeMarkerName)
+                return true;
+
+            currentType = currentType.BaseType;
+        }
+
+        return false;
     }
 
     internal static InterfaceFacadeMapping? ExtractFacadeMappings(INamedTypeSymbol interfaceSymbol)

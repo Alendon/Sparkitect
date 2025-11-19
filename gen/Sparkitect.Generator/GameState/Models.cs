@@ -108,3 +108,19 @@ public record ServiceFacadeMapping(
     string InterfaceType,
     string ServiceType,
     ImmutableValueArray<string> FacadeTypes);
+
+/// <summary>
+/// Model for state module service configurator output
+/// </summary>
+public record StateModuleServiceConfiguratorModel(
+    string Namespace,
+    string ClassName,
+    string ModuleTypeName,
+    string ModuleTypeFullName,
+    ImmutableValueArray<StateServiceFactory> ServiceFactories);
+
+/// <summary>
+/// Model for a state service factory registration
+/// </summary>
+public record StateServiceFactory(
+    string FactoryTypeName);

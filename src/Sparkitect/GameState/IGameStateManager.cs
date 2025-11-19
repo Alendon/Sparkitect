@@ -6,6 +6,7 @@ namespace Sparkitect.GameState;
 
 [PublicAPI]
 [RegistryFacade<IGameStateManagerRegistryFacade>]
+[StateFacade<IGameStateManagerStateFacade>]
 public interface IGameStateManager
 {
 
@@ -24,3 +25,7 @@ public interface IGameStateManagerRegistryFacade
     void RemoveStateDescriptor(Identification id);
 }
 
+public interface IGameStateManagerStateFacade
+{
+    
+}

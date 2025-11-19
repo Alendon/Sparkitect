@@ -29,7 +29,7 @@ public sealed partial class RenderingModule : IStateModule
         _ = ctx;
     }
 
-    public static IReadOnlyList<Type> UsedServices => [];
+    public static Span<Identification> RequiredModules => [];
     public static Identification Identification => StateModuleID.Sparkitect.Rendering;
 }
 

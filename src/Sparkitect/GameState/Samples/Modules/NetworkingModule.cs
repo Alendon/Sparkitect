@@ -20,6 +20,6 @@ public sealed partial class NetworkingModule : IStateModule
         _ = ctx;
     }
 
-    public static IReadOnlyList<Type> UsedServices => [];
+    public static Span<Identification> RequiredModules => [];
     public static Identification Identification => StateModuleID.Sparkitect.Networking;
 }

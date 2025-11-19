@@ -36,7 +36,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
             public sealed partial class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Create(1, 1, 1);
-                public static IReadOnlyList<Type> UsedServices => [typeof(ITestService), typeof(ITestFacade)];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("init")]
                 [OnModuleEnter]
@@ -62,7 +62,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
             public sealed partial class AnotherModule : IStateModule
             {
                 public static Identification Identification => Identification.Create(1, 1, 2);
-                public static IReadOnlyList<Type> UsedServices => [];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("process")]
                 [OnStateEnter]
@@ -92,7 +92,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
             public sealed class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Create(1, 1, 1);
-                public static IReadOnlyList<Type> UsedServices => [typeof(ITestService)];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test_func")]
                 [PerFrame]
@@ -137,7 +137,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
             public sealed class TestModule : IStateModule
             {
                 public static Identification Identification => Identification.Create(1, 1, 1);
-                public static IReadOnlyList<Type> UsedServices => [typeof(ITestFacade)];
+                public static Span<Identification> RequiredModules => [];
 
                 [StateFunction("test_func")]
                 [OnStateEnter]
