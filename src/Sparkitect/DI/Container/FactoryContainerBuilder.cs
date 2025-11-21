@@ -71,13 +71,21 @@ internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     /// Builds the factory container with all registered factories
     /// </summary>
     /// <returns>The constructed factory container</returns>
-    public IFactoryContainer<TBase> Build()
+    /// <exception cref="InvalidOperationException">Thrown when a factory's dependencies cannot be resolved</exception>
+    public IFactoryContainer<TBase> Build(bool skipMissing = false)
     {
         var preparedFactories = new Dictionary<OneOf<Identification, string>, IKeyedFactory<TBase>>();
 
         foreach (var (key, factory) in _factories)
         {
-            factory.Prepare(_coreContainer, _facadeMap ?? new Dictionary<Type, Type>());
+            if (!factory.TryPrepare(_coreContainer, _facadeMap ?? new Dictionary<Type, Type>()))
+            {
+                if(skipMissing) continue;
+                
+                throw new InvalidOperationException(
+                    $"Failed to prepare factory with key '{key}' of type '{factory.ImplementationType.Name}'. " +
+                    "One or more required dependencies could not be resolved from the container.");
+            }
             preparedFactories[key] = factory;
         }
 

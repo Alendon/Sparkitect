@@ -11,8 +11,11 @@ public interface IGameStateManager
 {
 
     ICoreContainer CurrentCoreContainer { get; }
+    IEnumerable<string> LoadedMods { get; }
 
     void Request(Identification stateId, object? payload = null);
+
+    void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<string> additionalMods, object? payload = null);
 
     void Shutdown();
 }

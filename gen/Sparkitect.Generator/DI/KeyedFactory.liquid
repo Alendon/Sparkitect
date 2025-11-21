@@ -35,13 +35,15 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
     {% endfor %}
     ];
     
-    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
+        bool allResolved = true;
+
         {% for argument in ConstructorArguments %}
             if(!container.TryResolveMapped<{{ argument.Type }}>(out _arg_{{ forloop.index }}, facadeMap))
             {
             {% unless argument.IsOptional %}
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+                allResolved = false;
             {% endunless %}
             }
         {% endfor %}
@@ -50,22 +52,50 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
             if(!container.TryResolveMapped<{{ argument.Type }}>(out _prop_{{ forloop.index }}, facadeMap))
             {
             {% unless argument.IsOptional %}
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+                allResolved = false;
             {% endunless %}
             }
         {% endfor %}
+
+        if (!allResolved)
+        {
+            // Clear all dependency fields on failure
+        {% for argument in ConstructorArguments %}
+            _arg_{{ forloop.index }} = default;
+        {% endfor %}
+        {% for argument in RequiredProperties %}
+            _prop_{{ forloop.index }} = default;
+        {% endfor %}
+            return false;
+        }
+
+        return true;
     }
 
-    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container) => Prepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
+    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container) => TryPrepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
     
     public {{ BaseType }} CreateInstance()
     {
+        // Validate that all required dependencies are prepared
+    {% for argument in ConstructorArguments %}
+        {% unless argument.IsOptional %}
+        if (_arg_{{ forloop.index }} is null)
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+        {% endunless %}
+    {% endfor %}
+    {% for argument in RequiredProperties %}
+        {% unless argument.IsOptional %}
+        if (_prop_{{ forloop.index }} is null)
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<{{ ImplementationTypeName }}, {{ argument.Type }}>();
+        {% endunless %}
+    {% endfor %}
+
         var instance = Constructor(
 {% for argument in ConstructorArguments %}
     _arg_{{ forloop.index }}  {% unless forloop.last %}, {%- endunless -%}
 {% endfor %}
 );
-        
+
         // Apply cached property dependencies
     {% for argument in RequiredProperties %}
         {% unless argument.IsOptional %}
@@ -75,7 +105,7 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
             SetProperty_{{ forloop.index }}(instance, _prop_{{ forloop.index }});
         {% endunless %}
     {% endfor %}
-        
+
         return instance;
     
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]

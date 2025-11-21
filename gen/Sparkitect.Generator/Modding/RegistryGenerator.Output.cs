@@ -194,6 +194,12 @@ public partial class RegistryGenerator
             context.AddSource(file2, code2);
     }
 
+    internal static void OutputRegistryIdExtensions(SourceProductionContext context, (RegistryModel model, ModBuildSettings settings) arg)
+    {
+        if (RenderRegistryIdExtensionsFramework(arg.model, arg.settings, out var code, out var file))
+            context.AddSource(file, code);
+    }
+
     internal static void OutputRegistrationsUnit(SourceProductionContext context, (RegistrationUnit unit, ModBuildSettings settings) arg)
     {
         if (RenderRegistryRegistrationsUnit(arg.unit, arg.settings, out var code, out var file))

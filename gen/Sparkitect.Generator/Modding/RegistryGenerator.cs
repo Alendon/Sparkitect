@@ -16,8 +16,18 @@ public partial class RegistryGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        Debugger.Launch();
-
+        #if false
+        if (!Debugger.IsAttached)
+        {
+            // Wait for Rider to attach
+            while (!Debugger.IsAttached)
+            {
+                Thread.Sleep(500);
+            }
+            Debugger.Break();
+        }
+        #endif
+        
         var buildSettings = context.GetModBuildSettings();
 
         var symbolRegistryModelsProvider = context.SyntaxProvider.ForAttributeWithMetadataName(RegistryMarkerAttribute,
@@ -102,6 +112,13 @@ public partial class RegistryGenerator : IIncrementalGenerator
         // Outputs per registry: ID framework (always present)
         context.RegisterSourceOutput(symbolRegistryModelsProvider.Combine(buildSettings),
             static (spc, pair) => OutputRegistryIdFramework(spc, (pair.Left, pair.Right)));
+
+        // ID extensions for external (assembly-based) registries
+        context.RegisterSourceOutput(
+            assemblyRegistryModelsProvider
+                .SelectMany((models, _) => models)
+                .Combine(buildSettings),
+            static (spc, pair) => OutputRegistryIdExtensions(spc, (pair.Left, pair.Right)));
 
         // Outputs per unit: registrations + ID properties
         context.RegisterSourceOutput(providerUnitsProvider.Combine(buildSettings),
@@ -413,7 +430,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
             foreach (var attributeData in assembly.GetAttributes())
             {
-                if (attributeData.AttributeClass?.ToDisplayString() is not RegistryMetadataAttribute) continue;
+                if (attributeData.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) is not RegistryMetadataAttribute) continue;
                 if (attributeData.AttributeClass.TypeArguments.Length != 1) continue;
 
                 if (TryExtractRegistryFromAssemblyAttribute(attributeData.AttributeClass.TypeArguments.First(),

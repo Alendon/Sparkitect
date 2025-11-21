@@ -25,18 +25,14 @@ internal class ModManager : IModManager
     private readonly Dictionary<string, Assembly> _preLoadedAssemblies = [];
 
     private readonly Stack<LoadedModGroup> _loadedModGroups = new();
-    private readonly ICliArgumentHandler _cliArgumentHandler;
-    private readonly IIdentificationManager _identificationManager;
+    public required ICliArgumentHandler CliArgumentHandler { private get; init; }
+    public required IIdentificationManager IdentificationManager { private get; init; }
+    public required IModDIService ModDiService { private get; init; }
 
     private const string AddModDirsArgument = "addModDirs";
-    public const string VirtualSparkitectModId = "sparkitect";
 
-    public ModManager(ICliArgumentHandler cliArgumentHandler,
-        IIdentificationManager identificationManager)
+    public ModManager()
     {
-        _cliArgumentHandler = cliArgumentHandler;
-        _identificationManager = identificationManager;
-
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
             var name = assembly.GetName().Name;
@@ -76,7 +72,7 @@ internal class ModManager : IModManager
 
         // Check for additional mod directories specified in command line arguments
         var additionalModFiles = new List<string>();
-        if (_cliArgumentHandler.TryGetArgumentValues(AddModDirsArgument, out var additionalModDirs))
+        if (CliArgumentHandler.TryGetArgumentValues(AddModDirsArgument, out var additionalModDirs))
         {
             ProcessAdditionalModDirs(additionalModDirs, additionalModFiles);
         }
@@ -163,7 +159,7 @@ internal class ModManager : IModManager
         // This method will be implemented by the user later
         return new ModManifest
         (
-            Id: VirtualSparkitectModId,
+            Id: Constants.VirtualSparkitectModId,
             Name: "Sparkitect Core",
             Version: SemVersion.Parse("1.0.0"),
             Description: "Core engine functionality",
@@ -192,7 +188,7 @@ internal class ModManager : IModManager
         foreach (var modId in modIds)
         {
             var modManifest = _discoveredArchives.FirstOrDefault(m => m.Id == modId);
-            _identificationManager.RegisterMod(modId);
+            IdentificationManager.RegisterMod(modId);
 
             if (modManifest is null)
             {
@@ -249,9 +245,47 @@ internal class ModManager : IModManager
         };
 
         _loadedModGroups.Push(modGroup);
-        
+
+        // Notify ModDIService of newly loaded assemblies
+        var modAssemblies = newLoadedMods.ToDictionary(
+            m => m.Manifest.Id,
+            m => m.Assembly);
+        ModDiService.RegisterModAssemblies(modAssemblies);
 
         Log.Information("Loaded {ModCount} mods", _loadedMods.Count);
+    }
+
+    public IReadOnlyList<string> UnloadLastModGroup()
+    {
+        if (_loadedModGroups.Count == 0)
+        {
+            Log.Warning("Attempted to unload mod group but no groups are loaded");
+            return Array.Empty<string>();
+        }
+
+        var group = _loadedModGroups.Pop();
+        var modIds = group.ModIds;
+
+        foreach (var modId in modIds)
+        {
+            if (_loadedMods.TryGetValue(modId, out var loadedMod))
+            {
+                loadedMod.Archive?.Dispose();
+                _loadedMods.Remove(modId);
+            }
+        }
+
+        if (group.LoadContextHandle.Target is SparkitectLoadContext loadContext)
+        {
+            loadContext.Unload();
+        }
+        group.LoadContextHandle.Free();
+
+        // Notify ModDIService of unloaded mods
+        ModDiService.UnregisterMods(modIds);
+
+        Log.Information("Unloaded {ModCount} mods from group", modIds.Length);
+        return modIds;
     }
 
     private static Assembly LoadModAssembly(ZipArchive archive, ModManifest modManifest, string modId,
@@ -314,59 +348,6 @@ internal class ModManager : IModManager
             }
         }
     }
-
-    public IEntrypointContainer<T> CreateEntrypointContainer<T>(OneOf<All, IEnumerable<string>> modsToInclude)
-        where T : class, IBaseConfigurationEntrypoint
-    {
-        var entrypointAttribute = T.EntrypointAttributeType;
-        var instances = new List<T>();
-
-        var modIds = modsToInclude.Match(
-            _ => _loadedMods.Keys,
-            ids => ids);
-
-        foreach (var modId in modIds)
-        {
-            var mod = _loadedMods[modId];
-
-            // Find all types marked with the entrypoint attribute and assignable to T
-            var candidateTypes = mod.Assembly.GetTypes()
-                .Where(t => t.GetCustomAttributes(false).Any(a => a.GetType() == entrypointAttribute))
-                .Where(t => typeof(T).IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false })
-                .ToArray();
-
-            // Order entrypoints deterministically (stub for now)
-            var orderedTypes = OrderEntrypoints<T>(candidateTypes);
-
-            foreach (var type in orderedTypes)
-            {
-                // Only support parameterless constructors for configuration entrypoints
-                var ctor = type.GetConstructor(Type.EmptyTypes);
-                if (ctor is null)
-                {
-                    Log.Warning("Skipping entrypoint type {Type} without parameterless constructor", type.FullName);
-                    continue;
-                }
-
-                if (Activator.CreateInstance(type) is T instance)
-                {
-                    instances.Add(instance);
-                }
-                else
-                {
-                    Log.Warning("Failed to instantiate entrypoint type {Type}", type.FullName);
-                }
-            }
-        }
-
-        return new EntrypointContainer<T>(instances);
-    }
-
-    // TODO: When mod dependencies and ordering semantics are implemented,
-    //       this method should apply a deterministic ordering for entrypoint execution.
-    //       For now, it returns the input unchanged.
-    private static IEnumerable<Type> OrderEntrypoints<T>(IEnumerable<Type> types) where T : class, IBaseConfigurationEntrypoint
-        => types;
 
     private class LoadedModGroup
     {

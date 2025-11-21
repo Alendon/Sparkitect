@@ -5,6 +5,7 @@ using InterpolatedParsing;
 using Serilog;
 using Serilog.Exceptions;
 using Serilog.Formatting.Compact;
+using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.GameState;
 
@@ -43,12 +44,6 @@ public class EngineBootstrapper
 
             Log.Information("Discovering mods");
             bootstrapper.DiscoverMods();
-
-            Log.Information("Loading core mod");
-            bootstrapper.LoadCoreMod();
-
-            Log.Information("Registering Root Gamestates");
-            bootstrapper.ProcessGameStateRegistry();
             
             Log.Information("Enter Root State");
             bootstrapper.EnterRootState();
@@ -64,21 +59,6 @@ public class EngineBootstrapper
     {
         var gsm = _coreContainer!.Resolve<IGameStateManager>() as GameStateManager;
         gsm!.EnterRootState();
-    }
-
-    private void ProcessGameStateRegistry()
-    {
-        var registryManager = _coreContainer!.Resolve<IRegistryManager>() as RegistryManager;
-        registryManager!.UpdateCache(_coreContainer);
-
-        registryManager.AddRegistry<StateDescriptionRegistry>();
-        registryManager.AddRegistry<ModuleRegistry>();
-
-        registryManager.ProcessAllMissing<StateDescriptionRegistry>();
-        registryManager.ProcessAllMissing<ModuleRegistry>();
-
-        var gsm = _coreContainer.Resolve<IGameStateManager>() as GameStateManager;
-        gsm!.FinalizeRegistrations();
     }
 
     private const string LogDirectoryPath = "logs";
@@ -133,6 +113,7 @@ public class EngineBootstrapper
         builder.Register<ModManager_Factory>();
         builder.Register<RegistryManager_Factory>();
         builder.Register<GameStateManager_Factory>();
+        builder.Register<ModDIService_Factory>();
 
         try
         {
@@ -189,21 +170,6 @@ public class EngineBootstrapper
 
         _modManager.DiscoverMods();
         Log.Debug("Discovered {ModCount} mods", _modManager.DiscoveredArchives.Count);
-    }
-
-    /// <summary>
-    /// Loads the core mod to prepare for game state registration
-    /// </summary>
-    public void LoadCoreMod()
-    {
-        if (_modManager is null)
-        {
-            Log.Error("Mod manager is null");
-            throw new InvalidOperationException("Mod manager has not been initialized");
-        }
-
-        _modManager.LoadMods(ModManager.VirtualSparkitectModId);
-        Log.Debug("Core mod loaded");
     }
 
     /// <summary>

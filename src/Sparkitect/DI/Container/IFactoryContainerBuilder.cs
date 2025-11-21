@@ -22,6 +22,7 @@ public interface IFactoryContainerBuilder<TBase> where TBase : class
     /// <summary>
     /// Builds the factory container with all registered factories
     /// </summary>
+    /// <param name="skipMissing">Skip factory entries, which do not have all dependencies, instead of throwing an exception</param>
     /// <returns>The constructed factory container</returns>
-    IFactoryContainer<TBase> Build();
+    IFactoryContainer<TBase> Build(bool skipMissing = false);
 }

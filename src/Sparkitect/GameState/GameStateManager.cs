@@ -11,6 +11,7 @@ using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.Modding;
 using Sparkitect.DI;
 using Sparkitect.Modding.IDs;
+using Sparkitect.Utils;
 
 namespace Sparkitect.GameState;
 
@@ -25,6 +26,8 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     private readonly Stack<ActiveStateFrame> _stateStack = new();
     private readonly HashSet<Identification> _addedModules = new();
 
+    public IEnumerable<string> LoadedMods => _stateStack.SelectMany(x => x.AddedMods);
+
     private readonly List<Func<StateMetadata>> _pendingStates = new();
     private readonly List<Func<ModuleMetadata>> _pendingModules = new();
 
@@ -33,6 +36,8 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     private bool _shutdownRequested;
 
     public required IModManager ModManager { get; init; }
+    public required IRegistryManager RegistryManager { get; init; }
+    public required IModDIService ModDIService { get; init; }
 
     public ICoreContainer CurrentCoreContainer => _stateStack.Count > 0 ? _stateStack.Peek().Container : RootContainer;
     public ICoreContainer RootContainer { get; set; } = null!;
@@ -42,34 +47,95 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     /// </summary>
     public void EnterRootState()
     {
-        var rootStateId = StateID.Sparkitect.Root;
+        Log.Information("Entering root state");
 
-        if (!_registeredStates.ContainsKey(rootStateId))
+        // Discover and load root mods
+        var rootMods = ModManager.DiscoveredArchives
+            .Select(a => a.Id)
+            .ToArray();
+
+        Log.Information("Loading {ModCount} root mods", rootMods.Length);
+        ModManager.LoadMods(rootMods);
+        
+        RegistryManager.AddRegistry<ModuleRegistry>();
+        RegistryManager.AddRegistry<StateRegistry>();
+
+        // Process registries for root mods
+        RegistryManager.ProcessRegistry<ModuleRegistry>(rootMods);
+        RegistryManager.ProcessRegistry<StateRegistry>(rootMods);
+
+        // Finalize registrations
+        FinalizeRegistrations();
+
+        // Query entry state selector to determine initial active state
+        // Note: Root state is registered but never framed - it's a semantic anchor
+        using var entrySelectorContainer = ModDIService.CreateEntrypointContainer<IEntryStateSelector>(rootMods);
+        var entrySelector = entrySelectorContainer.ResolveMany().FirstOrDefault();
+
+        if (entrySelector == null)
         {
-            throw new InvalidOperationException($"Root state {rootStateId} is not registered");
+            throw new InvalidOperationException("No EntryStateSelector found in loaded mods");
         }
 
-        Log.Information("Entering root state: {StateId}", rootStateId);
+        var entryStateId = entrySelector.SelectEntryState(RootContainer);
 
-        // Load infrastructure for state method instantiation
-        var facadeMap = LoadFacadeMap();
-        var methodAssociations = LoadMethodAssociations();
-        var methodOrdering = LoadMethodOrdering();
+        if (!_registeredStates.ContainsKey(entryStateId))
+        {
+            throw new InvalidOperationException($"Entry state {entryStateId} selected by EntryStateSelector is not registered");
+        }
 
-        // Create root state frame using RootContainer
-        var rootFrame = CreateStateFrame(rootStateId, RootContainer, facadeMap, methodAssociations, methodOrdering);
-        PushState(rootFrame);
+        Log.Information("Selected entry state: {StateId}", entryStateId);
+
+        // Create entry state frame (not Root - Root is never framed)
+        var entryFrame = CreateStateFrame(entryStateId, RootContainer, rootMods);
+
+        PushState(entryFrame);
 
         // Execute entry sequence
-        ExecuteMethods(rootFrame.OnCreateMethods);
-        ExecuteMethods(rootFrame.OnFrameEnterMethods);
+        ExecuteMethods(entryFrame.OnCreateMethods);
+        ExecuteMethods(entryFrame.OnFrameEnterMethods);
 
-        Log.Information("Root state active, starting main loop");
+        Log.Information("Entry state active, starting main loop");
         StartMainLoop();
     }
 
     public void Request(Identification stateId, object? payload = null)
     {
+        if (_stateStack.Count == 0)
+        {
+            throw new InvalidOperationException("Cannot transition from empty stack");
+        }
+
+        var currentStateId = _stateStack.Peek().StateId;
+
+        // Prevent transitioning to Root state (it's never framed)
+        var rootStateId = StateID.Sparkitect.Root;
+        if (stateId.Equals(rootStateId))
+        {
+            throw new InvalidOperationException(
+                "Cannot transition to Root state. Root is a semantic anchor and cannot be an active state.");
+        }
+
+        // Validate transition is parent or child
+        if (!_registeredStates.TryGetValue(stateId, out var targetState))
+        {
+            throw new InvalidOperationException($"Target state {stateId} is not registered");
+        }
+
+        if (!_registeredStates.TryGetValue(currentStateId, out var currentState))
+        {
+            throw new InvalidOperationException($"Current state {currentStateId} is not registered");
+        }
+
+        bool isParent = currentState.ParentId.Equals(stateId);
+        bool isChild = targetState.ParentId.Equals(currentStateId);
+
+        if (!isParent && !isChild)
+        {
+            throw new InvalidOperationException(
+                $"Transition from {currentStateId} to {stateId} is not allowed. Only parent or immediate child transitions are supported.");
+        }
+
         if (_pendingTransitionTarget.HasValue)
         {
             Log.Warning("Overwriting pending transition to {OldTarget} with new target {NewTarget}",
@@ -78,6 +144,83 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         _pendingTransitionTarget = stateId;
         Log.Debug("Queued state transition to {StateId}", stateId);
+    }
+
+    public void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<string> additionalMods, object? payload = null)
+    {
+        if (_stateStack.Count == 0)
+        {
+            throw new InvalidOperationException("Cannot transition from empty stack");
+        }
+
+        var currentStateId = _stateStack.Peek().StateId;
+
+        Log.Information("Loading {ModCount} additional mods for state transition", additionalMods.Count);
+
+        // Load the mods
+        ModManager.LoadMods(additionalMods.ToArray());
+
+        // Process registries for the newly loaded mods
+        RegistryManager.ProcessRegistry<ModuleRegistry>(additionalMods);
+        RegistryManager.ProcessRegistry<StateRegistry>(additionalMods);
+
+        // Finalize registrations (validates state/module hierarchy)
+        FinalizeRegistrations();
+
+        // Now compute the target state ID
+        var targetStateId = stateIdFunc();
+
+        // Prevent transitioning to Root state (it's never framed)
+        var rootStateId = StateID.Sparkitect.Root;
+        if (targetStateId.Equals(rootStateId))
+        {
+            throw new InvalidOperationException(
+                "Cannot transition to Root state. Root is a semantic anchor and cannot be an active state.");
+        }
+
+        // Validate target is child of current
+        if (!_registeredStates.TryGetValue(targetStateId, out var targetState))
+        {
+            throw new InvalidOperationException($"Target state {targetStateId} is not registered");
+        }
+
+        if (!targetState.ParentId.Equals(currentStateId))
+        {
+            throw new InvalidOperationException(
+                $"RequestWithModChange from {currentStateId} to {targetStateId} is not allowed. Target must be immediate child of current state.");
+        }
+
+        // Transition with mod tracking
+        _isTransitioning = true;
+
+        try
+        {
+            Log.Information("Transitioning from {Current} to child {Target} with {ModCount} new mods",
+                currentStateId, targetStateId, additionalMods.Count);
+
+            // Parent is currently leaf - execute parent OnFrameExit
+            var parentFrame = _stateStack.Peek();
+            ExecuteMethods(parentFrame.OnFrameExitMethods);
+
+            // Create child frame
+            var parentContainer = _stateStack.Peek().Container;
+            var childFrame = CreateStateFrame(targetStateId, parentContainer, additionalMods);
+
+            // Reconstruct frame with AddedMods
+            childFrame = childFrame with { AddedMods = additionalMods };
+
+            PushState(childFrame);
+
+            // Execute child entry sequence
+            ExecuteMethods(childFrame.OnCreateMethods);
+            ExecuteMethods(childFrame.OnFrameEnterMethods);
+
+            Log.Information("Transition with mod change complete: now in state {StateId}", childFrame.StateId);
+        }
+        finally
+        {
+            _isTransitioning = false;
+        }
     }
 
     public void Shutdown()
@@ -194,6 +337,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         var visited = new HashSet<Identification>();
         var current = metadata;
 
+        // Walk up the parent chain
         while (!current.ParentId.Equals(Identification.Empty))
         {
             if (!visited.Add(current.Id))
@@ -209,6 +353,16 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             }
 
             current = parent;
+        }
+
+        // At this point, current is the state with ParentId == Empty
+        // This must be the Root state
+        var rootStateId = StateID.Sparkitect.Root;
+        if (!current.Id.Equals(rootStateId))
+        {
+            throw new InvalidOperationException(
+                $"State {stateId} hierarchy does not terminate at Root state. " +
+                $"Found {current.Id} with Empty parent, but only Root state may have Empty parent.");
         }
     }
 
@@ -273,37 +427,37 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return modules;
     }
 
-    private IReadOnlyDictionary<Type, Type> LoadFacadeMap()
+    private IReadOnlyDictionary<Type, Type> LoadFacadeMap(IEnumerable<string> additionalMods)
     {
         var facadeHolder = new FacadeHolder();
 
-        using var facadeContainer = ModManager.CreateEntrypointContainer<IFacadeConfigurator<StateFacadeAttribute>>(new All());
+        using var facadeContainer = ModDIService.CreateEntrypointContainer<IFacadeConfigurator<StateFacadeAttribute>>(LoadedMods.Concat(additionalMods));
         facadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
 
         return facadeHolder.GetFacadeMapping();
     }
 
-    private IReadOnlyDictionary<(Identification, string, StateMethodSchedule), Type> LoadMethodAssociations()
+    private IReadOnlyDictionary<(Identification, string, StateMethodSchedule), Type> LoadMethodAssociations(IEnumerable<string> additionalMods)
     {
         var builder = new StateMethodAssociationBuilder();
 
-        using var associationContainer = ModManager.CreateEntrypointContainer<StateMethodAssociation>(new All());
+        using var associationContainer = ModDIService.CreateEntrypointContainer<StateMethodAssociation>(LoadedMods.Concat(additionalMods));
         associationContainer.ProcessMany(x => x.Configure(builder));
 
         return builder.Build();
     }
 
-    private HashSet<OrderingEntry> LoadMethodOrdering()
+    private HashSet<OrderingEntry> LoadMethodOrdering(IEnumerable<string> additionalMods)
     {
         var ordering = new HashSet<OrderingEntry>();
 
-        using var orderingContainer = ModManager.CreateEntrypointContainer<StateMethodOrdering>(new All());
+        using var orderingContainer = ModDIService.CreateEntrypointContainer<StateMethodOrdering>(LoadedMods.Concat(additionalMods));
         orderingContainer.ProcessMany(x => x.ConfigureOrdering(ordering));
 
         return ordering;
     }
 
-    private ICoreContainer BuildContainerForState(Identification stateId, ICoreContainer parentContainer)
+    private ICoreContainer BuildContainerForState(Identification stateId, ICoreContainer parentContainer, IEnumerable<string> additionalMods)
     {
         if (!_registeredStates.TryGetValue(stateId, out var stateMetadata))
         {
@@ -324,11 +478,11 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
 
         // Register services for new modules
-        using var configuratorContainer = ModManager.CreateEntrypointContainer<IStateModuleServiceConfigurator>(new All());
+        using var configuratorContainer = ModDIService.CreateEntrypointContainer<IStateModuleServiceConfigurator>(LoadedMods.Concat(additionalMods));
         configuratorContainer.ProcessMany(configurator =>
         {
             if (!moduleTypes.Contains(configurator.ModuleType)) return;
-            
+
             configurator.ConfigureServices(builder);
             Log.Debug("Registered services for module {ModuleType} in state {StateId}",
                 configurator.ModuleType.Name, stateId);
@@ -410,16 +564,18 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     private ActiveStateFrame CreateStateFrame(
         Identification stateId,
         ICoreContainer parentContainer,
-        IReadOnlyDictionary<Type, Type> facadeMap,
-        IReadOnlyDictionary<(Identification, string, StateMethodSchedule), Type> methodAssociations,
-        IReadOnlySet<OrderingEntry> methodOrdering)
+        IReadOnlyList<string> additionalMods)
     {
-        var container = BuildContainerForState(stateId, parentContainer);
+        var container = BuildContainerForState(stateId, parentContainer, additionalMods);
 
         if (!_registeredStates.TryGetValue(stateId, out var stateMetadata))
         {
             throw new InvalidOperationException($"State {stateId} is not registered");
         }
+
+        var facadeMap = LoadFacadeMap(additionalMods);
+        var methodAssociations = LoadMethodAssociations(additionalMods);
+        var methodOrdering = LoadMethodOrdering(additionalMods);
 
         var deltaModules = stateMetadata.ModuleIds;
         var allModules = GetAllInheritedModules(stateId);
@@ -478,6 +634,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return new ActiveStateFrame(
             stateId,
             container,
+            Array.Empty<string>(),
             perFrameMethods,
             onCreateMethods,
             onDestroyMethods,
@@ -499,6 +656,13 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         var frame = _stateStack.Pop();
 
+        // Unload mods if this frame added any
+        if (frame.AddedMods.Count > 0)
+        {
+            var unloadedMods = ModManager.UnloadLastModGroup();
+            Log.Debug("Unloaded {ModCount} mods when popping state {StateId}", unloadedMods.Count, frame.StateId);
+        }
+
         // Dispose container
         frame.Container.Dispose();
 
@@ -514,73 +678,6 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
 
         return frame;
-    }
-
-    private (List<Identification> exitPath, List<Identification> enterPath) CalculateTransitionPath(
-        Identification currentStateId,
-        Identification targetStateId)
-    {
-        // Build path from current to root
-        var currentPath = new List<Identification>();
-        var current = currentStateId;
-        while (!current.Equals(Identification.Empty))
-        {
-            currentPath.Add(current);
-            if (!_registeredStates.TryGetValue(current, out var state))
-                break;
-            current = state.ParentId;
-        }
-
-        // Build path from target to root
-        var targetPath = new List<Identification>();
-        var target = targetStateId;
-        while (!target.Equals(Identification.Empty))
-        {
-            targetPath.Add(target);
-            if (!_registeredStates.TryGetValue(target, out var state))
-                break;
-            target = state.ParentId;
-        }
-
-        // Find LCA (Lowest Common Ancestor)
-        Identification lca = Identification.Empty;
-        for (int i = currentPath.Count - 1, j = targetPath.Count - 1; i >= 0 && j >= 0; i--, j--)
-        {
-            if (currentPath[i].Equals(targetPath[j]))
-            {
-                lca = currentPath[i];
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        if (lca.Equals(Identification.Empty))
-        {
-            throw new InvalidOperationException($"No common ancestor found between {currentStateId} and {targetStateId}");
-        }
-
-        // Exit path: current -> LCA (excluding LCA)
-        var exitPath = new List<Identification>();
-        foreach (var id in currentPath)
-        {
-            if (id.Equals(lca))
-                break;
-            exitPath.Add(id);
-        }
-
-        // Enter path: LCA -> target (excluding LCA)
-        var enterPath = new List<Identification>();
-        foreach (var id in targetPath)
-        {
-            if (id.Equals(lca))
-                break;
-            enterPath.Add(id);
-        }
-        enterPath.Reverse(); // Need to go from LCA down to target
-
-        return (exitPath, enterPath);
     }
 
     private void TransitionToParent()
@@ -610,10 +707,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
     private void TransitionToChild(
         Identification childStateId,
-        ICoreContainer parentContainer,
-        IReadOnlyDictionary<Type, Type> facadeMap,
-        IReadOnlyDictionary<(Identification, string, StateMethodSchedule), Type> methodAssociations,
-        IReadOnlySet<OrderingEntry> methodOrdering)
+        ICoreContainer parentContainer)
     {
         // Parent is currently leaf - execute parent OnFrameExit
         if (_stateStack.Count > 0)
@@ -623,7 +717,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
 
         // Create and push child
-        var childFrame = CreateStateFrame(childStateId, parentContainer, facadeMap, methodAssociations, methodOrdering);
+        var childFrame = CreateStateFrame(childStateId, parentContainer, []);
         PushState(childFrame);
 
         // Execute child entry sequence
@@ -658,27 +752,31 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         try
         {
-            // Load infrastructure maps fresh for this transition
-            var facadeMap = LoadFacadeMap();
-            var methodAssociations = LoadMethodAssociations();
-            var methodOrdering = LoadMethodOrdering();
-
-            var (exitPath, enterPath) = CalculateTransitionPath(currentStateId, targetStateId);
-
-            Log.Information("Transitioning from {Current} to {Target} (exit: {ExitCount}, enter: {EnterCount})",
-                currentStateId, targetStateId, exitPath.Count, enterPath.Count);
-
-            // Execute atomic transitions up to LCA
-            foreach (var _ in exitPath)
+            if (!_registeredStates.TryGetValue(currentStateId, out var currentState))
             {
-                TransitionToParent();
+                throw new InvalidOperationException($"Current state {currentStateId} is not registered");
             }
 
-            // Execute atomic transitions down to target
-            foreach (var childStateId in enterPath)
+            if (!_registeredStates.TryGetValue(targetStateId, out var targetState))
             {
-                var parentContainer = _stateStack.Count > 0 ? _stateStack.Peek().Container : RootContainer;
-                TransitionToChild(childStateId, parentContainer, facadeMap, methodAssociations, methodOrdering);
+                throw new InvalidOperationException($"Target state {targetStateId} is not registered");
+            }
+
+            // Determine if transition is to parent or child
+            bool isParent = currentState.ParentId.Equals(targetStateId);
+
+            if (isParent)
+            {
+                Log.Information("Transitioning from {Current} to parent {Target}", currentStateId, targetStateId);
+                TransitionToParent();
+            }
+            else
+            {
+                // Must be child
+                Log.Information("Transitioning from {Current} to child {Target}", currentStateId, targetStateId);
+
+                var parentContainer = _stateStack.Peek().Container;
+                TransitionToChild(targetStateId, parentContainer);
             }
 
             Log.Information("Transition complete: now in state {StateId}", _stateStack.Peek().StateId);

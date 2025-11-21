@@ -1,3 +1,0 @@
-﻿MinimalSampleMod.DummyRegistry.RegisterResourceFile:
-  - id: hello4
-    file: exclusive.txt

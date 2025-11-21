@@ -16,17 +16,19 @@ public interface IKeyedFactory<TBase> : IFactoryBase where TBase : class
     OneOf<Identification, string> Key { get; }
     
     /// <summary>
-    /// Prepares the factory by resolving and caching all dependencies
+    /// Attempts to prepare the factory by resolving and caching all dependencies
     /// </summary>
     /// <param name="container">The container to resolve dependencies from</param>
     /// <param name="facadeMap">Facade-to-service type mappings for dependency resolution</param>
-    void Prepare(ICoreContainer container, IReadOnlyDictionary<Type, Type> facadeMap);
+    /// <returns>True if all required dependencies were resolved; false otherwise. On failure, all dependency fields are cleared.</returns>
+    bool TryPrepare(ICoreContainer container, IReadOnlyDictionary<Type, Type> facadeMap);
 
     /// <summary>
-    /// Prepares the factory by resolving and caching all dependencies
+    /// Attempts to prepare the factory by resolving and caching all dependencies
     /// </summary>
     /// <param name="container">The container to resolve dependencies from</param>
-    void Prepare(ICoreContainer container) => Prepare(container, new Dictionary<Type, Type>());
+    /// <returns>True if all required dependencies were resolved; false otherwise. On failure, all dependency fields are cleared.</returns>
+    bool TryPrepare(ICoreContainer container) => TryPrepare(container, new Dictionary<Type, Type>());
 
     /// <summary>
     /// Creates a new instance of the object using cached dependencies

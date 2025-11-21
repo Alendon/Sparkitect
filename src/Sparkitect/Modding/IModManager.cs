@@ -1,4 +1,4 @@
-﻿using JetBrains.Annotations;
+using JetBrains.Annotations;
 using OneOf;
 using OneOf.Types;
 using Sparkitect.DI;
@@ -32,13 +32,10 @@ public interface IModManager
     /// Loads all discovered mods
     /// </summary>
     void LoadMods(params ReadOnlySpan<string> modIds);
-        
+
     /// <summary>
-    /// Creates an entrypoint container for the specified entrypoint type
+    /// Unloads the last loaded mod group
     /// </summary>
-    /// <typeparam name="T">The base type of entrypoints to include</typeparam>
-    /// <param name="modsToInclude">The mods to include in the container (All or specific mod IDs)</param>
-    /// <returns>A new entrypoint container with discovered entrypoints</returns>
-    [MustDisposeResource] IEntrypointContainer<T> CreateEntrypointContainer<T>(
-        OneOf<All, IEnumerable<string>> modsToInclude) where T : class, IBaseConfigurationEntrypoint;
+    /// <returns>The mod IDs that were unloaded</returns>
+    IReadOnlyList<string> UnloadLastModGroup();
 }

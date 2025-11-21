@@ -11,7 +11,7 @@ public interface IRegistryManager
     /// <summary>
     /// Process a specific registry for the given mods
     /// </summary>
-    void ProcessRegistry<TRegistry>(params Span<ushort> modIds) where TRegistry : class, IRegistry;
+    void ProcessRegistry<TRegistry>(IReadOnlyList<string> modIds) where TRegistry : class, IRegistry;
 
     /// <summary>
     /// Process all currently loaded mods that have not yet been processed for the given registry

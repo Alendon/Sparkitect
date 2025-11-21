@@ -11,61 +11,6 @@ namespace Sparkitect.GameState;
 [ModuleRegistry.RegisterModule("core")]
 public sealed partial class CoreModule : IStateModule
 {
-    public const string Key_LoadRootMods = "load_root_mods";
-    public const string Key_RegisterNewStates = "register_new_states";
-    public const string Key_UnloadRootMods = "unload_root_mods";
-    public const string Key_UnregisterStates = "unregister_states";
-    
-    public static Span<Identification> RequiredModules => [];
+    public static IReadOnlyList<Identification> RequiredModules => [];
     public static Identification Identification => StateModuleID.Sparkitect.Core;
-
-
-    /*
-     * In future here will be additionall Feature and Transitions placed
-     * These can be referenced by the developers to be included into their Game State
-     * For example a Physics Module can declare all Transitions and Features it needs to function
-     * With this a developer can just put together their Game States
-     */
-
-
-    [StateFunction(Key_LoadRootMods)]
-    [OnCreate]
-    internal static void LoadRootMods(IModManager modManager)
-    {
-        var modIds = modManager.DiscoveredArchives
-            .Select(a => a.Id)
-            .Where(id => id != ModManager.VirtualSparkitectModId)
-            .ToArray();
-
-        Log.Information("Loading {ModCount} root mods", modIds.Length);
-        modManager.LoadMods(modIds);
-        Log.Debug("Root mods loaded successfully");
-    }
-
-    [OnFrameEnter]
-    [OrderAfter(Key_LoadRootMods)]
-    [StateFunction(Key_RegisterNewStates)]
-    internal static void ProcessStateRegistry(IRegistryManager registryManager)
-    {
-        //TODO trigger ModuleRegistry and StateRegistry
-        throw new NotImplementedException();
-    }
-
-    [StateFunction(Key_UnregisterStates)]
-    [OnFrameExit]
-    [OrderBefore(Key_UnloadRootMods)]
-    internal static void UnregisterStates(IRegistryManager registryManager)
-    {
-        throw new NotImplementedException();
-    }
-
-    [StateFunction(Key_UnloadRootMods)]
-    [OnFrameExit]
-    [OrderAfter(Key_UnregisterStates)]
-    internal static void UnloadRootMods(IModManager modManager)
-    {
-        throw new NotImplementedException();
-    }
-    
-    
 }

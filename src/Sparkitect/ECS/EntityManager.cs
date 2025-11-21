@@ -1,10 +1,7 @@
-using Sparkitect.GameState;
-using Sparkitect.GameState.Samples.Modules;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS;
 
-[StateService<IEntityManager, EcsModule>]
 public class EntityManager : IEntityManager
 {
     public void AddArchetype(Identification archetypeId, bool isConstant, Span<Identification> componentIds)

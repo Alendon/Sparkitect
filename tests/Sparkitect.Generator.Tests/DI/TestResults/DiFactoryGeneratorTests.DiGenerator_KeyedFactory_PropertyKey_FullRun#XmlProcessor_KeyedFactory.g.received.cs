@@ -1,0 +1,113 @@
+﻿//HintName: XmlProcessor_KeyedFactory.g.cs
+namespace DiTest;
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<global::DiTest.IProcessor>
+{
+    // Cached dependencies
+    
+    private global::DiTest.ILogger _arg_1;
+    
+    
+    private global::DiTest.ISerializer _prop_1;
+    
+    
+    public Type ImplementationType => typeof(XmlProcessor);
+    
+    
+    
+    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => XmlProcessor.ProcessorKey;
+    
+    
+    
+    public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
+    
+        (typeof(global::DiTest.ILogger), false) 
+    ];
+    
+    public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
+    
+        (typeof(global::DiTest.ISerializer), false) 
+    ];
+    
+    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    {
+        bool allResolved = true;
+
+        
+            if(!container.TryResolveMapped<global::DiTest.ILogger>(out _arg_1, facadeMap))
+            {
+            
+                allResolved = false;
+            
+            }
+        
+
+        
+            if(!container.TryResolveMapped<global::DiTest.ISerializer>(out _prop_1, facadeMap))
+            {
+            
+                allResolved = false;
+            
+            }
+        
+
+        if (!allResolved)
+        {
+            // Clear all dependency fields on failure
+        
+            _arg_1 = default;
+        
+        
+            _prop_1 = default;
+        
+            return false;
+        }
+
+        return true;
+    }
+
+    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container) => TryPrepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
+    
+    public global::DiTest.IProcessor CreateInstance()
+    {
+        // Validate that all required dependencies are prepared
+    
+        
+        if (_arg_1 is null)
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<XmlProcessor, global::DiTest.ILogger>();
+        
+    
+    
+        
+        if (_prop_1 is null)
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<XmlProcessor, global::DiTest.ISerializer>();
+        
+    
+
+        var instance = Constructor(
+
+    _arg_1  
+);
+
+        // Apply cached property dependencies
+    
+        
+        SetProperty_1(instance, _prop_1);
+        
+    
+
+        return instance;
+    
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
+        static extern XmlProcessor Constructor(
+
+    global::DiTest.ILogger arg_1  
+);
+        
+    
+        [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_Serializer")]
+        static extern void SetProperty_1(XmlProcessor target, global::DiTest.ISerializer value);
+    
+    }
+}

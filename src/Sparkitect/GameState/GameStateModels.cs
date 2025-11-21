@@ -26,6 +26,7 @@ internal sealed record ModuleMetadata(
 internal sealed record ActiveStateFrame(
     Identification StateId,
     ICoreContainer Container,
+    IReadOnlyList<string> AddedMods,
     IReadOnlyList<IStateMethod> PerFrameMethods,
     IReadOnlyList<IStateMethod> OnCreateMethods,
     IReadOnlyList<IStateMethod> OnDestroyMethods,

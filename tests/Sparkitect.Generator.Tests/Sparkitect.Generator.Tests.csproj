@@ -11,10 +11,10 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" Version="1.1.2"/>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
         <PackageReference Include="Moq" Version="4.20.72" />
         <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0"/>
-        <PackageReference Include="TUnit" Version="1.2.3" />
+        <PackageReference Include="TUnit" Version="1.2.11" />
         <PackageReference Include="Verify" Version="31.7.1" />
         <PackageReference Include="Verify.SourceGenerators" Version="2.5.0"/>
         <PackageReference Include="Verify.TUnit" Version="31.7.1" />
