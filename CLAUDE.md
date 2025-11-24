@@ -41,12 +41,17 @@ Three container types (all immutable after creation):
 **Key:** Source-generated factories (zero reflection). Property injection for circular dependencies.
 
 ```csharp
-[Singleton<IModManager>]
+// Core module services (outside GSM structure)
+[CreateServiceFactory<IModManager>]
 internal class ModManager : IModManager
 {
     public ModManager(ICliArgumentHandler cli) { }
     public required ISomeService Service { get; init; }  // Circular dep
 }
+
+// Future module services (within GSM)
+[StateService<ITimeApi, TimeModule>]
+internal class TimeService : ITimeApi { }
 
 [KeyedFactory<IProcessor>(Key = "json")]
 internal class JsonProcessor : IProcessor { }
@@ -61,7 +66,7 @@ Hierarchical state machine with module-based composition. States composed from m
 [StateFacade<ITimeFacade>]      // What state functions see
 public interface ITimeApi { }    // What public DI sees
 
-[StateService<ITimeApi>]
+[StateService<ITimeApi, TimeModule>]
 internal class TimeService : ITimeApi, ITimeFacade { }
 ```
 

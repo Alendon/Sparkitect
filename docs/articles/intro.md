@@ -1,4 +1,4 @@
-﻿---
+---
 uid: articles.intro
 ---
 
@@ -32,8 +32,7 @@ Sparkitect is built using:
 
 - **Full .NET**: Utilizing the latest version of .NET for performance and modern language features
 - **Custom ProjectSDK**: For optimized build support
-- **Dryloc**: For dependency injection and inversion of control
-- **Vulkan**: As the graphics backend with a custom abstraction layer
+- **Custom Dependency Injection**: Source-generated, zero-reflection DI system with immutable containers
 
 ## Target Use Cases
 

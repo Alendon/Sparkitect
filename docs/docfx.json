@@ -10,6 +10,7 @@
         }
       ],
       "dest": "api",
+      "filter": "filterConfig.yml",
       "disableGitFeatures": false,
       "disableDefaultFilter": false
     }
@@ -40,6 +41,10 @@
       "_enableSearch": true,
       "_enableNewTab": true,
       "_disableContribution": false,
+      "_disableNavbar": false,
+      "_disableBreadcrumb": false,
+      "_disableToc": false,
+      "_disableAffix": false,
       "_gitContribute": {
         "repo": "https://github.com/Alendon/Sparkitect",
         "branch": "main"

@@ -1,4 +1,4 @@
-﻿---
+---
 uid: articles.core.dependency-injection
 ---
 
@@ -24,13 +24,11 @@ Container Types:
 
 ### Core Container
 
-Singleton Container building a container hierarchy, the default hierarchy is the following:
-- Base: Minimal Base Core container, containing all base implementations for modding and engine pre initialization.
-- Root: Actual base container, gets created after all root mods are loaded and contains root mod definitions
-- Game: Container created when starting a game, containing game mods definitions. 
+Singleton Container building a container hierarchy:
+- **Root**: Core container created during engine initialization, containing essential engine services (ModManager, GameStateManager, IdentificationManager, etc.)
+- **State**: Containers created during state transitions, forming a hierarchical stack. Each state container is a child of its parent state's container (or Root for the first state)
 
-The containers are created by a hierarchy. Implementations can be overriden inside the same level in the hierarchy but
-not on levels above. EG the Engine exposes a INetworkManager on the Root Level, a root mod could override this but not a game mod.
+Containers are immutable after creation. Services can be overridden within the same container level but not in parent containers. State-level containers can provide their own implementations of services, shadowing those from parent containers.
 
 The specialized functional containers (entrypoint and factory), can only be created on the current leaf of the container hierarchy,
 already created functional containers when creating a new hierarchy level, are assumed as invalid and must be recreated.
@@ -61,20 +59,20 @@ Containers are immutable once built. Service registration and dependency configu
 
 ### Service Registration Attributes
 
-Services are registered using specialized attributes that implement the `IFactoryMarker<T>` interface. The source generators automatically create factory classes through these marker attributes:
+Services are registered using specialized attributes that implement the `IFactoryMarker<T>` interface. The source generators automatically create factory classes and configurators (marked with `[CompilerGenerated]`) through these marker attributes:
 
 ```csharp
-// Singleton service registration
-[Singleton<IModManager>]
-internal class ModManager : IModManager
+// State service registration (primary pattern for mod developers)
+[StateService<ITimeManager, CoreModule>]
+public class TimeManager : ITimeManager
 {
     // Constructor dependencies are automatically detected
-    public ModManager(ICliArgumentHandler cliArgumentHandler, IIdentificationManager identificationManager)
+    public TimeManager(ILogger logger)
     {
         // Implementation here
     }
-    
-    // Required properties for dependency injection
+
+    // Required properties for circular dependency injection
     public required ISomeService SomeService { get; init; }
 }
 
@@ -87,7 +85,7 @@ internal class JsonProcessor : IProcessor
 
 // Keyed factory registration with property key
 [KeyedFactory<IProcessor>(KeyPropertyName = nameof(ProcessorKey))]
-internal class XmlProcessor : IProcessor  
+internal class XmlProcessor : IProcessor
 {
     public static string ProcessorKey => "xml";
     public XmlProcessor(ILogger logger) { }
@@ -95,10 +93,12 @@ internal class XmlProcessor : IProcessor
 ```
 
 Factory attributes that generate code are:
-- `SingletonAttribute<T>` for singleton services
-- `KeyedFactoryAttribute<T>` for keyed factories
+- `StateServiceAttribute<TInterface, TModule>` for state-scoped services (primary pattern)
+- `KeyedFactoryAttribute<TBase>` for keyed factories
 
-ConfigurationEntrypoints are not generated; they’re discovered at runtime via discovery attributes and instantiated via parameterless constructors.
+**Key Type Restriction**: `KeyedFactory` keys are restricted to `string` or `Sparkitect.Modding.Identification` types. The key property (or static property referenced by `KeyPropertyName`) must return one of these types.
+
+ConfigurationEntrypoints are not manually written; they're automatically generated (marked `[CompilerGenerated]`) or discovered at runtime via discovery attributes and instantiated via parameterless constructors.
 
 
 ## Entrypoint System
@@ -128,41 +128,33 @@ The system provides several specialized entrypoints for different configuration 
 
 #### CoreConfigurator
 
-CoreConfigurator implementations are **automatically generated** by the source generator system. When you mark classes with `[Singleton<T>]` attributes, a CoreConfigurator class is automatically created to register all the service factories.
+CoreConfigurator implementations are **automatically generated** (marked `[CompilerGenerated]`) by the source generator system. When you mark classes with `[StateService<TInterface, TModule>]` attributes, a CoreConfigurator class is automatically created to register all the service factories for that module.
 
 **Automatic Generation Example:**
 ```csharp
-// Your singleton service
-[Singleton<IMyService>]
-public class MyService : IMyService { }
+// Your state service
+[StateService<ITimeManager, CoreModule>]
+public class TimeManager : ITimeManager { }
 
-// Automatically generated CoreConfigurator:
+// Automatically generated CoreConfigurator (marked [CompilerGenerated]):
 [CoreContainerConfiguratorEntrypoint]
 [CompilerGenerated]
-public class MyProjectConfigurator : CoreConfigurator
+internal class CoreModule_ServiceConfigurator : IStateModuleServiceConfigurator
 {
-    public override void ConfigureIoc(ICoreContainerBuilder container)
+    public Type ModuleType => typeof(CoreModule);
+
+    public void ConfigureServices(ICoreContainerBuilder container)
     {
-        container.Register<global::MyNamespace.MyService_Factory>();
+        container.Register<TimeManager_Factory>();
     }
 }
 ```
 
-The generated configurator class name is based on the project's `RootNamespace` property, and the namespace matches the `RootNamespace`. All singleton services in the assembly are automatically registered.
+The generated configurator class is internal and marked with `[CompilerGenerated]`. One configurator is generated per module, registering all services for that module.
 
-**Manual Implementation (Legacy):**
-```csharp
-[CoreContainerConfiguratorEntrypoint]
-public class MyConfigurator : CoreConfigurator
-{
-    public override void ConfigureIoc(ICoreContainerBuilder container)
-    {
-        container.Register<MyService_Factory>();
-    }
-}
-```
+**Manual Implementation (Rare Cases):**
 
-Manual CoreConfigurator implementations are still supported but are not recommended as they require manual maintenance when services are added or removed.
+Manual CoreConfigurator implementations are supported for special cases where services need to be registered outside the standard state module pattern. However, for typical mod development, use `[StateService<TInterface, TModule>]` and let generators handle the configurators.
 
 #### Registry Configurator
 
@@ -179,66 +171,15 @@ public class RegistryConfigurator : IRegistryConfigurator
 
 Adds registries to the registry system using a factory container builder.
 
-#### Registrations
-
-```csharp
-[RegistrationsEntrypoint]
-public class MyRegistrations : Registrations<MyRegistry>
-{
-    public override string CategoryIdentifier => "category_name";
-    
-    public override void MainPhaseRegistration(MyRegistry registry)
-    {
-        // Registration logic here; dependencies available via base properties after Initialize
-        // Example: var id = IdentificationManager.RegisterObject("my_mod", "category_name", "my_object");
-    }
-}
-```
-
-Handles object registration within specific registries.
-
-Registrations receive dependencies via a one-time initialization call invoked by the engine:
-
-```csharp
-// Engine calls this before Pre/Main/Post methods
-myRegistrations.Initialize(coreContainer);
-
-// Inside your registration class, use:
-// - Container: ICoreContainer
-// - IdentificationManager: IIdentificationManager
-// - ResourceManager?: IResourceManager (optional)
-```
+**Note**: Registry-specific configurators and registrations are covered in detail in the [Registry System](registry-system.md) documentation.
 
 ## Service Registration
 
-### Registration Methods
+Components are added to DI containers through source-generated factories:
 
-Components are added to DI containers through several methods:
-
-1. **Source-Generated Factories**: Classes marked with attributes like `[Singleton<T>]` or `[KeyedFactory<T>]` automatically generate factory classes
-2. **Registry Base Classes**: Classes that extend registry-specific base classes  
-3. **Container Builder**: Explicit registration using the container builder API with generated factories
-
-### Type-Safe Registrations
-
-The `Registrations<TRegistry>` class provides type-safe registry operations:
-
-```csharp
-public abstract class Registrations<TRegistry> : Registrations where TRegistry : IRegistry
-{
-    public sealed override void MainPhaseRegistration(IRegistry registry)
-    {
-        MainPhaseRegistration((TRegistry) registry);
-    }
-
-    public abstract void MainPhaseRegistration(TRegistry registry);
-}
-```
-
-This pattern ensures that:
-- Registry types are verified at compile-time
-- IDE auto-completion works correctly for specific registry operations
-- Runtime type errors are prevented
+1. **State Services**: Classes marked with `[StateService<TInterface, TModule>]` automatically generate factory classes and module-specific configurators (all marked `[CompilerGenerated]`)
+2. **Keyed Factories**: Classes marked with `[KeyedFactory<TBase>]` generate factories for key-based resolution
+3. **Container Builder**: Explicit registration using the container builder API with generated factories (rare, for special cases)
 
 ## Container Lifecycle
 
@@ -312,31 +253,67 @@ The DI system is tightly coupled with the modding framework:
 
 ### Creating Services
 
-- Use `[Singleton<T>]` for single-instance services
-- Use `[KeyedFactory<T>]` for services that need key-based resolution
+- Use `[StateService<TInterface, TModule>]` for state-scoped services (primary pattern)
+- Use `[KeyedFactory<TBase>]` for services that need key-based resolution
 - Declare dependencies through constructor parameters and required properties
 - For keyed factories, use either `Key = "value"` or `KeyPropertyName = nameof(Property)` with a static property
+- Remember that `KeyedFactory` keys must be `string` or `Identification` types
 
 ### When to Use Configuration Entrypoints
 
-- Use `CoreConfigurator` for registering core services
-- Use `IRegistryConfigurator` to define new registry categories
-- Use `Registrations<T>` for registering objects within specific registries
+- Configurators are typically auto-generated - you write service attributes, generators create configurators
+- Manual CoreConfigurator implementations are rare and only needed for special cases outside the state module pattern
+- Use `IRegistryConfigurator` to define new registry categories (see [Registry System](registry-system.md))
 
 ### Container Management
 
 - Treat containers as immutable once created
 - Properly dispose containers when finished
-- Create child containers for scoped operations
+- State containers are created as children of the Root container during state transitions
 - Allow the Game State system to manage container lifecycles
 
-## Planned: Unified Facade Integration
+## Facade Integration
 
-Multiple subsystems require facade usage (e.g., registries and game states). To avoid bespoke patterns per subsystem, the DI system will provide a unified, attribute-driven facade mechanism integrated into container construction.
+The DI system provides a unified, attribute-driven facade mechanism for subsystems that need to separate internal facades from public APIs. This is primarily used by the Game State system.
 
-- Interfaces declare their facade contract (e.g., `[StateFacade<TFacade>]`).
-- Implementations declare which service interface they provide to the state system (e.g., `[StateService<TInterface>]`).
-- Module/State declarations list the used service interfaces; source generators validate that corresponding implementations exist and implement required facades.
-- During state container build, facade mappings are applied so wrappers can resolve facades while public DI exposes only declared interfaces.
+### Facade Pattern
 
-This unified approach reduces duplication, centralizes validation in analyzers, and ensures deterministic facade mapping at build time. (Status: planned.)
+Facades enable interface substitution during resolution:
+
+- **Public Interface**: What's registered in DI and accessible to most code
+- **Facade Interface**: What specific subsystems (like state functions) see
+
+```csharp
+// Public interface with facade declaration
+[StateFacade<IGameStateManagerStateFacade>]
+public interface IGameStateManager
+{
+    // Public API methods
+}
+
+// Facade interface (what state functions see)
+public interface IGameStateManagerStateFacade
+{
+    // State-specific methods
+}
+
+// Implementation provides both
+internal class GameStateManager : IGameStateManager, IGameStateManagerStateFacade
+{
+    // Implements both interfaces
+}
+```
+
+### How Facades Work
+
+1. **Facade Declaration**: Interfaces marked with `[StateFacade<TFacade>]` declare their facade contract
+2. **Implementation**: Services implement both the public interface and the facade interface
+3. **Resolution**: During container build, facade mappings are created
+4. **Mapped Resolution**: State method wrappers use `TryResolveMapped<T>(out result, facadeMap)` to resolve the facade interface when requesting the public interface
+
+This pattern enables:
+- **Separation of Concerns**: State functions see only state-relevant methods
+- **Type Safety**: Compile-time validation that implementations provide required facades
+- **Encapsulation**: Internal state management methods aren't exposed to public DI
+
+Generators create facade configurators (marked `[CompilerGenerated]`) that build the mapping at container creation time. As a mod developer, you typically interact with facades indirectly through state functions - the resolution happens automatically.

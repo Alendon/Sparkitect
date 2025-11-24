@@ -150,6 +150,58 @@ internal class ModManager : IModManager
         }
     }
 
+    private void ValidateModDependencies(ReadOnlySpan<string> modIdsToLoad)
+    {
+        var allAvailableMods = new HashSet<string>(_loadedMods.Keys);
+        foreach (var modId in modIdsToLoad)
+        {
+            allAvailableMods.Add(modId);
+        }
+
+        foreach (var modId in modIdsToLoad)
+        {
+            var modManifest = _discoveredArchives.FirstOrDefault(m => m.Id == modId);
+            if (modManifest is null) continue;
+
+            foreach (var relationship in modManifest.Relationships)
+            {
+                if (relationship.RelationshipType == ModRelationshipType.Dependency)
+                {
+                    if (!allAvailableMods.Contains(relationship.Id))
+                    {
+                        throw new InvalidOperationException(
+                            $"Mod '{modId}' requires dependency '{relationship.Id}' which is not loaded or available.");
+                    }
+
+                    var dependencyManifest = _discoveredArchives.FirstOrDefault(m => m.Id == relationship.Id)
+                        ?? _loadedMods.GetValueOrDefault(relationship.Id)?.Manifest;
+
+                    if (dependencyManifest != null && !relationship.VersionRange.Contains(dependencyManifest.Version))
+                    {
+                        throw new InvalidOperationException(
+                            $"Mod '{modId}' requires '{relationship.Id}' version {relationship.VersionRange}, but found version {dependencyManifest.Version}.");
+                    }
+                }
+                else if (relationship.RelationshipType == ModRelationshipType.Incompatible)
+                {
+                    if (allAvailableMods.Contains(relationship.Id))
+                    {
+                        var incompatibleManifest = _discoveredArchives.FirstOrDefault(m => m.Id == relationship.Id)
+                            ?? _loadedMods.GetValueOrDefault(relationship.Id)?.Manifest;
+
+                        if (incompatibleManifest != null && relationship.VersionRange.Contains(incompatibleManifest.Version))
+                        {
+                            throw new InvalidOperationException(
+                                $"Mod '{modId}' is incompatible with '{relationship.Id}' version {incompatibleManifest.Version}.");
+                        }
+                    }
+                }
+            }
+        }
+
+        Log.Debug("Mod dependency validation completed successfully for {Count} mods", modIdsToLoad.Length);
+    }
+
     /// <summary>
     /// Creates a virtual manifest for the Sparkitect core mod
     /// </summary>
@@ -176,8 +228,7 @@ internal class ModManager : IModManager
     /// </summary>
     public void LoadMods(params ReadOnlySpan<string> modIds)
     {
-        //TODO Resolve and validate mod relations
-        //TODO Load External Dependencies (Non Mod dotnet assemblies)
+        ValidateModDependencies(modIds);
 
         _loadedModGroups.TryPeek(out var parentModGroup);
         var loadContext = new SparkitectLoadContext(parentModGroup?.LoadContextHandle.Target as SparkitectLoadContext,

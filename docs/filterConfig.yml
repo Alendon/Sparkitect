@@ -1,0 +1,8 @@
+apiRules:
+- exclude:
+    uidRegex: ^Sparkitect\.CompilerGenerated
+    type: Namespace
+- exclude:
+    uidRegex: ^Sparkitect\.CompilerGenerated\.
+- include:
+    uidRegex: ^Sparkitect

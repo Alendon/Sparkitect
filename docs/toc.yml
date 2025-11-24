@@ -1,11 +1,5 @@
-- name: Home
-  href: index.md
-  uid: root.index
 - name: Articles
-  href: articles/toc.yml
-  topicHref: articles/index.md
-  dropdown: true
+  href: articles/index.md
 - name: API Reference
-  href: api/toc.yml
+  href: api/
   topicHref: api/index.md
-  dropdown: true

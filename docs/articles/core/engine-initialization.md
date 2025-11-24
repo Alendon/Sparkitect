@@ -20,90 +20,73 @@ The `EngineBootstrapper` class manages this sequence, serving as the central coo
 
 ## Initialization Sequence
 
-### Core Container Creation
+The `EngineBootstrapper` manages the initialization process through these steps:
 
-The initialization begins with the creation of a minimal Core IoC Container:
+### 1. Logger Initialization
 
-```csharp
-public class EngineBootstrapper
-{
-    public void Initialize(string[] args)
-    {
-        BuildCoreContainer();
-        InitializeCliArguments(args);
-        LoadRootMods();
-        ProcessRegistries();
-        RunGame();
-    }
-    
-    public void CleanUp()
-    {
-        // Clean up resources, close streams, etc.
-    }
-}
-```
+The engine initializes the logging system (Serilog) before any other operations, configuring log output to both files and console.
 
-The Core Container contains only the essential services needed for engine initialization, primarily the ModLoader/Manager and CLI argument handler. These services are hardcoded in the engine since they are required before any mods can be loaded.
+### 2. Root Container Creation
 
-### CLI Argument Processing
+The bootstrapper creates the Root CoreContainer with essential engine services:
+- **CliArgumentHandler**: Processes command-line arguments
+- **IdentificationManager**: Manages string ↔ numeric ID mappings
+- **ResourceManager**: Handles resource loading
+- **ModManager**: Coordinates mod discovery and loading
+- **RegistryManager**: Manages registry lifecycle
+- **GameStateManager**: Controls state transitions and main loop
+- **ModDIService**: Provides DI container creation for mods
 
-Before loading mods, the engine processes command-line arguments:
+These services are registered via source-generated factories and are available before any mods are loaded.
 
-1. Arguments are parsed and categorized
-2. System configurations are applied based on arguments
-3. Special flags (like debug mode) are activated if specified
+### 3. CLI Argument Processing
 
-This allows for runtime configuration of the engine before any mods are loaded.
+The CliArgumentHandler processes command-line arguments, allowing runtime configuration before mods are loaded.
 
-### Mod Discovery and Loading
+### 4. Mod Discovery
 
-The mod loading process occurs in multiple steps:
+The ModManager scans the "mods" folder and reads manifests from discovered archives. At this stage, mods are **discovered but not loaded** - the actual loading happens during root state entry.
 
-1. **Archive Discovery**: The engine searches for mods in the "mods" folder.
+### 5. Entering Root State
 
-2. **Dependency Resolution**: The engine checks mod dependencies defined in manifests and prepares stub implementations for optional dependencies if needed.
+The GameStateManager's `EnterRootState()` method performs the core initialization:
 
-3. **Assembly Loading**: Mod assemblies are loaded directly from the zip streams, which remain open for the application's lifetime.
+**Mod Loading:**
+- Loads all discovered mods via ModManager
+- Assemblies are loaded from zip streams (which remain open)
+- Dependencies are resolved and load order determined
 
-4. **Configuration Entrypoint Discovery**: The engine discovers all configuration entrypoints (classes marked with attributes like `[CoreContainerConfiguratorEntrypoint]`).
+**Registry Setup:**
+- Adds StateRegistry and ModuleRegistry to the RegistryManager
+- Processes these registries for all loaded mods
+- Finalizes all pending state and module registrations
 
-5. **Root Container Creation**: The discovered entrypoints are used to build the root-level IoC container.
+**Entry State Selection:**
+- Queries discovered `IEntryStateSelector` implementations
+- Selects the initial active state (not Root - Root is semantic anchor only)
 
-```csharp
-[CoreContainerConfiguratorEntrypoint]
-public class MyConfigurator : CoreConfigurator
-{
-    public override void ConfigureIoc(IContainer container)
-    {
-        container.Register<IService, Service>();
-    }
-}
-```
+**State Activation:**
+- Creates the entry state frame with its DI container (child of Root container)
+- Executes module `[OnCreate]` functions
+- Executes state `[OnFrameEnter]` functions
+- Starts the main loop
 
-### Registry Invocation
+### 6. Main Loop
 
-After mods are loaded, registries are invoked by unified state functions (enter/exit events) within the root/entry states rather than as a global pass. Typical flow:
+The main loop executes `[PerFrame]` functions from the active state and its modules until a transition or shutdown is requested.
 
-1. State logic discovers and registers registry categories via `IRegistryConfigurator`.
-2. State logic performs object registrations through `Registrations` classes under the current state’s DI context.
-3. Corresponding exit functions explicitly unregister/cleanup objects tied to the leaving scope.
+### 7. Cleanup
 
-This provides deterministic, per‑state control of registry work while keeping category and identifier semantics unchanged.
+On shutdown, the bootstrapper disposes the Root container and flushes remaining logs.
 
-### Transition to First Game State
+## Container Hierarchy
 
-After registry processing completes, the engine transitions control to the first game state. The game state management system determines which state to load initially and transfers control flow accordingly.
+The engine uses a hierarchy of containers:
 
-## Container Hierarchies
+1. **Root Container**: Created during bootstrapping with essential engine services (see step 2 above)
+2. **State Containers**: Created during state transitions, forming a hierarchical stack where each state container is a child of its parent state's container (or Root for the entry state)
 
-The engine uses a hierarchy of containers during initialization:
-
-1. **Core Container**: Minimal services needed for bootstrapping
-2. **Root Container**: Created after loading root mods, contains all services from root mods
-3. **Registry Container**: Specialized container for registry processing
-4. **State Container**: Built per state; child state containers use their parent state’s container as DI parent (children add services, parents remain unchanged)
-
-Once created, containers cannot be modified. Subsequent operations that need additional services create child containers rather than modifying existing ones.
+The Root container persists for the application lifetime, while state containers are created and destroyed during state transitions. All containers are immutable once created - subsequent operations create new child containers rather than modifying existing ones.
 
 ## Clean-Up Process
 

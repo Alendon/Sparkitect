@@ -6,8 +6,7 @@ uid: articles.core.registry-system
 
 The Registry System provides a mechanism for tracking and managing game objects and resources. It ensures that all components can consistently reference objects across the engine and mods.
 
-> [!NOTE]
-> The Registry System is currently in early development. This documentation provides a coarse outline of its structure and intended functionality.
+Registries are state-triggered - they're added, processed, and unregistered by state functions rather than through a global initialization pass.
 
 ## Core Structure
 
@@ -20,14 +19,14 @@ The Registry System includes:
 - **Registry Categories**: Type-specific registries for different kinds of game objects
 - **Registry Entries**: The actual registered objects
 
-### Per-State Triggered Registration
+### State-Triggered Registration
 
-Registries are triggered by state transitions rather than a single global pass. Unified state functions (declared in modules) drive when and how registries are invoked:
+Registries are managed by state functions rather than a single global pass:
 
-- Enter events (e.g., `OnModuleEnter`, `OnStateEnter`) perform category discovery and object registrations required by the new configuration.
-- Exit events (e.g., `OnStateExit`, `OnModuleExit`) perform explicit unregistration/cleanup of objects tied to the leaving scope.
+- **Module/State Creation** (`[OnCreate]` functions): Registries are added and processed when needed
+- **Module/State Destruction** (`[OnDestroy]` functions): Registries are cleaned up and unregistered
 
-State logic is responsible for the ordering of registry calls using function ordering rules. This provides deterministic and composable registration.
+State functions control when registries are active, making registration deterministic and composable.
 
 ## Identifier System
 
@@ -48,56 +47,188 @@ The identification system maintains dual representations:
 
 The `IdentificationManager` handles bidirectional mapping between these representations.
 
-## Registration Process
+## Defining Registries
 
-### Registry Definition
-
-Registries are defined and added using an `IRegistryConfigurator`:
+Registries are DI-instantiated partial classes marked with `[Registry]`:
 
 ```csharp
-public class RegistryConfigurator : IRegistryConfigurator
+[Registry(Identifier = "items")]
+public partial class ItemRegistry(IItemManager manager) : IRegistry
 {
-    public void ConfigureRegistries(IFactoryContainerBuilder<IRegistry> registryBuilder)
+    public static string Identifier => "items";
+
+    // Define registration methods
+    [RegistryMethod]
+    public void RegisterItem(Identification id, ItemData data)
     {
-        // registryBuilder.Register(new MyRegistry_KeyedFactory());
+        manager.AddItem(id, data);
+    }
+
+    // Required: cleanup method
+    public void Unregister(Identification id)
+    {
+        manager.RemoveItem(id);
     }
 }
 ```
 
-> Note: Category identifiers (string IDs) must be globally unique. Duplicate category IDs or references to missing categories result in exceptions during registry processing.
+**Registry Components:**
+- `[Registry(Identifier = "...")]`: Marks the class as a registry with a unique category identifier
+- `partial class`: Required for source generator extensions
+- Constructor injection: Dependencies injected via DI
+- `[RegistryMethod]`: Marks methods that can register objects
+- `Unregister(Identification)`: Required method for cleanup
 
-### Object Registration
+**Category Identifiers:**
+- Must be globally unique across all registries
+- Used to identify the registry category in the identification system
+- Duplicate identifiers cause exceptions during processing
 
-Objects are registered through typed `Registrations` classes. These are invoked by state logic during enter/exit events, not by a global pass:
+### Generated Registration Attributes
+
+Source generators create registration attributes (marked `[CompilerGenerated]`) for each `[RegistryMethod]`:
 
 ```csharp
-[RegistrationsEntrypoint]
-public class MyRegistrations : Registrations<MyRegistry>
+// Your registry method
+[RegistryMethod]
+public void RegisterItem(Identification id, ItemData data)
 {
-    public override string CategoryIdentifier => "category_name";
-    
-    public override void MainPhaseRegistration(MyRegistry registry)
+    // ...
+}
+
+// Generated attribute (CompilerGenerated):
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property)]
+public class RegisterItemAttribute : Attribute
+{
+    public string Key { get; }
+    // ...
+}
+```
+
+### Using Registration Attributes
+
+Mods use the generated attributes to register objects:
+
+```csharp
+// In your mod code or state
+[ItemRegistry.RegisterItem("iron_sword")]
+public static ItemData IronSword => new ItemData
+{
+    Name = "Iron Sword",
+    Damage = 10
+};
+```
+
+The attribute-based registration:
+- Works on static methods or properties
+- The method/property provides the data to register
+- The attribute parameter becomes part of the object's identification
+- Registration happens when the registry is processed
+
+### Managing Registries in State Functions
+
+Registries are added and processed in state functions:
+
+```csharp
+public static class MyModule : IStateModule
+{
+    [StateFunction("add_registry")]
+    [OnCreate]
+    private static void AddRegistry(IRegistryManager registryManager)
     {
-        // Access DI via base properties after Initialize() has been called
-        var id = IdentificationManager.RegisterObject("my_mod", "category_name", "my_object");
-        registry.RegisterSomething(id, "additional data");
+        // Add the registry
+        registryManager.AddRegistry<ItemRegistry>();
+
+        // Process registrations from loaded mods
+        registryManager.ProcessAllMissing<ItemRegistry>();
+    }
+
+    [StateFunction("remove_registry")]
+    [OnDestroy]
+    private static void RemoveRegistry(IRegistryManager registryManager)
+    {
+        // Clean up all registered objects
+        registryManager.UnregisterAllRemaining<ItemRegistry>();
     }
 }
 ```
 
-## Integration with Dependency Injection
+**Registry Lifecycle:**
+1. `AddRegistry<T>()`: Makes the registry available
+2. `ProcessAllMissing<T>()`: Discovers and processes registration attributes from all loaded mods
+3. `Unregister AllRemaining<T>()`: Cleans up all registered objects
+4. The registry is removed when the module/state is destroyed
 
-The Registry System is integrated with DI:
+## Integration with Other Systems
 
-- Registry classes are registered and resolved through DI
-- Registrations receive dependencies through base properties after `Initialize(ICoreContainer)`
-- Registry operations are invoked within the current state’s DI context (old/new side as applicable), not a separate global container
+The Registry System integrates with:
 
-## Future Development
+- **Dependency Injection**: Registry classes are DI-instantiated and resolved from the current state's container
+- **Game State**: Registries are managed by state functions (`[OnCreate]`/`[OnDestroy]`)
+- **Modding**: Registration attributes are discovered across all loaded mods
+- **Identification**: Registry categories use the identification system for object IDs
 
-Planned enhancements to the Registry System include:
+## Best Practices
 
-- Versioning and migration support
-- Extended validation mechanisms
-- Source generation for registry declarations and usage
-- Enhanced file-based registration
+### Registry Design
+
+- Keep registries focused on a single object type
+- Use descriptive category identifiers
+- Inject dependencies via constructor for registry operations
+- Implement `Unregister` to properly clean up objects
+
+### Registration Timing
+
+- Add and process registries in `[OnCreate]` functions
+- Unregister in `[OnDestroy]` functions to ensure cleanup
+- Process registries after loading mods but before using registered objects
+
+### Object Identification
+
+- Use the three-level identification hierarchy consistently
+- Register objects with meaningful string keys
+- The identification system automatically maps strings to numeric IDs
+
+## Example: Complete Registry Flow
+
+```csharp
+// 1. Define the registry
+[Registry(Identifier = "blocks")]
+public partial class BlockRegistry(IBlockManager manager) : IRegistry
+{
+    [RegistryMethod]
+    public void RegisterBlock(Identification id, BlockData data)
+    {
+        manager.AddBlock(id, data);
+    }
+
+    public void Unregister(Identification id)
+    {
+        manager.RemoveBlock(id);
+    }
+}
+
+// 2. Register objects using generated attributes
+[BlockRegistry.RegisterBlock("stone")]
+public static BlockData Stone => new BlockData
+{
+    Hardness = 1.5f,
+    Texture = "stone.png"
+};
+
+// 3. Manage registry lifecycle in state functions
+[StateFunction("init_blocks")]
+[OnCreate]
+private static void InitBlocks(IRegistryManager rm)
+{
+    rm.AddRegistry<BlockRegistry>();
+    rm.ProcessAllMissing<BlockRegistry>();
+}
+
+[StateFunction("cleanup_blocks")]
+[OnDestroy]
+private static void CleanupBlocks(IRegistryManager rm)
+{
+    rm.UnregisterAllRemaining<BlockRegistry>();
+}
+```

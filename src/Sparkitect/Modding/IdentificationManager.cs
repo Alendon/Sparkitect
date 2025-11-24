@@ -16,7 +16,12 @@ internal class IdentificationManager : IIdentificationManager
         {
             return mod;
         }
-        
+
+        if (_modIds.Count >= ushort.MaxValue)
+        {
+            throw new InvalidOperationException($"Cannot register mod '{modId}': Maximum number of mods ({ushort.MaxValue}) reached.");
+        }
+
         mod = (ushort)(_modIds.Count + 1);
         _modIds.Add(modId, mod);
         return mod;
@@ -28,8 +33,13 @@ internal class IdentificationManager : IIdentificationManager
         {
             return category;
         }
-        
-        category =  (ushort)(_categoryIds.Count + 1);
+
+        if (_categoryIds.Count >= ushort.MaxValue)
+        {
+            throw new InvalidOperationException($"Cannot register category '{categoryId}': Maximum number of categories ({ushort.MaxValue}) reached.");
+        }
+
+        category = (ushort)(_categoryIds.Count + 1);
         _categoryIds.Add(categoryId, category);
         return category;
     }
@@ -76,10 +86,15 @@ internal class IdentificationManager : IIdentificationManager
         {
             return Identification.Create(resolvedModId, resolvedCategoryId, itemId);
         }
-        
+
+        if (idDictionary.Count >= uint.MaxValue)
+        {
+            throw new InvalidOperationException($"Cannot register object '{objectId}': Maximum number of objects ({uint.MaxValue}) reached for mod:category combination.");
+        }
+
         uint newItemId = (uint)(idDictionary.Count + 1);
         idDictionary.Add(objectId, newItemId);
-        
+
         return Identification.Create(resolvedModId, resolvedCategoryId, newItemId);
     }
 
@@ -210,18 +225,13 @@ internal class IdentificationManager : IIdentificationManager
             return false;
         }
 
-        _modIds.Remove(modIdString);
-        
-        // Remove all objects belonging to this mod
-        var keysToRemove = _objectIds.Keys
-            .Where(key => key.modId == modId)
-            .ToList();
-        
-        foreach (var key in keysToRemove)
+        var hasDependents = _objectIds.Keys.Any(key => key.modId == modId);
+        if (hasDependents)
         {
-            _objectIds.Remove(key);
+            return false;
         }
-        
+
+        _modIds.Remove(modIdString);
         return true;
     }
 
@@ -232,18 +242,13 @@ internal class IdentificationManager : IIdentificationManager
             return false;
         }
 
-        _categoryIds.Remove(categoryIdString);
-        
-        // Remove all objects belonging to this category
-        var keysToRemove = _objectIds.Keys
-            .Where(key => key.categoryId == categoryId)
-            .ToList();
-        
-        foreach (var key in keysToRemove)
+        var hasDependents = _objectIds.Keys.Any(key => key.categoryId == categoryId);
+        if (hasDependents)
         {
-            _objectIds.Remove(key);
+            return false;
         }
-        
+
+        _categoryIds.Remove(categoryIdString);
         return true;
     }
 
@@ -263,7 +268,63 @@ internal class IdentificationManager : IIdentificationManager
 
         return idDict.Remove(objectIdString);
     }
-    
+
+    public IEnumerable<ushort> GetRegisteredMods()
+    {
+        return _modIds.Values;
+    }
+
+    public IEnumerable<ushort> GetRegisteredCategories()
+    {
+        return _categoryIds.Values;
+    }
+
+    public bool IsModRegistered(OneOf<string, ushort> modId)
+    {
+        ushort resolvedModId = ResolveModId(modId);
+        return resolvedModId != 0;
+    }
+
+    public bool IsCategoryRegistered(OneOf<string, ushort> categoryId)
+    {
+        ushort resolvedCategoryId = ResolveCategoryId(categoryId);
+        return resolvedCategoryId != 0;
+    }
+
+    public bool IsObjectRegistered(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId, OneOf<string, ushort> objectId)
+    {
+        return TryGetObjectId(modId, categoryId, objectId, out _);
+    }
+
+    public int GetModCount()
+    {
+        return _modIds.Count;
+    }
+
+    public int GetCategoryCount()
+    {
+        return _categoryIds.Count;
+    }
+
+    public int GetObjectCount()
+    {
+        return _objectIds.Values.Sum(dict => dict.Count);
+    }
+
+    public int GetObjectCountForCategory(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId)
+    {
+        ushort resolvedModId = ResolveModId(modId);
+        ushort resolvedCategoryId = ResolveCategoryId(categoryId);
+
+        if (resolvedModId == 0 || resolvedCategoryId == 0)
+        {
+            return 0;
+        }
+
+        var key = (resolvedModId, resolvedCategoryId);
+        return _objectIds.TryGetValue(key, out var idDict) ? idDict.Count : 0;
+    }
+
     private ushort ResolveModId(OneOf<string, ushort> modId)
     {
         return modId.Match(

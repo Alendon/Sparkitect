@@ -18,6 +18,7 @@
         openssl
         krb5
         lttng-ust
+        dotnetCorePackages.sdk_10_0-bin
       ];
 
       runtimeLibPath = pkgs.lib.makeLibraryPath runtimeLibs;
@@ -25,16 +26,16 @@
     {
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = [
-          dotnetBlob
+          # dotnetBlob
           # add any other tools you like here (nodejs, jq, etc.)
         ] ++ runtimeLibs;
 
         # Make dotnet usable like in the manual install docs
         shellHook = ''
           # DOTNET_ROOT -> where the SDK lives (like export DOTNET_ROOT=$HOME/.dotnet)
-          export DOTNET_ROOT=${dotnetBlob}
+          # export DOTNET_ROOT=${dotnetBlob}
           # PATH -> include DOTNET_ROOT and tools, same idea as docs
-          export PATH="$PATH:${dotnetBlob}:${dotnetBlob}/tools"
+          # export PATH="$PATH:${dotnetBlob}:${dotnetBlob}/tools"
 
           # Make the native libs visible at runtime (ICU, OpenSSL, etc.)
           export LD_LIBRARY_PATH="${runtimeLibPath}:''${LD_LIBRARY_PATH:-}"

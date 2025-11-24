@@ -23,5 +23,28 @@ public interface IRegistryManager
     /// </summary>
     void UnregisterAllRemaining<TRegistry>() where TRegistry : class, IRegistry;
 
+    /// <summary>
+    /// Adds a registry type to be managed. Must be called before processing registrations.
+    /// </summary>
     void AddRegistry<TRegistry>() where TRegistry : class, IRegistry;
+
+    /// <summary>
+    /// Gets all active registry types that have been added.
+    /// </summary>
+    /// <returns>An enumerable of registry type names.</returns>
+    IEnumerable<string> GetActiveRegistries();
+
+    /// <summary>
+    /// Gets the mod IDs that have been processed for a specific registry.
+    /// </summary>
+    /// <typeparam name="TRegistry">The registry type to query.</typeparam>
+    /// <returns>An enumerable of mod ID strings that have been processed, or empty if registry not active.</returns>
+    IEnumerable<string> GetProcessedMods<TRegistry>() where TRegistry : class, IRegistry;
+
+    /// <summary>
+    /// Checks if a registry type has been added and is active.
+    /// </summary>
+    /// <typeparam name="TRegistry">The registry type to check.</typeparam>
+    /// <returns><c>true</c> if the registry is active; otherwise, <c>false</c>.</returns>
+    bool IsRegistryActive<TRegistry>() where TRegistry : class, IRegistry;
 }

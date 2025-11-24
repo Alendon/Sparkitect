@@ -41,9 +41,6 @@ public class KeyedFactoryAttribute<TBase> : Attribute, IFactoryMarker<TBase> whe
 }
 
 [FactoryGenerationType(FactoryGenerationType.Service)]
-public class CreateServiceFactoryAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
-
-[FactoryGenerationType(FactoryGenerationType.Service)]
-public class SingletonAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
+internal class CreateServiceFactoryAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
 
 public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;

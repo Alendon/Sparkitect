@@ -1,21 +1,16 @@
 - name: Core Systems Overview
   href: index.md
-  uid: articles.core
-- name: Modding Framework
-  href: modding-framework.md
-  uid: articles.core.modding-framework
 - name: Dependency Injection
   href: dependency-injection.md
-  uid: articles.core.dependency-injection
+- name: Game State System
+  href: game-state-system.md
 - name: Registry System
   href: registry-system.md
-  uid: articles.core.registry-system
+- name: Modding Framework
+  href: modding-framework.md
 - name: Engine Initialization
   href: engine-initialization.md
-  uid: articles.core.engine-initialization
 - name: ECS Requirements
   href: ecs-requirements.md
-  uid: articles.core.ecs-requirements
-- name: Mod Dependencies
+- name: Module Dependencies
   href: mod-dependencies.md
-  uid: articles.core.mod-dependencies

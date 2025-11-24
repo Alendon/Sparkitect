@@ -10,11 +10,13 @@ The Modding Framework is the cornerstone of Sparkitect's architecture. Unlike tr
 
 ### Mod Types
 
-Sparkitect distinguishes between two primary types of mods:
+Sparkitect's design envisions two primary types of mods:
 
-- **Root Mods**: Loaded at application startup and capable of directly influencing the engine. The engine itself functions partially as a "virtual root mod," creating a unified system where engine and mods are treated equally.
+- **Root Mods**: Intended to be loaded at application startup, capable of directly influencing the engine. The engine itself functions as a "virtual root mod," creating a unified system where engine and mods are treated equally.
 
-- **Game Mods**: Loaded when joining or creating a game session and unloaded when the game ends. These typically implement game-specific functionality.
+- **Game Mods**: Planned to be loaded when joining or creating a game session and unloaded when the game ends, for game-specific functionality.
+
+**Current Status:** The distinction between Root and Game mods is conceptual and planned for future implementation. Currently, all mods are treated uniformly. The ModManifest structure does not yet differentiate mod types.
 
 ### Mod Structure
 

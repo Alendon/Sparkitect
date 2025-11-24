@@ -198,6 +198,25 @@ internal class RegistryManager : IRegistryManager
         Log.Debug("Completed unregistering mods for registry {RegistryIdentifier}", registryIdentifier);
     }
 
+    public IEnumerable<string> GetActiveRegistries()
+    {
+        return _processedModsByRegistry.Keys;
+    }
+
+    public IEnumerable<string> GetProcessedMods<TRegistry>() where TRegistry : class, IRegistry
+    {
+        var registryIdentifier = TRegistry.Identifier;
+        return _processedModsByRegistry.TryGetValue(registryIdentifier, out var processedMods)
+            ? processedMods
+            : Enumerable.Empty<string>();
+    }
+
+    public bool IsRegistryActive<TRegistry>() where TRegistry : class, IRegistry
+    {
+        var registryIdentifier = TRegistry.Identifier;
+        return _processedModsByRegistry.ContainsKey(registryIdentifier);
+    }
+
     private void ProcessSingleModRegistration<TRegistry>(TRegistry registry, string registryIdentifier, string modId)
         where TRegistry : class, IRegistry
     {
