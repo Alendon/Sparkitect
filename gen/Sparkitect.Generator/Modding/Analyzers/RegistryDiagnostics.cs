@@ -116,7 +116,7 @@ public static class RegistryDiagnostics
     public static readonly DiagnosticDescriptor DuplicateRegistrationId =
         new("SPARK2030", "Duplicate registration id",
             "Duplicate registration id '{0}' for registry '{1}'. Each id must be unique.",
-            Category, DiagnosticSeverity.Error, true);
+            Category, DiagnosticSeverity.Error, true, customTags: WellKnownDiagnosticTags.CompilationEnd);
 
     public static readonly DiagnosticDescriptor RegistrationIdNotSnakeCase =
         new("SPARK2031", "Registration id must be snake_case",
@@ -131,7 +131,7 @@ public static class RegistryDiagnostics
     public static readonly DiagnosticDescriptor DuplicateNormalizedPropertyName =
         new("SPARK2050", "Duplicate property name after normalization",
             "Entries '{0}' and '{1}' normalize to the same property name '{2}' in registry '{3}'",
-            Category, DiagnosticSeverity.Error, true);
+            Category, DiagnosticSeverity.Error, true, customTags: WellKnownDiagnosticTags.CompilationEnd);
 
     // YAML resource files
     public static readonly DiagnosticDescriptor YamlEntryMissingId =

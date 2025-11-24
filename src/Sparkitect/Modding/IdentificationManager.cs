@@ -87,7 +87,11 @@ internal class IdentificationManager : IIdentificationManager
             return Identification.Create(resolvedModId, resolvedCategoryId, itemId);
         }
 
+        // Note: Dictionary.Count is int, so this check is theoretical (int.MaxValue < uint.MaxValue)
+        // but kept for clarity about the Identification itemId field's uint capacity
+#pragma warning disable CS0652 // Comparison to integral constant is useless
         if (idDictionary.Count >= uint.MaxValue)
+#pragma warning restore CS0652
         {
             throw new InvalidOperationException($"Cannot register object '{objectId}': Maximum number of objects ({uint.MaxValue}) reached for mod:category combination.");
         }

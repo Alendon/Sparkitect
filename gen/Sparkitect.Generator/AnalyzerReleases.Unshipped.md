@@ -1,4 +1,4 @@
-## Release 0.1.0 (Unshipped)
+## Release 1.1
 
 ### New Rules
 

@@ -12,7 +12,12 @@ namespace Sparkitect.GameState;
 [StateRegistry.RegisterState("root")]
 public partial class RootGameStateDescriptor : IStateDescriptor
 {
+    /// <inheritdoc />
     public static Identification ParentId => Identification.Empty;
+    
+    /// <inheritdoc />
     public static IReadOnlyList<Identification> Modules => [StateModuleID.Sparkitect.Core];
+    
+    /// <inheritdoc />
     public static Identification Identification => StateID.Sparkitect.Root;
 }

@@ -21,7 +21,9 @@ public enum FactoryGenerationType
 /// Specifies the factory generation type for a class. Used internally by source generators.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
+#pragma warning disable CS9113 // Parameter is unread (read by source generators)
 public class FactoryGenerationTypeAttribute(FactoryGenerationType generationType) : Attribute;
+#pragma warning restore CS9113
 
 /// <summary>
 /// Marker interface for factory attributes that generate service factories
