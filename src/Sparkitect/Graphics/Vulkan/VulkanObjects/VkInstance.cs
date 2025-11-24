@@ -3,24 +3,27 @@ using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using Sparkitect.Utils;
 
-namespace Sparkitect.Graphics.Vulkan;
+namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
-public class VkInstance : VkObject
+public class VkInstance : VulkanObject
 {
-    private VkInstance(AllocationHandler allocationHandler, Vk vk, Instance handle, IVkEngine vkEngine) : base(
-        allocationHandler, vk)
+    private readonly unsafe AllocationCallbacks* _allocationCallbacks;
+
+    private unsafe VkInstance(IObjectTracker<VulkanObject> objectTracker, Vk vk, Instance handle, AllocationCallbacks* allocationCallbacks) : base(
+        objectTracker, vk)
     {
         Handle = handle;
-        _vkEngine = vkEngine;
+        _allocationCallbacks = allocationCallbacks;
     }
 
     public Instance Handle { get; private set; }
-    private IVkEngine _vkEngine;
 
-    public static unsafe VkInstance Create(IVkEngine vkEngine, AllocationHandler allocationHandler,
+    public static unsafe VkInstance Create(IVulkanContext vulkanContext,
         ICliArgumentHandler cliArgumentHandler)
     {
-        var vk = vkEngine.VkApi;
+        var vk = vulkanContext.VkApi;
+        
+        
 
         var applicationName = SilkMarshal.StringToPtr("Sparkitect");
         var engineName = SilkMarshal.StringToPtr("Sparkitect");
@@ -58,7 +61,7 @@ public class VkInstance : VkObject
             PpEnabledExtensionNames = (byte**)extensionPtr,
         };
         
-        var result = vk.CreateInstance(instanceCreateInfo, vkEngine.DefaultAllocationCallbacks, out var instance);
+        var result = vk.CreateInstance(instanceCreateInfo, vulkanContext.DefaultAllocationCallbacks, out var instance);
         
         SilkMarshal.Free(layerPtr);
         SilkMarshal.Free(extensionPtr);
@@ -95,6 +98,6 @@ public class VkInstance : VkObject
 
     public override unsafe void Destroy()
     {
-        Vk.DestroyInstance(Handle, _vkEngine.DefaultAllocationCallbacks);
+        Vk.DestroyInstance(Handle, _allocationCallbacks);
     }
 }

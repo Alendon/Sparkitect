@@ -1,25 +1,24 @@
 ﻿using Silk.NET.Vulkan;
+using Sparkitect.Utils;
 
-namespace Sparkitect.Graphics.Vulkan;
+namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
-public class VkPhysicalDevice : VkObject
+public class VkPhysicalDevice : VulkanObject
 {
-    private IVkEngine _vkEngine;
     public PhysicalDevice PhysicalDevice { get; private set; }
 
-
-    private VkPhysicalDevice(AllocationHandler allocationHandler, IVkEngine vkEngine, PhysicalDevice physicalDevice) :
-        base(allocationHandler, vkEngine.VkApi)
+    private VkPhysicalDevice(IObjectTracker<VulkanObject> objectTracker, Vk vk, PhysicalDevice physicalDevice) :
+        base(objectTracker, vk)
     {
-        _vkEngine = vkEngine;
         PhysicalDevice = physicalDevice;
     }
 
-    public static VkPhysicalDevice Create(IVkEngine vkEngine, AllocationHandler allocationHandler)
+    public static VkPhysicalDevice Create(IVulkanContext vulkanContext)
     {
-        var vk = vkEngine.VkApi;
+        var vk = vulkanContext.VkApi;
 
-        var devices = vk.GetPhysicalDevices(vkEngine.Instance.Handle);
+       
+        var devices = vk.GetPhysicalDevices(vulkanContext.VkInstance.Handle);
         if (devices.Count == 0)
         {
             throw new Exception("No physical devices found");
@@ -40,7 +39,7 @@ public class VkPhysicalDevice : VkObject
             throw new Exception("No suitable physical device found");
         }
         
-        return new VkPhysicalDevice(allocationHandler, vkEngine, physicalDevice);
+        return new VkPhysicalDevice(vulkanContext.ObjectTracker, vk, physicalDevice);
     }
 
 
