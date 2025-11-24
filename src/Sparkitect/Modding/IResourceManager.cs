@@ -1,5 +1,8 @@
 ﻿namespace Sparkitect.Modding;
 
+/// <summary>
+/// Manages resource loading from mod archives.
+/// </summary>
 public interface IResourceManager
 {
     /// <summary>

@@ -625,10 +625,10 @@ public partial class RegistryGenerator : IIncrementalGenerator
         var isSingleFile = model.ResourceFiles.Count == 1;
 
         var files = isSingleFile
-            ? new[]
-            {
+            ?
+            [
                 new { Prop = "File", IsNullable = model.ResourceFiles.First().optional }
-            }
+            ]
             : model.ResourceFiles
                 .OrderBy(r => r.identifier)
                 .Select(r => new { Prop = ToPascalCase(r.identifier), IsNullable = r.optional })
@@ -649,8 +649,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
         public string? Id { get; set; }
 
         // Only Files or File can be set not both
-        public Dictionary<string, string>? Files { get; set; }
-        public string File { get; set; }
+        public Dictionary<string, string>? Files { get; set; } = null!;
+        public string File { get; set; } = null!;
     }
 
     // TODO: Analyzer: prevent duplicate registry class names across namespaces (assumption: unique type names).

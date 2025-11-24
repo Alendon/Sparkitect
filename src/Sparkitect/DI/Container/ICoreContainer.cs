@@ -44,6 +44,13 @@ public interface ICoreContainer : IDisposable
     /// <exception cref="ObjectDisposedException">Thrown when the container has been disposed</exception>
     IReadOnlyDictionary<Type, object> GetCurrentRegisteredInstances();
 
+    /// <summary>
+    /// Resolves a service with type substitution via facade mapping. Used internally for facade injection.
+    /// If <typeparamref name="TService"/> exists in <paramref name="map"/>, resolves the mapped type instead.
+    /// </summary>
+    /// <typeparam name="TService">The service type to resolve.</typeparam>
+    /// <param name="map">Type substitution map for facade resolution.</param>
+    /// <returns>The resolved service instance.</returns>
     TService ResolveMapped<TService>(IReadOnlyDictionary<Type, Type> map) where TService : class
     {
         if (map.TryGetValue(typeof(TService), out var mappedType))
@@ -55,7 +62,13 @@ public interface ICoreContainer : IDisposable
         return Resolve<TService>();
     }
 
-
+    /// <summary>
+    /// Attempts to resolve a service with type substitution via facade mapping. Used internally for facade injection.
+    /// </summary>
+    /// <typeparam name="TService">The service type to resolve.</typeparam>
+    /// <param name="service">The resolved service instance, or null if not found.</param>
+    /// <param name="map">Type substitution map for facade resolution.</param>
+    /// <returns>True if the service was resolved successfully.</returns>
     bool TryResolveMapped<TService>([NotNullWhen(true)] out TService? service, IReadOnlyDictionary<Type, Type> map)
         where TService : class
     {
@@ -68,7 +81,13 @@ public interface ICoreContainer : IDisposable
         return TryResolve(out service);
     }
 
-
+    /// <summary>
+    /// Attempts to resolve a service with type substitution via facade mapping. Used internally for facade injection.
+    /// </summary>
+    /// <param name="serviceType">The service type to resolve.</param>
+    /// <param name="service">The resolved service instance, or null if not found.</param>
+    /// <param name="map">Type substitution map for facade resolution.</param>
+    /// <returns>True if the service was resolved successfully.</returns>
     bool TryResolveMapped(Type serviceType, out object? service, IReadOnlyDictionary<Type, Type> map)
     {
         if (map.TryGetValue(serviceType, out var mappedType) && TryResolve(mappedType, out service) && serviceType.IsAssignableTo(service?.GetType()))

@@ -19,8 +19,16 @@ public interface IModManager
     /// Gets a collection of all loaded mods
     /// </summary>
     IReadOnlyCollection<string> LoadedMods { get; }
-    
+
+    /// <summary>
+    /// Gets loaded mods organized by loading groups. Each group represents a set of mods loaded together
+    /// (e.g., engine mods first, then game mods).
+    /// </summary>
     IReadOnlyList<IReadOnlyList<string>> LoadedModsPerGroup { get; }
+
+    /// <summary>
+    /// Gets all mod archives discovered during mod discovery.
+    /// </summary>
     IReadOnlyList<ModManifest> DiscoveredArchives { get; }
 
     /// <summary>

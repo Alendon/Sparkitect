@@ -6,16 +6,16 @@ namespace Sparkitect.Generator;
 
 public class FluidHelper
 {
-    private static FluidParser FluidParser  { get; set; }
-    private static Dictionary<string, IFluidTemplate> TemplateCache  { get; set; }
+    private static FluidParser FluidParser { get; set; } = null!;
+    private static Dictionary<string, IFluidTemplate> TemplateCache { get; set; } = null!;
 
 
-    public static TemplateOptions DefaultUnsafeAccess { get; private set; }
+    public static TemplateOptions DefaultUnsafeAccess { get; private set; } = null!;
 
-    static bool isSetup = false;
+    static bool _isSetup = false;
     public static void Setup()
     {
-        if (isSetup) return;
+        if (_isSetup) return;
         
         DefaultUnsafeAccess = new TemplateOptions
         {
@@ -24,7 +24,7 @@ public class FluidHelper
         FluidParser = new FluidParser();
         TemplateCache = new();
         
-        isSetup = true;
+        _isSetup = true;
     }
     
     public static bool TryRenderTemplate(string templateName, object model, out string result, TemplateOptions? options = null)

@@ -24,7 +24,7 @@ public class StateMethodGenerator : IIncrementalGenerator
                     return null;
 
                 return ExtractStateParentModel(classSymbol, syntaxContext.SemanticModel.Compilation, cancellationToken);
-            }).Where(m => m is not null)!;
+            }).Where(m => m is not null);
 
         // Find all types implementing IStateDescriptor
         var stateDescriptorsProvider = context.SyntaxProvider.CreateSyntaxProvider(
@@ -44,10 +44,10 @@ public class StateMethodGenerator : IIncrementalGenerator
         var allParentsProvider = stateModulesProvider
             .Collect()
             .Combine(stateDescriptorsProvider.Collect())
-            .Select((pair, _) => pair.Left.Concat(pair.Right).ToImmutableArray());
+            .Select((pair, _) => pair.Left.Concat(pair.Right).Where(x => x is not null).Select<StateModuleModel?, StateModuleModel>( x => x!).ToImmutableArray());
 
         // Register output for individual module wrapper classes
-        context.RegisterSourceOutput(stateModulesProvider, (context, model) =>
+        context.RegisterSourceOutput(stateModulesProvider, (productionContext, model) =>
         {
             if (model is null) return;
 
@@ -55,13 +55,13 @@ public class StateMethodGenerator : IIncrementalGenerator
             {
                 if (RenderStateMethodWrapper(model, function, out var code, out var fileName))
                 {
-                    context.AddSource(fileName, code);
+                    productionContext.AddSource(fileName, code);
                 }
             }
         });
 
         // Register output for individual descriptor wrapper classes
-        context.RegisterSourceOutput(stateDescriptorsProvider, (context, model) =>
+        context.RegisterSourceOutput(stateDescriptorsProvider, (productionContext, model) =>
         {
             if (model is null) return;
 
@@ -69,30 +69,30 @@ public class StateMethodGenerator : IIncrementalGenerator
             {
                 if (RenderStateMethodWrapper(model, function, out var code, out var fileName))
                 {
-                    context.AddSource(fileName, code);
+                    productionContext.AddSource(fileName, code);
                 }
             }
         });
 
         // Register output for StateMethodAssociation configurator
-        context.RegisterSourceOutput(allParentsProvider, (context, parents) =>
+        context.RegisterSourceOutput(allParentsProvider, (productionContext, parents) =>
         {
             if (parents.Length == 0) return;
 
             if (RenderStateMethodAssociation(parents, out var code, out var fileName))
             {
-                context.AddSource(fileName, code);
+                productionContext.AddSource(fileName, code);
             }
         });
 
         // Register output for StateMethodOrdering configurator
-        context.RegisterSourceOutput(allParentsProvider, (context, parents) =>
+        context.RegisterSourceOutput(allParentsProvider, (productionContext, parents) =>
         {
             if (parents.Length == 0) return;
 
             if (RenderStateMethodOrdering(parents, out var code, out var fileName))
             {
-                context.AddSource(fileName, code);
+                productionContext.AddSource(fileName, code);
             }
         });
     }
@@ -137,7 +137,7 @@ public class StateMethodGenerator : IIncrementalGenerator
 
             functions.Add(new StateFunctionModel(
                 method.Name,
-                key,
+                key!,
                 schedule.Value,
                 parameters,
                 orderingConstraints));

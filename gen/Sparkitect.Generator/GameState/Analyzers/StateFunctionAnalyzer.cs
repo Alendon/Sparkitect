@@ -72,7 +72,7 @@ public class StateFunctionAnalyzer : DiagnosticAnalyzer
             }
 
             // Check for duplicate keys
-            if (keysInModule.TryGetValue(key, out var existingMethod))
+            if (keysInModule.TryGetValue(key!, out var existingMethod))
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     StateFunctionDuplicateKey,
@@ -82,7 +82,7 @@ public class StateFunctionAnalyzer : DiagnosticAnalyzer
             }
             else
             {
-                keysInModule[key] = method;
+                keysInModule[key!] = method;
             }
 
             // Validate method is static

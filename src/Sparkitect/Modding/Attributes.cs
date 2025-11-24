@@ -2,25 +2,56 @@
 
 namespace Sparkitect.Modding;
 
+/// <summary>
+/// Marks a class as a registry implementation. Triggers source generation of keyed factory and configurator.
+/// The class must implement <see cref="IRegistry"/> and be partial.
+/// </summary>
 [FactoryGenerationType(FactoryGenerationType.Factory)]
 public class RegistryAttribute : Attribute, IFactoryMarker<IRegistryBase>
 {
+    /// <summary>
+    /// Unique registry category identifier.
+    /// </summary>
     [Key] public required string Identifier { get; set; }
 }
 
+/// <summary>
+/// Assembly-level attribute for associating metadata types with registries.
+/// </summary>
+/// <typeparam name="TMetadata">The metadata type.</typeparam>
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
 public class RegistryMetadataAttribute<TMetadata> : Attribute where TMetadata : class;
 
+/// <summary>
+/// Marks a registry method that registers objects. Source generators create registration attributes
+/// (e.g., [RegisterItem("key")]) for each marked method, which mods use to register objects.
+/// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public class RegistryMethodAttribute : Attribute;
 
+/// <summary>
+/// Declaratively specifies resource files required by a class.
+/// Resource files are loaded from mod archives and made available through <see cref="IResourceManager"/>.
+/// </summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class UseResourceFileAttribute : Attribute
 {
+    /// <summary>
+    /// Gets or sets the resource file identifier.
+    /// </summary>
     public required string Identifier { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this resource file is required. If true, missing file causes an error.
+    /// </summary>
     public bool Required { get; set; } = false;
 }
 
+/// <summary>
+/// Marks an interface as having a registry-exclusive facade. The facade interface is only accessible
+/// within registry contexts (e.g., registry methods, Registrations implementations) and not through normal DI.
+/// </summary>
+/// <typeparam name="TFacade">The exclusive facade interface type.</typeparam>
 [AttributeUsage(AttributeTargets.Interface)]
 public class RegistryFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
 

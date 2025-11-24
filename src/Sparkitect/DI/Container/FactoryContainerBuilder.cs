@@ -4,11 +4,18 @@ using Sparkitect.Modding;
 namespace Sparkitect.DI.Container;
 
 /// <summary>
-/// Enum to specify the allowed key type for a factory container builder
+/// Specifies the allowed key type for factory container keys.
 /// </summary>
 public enum FactoryKeyType
 {
+    /// <summary>
+    /// Factory keys are strings.
+    /// </summary>
     String,
+
+    /// <summary>
+    /// Factory keys are <see cref="Sparkitect.Modding.Identification"/> structs.
+    /// </summary>
     Identification
 }
 
