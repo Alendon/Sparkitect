@@ -17,6 +17,6 @@ public class VkCommandBuffer : VulkanObject
 
     public override void Destroy()
     {
-        Vk.FreeCommandBuffers(Device, ParentPool.Handle, 1, Handle);
+        ParentPool.FreeCommandBuffers(this);
     }
 }

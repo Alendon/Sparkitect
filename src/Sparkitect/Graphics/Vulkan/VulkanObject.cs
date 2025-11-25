@@ -25,8 +25,8 @@ public abstract class VulkanObject : IDisposable
         if (IsDisposed) return;
 
         _trackerHandle.Free();
-        IsDisposed = true;
         Destroy();
+        IsDisposed = true;
     }
     
     public void MarkDisposed()

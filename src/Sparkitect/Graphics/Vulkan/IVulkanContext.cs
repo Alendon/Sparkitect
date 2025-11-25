@@ -21,6 +21,8 @@ public interface IVulkanContext
     /// <returns>The queue, or null if not found.</returns>
     VulkanQueue? GetQueue(uint familyIndex, uint queueIndex);
 
+    VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex);
+
     /// <summary>
     /// Gets all queues belonging to a queue family.
     /// </summary>

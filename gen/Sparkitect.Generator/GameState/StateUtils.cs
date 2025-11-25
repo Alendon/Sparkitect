@@ -197,7 +197,7 @@ public static class StateUtils
             if (isGeneric && attr.AttributeClass?.TypeArguments.Length > 0)
             {
                 var typeArg = attr.AttributeClass.TypeArguments[0];
-                targetModuleOrStateType = typeArg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                targetModuleOrStateType = typeArg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + ".Identification";
             }
 
             if (targetKey is not null)
