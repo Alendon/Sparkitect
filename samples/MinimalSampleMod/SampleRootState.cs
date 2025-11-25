@@ -12,7 +12,7 @@ public partial class SampleEntryState : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
     public static Identification Identification => StateID.MinimalSampleMod.Sample;
-    public static IReadOnlyList<Identification> Modules => [StateModuleID.MinimalSampleMod.Sample];
+    public static IReadOnlyList<Identification> Modules => [StateModuleID.MinimalSampleMod.Sample, StateModuleID.Sparkitect.Vulkan];
     
     [DummyRegistry.RegisterValue("hello1")]
     public static string SomeValueToRegister() => "Hello World";

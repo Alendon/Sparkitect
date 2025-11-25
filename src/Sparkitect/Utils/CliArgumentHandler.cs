@@ -145,6 +145,6 @@ namespace Sparkitect.Utils;
 
     public IEnumerable<string> GetArgumentValues(string argument)
     {
-        throw new NotImplementedException();
+        return TryGetArgumentValues(argument, out var values) ? values : [];
     }
 }

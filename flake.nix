@@ -19,6 +19,9 @@
         krb5
         lttng-ust
         dotnetCorePackages.sdk_10_0-bin
+        vulkan-loader
+        vulkan-validation-layers
+        vulkan-tools
       ];
 
       runtimeLibPath = pkgs.lib.makeLibraryPath runtimeLibs;
@@ -39,6 +42,9 @@
 
           # Make the native libs visible at runtime (ICU, OpenSSL, etc.)
           export LD_LIBRARY_PATH="${runtimeLibPath}:''${LD_LIBRARY_PATH:-}"
+
+          # Vulkan setup
+          export VK_LAYER_PATH="${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d"
 
           # Optional: quick sanity check
           # dotnet --list-sdks || true

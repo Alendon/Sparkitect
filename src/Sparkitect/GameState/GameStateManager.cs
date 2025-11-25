@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Serilog;
 using OneOf.Types;
@@ -491,36 +492,38 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return builder.Build();
     }
 
-    private Dictionary<string, IStateMethod> InstantiateStateMethods(
+    private Dictionary<(Identification Parent, string Key), IStateMethod> InstantiateStateMethods(
         Identification parentId,
         ICoreContainer container,
         IReadOnlyDictionary<Type, Type> facadeMap,
         IReadOnlyDictionary<(Identification, string, StateMethodSchedule), Type> methodAssociations,
         StateMethodSchedule schedule)
     {
-        var methods = new Dictionary<string, IStateMethod>();
+        var methods = new Dictionary<(Identification Parent, string Key), IStateMethod>();
 
         foreach (var ((id, key, sch), wrapperType) in methodAssociations)
         {
             if (!id.Equals(parentId) || sch != schedule) continue;
             var wrapper = (IStateMethod)Activator.CreateInstance(wrapperType)!;
             wrapper.Initialize(container, facadeMap);
-            methods[key] = wrapper;
+            methods[(id, key)] = wrapper;
         }
 
         return methods;
     }
 
     private IReadOnlyList<IStateMethod> SortMethods(
-        Identification parentId,
-        Dictionary<string, IStateMethod> methods,
+        Dictionary<(Identification Parent, string Key), IStateMethod> methods,
         IReadOnlySet<OrderingEntry> ordering)
     {
         if (methods.Count == 0)
             return Array.Empty<IStateMethod>();
 
-        // Build dependency graph
-        var graph = new AdjacencyGraph<string, Edge<string>>();
+        // Build set of parent IDs present in the methods collection
+        var presentParents = new HashSet<Identification>(methods.Keys.Select(k => k.Parent));
+
+        // Build dependency graph with composite keys
+        var graph = new AdjacencyGraph<(Identification Parent, string Key), Edge<(Identification, string)>>();
 
         foreach (var key in methods.Keys)
         {
@@ -530,13 +533,17 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         // Add edges from ordering constraints
         foreach (var entry in ordering)
         {
-            // entry.Before should execute before entry.After
-            // So add edge: After -> Before (reversed because topological sort)
-            if (entry.Before.Parent.Equals(parentId) && entry.After.Parent.Equals(parentId))
+            // Only apply constraint if BOTH parents are present in this methods collection
+            if (presentParents.Contains(entry.Before.Parent) && presentParents.Contains(entry.After.Parent))
             {
-                if (methods.ContainsKey(entry.Before.Method) && methods.ContainsKey(entry.After.Method))
+                var beforeKey = (entry.Before.Parent, entry.Before.Method);
+                var afterKey = (entry.After.Parent, entry.After.Method);
+
+                if (methods.ContainsKey(beforeKey) && methods.ContainsKey(afterKey))
                 {
-                    graph.AddEdge(new Edge<string>(entry.After.Method, entry.Before.Method));
+                    // entry.Before should execute before entry.After
+                    // Edge: Before -> After means Before appears before After in topological sort output
+                    graph.AddEdge(new Edge<(Identification, string)>(beforeKey, afterKey));
                 }
             }
         }
@@ -553,6 +560,8 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return result;
     }
 
+    // mark as step through for easier state method debugging
+    [DebuggerStepThrough]
     private void ExecuteMethods(IReadOnlyList<IStateMethod> methods)
     {
         foreach (var method in methods)
@@ -625,11 +634,11 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
 
         // Sort all methods together
-        var perFrameMethods = SortMethods(stateId, perFrameDict, methodOrdering);
-        var onCreateMethods = SortMethods(stateId, onCreateDict, methodOrdering);
-        var onDestroyMethods = SortMethods(stateId, onDestroyDict, methodOrdering);
-        var onFrameEnterMethods = SortMethods(stateId, onFrameEnterDict, methodOrdering);
-        var onFrameExitMethods = SortMethods(stateId, onFrameExitDict, methodOrdering);
+        var perFrameMethods = SortMethods(perFrameDict, methodOrdering);
+        var onCreateMethods = SortMethods(onCreateDict, methodOrdering);
+        var onDestroyMethods = SortMethods(onDestroyDict, methodOrdering);
+        var onFrameEnterMethods = SortMethods(onFrameEnterDict, methodOrdering);
+        var onFrameExitMethods = SortMethods(onFrameExitDict, methodOrdering);
 
         return new ActiveStateFrame(
             stateId,

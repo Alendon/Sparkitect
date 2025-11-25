@@ -11,6 +11,7 @@ public partial class {{ ModuleTypeName }}
         private {{ param.ParameterType }} _param{{ param.Index }};
 {% endfor %}
 
+        [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
             {{ MethodName }}(

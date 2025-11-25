@@ -1,101 +1,92 @@
-﻿using Silk.NET.Core;
-using Silk.NET.Core.Native;
+using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Utils;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+[PublicAPI]
 public class VkInstance : VulkanObject
 {
     private readonly unsafe AllocationCallbacks* _allocationCallbacks;
 
-    private unsafe VkInstance(IObjectTracker<VulkanObject> objectTracker, Vk vk, Instance handle, AllocationCallbacks* allocationCallbacks) : base(
-        objectTracker, vk)
+    internal unsafe VkInstance(IObjectTracker<VulkanObject> objectTracker, Vk vk, Instance handle, AllocationCallbacks* allocationCallbacks)
+        : base(objectTracker, vk)
     {
         Handle = handle;
         _allocationCallbacks = allocationCallbacks;
+        objectTracker.Track(this);
     }
 
-    public Instance Handle { get; private set; }
+    public Instance Handle { get; }
 
-    public static unsafe VkInstance Create(IVulkanContext vulkanContext,
-        ICliArgumentHandler cliArgumentHandler)
+    /// <summary>
+    /// Enumerates all physical devices available to this instance.
+    /// </summary>
+    public PhysicalDevice[] EnumeratePhysicalDevices()
     {
-        var vk = vulkanContext.VkApi;
-        
-        
-
-        var applicationName = SilkMarshal.StringToPtr("Sparkitect");
-        var engineName = SilkMarshal.StringToPtr("Sparkitect");
-
-        var appInfo = new ApplicationInfo()
-        {
-            SType = StructureType.ApplicationInfo,
-            PApplicationName = (byte*)applicationName,
-            ApplicationVersion = new Version32(0, 1, 0),
-            PEngineName = (byte*)engineName,
-            EngineVersion = new Version32(0, 1, 0),
-            ApiVersion = Vk.Version13
-        };
-
-
-        List<string> additionalLayers = [];
-        List<string> additionalExtensions = [];
-        
-        additionalLayers.AddRange(cliArgumentHandler.GetArgumentValues("addVkLayer"));
-        additionalExtensions.AddRange(cliArgumentHandler.GetArgumentValues("addVkExtension"));
-        
-        //TODO Trigger BeforeCreateInstance event here
-        //To support modification through mods
-
-        IntPtr layerPtr = SilkMarshal.StringArrayToPtr(additionalLayers);
-        IntPtr extensionPtr = SilkMarshal.StringArrayToPtr(additionalExtensions);
-
-        var instanceCreateInfo = new InstanceCreateInfo()
-        {
-            SType = StructureType.InstanceCreateInfo,
-            PApplicationInfo = &appInfo,
-            EnabledLayerCount = (uint)additionalLayers.Count,
-            PpEnabledLayerNames = (byte**)layerPtr,
-            EnabledExtensionCount = (uint)additionalExtensions.Count,
-            PpEnabledExtensionNames = (byte**)extensionPtr,
-        };
-        
-        var result = vk.CreateInstance(instanceCreateInfo, vulkanContext.DefaultAllocationCallbacks, out var instance);
-        
-        SilkMarshal.Free(layerPtr);
-        SilkMarshal.Free(extensionPtr);
-        
-        
-        throw new NotImplementedException("Vulkan instance creation is not implemented yet.");
+        return Vk.GetPhysicalDevices(Handle).ToArray();
     }
 
-    private static void SanitizeExtensionNames(List<string> extensionNames, Vk vk)
+    /// <summary>
+    /// Gets the properties of a physical device.
+    /// </summary>
+    public PhysicalDeviceProperties GetPhysicalDeviceProperties(PhysicalDevice physicalDevice)
     {
-        var extensionNamesCopy = extensionNames[..];
-        
-        foreach (var extensionName in extensionNamesCopy)
+        return Vk.GetPhysicalDeviceProperties(physicalDevice);
+    }
+
+    /// <summary>
+    /// Gets the features of a physical device.
+    /// </summary>
+    public PhysicalDeviceFeatures GetPhysicalDeviceFeatures(PhysicalDevice physicalDevice)
+    {
+        return Vk.GetPhysicalDeviceFeatures(physicalDevice);
+    }
+
+    /// <summary>
+    /// Gets the queue family properties of a physical device.
+    /// </summary>
+    public unsafe QueueFamilyProperties[] GetPhysicalDeviceQueueFamilyProperties(PhysicalDevice physicalDevice)
+    {
+        uint count = 0;
+        Vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref count, null);
+
+        if (count == 0) return [];
+
+        var properties = new QueueFamilyProperties[count];
+        fixed (QueueFamilyProperties* ptr = properties)
         {
-            if (vk.IsInstanceExtensionPresent(extensionName)) continue;
-            
-            Console.WriteLine($"Extension {extensionName} is not supported by the Vulkan instance.");
-            extensionNames.Remove(extensionName);
+            Vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref count, ptr);
         }
+
+        return properties;
     }
-    
-    private static void SanitizeLayerNames(List<string> layerNames, Vk vk)
+
+    /// <summary>
+    /// Gets the memory properties of a physical device.
+    /// </summary>
+    public PhysicalDeviceMemoryProperties GetPhysicalDeviceMemoryProperties(PhysicalDevice physicalDevice)
     {
-        var layerNamesCopy = layerNames[..];
-        
-        
-        foreach (var layerName in layerNamesCopy)
-        {
-            Console.WriteLine($"Layer {layerName} is not supported by the Vulkan instance.");
-            layerNames.Remove(layerName);
-        }
+        return Vk.GetPhysicalDeviceMemoryProperties(physicalDevice);
     }
 
+    /// <summary>
+    /// Gets the address of an instance-level Vulkan function by name.
+    /// </summary>
+    public unsafe nint GetInstanceProcAddr(string name)
+    {
+        return (nint)Vk.GetInstanceProcAddr(Handle, name);
+    }
 
+    /// <summary>
+    /// Checks if an instance extension is enabled.
+    /// </summary>
+    public bool IsInstanceExtensionPresent(string extensionName)
+    {
+        return Vk.IsInstanceExtensionPresent(extensionName);
+    }
+
+    /// <inheritdoc />
     public override unsafe void Destroy()
     {
         Vk.DestroyInstance(Handle, _allocationCallbacks);

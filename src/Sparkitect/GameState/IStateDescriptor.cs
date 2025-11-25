@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using Sparkitect.DI.Container;
 using Sparkitect.Modding;
 
@@ -46,6 +47,7 @@ public interface IStateMethod
     /// <summary>
     /// Executes the state function.
     /// </summary>
+    [DebuggerStepThrough]
     public void Execute();
 
     /// <summary>
@@ -55,4 +57,3 @@ public interface IStateMethod
     /// <param name="facadeMap">Type substitution map for facade resolution.</param>
     public void Initialize(ICoreContainer container, IReadOnlyDictionary<Type, Type> facadeMap);
 }
-
