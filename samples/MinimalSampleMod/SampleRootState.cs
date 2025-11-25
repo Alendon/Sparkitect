@@ -55,7 +55,7 @@ public partial class SampleEntryState : IStateDescriptor
     [StateFunction("print_on_frame")]
     public static void PrintOnFrame(IDummyValueManager dummyValueManager)
     {
-        Log.Information("Dummy Value fetched as: {Value}", dummyValueManager.GetDummyValue(DummyID.MinimalSampleMod.Hello1));
+        Log.Information("Dummy Value fetched for {Id} as: {Value}", DummyID.MinimalSampleMod.Hello1, dummyValueManager.GetDummyValue(DummyID.MinimalSampleMod.Hello1));
         Thread.Sleep(1000);
     }
     

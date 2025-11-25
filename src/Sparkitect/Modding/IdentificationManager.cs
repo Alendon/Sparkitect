@@ -344,4 +344,25 @@ internal class IdentificationManager : IIdentificationManager
             id => _categoryIds.Inverse.ContainsKey(id) ? id : (ushort)0
         );
     }
+
+    public bool TryResolveIdentification(Identification id, out string? modId, out string? categoryId, out string? objectId)
+    {
+        modId = null;
+        categoryId = null;
+        objectId = null;
+
+        bool hasModId = _modIds.Inverse.TryGetValue(id.ModId, out var mod);
+        bool hasCategoryId = _categoryIds.Inverse.TryGetValue(id.CategoryId, out var category);
+
+        if (hasModId) modId = mod;
+        if (hasCategoryId) categoryId = category;
+
+        var key = (id.ModId, id.CategoryId);
+        if (_objectIds.TryGetValue(key, out var idDict) && idDict.Inverse.TryGetValue(id.ItemId, out var obj))
+        {
+            objectId = obj;
+        }
+
+        return hasModId && hasCategoryId && objectId is not null;
+    }
 }

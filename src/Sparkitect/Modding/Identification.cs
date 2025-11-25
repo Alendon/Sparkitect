@@ -1,4 +1,6 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
+using Sparkitect.Utils;
 
 namespace Sparkitect.Modding;
 
@@ -7,6 +9,8 @@ namespace Sparkitect.Modding;
 /// Maps to string identifiers (e.g., "sparkitect:blocks:stone") via <see cref="IIdentificationManager"/>.
 /// </summary>
 [StructLayout(LayoutKind.Explicit, Size = sizeof(ulong))]
+[DebuggerTypeProxy(typeof(IdentificationDebuggerProxy))]
+[DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
 public readonly struct Identification : IEquatable<Identification>
 {
     /// <summary>
@@ -64,5 +68,10 @@ public readonly struct Identification : IEquatable<Identification>
     public override int GetHashCode()
     {
         return HashCode.Combine(ModId, CategoryId, ItemId);
+    }
+
+    private string GetDebuggerDisplay()
+    {
+        return IdentificationDebuggerProxy.FormatIdentification(this) ?? $"{ModId}:{CategoryId}:{ItemId}";
     }
 }

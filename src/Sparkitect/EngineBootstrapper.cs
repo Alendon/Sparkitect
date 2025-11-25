@@ -1,13 +1,15 @@
-using Sparkitect.DI.Exceptions;
-using Sparkitect.Modding;
-using Sparkitect.Utils;
 using InterpolatedParsing;
 using Serilog;
+using Serilog.Configuration;
+using Serilog.Events;
 using Serilog.Exceptions;
 using Serilog.Formatting.Compact;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
+using Sparkitect.DI.Exceptions;
 using Sparkitect.GameState;
+using Sparkitect.Modding;
+using Sparkitect.Utils;
 
 namespace Sparkitect;
 
@@ -85,16 +87,25 @@ public class EngineBootstrapper
         }
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
 
-        // Configure and initialize Serilog
+        // Wrap sinks with Identification transformation
+        var wrappedConsoleSink = LoggerSinkConfiguration.Wrap(
+            sink => new IdentificationInterceptSink(sink),
+            cfg => cfg.Console(
+                outputTemplate:
+                "[{Timestamp:HH:mm:ss} {Level:u3}][{ModName}/{ClassName}] {Message:lj}{NewLine}{Exception}"));
+
+        var wrappedFileSink = LoggerSinkConfiguration.Wrap(
+            sink => new IdentificationInterceptSink(sink),
+            cfg => cfg.File(new CompactJsonFormatter(), $"{logDir}/{timestamp}.log",
+                rollOnFileSizeLimit: true, flushToDiskInterval: TimeSpan.FromMinutes(1)));
+
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
+            .Destructure.AsScalar<Identification>()
             .Enrich.FromLogContext()
             .Enrich.WithExceptionDetails()
-            .WriteTo.File(new CompactJsonFormatter(), $"{logDir}/{timestamp}.log", rollOnFileSizeLimit: true,
-                flushToDiskInterval: TimeSpan.FromMinutes(1))
-            .WriteTo.Console(
-                outputTemplate:
-                "[{Timestamp:HH:mm:ss} {Level:u3}][{ModName}/{ClassName}] {Message:lj}{NewLine}{Exception}")
+            .WriteTo.Sink(wrappedConsoleSink)
+            .WriteTo.Sink(wrappedFileSink)
             .CreateLogger();
 
     }
@@ -118,16 +129,21 @@ public class EngineBootstrapper
         try
         {
             var container = builder.Build();
-            _coreContainer = container; 
+            _coreContainer = container;
 
             // Resolve essential services
             _cliArgumentHandler = container.Resolve<ICliArgumentHandler>();
             _modManager = container.Resolve<IModManager>();
             _gameStateManager = container.Resolve<IGameStateManager>();
 
+            // Initialize static accessors for debugger proxy and log sink
+            var identificationManager = container.Resolve<IIdentificationManager>();
+            IdentificationDebuggerProxy.Instance = identificationManager;
+            IdentificationInterceptSink.Instance = identificationManager;
+
             var internalGsm = (_gameStateManager as GameStateManager)!;
             internalGsm.RootContainer = _coreContainer;
-            
+
             Log.Debug("Core container built successfully");
         }
         catch (CircularDependencyException ex)

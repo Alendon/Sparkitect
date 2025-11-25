@@ -192,4 +192,14 @@ public interface IIdentificationManager
     /// <param name="categoryId">The category ID (string or numeric).</param>
     /// <returns>The count of objects in the specified mod:category combination, or 0 if not found.</returns>
     int GetObjectCountForCategory(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId);
+
+    /// <summary>
+    /// Attempts to resolve an <see cref="Identification"/> to its string components.
+    /// </summary>
+    /// <param name="id">The identification to resolve.</param>
+    /// <param name="modId">The string mod identifier if found, null otherwise.</param>
+    /// <param name="categoryId">The string category identifier if found, null otherwise.</param>
+    /// <param name="objectId">The string object identifier if found, null otherwise.</param>
+    /// <returns><c>true</c> if all components were resolved; <c>false</c> if any component could not be resolved.</returns>
+    bool TryResolveIdentification(Identification id, out string? modId, out string? categoryId, out string? objectId);
 }
