@@ -7,24 +7,23 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkPhysicalDevice : VulkanObject
 {
-    internal VkPhysicalDevice(IObjectTracker<VulkanObject> objectTracker, Vk vk, PhysicalDevice handle)
-        : base(objectTracker, vk)
+    internal VkPhysicalDevice(IVulkanContext vulkanContext, PhysicalDevice physicalDevice)
+        : base(vulkanContext)
     {
-        Handle = handle;
-        objectTracker.Track(this);
+        this.PhysicalDevice = physicalDevice;
     }
 
     /// <summary>
     /// The native Vulkan physical device handle.
     /// </summary>
-    public PhysicalDevice Handle { get; private set; }
+    public PhysicalDevice PhysicalDevice { get; private set; }
 
     /// <summary>
     /// Gets the properties of this physical device.
     /// </summary>
     public PhysicalDeviceProperties GetProperties()
     {
-        return Vk.GetPhysicalDeviceProperties(Handle);
+        return Vk.GetPhysicalDeviceProperties(PhysicalDevice);
     }
 
     /// <summary>
@@ -32,7 +31,7 @@ public class VkPhysicalDevice : VulkanObject
     /// </summary>
     public PhysicalDeviceFeatures GetFeatures()
     {
-        return Vk.GetPhysicalDeviceFeatures(Handle);
+        return Vk.GetPhysicalDeviceFeatures(PhysicalDevice);
     }
 
     /// <summary>
@@ -40,7 +39,7 @@ public class VkPhysicalDevice : VulkanObject
     /// </summary>
     public PhysicalDeviceMemoryProperties GetMemoryProperties()
     {
-        return Vk.GetPhysicalDeviceMemoryProperties(Handle);
+        return Vk.GetPhysicalDeviceMemoryProperties(PhysicalDevice);
     }
 
     /// <summary>
@@ -49,13 +48,13 @@ public class VkPhysicalDevice : VulkanObject
     public unsafe QueueFamilyProperties[] GetQueueFamilyProperties()
     {
         uint count = 0;
-        Vk.GetPhysicalDeviceQueueFamilyProperties(Handle, ref count, null);
+        Vk.GetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, ref count, null);
         if (count == 0) return [];
 
         var properties = new QueueFamilyProperties[count];
         fixed (QueueFamilyProperties* ptr = properties)
         {
-            Vk.GetPhysicalDeviceQueueFamilyProperties(Handle, ref count, ptr);
+            Vk.GetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, ref count, ptr);
         }
 
         return properties;
@@ -66,7 +65,7 @@ public class VkPhysicalDevice : VulkanObject
     /// </summary>
     public FormatProperties GetFormatProperties(Format format)
     {
-        Vk.GetPhysicalDeviceFormatProperties(Handle, format, out var properties);
+        Vk.GetPhysicalDeviceFormatProperties(PhysicalDevice, format, out var properties);
         return properties;
     }
 
@@ -81,12 +80,12 @@ public class VkPhysicalDevice : VulkanObject
         ImageCreateFlags flags,
         out ImageFormatProperties properties)
     {
-        return Vk.GetPhysicalDeviceImageFormatProperties(Handle, format, type, tiling, usage, flags, out properties);
+        return Vk.GetPhysicalDeviceImageFormatProperties(PhysicalDevice, format, type, tiling, usage, flags, out properties);
     }
 
     /// <inheritdoc />
     public override void Destroy()
     {
-        Handle = default;
+        PhysicalDevice = default;
     }
 }

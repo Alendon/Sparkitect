@@ -9,12 +9,10 @@ public class VkInstance : VulkanObject
 {
     private readonly unsafe AllocationCallbacks* _allocationCallbacks;
 
-    internal unsafe VkInstance(IObjectTracker<VulkanObject> objectTracker, Vk vk, Instance handle, AllocationCallbacks* allocationCallbacks)
-        : base(objectTracker, vk)
+    internal unsafe VkInstance(Instance handle, IVulkanContext vulkanContext)
+        : base(vulkanContext)
     {
         Handle = handle;
-        _allocationCallbacks = allocationCallbacks;
-        objectTracker.Track(this);
     }
 
     public Instance Handle { get; }

@@ -10,9 +10,10 @@ public sealed class ObjectTracker<T> : IObjectTracker<T> where T : notnull
 {
     private readonly ConcurrentDictionary<T, byte> _tracked = new();
 
-    public void Track(T obj)
+    public IObjectTracker<T>.Handle Track(T obj)
     {
         _tracked.TryAdd(obj, 0);
+        return new IObjectTracker<T>.Handle(this, obj);
     }
 
     public void Untrack(T obj)

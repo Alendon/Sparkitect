@@ -10,18 +10,11 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkDevice : VulkanObject
 {
-    private readonly unsafe AllocationCallbacks* _allocationCallbacks;
-
     internal unsafe VkDevice(
-        IObjectTracker<VulkanObject> objectTracker,
-        Vk vk,
-        Device handle,
-        AllocationCallbacks* allocationCallbacks)
-        : base(objectTracker, vk)
+        IVulkanContext vulkanContext, Device device)
+        : base(vulkanContext)
     {
-        Handle = handle;
-        _allocationCallbacks = allocationCallbacks;
-        objectTracker.Track(this);
+        Handle = device;
     }
 
     /// <summary>
@@ -62,6 +55,6 @@ public class VkDevice : VulkanObject
     /// <inheritdoc />
     public override unsafe void Destroy()
     {
-        Vk.DestroyDevice(Handle, _allocationCallbacks);
+        Vk.DestroyDevice(Handle, AllocationCallbacks);
     }
 }

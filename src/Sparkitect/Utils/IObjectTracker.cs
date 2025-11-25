@@ -11,7 +11,7 @@ public interface IObjectTracker<T>
     /// Registers an object for tracking.
     /// </summary>
     /// <param name="obj">The object to track.</param>
-    void Track(T obj);
+    Handle Track(T obj);
 
     /// <summary>
     /// Unregisters an object from tracking.
@@ -29,4 +29,21 @@ public interface IObjectTracker<T>
     /// Gets the count of currently tracked objects.
     /// </summary>
     int Count { get; }
+
+    public readonly struct Handle
+    {
+        private readonly IObjectTracker<T> _tracker;
+        private readonly T value;
+
+        public Handle(IObjectTracker<T> tracker, T value)
+        {
+            _tracker = tracker;
+            this.value = value;
+        }
+
+        public void Free()
+        {
+            _tracker.Untrack(value);
+        }
+    }
 }

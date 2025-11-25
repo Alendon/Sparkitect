@@ -9,11 +9,18 @@ public sealed class NullObjectTracker<T> : IObjectTracker<T>
 {
     public static NullObjectTracker<T> Instance { get; } = new();
 
-    private NullObjectTracker() { }
+    private NullObjectTracker()
+    {
+    }
 
-    public void Track(T obj) { }
+    public IObjectTracker<T>.Handle Track(T obj)
+    {
+        return new IObjectTracker<T>.Handle(this, obj);
+    }
 
-    public void Untrack(T obj) { }
+    public void Untrack(T obj)
+    {
+    }
 
     public ICollection<T> GetTracked() => Array.Empty<T>();
 

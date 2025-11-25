@@ -16,24 +16,13 @@ public interface IVulkanContext
     IObjectTracker<VulkanObject> ObjectTracker { get; }
 
     /// <summary>
-    /// Gets the primary graphics queue. Always available after device creation.
+    /// Gets a specific queue by family and index.
     /// </summary>
-    VulkanQueue GraphicsQueue { get; }
+    /// <returns>The queue, or null if not found.</returns>
+    VulkanQueue? GetQueue(uint familyIndex, uint queueIndex);
 
     /// <summary>
-    /// Gets a dedicated compute queue if available, otherwise null.
-    /// Falls back to graphics queue via <see cref="GraphicsQueue"/> if needed.
-    /// </summary>
-    VulkanQueue? ComputeQueue { get; }
-
-    /// <summary>
-    /// Gets a dedicated transfer queue if available, otherwise null.
-    /// Falls back to graphics queue via <see cref="GraphicsQueue"/> if needed.
-    /// </summary>
-    VulkanQueue? TransferQueue { get; }
-
-    /// <summary>
-    /// Gets all queues belonging to a specific queue family.
+    /// Gets all queues belonging to a queue family.
     /// </summary>
     IReadOnlyList<VulkanQueue> GetQueuesForFamily(uint familyIndex);
 }

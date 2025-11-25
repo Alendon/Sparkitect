@@ -13,7 +13,7 @@ using Sparkitect.Utils;
 namespace Sparkitect.Graphics.Vulkan;
 
 [StateService<IVulkanContext, VulkanModule>]
-public class VulkanContext : IVulkanContext, IVulkanContextStateFacade
+public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
 {
     private const string ValidationLayerName = "VK_LAYER_KHRONOS_validation";
     private const string DebugUtilsExtensionName = "VK_EXT_debug_utils";
@@ -24,10 +24,6 @@ public class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     public VkDevice VkDevice { get; private set; } = null!;
     public unsafe AllocationCallbacks* DefaultAllocationCallbacks { get; }
     public IObjectTracker<VulkanObject> ObjectTracker { get; private set; } = null!;
-
-    public VulkanQueue GraphicsQueue { get; private set; } = null!;
-    public VulkanQueue? ComputeQueue { get; private set; }
-    public VulkanQueue? TransferQueue { get; private set; }
 
     private readonly Dictionary<uint, List<VulkanQueue>> _queuesByFamily = [];
     private ExtDebugUtils? _debugUtils;
@@ -44,12 +40,13 @@ public class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         VkApi = Vk.GetApi();
         ObjectTracker = new ObjectTracker<VulkanObject>();
     }
-    
+
     public unsafe void CreateInstance()
     {
         var configContext = new VulkanInstanceConfigurationContext(VkApi);
 
-        using var configuratorContainer = ModDIService.CreateEntrypointContainer<IVulkanInstanceConfigurator>(GameStateManager.LoadedMods);
+        using var configuratorContainer =
+            ModDIService.CreateEntrypointContainer<IVulkanInstanceConfigurator>(GameStateManager.LoadedMods);
         configuratorContainer.ProcessMany(c => c.Configure(configContext));
 
         var validationEnabled = ValidationEnabled();
@@ -107,7 +104,7 @@ public class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             if (result != Result.Success)
                 throw new InvalidOperationException($"Failed to create Vulkan instance: {result}");
 
-            VkInstance = new VkInstance(ObjectTracker, VkApi, instance, DefaultAllocationCallbacks);
+            VkInstance = new VkInstance(instance, this);
 
             if (validationEnabled)
                 SetupDebugMessenger();
@@ -142,7 +139,8 @@ public class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             PfnUserCallback = new PfnDebugUtilsMessengerCallbackEXT(DebugCallback)
         };
 
-        var result = _debugUtils!.CreateDebugUtilsMessenger(VkInstance.Handle, createInfo, DefaultAllocationCallbacks, out _debugMessenger);
+        var result = _debugUtils!.CreateDebugUtilsMessenger(VkInstance.Handle, createInfo, DefaultAllocationCallbacks,
+            out _debugMessenger);
         if (result != Result.Success)
         {
             Log.Warning("Failed to create debug messenger: {Result}", result);
@@ -187,7 +185,8 @@ public class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         if (devices.Length == 0)
             throw new InvalidOperationException("No physical devices found");
 
-        using var selectorContainer = ModDIService.CreateEntrypointContainer<IVulkanPhysicalDeviceSelector>(GameStateManager.LoadedMods);
+        using var selectorContainer =
+            ModDIService.CreateEntrypointContainer<IVulkanPhysicalDeviceSelector>(GameStateManager.LoadedMods);
         var selectors = selectorContainer.ResolveMany();
 
         PhysicalDevice bestDevice = default;
@@ -208,10 +207,11 @@ public class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         if (bestDevice.Handle == 0)
             throw new InvalidOperationException("No suitable physical device found");
 
-        VkPhysicalDevice = new VkPhysicalDevice(ObjectTracker, VkApi, bestDevice);
+        VkPhysicalDevice = new VkPhysicalDevice(this, bestDevice);
     }
 
-    private static int ComputeDeviceScore(VulkanPhysicalDeviceSelectionContext context, IReadOnlyList<IVulkanPhysicalDeviceSelector> selectors)
+    private static int ComputeDeviceScore(VulkanPhysicalDeviceSelectionContext context,
+        IReadOnlyList<IVulkanPhysicalDeviceSelector> selectors)
     {
         foreach (var selector in selectors)
         {
@@ -231,16 +231,17 @@ public class VulkanContext : IVulkanContext, IVulkanContextStateFacade
 
     public unsafe void CreateDevice()
     {
-        var configContext = new VulkanDeviceConfigurationContext(VkApi, VkPhysicalDevice.Handle);
+        var configContext = new VulkanDeviceConfigurationContext(VkApi, VkPhysicalDevice.PhysicalDevice);
 
-        using var configuratorContainer = ModDIService.CreateEntrypointContainer<IVulkanDeviceConfigurator>(GameStateManager.LoadedMods);
+        using var configuratorContainer =
+            ModDIService.CreateEntrypointContainer<IVulkanDeviceConfigurator>(GameStateManager.LoadedMods);
         configuratorContainer.ProcessMany(c => c.Configure(configContext));
 
         var queueRequests = configContext.GetQueueRequests();
         if (queueRequests.Count == 0)
         {
             var graphicsFamily = configContext.FindQueueFamily(QueueFlags.GraphicsBit)
-                ?? throw new InvalidOperationException("No graphics queue family found");
+                                 ?? throw new InvalidOperationException("No graphics queue family found");
             configContext.RequestQueues(graphicsFamily, 1);
             queueRequests = configContext.GetQueueRequests();
         }
@@ -295,108 +296,83 @@ public class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                         PpEnabledExtensionNames = (byte**)extensionPtr
                     };
 
-                    var result = VkApi.CreateDevice(VkPhysicalDevice.Handle, deviceCreateInfo, DefaultAllocationCallbacks, out var device);
+                    var result = VkApi.CreateDevice(VkPhysicalDevice.PhysicalDevice, deviceCreateInfo,
+                        DefaultAllocationCallbacks, out var device);
                     if (result != Result.Success)
                         throw new InvalidOperationException($"Failed to create Vulkan device: {result}");
 
-                    VkDevice = new VkDevice(ObjectTracker, VkApi, device, DefaultAllocationCallbacks);
+                    VkDevice = new VkDevice(this, device);
                     Log.Debug("Vulkan device created with {QueueCount} queue families, {ExtCount} extensions",
                         queueRequests.Count, enabledExtensions.Count);
                 }
             }
-            finally { SilkMarshal.Free(extensionPtr); }
+            finally
+            {
+                SilkMarshal.Free(extensionPtr);
+            }
         }
         finally
         {
             foreach (var handle in handles)
-                if (handle.IsAllocated) handle.Free();
+                if (handle.IsAllocated)
+                    handle.Free();
         }
 
         RetrieveQueues(queueRequests, configContext.QueueFamilyProperties);
     }
 
-    private void RetrieveQueues(IReadOnlyList<QueueFamilyRequest> requests, IReadOnlyList<QueueFamilyProperties> familyProperties)
+    public VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex)
     {
-        _queuesByFamily.Clear();
+        CommandPoolCreateInfo createInfo = new()
+        {
+            SType = StructureType.CommandPoolCreateInfo,
+            Flags = flags,
+            QueueFamilyIndex = queueFamilyIndex
+        };
 
+        var result = VkApi.CreateCommandPool(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var pool);
+
+        if (result != Result.Success || pool.Handle == 0) return VkResult<VkCommandPool>._Error(result);
+
+        return VkResult<VkCommandPool>._Success(new VkCommandPool(pool, this));
+    }
+
+    private void RetrieveQueues(IReadOnlyList<QueueFamilyRequest> requests,
+        IReadOnlyList<QueueFamilyProperties> familyProperties)
+    {
         foreach (var request in requests)
         {
             var capabilities = familyProperties[(int)request.QueueFamilyIndex].QueueFlags;
-            var familyQueues = new List<VulkanQueue>((int)request.QueueCount);
+            var queues = new List<VulkanQueue>((int)request.QueueCount);
 
             for (uint i = 0; i < request.QueueCount; i++)
             {
                 var handle = VkDevice.GetQueue(request.QueueFamilyIndex, i);
-                familyQueues.Add(new VulkanQueue(handle, request.QueueFamilyIndex, i, capabilities));
+                queues.Add(new VulkanQueue(handle, request.QueueFamilyIndex, i, capabilities));
             }
 
-            _queuesByFamily[request.QueueFamilyIndex] = familyQueues;
+            _queuesByFamily[request.QueueFamilyIndex] = queues;
         }
 
-        AssignPrimaryQueues();
+        Log.Debug("Retrieved {QueueCount} queue(s) across {FamilyCount} family(s)",
+            _queuesByFamily.Values.Sum(q => q.Count), _queuesByFamily.Count);
     }
 
-    private void AssignPrimaryQueues()
+    public VulkanQueue? GetQueue(uint familyIndex, uint queueIndex)
     {
-        // Find graphics queue (required)
-        foreach (var (_, queues) in _queuesByFamily)
-        {
-            var graphicsQueue = queues.FirstOrDefault(q => q.SupportsGraphics);
-            if (graphicsQueue != null)
-            {
-                GraphicsQueue = graphicsQueue;
-                break;
-            }
-        }
-
-        if (GraphicsQueue == null!)
-            throw new InvalidOperationException("No graphics queue found after device creation");
-
-        // Find dedicated compute queue (different from graphics queue's family)
-        foreach (var (familyIndex, queues) in _queuesByFamily)
-        {
-            if (familyIndex == GraphicsQueue.FamilyIndex) continue;
-            var computeQueue = queues.FirstOrDefault(q => q.SupportsCompute);
-            if (computeQueue != null)
-            {
-                ComputeQueue = computeQueue;
-                break;
-            }
-        }
-
-        // Find dedicated transfer queue (different from graphics and compute)
-        foreach (var (familyIndex, queues) in _queuesByFamily)
-        {
-            if (familyIndex == GraphicsQueue.FamilyIndex) continue;
-            if (ComputeQueue != null && familyIndex == ComputeQueue.FamilyIndex) continue;
-            var transferQueue = queues.FirstOrDefault(q => q.SupportsTransfer);
-            if (transferQueue != null)
-            {
-                TransferQueue = transferQueue;
-                break;
-            }
-        }
-
-        Log.Debug("Queues assigned - Graphics: family {GraphicsFamily}, Compute: {ComputeFamily}, Transfer: {TransferFamily}",
-            GraphicsQueue.FamilyIndex,
-            ComputeQueue?.FamilyIndex.ToString() ?? "none (use graphics)",
-            TransferQueue?.FamilyIndex.ToString() ?? "none (use graphics)");
+        return _queuesByFamily.TryGetValue(familyIndex, out var queues)
+            ? queues.FirstOrDefault(q => q.QueueIndex == queueIndex)
+            : null;
     }
 
     public IReadOnlyList<VulkanQueue> GetQueuesForFamily(uint familyIndex)
     {
-        return _queuesByFamily.TryGetValue(familyIndex, out var queues)
-            ? queues
-            : [];
+        return _queuesByFamily.TryGetValue(familyIndex, out var queues) ? queues : [];
     }
 
     public void DestroyDevice()
     {
         _queuesByFamily.Clear();
-        GraphicsQueue = null!;
-        ComputeQueue = null;
-        TransferQueue = null;
-
         VkDevice?.WaitIdle();
         VkDevice?.Dispose();
         VkDevice = null!;
