@@ -4,7 +4,8 @@
       "src": [
         {
           "files": [
-            "Sparkitect/**.csproj"
+            "Sparkitect/bin/Release/**/Sparkitect.dll",
+            "Sparkitect/bin/Release/**/Sparkitect.Graphics.Vulkan.Vma.dll"
           ],
           "src": "../src"
         }
