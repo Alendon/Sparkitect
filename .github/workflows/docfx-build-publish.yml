@@ -26,7 +26,7 @@ jobs:
         with:
           dotnet-version: 10.x
 
-      - run: dotnet build -c Release gen/Sparkitect.Generator/Sparkitect.Generator.csproj
+      - run: dotnet build -c Release Sparkitect.sln
       - run: dotnet tool update -g docfx
       - run: docfx docs/docfx.json
 
