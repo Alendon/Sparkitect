@@ -1,4 +1,7 @@
 ﻿//HintName: RenderingModule_ServiceConfigurator.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace Sparkitect.CompilerGenerated.GameState;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

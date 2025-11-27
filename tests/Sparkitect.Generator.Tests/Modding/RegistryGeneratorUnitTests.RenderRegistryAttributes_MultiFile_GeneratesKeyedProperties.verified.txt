@@ -1,4 +1,7 @@
-﻿namespace MinimalSampleMod;
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace MinimalSampleMod;
 
 public partial class DummyRegistry
 {

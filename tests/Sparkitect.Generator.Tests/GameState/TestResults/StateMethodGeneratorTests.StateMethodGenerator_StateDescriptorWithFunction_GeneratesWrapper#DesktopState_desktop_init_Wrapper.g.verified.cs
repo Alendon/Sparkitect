@@ -1,4 +1,7 @@
 ﻿//HintName: DesktopState_desktop_init_Wrapper.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace GameStateTest;
 
 public partial class DesktopState
@@ -9,6 +12,7 @@ public partial class DesktopState
         private global::GameStateTest.ITestService _param0;
 
 
+        [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
             Initialize(

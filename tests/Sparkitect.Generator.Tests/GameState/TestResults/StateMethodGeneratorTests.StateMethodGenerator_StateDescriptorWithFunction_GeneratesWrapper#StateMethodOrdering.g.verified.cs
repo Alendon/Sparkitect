@@ -1,4 +1,7 @@
 ﻿//HintName: StateMethodOrdering.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace GameStateTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

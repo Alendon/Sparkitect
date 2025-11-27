@@ -1,4 +1,7 @@
-﻿[assembly: global::Sparkitect.Modding.RegistryMetadataAttribute<global::DiTest.TestRegistry_Metadata>]
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+[assembly: global::Sparkitect.Modding.RegistryMetadataAttribute<global::DiTest.TestRegistry_Metadata>]
 
 namespace DiTest;
 

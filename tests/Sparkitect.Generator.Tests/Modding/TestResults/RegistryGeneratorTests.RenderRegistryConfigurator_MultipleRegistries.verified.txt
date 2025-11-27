@@ -1,4 +1,7 @@
-﻿namespace SampleTest.Generated;
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace SampleTest.Generated;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.DI.RegistryConfigurator]

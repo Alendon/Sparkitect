@@ -1,4 +1,7 @@
 ﻿//HintName: StateMethodAssociation.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace GameStateTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -12,19 +15,19 @@ internal class GeneratedStateMethodAssociation : global::Sparkitect.GameState.St
             global::GameStateTest.AnotherModule.Identification,
             "process",
             typeof(global::GameStateTest.AnotherModule.processWrapper),
-            global::Sparkitect.GameState.StateMethodSchedule.OnStateEnter);
+            global::Sparkitect.GameState.StateMethodSchedule.OnFrameEnter);
 
         builder.Add(
             global::GameStateTest.TestModule.Identification,
             "cleanup",
             typeof(global::GameStateTest.TestModule.cleanupWrapper),
-            global::Sparkitect.GameState.StateMethodSchedule.OnModuleExit);
+            global::Sparkitect.GameState.StateMethodSchedule.OnDestroy);
 
         builder.Add(
             global::GameStateTest.TestModule.Identification,
             "init",
             typeof(global::GameStateTest.TestModule.initWrapper),
-            global::Sparkitect.GameState.StateMethodSchedule.OnModuleEnter);
+            global::Sparkitect.GameState.StateMethodSchedule.OnCreate);
 
         builder.Add(
             global::GameStateTest.TestModule.Identification,

@@ -1,5 +1,6 @@
 ﻿//HintName: SampleTestConfigurator.g.cs
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+#pragma warning disable CS9113
+#pragma warning disable CS1591
 
 namespace SampleTest;
 

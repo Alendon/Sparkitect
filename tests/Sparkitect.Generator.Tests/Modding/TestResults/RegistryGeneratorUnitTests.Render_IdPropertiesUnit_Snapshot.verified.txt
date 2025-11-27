@@ -1,4 +1,7 @@
-﻿namespace SampleTest.Generated.IdExtensions;
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace SampleTest.Generated.IdExtensions;
 
 public readonly partial struct SampleTestDummyIDs
 {

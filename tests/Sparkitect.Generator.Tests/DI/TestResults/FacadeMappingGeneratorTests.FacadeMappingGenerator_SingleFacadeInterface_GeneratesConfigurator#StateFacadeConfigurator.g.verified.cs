@@ -1,4 +1,7 @@
 ﻿//HintName: StateFacadeConfigurator.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace Sparkitect.GameState.CompilerGenerated.DI;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

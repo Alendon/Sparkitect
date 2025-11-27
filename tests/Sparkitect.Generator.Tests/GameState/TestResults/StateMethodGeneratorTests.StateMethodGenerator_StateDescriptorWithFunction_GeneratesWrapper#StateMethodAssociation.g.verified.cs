@@ -1,4 +1,7 @@
 ﻿//HintName: StateMethodAssociation.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace GameStateTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -12,7 +15,7 @@ internal class GeneratedStateMethodAssociation : global::Sparkitect.GameState.St
             global::GameStateTest.DesktopState.Identification,
             "desktop_init",
             typeof(global::GameStateTest.DesktopState.desktop_initWrapper),
-            global::Sparkitect.GameState.StateMethodSchedule.OnStateEnter);
+            global::Sparkitect.GameState.StateMethodSchedule.OnFrameEnter);
 
     }
 }

@@ -1,6 +1,4 @@
 ﻿using Serilog;
-using Serilog.Core;
-using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
 

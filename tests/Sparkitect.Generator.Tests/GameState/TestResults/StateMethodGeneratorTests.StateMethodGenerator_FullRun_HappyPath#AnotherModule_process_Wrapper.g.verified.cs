@@ -1,4 +1,7 @@
 ﻿//HintName: AnotherModule_process_Wrapper.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace GameStateTest;
 
 public partial class AnotherModule
@@ -7,6 +10,7 @@ public partial class AnotherModule
     {
 
 
+        [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
             Process(

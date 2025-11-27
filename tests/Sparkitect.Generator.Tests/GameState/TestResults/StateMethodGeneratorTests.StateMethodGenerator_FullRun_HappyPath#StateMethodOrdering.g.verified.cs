@@ -1,4 +1,7 @@
 ﻿//HintName: StateMethodOrdering.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace GameStateTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -9,7 +12,7 @@ internal class GeneratedStateMethodOrdering : global::Sparkitect.GameState.State
     {
 
         ordering.Add(new global::Sparkitect.GameState.OrderingEntry(
-            (global::GameStateTest.TestModule, "init"),
+            (global::GameStateTest.TestModule.Identification, "init"),
             (global::GameStateTest.AnotherModule.Identification, "process")));
 
         ordering.Add(new global::Sparkitect.GameState.OrderingEntry(

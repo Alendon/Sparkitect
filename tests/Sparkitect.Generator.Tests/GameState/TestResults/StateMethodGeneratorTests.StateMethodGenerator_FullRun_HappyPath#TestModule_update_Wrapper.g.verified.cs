@@ -1,4 +1,7 @@
 ﻿//HintName: TestModule_update_Wrapper.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace GameStateTest;
 
 public partial class TestModule
@@ -11,6 +14,7 @@ public partial class TestModule
         private global::GameStateTest.ITestFacade _param1;
 
 
+        [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
             Update(

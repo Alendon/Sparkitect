@@ -1,4 +1,7 @@
 ﻿//HintName: JsonProcessor_KeyedFactory.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace DiTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -27,32 +30,55 @@ internal class JsonProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<
     
     ];
     
-    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
+        bool allResolved = true;
+
         
             if(!container.TryResolveMapped<global::DiTest.ILogger>(out _arg_1, facadeMap))
             {
             
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<JsonProcessor, global::DiTest.ILogger>();
+                allResolved = false;
             
             }
         
 
         
+
+        if (!allResolved)
+        {
+            // Clear all dependency fields on failure
+        
+            _arg_1 = default;
+        
+        
+            return false;
+        }
+
+        return true;
     }
 
-    public void Prepare(global::Sparkitect.DI.Container.ICoreContainer container) => Prepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
+    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container) => TryPrepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
     
     public global::DiTest.IProcessor CreateInstance()
     {
+        // Validate that all required dependencies are prepared
+    
+        
+        if (_arg_1 is null)
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<JsonProcessor, global::DiTest.ILogger>();
+        
+    
+    
+
         var instance = Constructor(
 
     _arg_1  
 );
-        
+
         // Apply cached property dependencies
     
-        
+
         return instance;
     
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]

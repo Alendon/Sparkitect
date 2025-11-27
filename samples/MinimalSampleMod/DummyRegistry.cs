@@ -1,6 +1,4 @@
-﻿using MinimalSampleMod.CompilerGenerated.IdExtensions;
-using Sparkitect.Modding;
-using Sparkitect.Modding.IDs;
+﻿using Sparkitect.Modding;
 
 namespace MinimalSampleMod;
 

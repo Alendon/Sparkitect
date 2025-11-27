@@ -1,4 +1,7 @@
 ﻿//HintName: TestModule_cleanup_Wrapper.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
 namespace GameStateTest;
 
 public partial class TestModule
@@ -7,6 +10,7 @@ public partial class TestModule
     {
 
 
+        [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
             Cleanup(
