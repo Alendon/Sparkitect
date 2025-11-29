@@ -4,11 +4,13 @@ using Silk.NET.Core;
 using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.EXT;
+using Silk.NET.Vulkan.Extensions.KHR;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Utils;
+using Sparkitect.Windowing;
 
 namespace Sparkitect.Graphics.Vulkan;
 
@@ -28,10 +30,14 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     private readonly Dictionary<uint, List<VulkanQueue>> _queuesByFamily = [];
     private ExtDebugUtils? _debugUtils;
     private DebugUtilsMessengerEXT _debugMessenger;
+    private KhrSurface? _khrSurface;
 
     public required IModDIService ModDIService { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
     public required ICliArgumentHandler CliArgumentHandler { private get; init; }
+
+    // Optional - present if WindowingModule is active
+    public IWindowManager? WindowManager { private get; init; }
 
     private bool ValidationEnabled() => true;
 
@@ -66,6 +72,24 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             if (validationEnabled && configContext.IsExtensionAvailable(DebugUtilsExtensionName))
             {
                 configContext.AddExtension(DebugUtilsExtensionName);
+            }
+        }
+
+        // Add window surface extensions if windowing is active
+        if (WindowManager?.Window != null)
+        {
+            var windowExtensions = WindowManager.GetRequiredVulkanExtensions();
+            foreach (var ext in windowExtensions)
+            {
+                if (configContext.IsExtensionAvailable(ext))
+                {
+                    configContext.AddExtension(ext);
+                    Log.Debug("Added window extension: {Extension}", ext);
+                }
+                else
+                {
+                    Log.Warning("Window requires extension {Extension} which is not available", ext);
+                }
             }
         }
 
@@ -108,6 +132,15 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
 
             if (validationEnabled)
                 SetupDebugMessenger();
+
+            // Initialize KhrSurface extension if surface extensions are enabled
+            if (WindowManager?.Window != null)
+            {
+                if (VkApi.TryGetInstanceExtension(instance, out _khrSurface))
+                {
+                    Log.Debug("KHR_surface extension loaded");
+                }
+            }
         }
         finally
         {
@@ -335,6 +368,49 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         if (result != Result.Success || pool.Handle == 0) return VkResult<VkCommandPool>._Error(result);
 
         return VkResult<VkCommandPool>._Success(new VkCommandPool(pool, this));
+    }
+
+    public unsafe VkSurface? CreateSurface()
+    {
+        if (WindowManager?.Window?.VkSurface == null || _khrSurface == null)
+        {
+            Log.Warning("Cannot create surface: windowing not available or KHR_surface not loaded");
+            return null;
+        }
+
+        var rawHandle = WindowManager.Window.VkSurface.Create<AllocationCallbacks>(
+            VkInstance.Handle.ToHandle(), null);
+
+        if (rawHandle.Handle == 0)
+        {
+            Log.Error("Failed to create Vulkan surface from window");
+            return null;
+        }
+
+        var surfaceHandle = new SurfaceKHR(rawHandle.Handle);
+
+        Log.Information("Vulkan surface created");
+        return new VkSurface(surfaceHandle, _khrSurface, this);
+    }
+
+    public unsafe VkResult<VkShaderModule> CreateShaderModule(ReadOnlySpan<byte> spirvCode)
+    {
+        fixed (byte* codePtr = spirvCode)
+        {
+            var createInfo = new ShaderModuleCreateInfo
+            {
+                SType = StructureType.ShaderModuleCreateInfo,
+                CodeSize = (nuint)spirvCode.Length,
+                PCode = (uint*)codePtr
+            };
+
+            var result = VkApi.CreateShaderModule(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var module);
+
+            if (result != Result.Success)
+                return VkResult<VkShaderModule>._Error(result);
+
+            return VkResult<VkShaderModule>._Success(new VkShaderModule(module, this));
+        }
     }
 
     private void RetrieveQueues(IReadOnlyList<QueueFamilyRequest> requests,

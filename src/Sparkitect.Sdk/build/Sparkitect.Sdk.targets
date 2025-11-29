@@ -5,7 +5,7 @@
         <SparkitectModManifestIntermediatePath>$(IntermediateOutputPath)manifest.json</SparkitectModManifestIntermediatePath>
         <SparkitectModArchiveName>$(ModIdentifier)-$(ModVersion).sparkmod</SparkitectModArchiveName>
         <SparkitectModArchiveOutputPath>$(OutputPath)$(SparkitectModArchiveName)</SparkitectModArchiveOutputPath>
-        <SparkitectSdkTaskDll>$(MSBuildThisFileDirectory)..\tasks\net9.0\$(MSBuildThisFileName).dll</SparkitectSdkTaskDll>
+        <SparkitectSdkTaskDll>$(MSBuildThisFileDirectory)..\tasks\net10.0\$(MSBuildThisFileName).dll</SparkitectSdkTaskDll>
         <SparkitectRequiredAssemblies Condition="'$(SparkitectRequiredAssemblies)' == ''"></SparkitectRequiredAssemblies>
         <SparkitectAutoDetectDependencies Condition="'$(SparkitectAutoDetectDependencies)' == ''">true</SparkitectAutoDetectDependencies>
     </PropertyGroup>
@@ -15,8 +15,8 @@
     <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.ParseDependencyFile" AssemblyFile="$(SparkitectSdkTaskDll)" />
     
     <!-- Detect dependencies from deps.json file -->
-    <Target Name="DetectSparkitectDependencies" 
-            BeforeTargets="GenerateModManifest" 
+    <Target Name="DetectSparkitectDependencies"
+            BeforeTargets="GenerateModManifest"
             Condition="'$(SparkitectAutoDetectDependencies)' == 'true'">
         
         <ParseDependencyFile 

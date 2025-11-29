@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <PackageId>Sparkitect.Sdk</PackageId>
         <Version>1.0.12</Version>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -71,7 +71,7 @@
         <ItemGroup>
             <DllToCopy Include="$(OutputPath)*.dll" />
         </ItemGroup>
-        <Copy SourceFiles="@(DllToCopy)" DestinationFolder="$(ProjectDir)tasks\net9.0\" />
+        <Copy SourceFiles="@(DllToCopy)" DestinationFolder="$(ProjectDir)tasks\net10.0\" />
     </Target>
 
 </Project>

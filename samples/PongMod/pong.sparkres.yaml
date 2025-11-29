@@ -1,0 +1,3 @@
+- Sparkitect.Graphics.Vulkan.ShaderModuleRegistry.RegisterShaderModule:
+  - Id: "pong"
+    File: "pong.spirv"

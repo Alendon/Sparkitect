@@ -3,6 +3,7 @@ using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
+using Sparkitect.Windowing;
 
 namespace Sparkitect.Graphics.Vulkan;
 
@@ -22,6 +23,7 @@ public partial class VulkanModule : IStateModule
     [StateFunction("create_instance")]
     [OnCreate]
     [OrderAfter("vulkan_init")]
+    [OrderAfter<WindowingModule>("create_window")]
     public static void CreateInstance(IVulkanContextStateFacade vulkanContext)
     {
         vulkanContext.CreateInstance();

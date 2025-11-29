@@ -22,6 +22,8 @@
         vulkan-loader
         vulkan-validation-layers
         vulkan-tools
+        shader-slang
+        stdenv.cc.cc.lib  # libstdc++ for native NuGet libraries
       ];
 
       runtimeLibPath = pkgs.lib.makeLibraryPath runtimeLibs;
@@ -35,19 +37,15 @@
 
         # Make dotnet usable like in the manual install docs
         shellHook = ''
-          # DOTNET_ROOT -> where the SDK lives (like export DOTNET_ROOT=$HOME/.dotnet)
-          # export DOTNET_ROOT=${dotnetBlob}
-          # PATH -> include DOTNET_ROOT and tools, same idea as docs
-          # export PATH="$PATH:${dotnetBlob}:${dotnetBlob}/tools"
-
           # Make the native libs visible at runtime (ICU, OpenSSL, etc.)
           export LD_LIBRARY_PATH="${runtimeLibPath}:''${LD_LIBRARY_PATH:-}"
 
+          # Enable dynamic loading of native libraries from NuGet packages
+          export NIX_LD_LIBRARY_PATH="${runtimeLibPath}:''${NIX_LD_LIBRARY_PATH:-}"
+          export NIX_LD="$(cat ${pkgs.stdenv.cc}/nix-support/dynamic-linker)"
+
           # Vulkan setup
           export VK_LAYER_PATH="${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d"
-
-          # Optional: quick sanity check
-          # dotnet --list-sdks || true
         '';
       };
     };

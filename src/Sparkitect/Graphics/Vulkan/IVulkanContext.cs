@@ -24,6 +24,17 @@ public interface IVulkanContext
     VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex);
 
     /// <summary>
+    /// Creates a surface from the current window.
+    /// </summary>
+    /// <returns>The surface, or null if windowing is not available.</returns>
+    VkSurface? CreateSurface();
+
+    /// <summary>
+    /// Creates a shader module from SPIR-V bytecode.
+    /// </summary>
+    VkResult<VkShaderModule> CreateShaderModule(ReadOnlySpan<byte> spirvCode);
+
+    /// <summary>
     /// Gets all queues belonging to a queue family.
     /// </summary>
     IReadOnlyList<VulkanQueue> GetQueuesForFamily(uint familyIndex);

@@ -14,7 +14,7 @@ public partial class {{ ModuleTypeName }}
         [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
-            {{ MethodName }}(
+            {{ ModuleTypeName }}.{{ MethodName }}(
 {% for param in Parameters %}
     _param{{ param.Index }}  {% unless forloop.last %}, {%- endunless -%}
 {% endfor %}

@@ -1,0 +1,44 @@
+<Project>
+    <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.props"/>
+
+    <PropertyGroup>
+        <ModName>Pong Sample</ModName>
+        <ModIdentifier>pong_mod</ModIdentifier>
+        <ModVersion>1.0.0</ModVersion>
+        <ModAuthor>Sparkitect</ModAuthor>
+        <ModDescription>Minimal Pong game sample for Sparkitect</ModDescription>
+        <ModType>Game</ModType>
+        <LangVersion>preview</LangVersion>
+
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDependencyFile>true</GenerateDependencyFile>
+        <RootNamespace>PongMod</RootNamespace>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+        <OutputPath>bin\Debug\</OutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+        <OutputPath>bin\Release\</OutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Sparkitect\Sparkitect.csproj"/>
+        <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="OneOf" Version="3.0.271" />
+    </ItemGroup>
+
+    <!-- Slang shaders to compile -->
+    <ItemGroup>
+        <SlangShader Include="Shaders\pong.slang" />
+    </ItemGroup>
+
+    <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.targets"/>
+</Project>
