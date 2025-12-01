@@ -16,6 +16,7 @@
         <GenerateDependencyFile>true</GenerateDependencyFile>
         <RootNamespace>PongMod</RootNamespace>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

@@ -86,7 +86,13 @@ public static string GetValue() => "Hello World";
 ### 4. Source Generation
 
 Uses Roslyn + Fluid (Liquid) templates. Generates DI factories, state wrappers, facade mappings, registry attributes.
-**Important:** Analyzer errors enforce patterns - they're intentional. Generated code in `Sparkitect.CompilerGenerated`.
+**Important:** Analyzer errors enforce patterns - they're intentional. Generated code in `{RootNamespace}.CompilerGenerated`,
+the actual namespace to use is exposed in the mod settings parser of the source generators.
+
+Source generator output from Roslyn is NOT placed in the obj directories by default.
+The `EmitCompilerGeneratedFiles` build flag has to be enabled for that.
+
+
 
 ### 5. Modding System
 

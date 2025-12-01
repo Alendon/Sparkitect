@@ -8,6 +8,7 @@
         <SparkitectSdkTaskDll>$(MSBuildThisFileDirectory)..\tasks\net10.0\$(MSBuildThisFileName).dll</SparkitectSdkTaskDll>
         <SparkitectRequiredAssemblies Condition="'$(SparkitectRequiredAssemblies)' == ''"></SparkitectRequiredAssemblies>
         <SparkitectAutoDetectDependencies Condition="'$(SparkitectAutoDetectDependencies)' == ''">true</SparkitectAutoDetectDependencies>
+        <SparkitectResourceDirectory Condition="'$(SparkitectResourceDirectory)' == ''">$(MSBuildProjectDirectory)/Resources</SparkitectResourceDirectory>
     </PropertyGroup>
     
     <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.GenerateModManifest" AssemblyFile="$(SparkitectSdkTaskDll)" />
@@ -53,7 +54,7 @@
     </Target>
     
     <!-- Create mod archive -->
-    <Target Name="CreateModArchive" 
+    <Target Name="CreateModArchive"
             AfterTargets="GenerateModManifest"
             DependsOnTargets="GenerateModManifest"
             Condition="'$(SparkitectModPackageEnabled)' == 'true'">
@@ -62,8 +63,8 @@
             ManifestPath="$(SparkitectModManifestIntermediatePath)"
             AssemblyPath="$(TargetPath)"
             RequiredAssemblies="$(SparkitectRequiredAssemblies)"
-            AdditionalFiles="$(SparkitectAdditionalModFiles)" />
-            
+            ResourceDirectory="$(SparkitectResourceDirectory)" />
+
         <Message Text="Mod archive created at: $(SparkitectModArchiveOutputPath)" Importance="high" />
     </Target>
 </Project>

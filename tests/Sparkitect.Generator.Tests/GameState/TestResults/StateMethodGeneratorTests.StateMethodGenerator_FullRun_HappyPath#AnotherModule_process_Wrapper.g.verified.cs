@@ -13,7 +13,7 @@ public partial class AnotherModule
         [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
-            Process(
+            AnotherModule.Process(
 
 );
         }

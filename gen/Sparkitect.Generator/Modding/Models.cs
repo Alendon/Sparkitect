@@ -7,7 +7,7 @@ public record RegistryModel(
     string Key,
     string ContainingNamespace,
     ImmutableValueArray<RegisterMethodModel> RegisterMethods,
-    ImmutableValueArray<(string identifier, bool optional)> ResourceFiles);
+    ImmutableValueArray<(string Key, bool Required, bool Primary)> ResourceFiles);
 
 public record FileRegistrationEntry(string RegistryClass, string MethodName, string Id, ImmutableValueArray<(string fileId, string fileName)> Files);
 

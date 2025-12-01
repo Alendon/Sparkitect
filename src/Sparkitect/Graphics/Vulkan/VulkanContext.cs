@@ -1,3 +1,5 @@
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Serilog;
 using Silk.NET.Core;
@@ -273,9 +275,22 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         var queueRequests = configContext.GetQueueRequests();
         if (queueRequests.Count == 0)
         {
-            var graphicsFamily = configContext.FindQueueFamily(QueueFlags.GraphicsBit)
-                                 ?? throw new InvalidOperationException("No graphics queue family found");
-            configContext.RequestQueues(graphicsFamily, 1);
+
+            if (WindowManager is not null)
+            {
+                var graphicsQueueFamily = configContext.FindQueueFamily(QueueFlags.GraphicsBit)
+                                          ?? throw new InvalidOperationException("No graphics queue family found");
+                configContext.RequestQueues(graphicsQueueFamily, 1);
+                var transferQueueFamily = configContext.FindQueueFamily(QueueFlags.TransferBit)
+                                          ?? throw new InvalidOperationException("No graphics queue family found");
+                configContext.RequestQueues(transferQueueFamily, 1);
+            }
+            
+            var computeQueueFamily = configContext.FindQueueFamily(QueueFlags.ComputeBit)
+                                     ?? throw new InvalidOperationException("No graphics queue family found");
+            configContext.RequestQueues(computeQueueFamily, 1);
+            
+            
             queueRequests = configContext.GetQueueRequests();
         }
 
@@ -352,6 +367,8 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
 
         RetrieveQueues(queueRequests, configContext.QueueFamilyProperties);
+        
+        
     }
 
     public VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex)

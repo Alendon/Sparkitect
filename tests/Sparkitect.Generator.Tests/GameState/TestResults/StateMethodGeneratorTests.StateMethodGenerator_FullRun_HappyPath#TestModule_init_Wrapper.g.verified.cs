@@ -15,7 +15,7 @@ public partial class TestModule
         [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
-            Initialize(
+            TestModule.Initialize(
 
     _param0  
 );

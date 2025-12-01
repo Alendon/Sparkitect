@@ -23,6 +23,7 @@
         vulkan-validation-layers
         vulkan-tools
         shader-slang
+        glfw
         stdenv.cc.cc.lib  # libstdc++ for native NuGet libraries
       ];
 

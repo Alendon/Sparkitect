@@ -145,18 +145,11 @@ public partial class RegistryGenerator
         if (!regMap.TryGetByFullName(cand.RegistryTypeName, cand.RegistryNamespace, out var model) || model is null)
             return null;
 
-        var isSingleFile = model.ResourceFiles.Count == 1;
+        // Map property names ({PascalCase(Key)}File) to actual keys
         var propToId = new Dictionary<string, string>();
-        if (isSingleFile)
+        foreach (var rf in model.ResourceFiles)
         {
-            propToId["File"] = "default";
-        }
-        else
-        {
-            foreach (var rf in model.ResourceFiles)
-            {
-                propToId[RegistryGenerator.ToPascalCase(rf.identifier)] = rf.identifier;
-            }
+            propToId[RegistryGenerator.ToPascalCase(rf.Key) + "File"] = rf.Key;
         }
 
         var filesBuilder = new ImmutableValueArray<(string fileId, string fileName)>.Builder();

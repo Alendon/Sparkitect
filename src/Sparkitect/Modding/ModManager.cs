@@ -28,6 +28,7 @@ internal class ModManager : IModManager
     public required ICliArgumentHandler CliArgumentHandler { private get; init; }
     public required IIdentificationManager IdentificationManager { private get; init; }
     public required IModDIService ModDiService { private get; init; }
+    public required IResourceManager ResourceManager { private get; init; }
 
     private const string AddModDirsArgument = "addModDirs";
 
@@ -287,6 +288,7 @@ internal class ModManager : IModManager
         foreach (var newLoadedMod in newLoadedMods)
         {
             _loadedMods.Add(newLoadedMod.Manifest.Id, newLoadedMod);
+            ResourceManager.OnModLoaded(newLoadedMod.Manifest.Id, newLoadedMod.Archive);
         }
 
         var modGroup = new LoadedModGroup()
@@ -321,6 +323,7 @@ internal class ModManager : IModManager
         {
             if (_loadedMods.TryGetValue(modId, out var loadedMod))
             {
+                ResourceManager.OnModUnloaded(modId);
                 loadedMod.Archive?.Dispose();
                 _loadedMods.Remove(modId);
             }

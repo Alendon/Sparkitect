@@ -18,6 +18,7 @@ internal class RegistryManager : IRegistryManager
     internal required IIdentificationManager IdentificationManager { get; init; }
     internal required IGameStateManager GameStateManager { get; init; }
     internal required IModDIService ModDIService { get; init; }
+    internal required IResourceManager ResourceManager { get; init; }
 
     // Track which mods are processed per registry (registry identifier -> set of mod IDs)
     private readonly Dictionary<string, HashSet<string>> _processedModsByRegistry = new();
@@ -38,6 +39,11 @@ internal class RegistryManager : IRegistryManager
 
         IdentificationManager.RegisterCategory(identifier);
         _processedModsByRegistry.Add(identifier, []);
+
+        if (TRegistry.ResourceFolder is { } folder)
+        {
+            ResourceManager.RegisterResourceFolder(identifier, folder);
+        }
     }
 
     private ICoreContainer? _lastCoreContainer;

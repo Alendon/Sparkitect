@@ -13,7 +13,7 @@ public partial class TestModule
         [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
-            Cleanup(
+            TestModule.Cleanup(
 
 );
         }

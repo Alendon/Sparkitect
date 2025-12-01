@@ -28,42 +28,8 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
     {
         var analyzer = new RegistryResourceSchemaAnalyzer();
         var ids = analyzer.SupportedDiagnostics.Select(d => d.Id).ToArray();
-        await Assert.That(ids.Contains("SPARK2041")).IsTrue();
-    }
-
-    [Test]
-    public async Task Yaml_MissingId_Reports_2040()
-    {
-        // Missing 'id' field
-        var yaml = """
-        MinimalSampleMod.DummyRegistry.Register:
-          - file: a.txt
-        """;
-
-        AdditionalFiles.Add(("/data/sample.sparkres.yaml", yaml));
-        TestSources.Add(("Empty.cs", "namespace N { class C { } }"));
-
-        var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2040", 1);
-    }
-
-    [Test]
-    public async Task Yaml_FileAndFiles_Reports_2041()
-    {
-        // Both 'file' and 'files' present
-        var yaml = """
-        MinimalSampleMod.DummyRegistry.Register:
-          - id: hello
-            file: a.txt
-            files:
-              config: b.json
-        """;
-
-        AdditionalFiles.Add(("/data/sample2.sparkres.yaml", yaml));
-        TestSources.Add(("Empty.cs", "namespace N { class C { } }"));
-
-        var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2041", 1);
+        await Assert.That(ids.Contains("SPARK2042")).IsTrue();
+        await Assert.That(ids.Contains("SPARK2045")).IsTrue();
     }
 
     [Test]
@@ -71,11 +37,11 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
     {
         var yaml = """
         MinimalSampleMod.DummyRegistry.Register:
-          - id: dup
-          - id: dup
+          - dup: "file1.txt"
+          - dup: "file2.txt"
         Other.Registry.Register:
-          - id: x
-          - id: x
+          - x: "a.txt"
+          - x: "b.txt"
         """;
 
         AdditionalFiles.Add(("/data/sample3.sparkres.yaml", yaml));
@@ -90,9 +56,9 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
     {
         var yaml = """
         NoSuch.Registry.Register:
-          - id: x
+          - x: "file.txt"
         DiTest.DummyRegistry.DoesNotExist:
-          - id: y
+          - y: "file.txt"
         """;
 
         var regCode = """
@@ -119,8 +85,7 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
     {
         var yaml = """
         DiTest.DummyRegistry.RegisterValue:
-          - id: x
-            files:
+          - x:
               wrong: a.txt
         """;
 
@@ -129,7 +94,7 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
 
         namespace DiTest;
         [Registry(Identifier = "dummy")]
-        [UseResourceFile(Identifier = "asset", Required = true)]
+        [UseResourceFile(Key = "asset", Required = true)]
         public class DummyRegistry : IRegistry
         {
             [RegistryMethod]
@@ -149,8 +114,7 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
     {
         var yaml = """
         DiTest.DummyRegistry.RegisterValue:
-          - id: x
-            files:
+          - x:
               data: data.bin
         """;
 
@@ -159,8 +123,8 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
 
         namespace DiTest;
         [Registry(Identifier = "dummy")]
-        [UseResourceFile(Identifier = "config", Required = true)]
-        [UseResourceFile(Identifier = "data", Required = false)]
+        [UseResourceFile(Key = "config", Required = true)]
+        [UseResourceFile(Key = "data", Required = false)]
         public class DummyRegistry : IRegistry
         {
             [RegistryMethod]

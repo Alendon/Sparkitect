@@ -27,9 +27,9 @@ public class CreateModArchive : Microsoft.Build.Utilities.Task
     public string AssemblyPath { get; set; } = string.Empty;
 
     /// <summary>
-    /// Additional files to include in the archive (semicolon-separated list of archive_path=file_path entries)
+    /// Directory containing resource files to include in the archive under resources/{subdir}/{file}
     /// </summary>
-    public string? AdditionalFiles { get; set; }
+    public string? ResourceDirectory { get; set; }
 
     /// <summary>
     /// List of required assemblies (semicolon-separated)
@@ -83,10 +83,10 @@ public class CreateModArchive : Microsoft.Build.Utilities.Task
                 PackDependencies(archive);
             }
 
-            // Add additional files
-            if (!string.IsNullOrWhiteSpace(AdditionalFiles))
+            // Add resource files
+            if (!string.IsNullOrWhiteSpace(ResourceDirectory) && Directory.Exists(ResourceDirectory))
             {
-                PackAdditionalFiles(archive);
+                PackResourceDirectory(archive);
             }
 
             Log.LogMessage(MessageImportance.High, $"Created mod archive at: {OutputArchivePath}");
@@ -99,25 +99,18 @@ public class CreateModArchive : Microsoft.Build.Utilities.Task
         }
     }
 
-    private void PackAdditionalFiles(ZipArchive archive)
+    private void PackResourceDirectory(ZipArchive archive)
     {
-        var additionalFileEntries = AdditionalFiles.Split(';', StringSplitOptions.RemoveEmptyEntries);
-        foreach (var entry in additionalFileEntries)
+        var resourceDir = Path.GetFullPath(ResourceDirectory!);
+        var files = Directory.GetFiles(resourceDir, "*", SearchOption.AllDirectories);
+
+        foreach (var filePath in files)
         {
-            var parts = entry.Split('=');
-            if (parts.Length != 2) continue;
+            var relativePath = Path.GetRelativePath(resourceDir, filePath);
+            var archivePath = $"resources/{relativePath.Replace('\\', '/')}";
 
-            var archivePath = parts[0].Trim();
-            var filePath = parts[1].Trim();
-
-            if (File.Exists(filePath))
-            {
-                AddFileToArchive(archive, filePath, archivePath);
-            }
-            else
-            {
-                Log.LogWarning($"Additional file not found: {filePath}");
-            }
+            AddFileToArchive(archive, filePath, archivePath);
+            Log.LogMessage(MessageImportance.Normal, $"Packed resource: {archivePath}");
         }
     }
 

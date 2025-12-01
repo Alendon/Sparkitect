@@ -83,7 +83,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                 public const string Key = "test";
                 public const string ContainingNamespace = "DiTest";
                 public const string RegisterMethods = "RegisterItem;RegisterType";
-                public const string ResourceFiles = "data:0;config:1";
+                public const string ResourceFiles = "data:1:0;config:0:0";
                 
                 public class RegisterItem {
                     public const string FunctionName = "RegisterItem";
@@ -121,10 +121,10 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(registerItem.Constraint).IsEqualTo(TypeConstraintFlag.None);
         await Assert.That(registerItem.TypeConstraint.First()).IsEqualTo("global::System.String");
 
-        var resourceData = model.ResourceFiles.First(rf => rf.identifier == "data");
-        await Assert.That(resourceData.optional).IsFalse();
-        var resourceConfig = model.ResourceFiles.First(rf => rf.identifier == "config");
-        await Assert.That(resourceConfig.optional).IsTrue();
+        var resourceData = model.ResourceFiles.First(rf => rf.Key == "data");
+        await Assert.That(resourceData.Required).IsTrue();
+        var resourceConfig = model.ResourceFiles.First(rf => rf.Key == "config");
+        await Assert.That(resourceConfig.Required).IsFalse();
     }
 
     [Test]
@@ -243,8 +243,8 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                     ImmutableValueArray.From("global::System.IDisposable"))
             ),
             ImmutableValueArray.From(
-                ("data", false),
-                ("config", true)
+                ("data", true, false),
+                ("config", false, false)
             )
         );
 
@@ -311,8 +311,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     {
         var yamlContent = """
                           MinimalSampleMod.DummyRegistry.Register:
-                            - id: test
-                              file: test.abc
+                            - test: "test.abc"
                           """;
 
         var mockSourceText = SourceText.From(yamlContent);
@@ -327,7 +326,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(entry.MethodName).IsEqualTo("Register");
         await Assert.That(entry.Id).IsEqualTo("test");
         await Assert.That(entry.Files).HasSingleItem();
-        await Assert.That(entry.Files.Contains(("default", "test.abc"))).IsTrue();
+        await Assert.That(entry.Files.Contains((RegistryGenerator.PrimaryFileMarker, "test.abc"))).IsTrue();
     }
 
     [Test]
@@ -357,15 +356,12 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     {
         var yamlContent = """
                           TestMod.Registry1.Register:
-                            - id: entry1
-                              files:
+                            - entry1:
                                 config: config.json
-                            - id: entry2
-                              files:
+                            - entry2:
                                 data: data.xml
                           TestMod.Registry2.Register:
-                            - id: entry3
-                              files:
+                            - entry3:
                                 image: image.png
                           """;
 
@@ -393,7 +389,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     {
         var yamlContent = """
                           MinimalSampleMod.DummyRegistry.RegisterResourceFile:
-                            - id: entry1
+                            - entry1:
                           """;
 
         var mockSourceText = SourceText.From(yamlContent);

@@ -30,21 +30,50 @@ public class RegistryMetadataAttribute<TMetadata> : Attribute where TMetadata : 
 public class RegistryMethodAttribute : Attribute;
 
 /// <summary>
-/// Declaratively specifies resource files required by a class.
+/// Declaratively specifies a resource file slot required by a registry.
 /// Resource files are loaded from mod archives and made available through <see cref="IResourceManager"/>.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class UseResourceFileAttribute : Attribute
 {
     /// <summary>
-    /// Gets or sets the resource file identifier.
+    /// Gets or sets the file key used in YAML resource declarations.
     /// </summary>
-    public required string Identifier { get; set; }
+    public required string Key { get; set; }
 
     /// <summary>
     /// Gets or sets whether this resource file is required. If true, missing file causes an error.
     /// </summary>
     public bool Required { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets whether this is the primary file slot for simplified single-file YAML syntax.
+    /// </summary>
+    public bool Primary { get; set; } = false;
+}
+
+/// <summary>
+/// Declaratively specifies a typed resource file slot required by a registry.
+/// Resource files are loaded from mod archives and made available through <see cref="IResourceManager"/>.
+/// </summary>
+/// <typeparam name="TResource">The resource file type implementing <see cref="IResourceFile"/>.</typeparam>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public class UseResourceFileAttribute<TResource> : Attribute where TResource : class, IResourceFile
+{
+    /// <summary>
+    /// Gets or sets the file key used in YAML resource declarations.
+    /// </summary>
+    public required string Key { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this resource file is required. If true, missing file causes an error.
+    /// </summary>
+    public bool Required { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets whether this is the primary file slot for simplified single-file YAML syntax.
+    /// </summary>
+    public bool Primary { get; set; } = false;
 }
 
 /// <summary>

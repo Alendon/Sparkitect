@@ -1,4 +1,5 @@
 // Pong compute shader - renders game state to storage image
+// The source file  gets compiled before packed into the mod archive - For now the compilation happens manually
 
 struct PongGameData
 {

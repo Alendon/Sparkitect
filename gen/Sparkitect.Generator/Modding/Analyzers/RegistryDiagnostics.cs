@@ -67,14 +67,19 @@ public static class RegistryDiagnostics
             "Duplicate registry method name '{0}' in '{1}'. Method names must be unique per registry.",
             Category, DiagnosticSeverity.Error, true);
 
-    public static readonly DiagnosticDescriptor UseResourceFileMissingIdentifier =
-        new("SPARK2016", "UseResourceFile missing Identifier",
-            "[UseResourceFile] on '{0}' must specify a non-empty Identifier",
+    public static readonly DiagnosticDescriptor UseResourceFileMissingKey =
+        new("SPARK2016", "UseResourceFile missing Key",
+            "[UseResourceFile] on '{0}' must specify a non-empty Key",
             Category, DiagnosticSeverity.Error, true);
 
-    public static readonly DiagnosticDescriptor DuplicateResourceFileIdentifier =
-        new("SPARK2017", "Duplicate resource file identifier",
-            "Duplicate resource file identifier '{0}' on registry '{1}'",
+    public static readonly DiagnosticDescriptor DuplicateResourceFileKey =
+        new("SPARK2017", "Duplicate resource file key",
+            "Duplicate resource file key '{0}' on registry '{1}'",
+            Category, DiagnosticSeverity.Error, true);
+
+    public static readonly DiagnosticDescriptor MultiplePrimaryResourceFiles =
+        new("SPARK2018", "Multiple primary resource files",
+            "Registry '{0}' has multiple resource files marked as Primary",
             Category, DiagnosticSeverity.Error, true);
 
     // Provider usage
@@ -134,16 +139,6 @@ public static class RegistryDiagnostics
             Category, DiagnosticSeverity.Error, true, customTags: WellKnownDiagnosticTags.CompilationEnd);
 
     // YAML resource files
-    public static readonly DiagnosticDescriptor YamlEntryMissingId =
-        new("SPARK2040", "Resource entry missing id",
-            "Resource entry in '{0}' is missing 'id'",
-            Category, DiagnosticSeverity.Error, true);
-
-    public static readonly DiagnosticDescriptor YamlFileXorFiles =
-        new("SPARK2041", "Specify either 'file' or 'files'",
-            "Resource entry '{0}' in '{1}' must specify either 'file' or 'files', not both",
-            Category, DiagnosticSeverity.Error, true);
-
     public static readonly DiagnosticDescriptor YamlUnknownRegistryKey =
         new("SPARK2042", "Unknown registry/method in YAML key",
             "YAML key '{0}' references registry/method that is not discoverable",

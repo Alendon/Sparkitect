@@ -141,55 +141,64 @@ public partial class RegistryGenerator : IIncrementalGenerator
         var sourceText = text.GetText(cancellation);
         if (sourceText is null) return result.ToImmutableValueArray();
 
-
         var deserializer = new DeserializerBuilder()
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
 
         var raw = sourceText.ToString();
 
-        var root = deserializer.Deserialize<Dictionary<string, List<ResourceYamlEntry>>>(raw);
-        if (root is not null)
+        // New simplified syntax: entries are key-value pairs where key=ID, value=file(s)
+        // Single-file: { pong: "pong.spirv" }
+        // Multi-file: { stone: { albedo: "stone.png", specular: "spec.png" } }
+        var root = deserializer.Deserialize<Dictionary<string, List<Dictionary<string, object>>>>(raw);
+        if (root is null) return result.ToImmutableValueArray();
+
+        foreach (var registry in root)
         {
-            foreach (var registry in root)
+            if (string.IsNullOrWhiteSpace(registry.Key) || registry.Value is null) continue;
+
+            var methodSplitIndex = registry.Key.LastIndexOf('.');
+            if (methodSplitIndex <= 0) continue;
+
+            var registryClass = registry.Key.Substring(0, methodSplitIndex);
+            var methodName = registry.Key.Substring(methodSplitIndex + 1);
+
+            foreach (var entryDict in registry.Value)
             {
-                if (string.IsNullOrWhiteSpace(registry.Key) || registry.Value is null) continue;
+                // Each entry is a single-key dictionary where key=ID
+                if (entryDict.Count != 1) continue;
+                var kvp = entryDict.First();
 
-                foreach (var entry in registry.Value)
+                var id = kvp.Key;
+                if (string.IsNullOrWhiteSpace(id) || !IsSnakeCase(id)) continue;
+
+                var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
+
+                if (kvp.Value is string singleFile)
                 {
-                    if (string.IsNullOrWhiteSpace(entry.Id)) continue;
-                    if (!IsSnakeCase(entry.Id!)) continue;
-
-                    var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
-                    if (entry.Files is not null)
+                    // Single-file: value is the filename, uses special marker for primary key resolution
+                    files.Add((PrimaryFileMarker, singleFile));
+                }
+                else if (kvp.Value is Dictionary<object, object> multiFiles)
+                {
+                    // Multi-file: value is a dictionary of fileKey -> fileName
+                    foreach (var file in multiFiles.OrderBy(f => f.Key.ToString()))
                     {
-                        foreach (var file in entry.Files.OrderBy(kvp => kvp.Key))
+                        if (file.Key is string fileKey && file.Value is string fileName)
                         {
-                            files.Add((file.Key, file.Value));
+                            files.Add((fileKey, fileName));
                         }
                     }
-
-                    // Single-file support: map to implicit key "default"
-                    if (!string.IsNullOrWhiteSpace(entry.File))
-                    {
-                        files.Add(("default", entry.File));
-                    }
-
-                    var methodSplitIndex = registry.Key.LastIndexOf('.');
-
-                    result.Add(new FileRegistrationEntry(
-                        registry.Key.Substring(0, methodSplitIndex),
-                        registry.Key.Substring(methodSplitIndex+1),
-                        entry.Id!,
-                        files.ToImmutableValueArray()
-                    ));
                 }
+
+                result.Add(new FileRegistrationEntry(registryClass, methodName, id, files.ToImmutableValueArray()));
             }
         }
 
-
         return result.ToImmutableValueArray();
     }
+
+    internal const string PrimaryFileMarker = "__primary__";
 
     internal static ImmutableValueArray<RegistrationUnit> BuildUnitsForResourceFile(
         ImmutableValueArray<FileRegistrationEntry> entries,
@@ -209,8 +218,27 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 bucket = (model, new ImmutableValueArray<RegistrationEntry>.Builder());
             }
 
+            // Resolve PrimaryFileMarker to actual primary key
+            var resolvedFiles = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
+            foreach (var file in e.Files)
+            {
+                if (file.fileId == PrimaryFileMarker)
+                {
+                    // Find primary key: explicit Primary=true, or single slot
+                    var primaryKey = model.ResourceFiles.FirstOrDefault(rf => rf.Primary).Key
+                                     ?? (model.ResourceFiles.Count == 1 ? model.ResourceFiles.First().Key : null);
+                    if (primaryKey is not null)
+                    {
+                        resolvedFiles.Add((primaryKey, file.fileName));
+                    }
+                }
+                else
+                {
+                    resolvedFiles.Add(file);
+                }
+            }
 
-            var files = e.Files.ToImmutableValueArray();
+            var files = resolvedFiles.ToImmutableValueArray();
             var entry = new RegistrationEntry(e.Id, EntryKind.Resource, e.MethodName, string.Empty, string.Empty, files,
                 []);
             bucket.builder.Add(entry);
@@ -306,25 +334,29 @@ public partial class RegistryGenerator : IIncrementalGenerator
             ExtractResourceFiles(symbol));
     }
 
-    internal static ImmutableValueArray<(string Identifier, bool Required)> ExtractResourceFiles(
+    internal static ImmutableValueArray<(string Key, bool Required, bool Primary)> ExtractResourceFiles(
         INamedTypeSymbol symbol)
     {
-        var result = new ImmutableValueArray<(string Identifier, bool Required)>.Builder();
+        var result = new ImmutableValueArray<(string Key, bool Required, bool Primary)>.Builder();
 
         var attributes = symbol.GetAttributes().Where(x =>
-            x.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) is UseResourceFileAttribute);
+            x.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) is UseResourceFileAttribute
+            || x.AttributeClass?.OriginalDefinition.ToDisplayString(DisplayFormats.NamespaceAndType) is "Sparkitect.Modding.UseResourceFileAttribute<TResource>");
 
         foreach (var attributeData in attributes)
         {
-            var identifier = attributeData.NamedArguments.FirstOrDefault(x => x.Key == "Identifier")
+            var key = attributeData.NamedArguments.FirstOrDefault(x => x.Key == "Key")
                 .Value.Value as string;
 
             var required = attributeData.NamedArguments.FirstOrDefault(x => x.Key == "Required")
                 .Value.Value;
 
-            if (identifier is null) continue;
+            var primary = attributeData.NamedArguments.FirstOrDefault(x => x.Key == "Primary")
+                .Value.Value;
 
-            result.Add((identifier, required is true));
+            if (key is null) continue;
+
+            result.Add((key, required is true, primary is true));
         }
 
         return result.ToImmutableValueArray();
@@ -466,7 +498,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         }
 
         // Parse ResourceFiles
-        var resourceFiles = new ImmutableValueArray<(string identifier, bool optional)>.Builder();
+        var resourceFiles = new ImmutableValueArray<(string Key, bool Required, bool Primary)>.Builder();
         var resourceFilesStr = Of("ResourceFiles");
         if (!string.IsNullOrEmpty(resourceFilesStr))
         {
@@ -474,9 +506,11 @@ public partial class RegistryGenerator : IIncrementalGenerator
             foreach (var file in files)
             {
                 var parts = file.Split(':');
-                if (parts.Length == 2 && int.TryParse(parts[1], out var optionalInt))
+                if (parts.Length == 3 &&
+                    int.TryParse(parts[1], out var requiredInt) &&
+                    int.TryParse(parts[2], out var primaryInt))
                 {
-                    resourceFiles.Add((parts[0], optionalInt == 1));
+                    resourceFiles.Add((parts[0], requiredInt == 1, primaryInt == 1));
                 }
             }
         }
@@ -622,35 +656,20 @@ public partial class RegistryGenerator : IIncrementalGenerator
     {
         fileName = $"{model.TypeName}_Attributes.g.cs";
 
-        var isSingleFile = model.ResourceFiles.Count == 1;
-
-        var files = isSingleFile
-            ?
-            [
-                new { Prop = "File", IsNullable = model.ResourceFiles.First().optional }
-            ]
-            : model.ResourceFiles
-                .OrderBy(r => r.identifier)
-                .Select(r => new { Prop = ToPascalCase(r.identifier), IsNullable = r.optional })
-                .ToArray();
+        // Always use keyed properties: {PascalCase(Key)}File
+        var files = model.ResourceFiles
+            .OrderBy(r => r.Key)
+            .Select(r => new { Prop = ToPascalCase(r.Key) + "File", IsNullable = !r.Required })
+            .ToArray();
 
         var templateModel = new
         {
             Namespace = model.ContainingNamespace,
             RegistryName = model.TypeName,
-            Methods = model.RegisterMethods.Select(m => new { Name = m.FunctionName, Files = files }).ToArray()
+            Methods = model.RegisterMethods.Where(m => m.PrimaryParameterKind != PrimaryParameterKind.None).Select(m => new { Name = m.FunctionName, Files = files }).ToArray()
         };
 
         return FluidHelper.TryRenderTemplate("Modding.RegistryAttributes.liquid", templateModel, out code);
-    }
-
-    private class ResourceYamlEntry
-    {
-        public string? Id { get; set; }
-
-        // Only Files or File can be set not both
-        public Dictionary<string, string>? Files { get; set; } = null!;
-        public string File { get; set; } = null!;
     }
 
     // TODO: Analyzer: prevent duplicate registry class names across namespaces (assumption: unique type names).

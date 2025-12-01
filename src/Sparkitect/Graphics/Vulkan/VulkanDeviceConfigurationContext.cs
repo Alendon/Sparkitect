@@ -1,3 +1,5 @@
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
@@ -95,9 +97,26 @@ internal sealed class VulkanDeviceConfigurationContext : IVulkanDeviceConfigurat
 
     public uint? FindQueueFamily(QueueFlags requiredFlags)
     {
+        var result = uint.MaxValue;
+        var shortestDistance = int.MaxValue;
+        
+        
         for (uint i = 0; i < _queueFamilyProperties.Length; i++)
             if ((_queueFamilyProperties[i].QueueFlags & requiredFlags) == requiredFlags)
-                return i;
+            {
+                var queuePCount =
+                    BitOperations.PopCount(Unsafe.As<QueueFlags, uint>(ref _queueFamilyProperties[i].QueueFlags));
+                var reqPCount = BitOperations.PopCount(Unsafe.As<QueueFlags, uint>(ref requiredFlags));
+                var distance = queuePCount - reqPCount;
+                
+                if (shortestDistance > distance)
+                {
+                    result = i;
+                    shortestDistance = distance;
+                }
+            }
+
+        if (result != uint.MaxValue) return result;
         return null;
     }
 
@@ -122,15 +141,16 @@ internal sealed class VulkanDeviceConfigurationContext : IVulkanDeviceConfigurat
         return extensions;
     }
 
-    private static unsafe QueueFamilyProperties[] QueryQueueFamilyProperties(Vk vk, PhysicalDevice physicalDevice)
+    private static QueueFamilyProperties[] QueryQueueFamilyProperties(Vk vk, PhysicalDevice physicalDevice)
     {
-        uint count = 0;
-        vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref count, null);
-        if (count == 0) return [];
+        Span<uint> count = [0];
+        vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, count, []);
+        if (count[0] == 0) return [];
 
-        var properties = new QueueFamilyProperties[count];
-        fixed (QueueFamilyProperties* ptr = properties)
-            vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref count, ptr);
+        var properties = new QueueFamilyProperties[count[0]];
+
+        vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, count, properties.AsSpan());
+        
         return properties;
     }
 }

@@ -45,6 +45,20 @@ public partial class VulkanModule : IStateModule
         vulkanContext.CreateDevice();
     }
 
+    [StateFunction("add_registries")]
+    [OnCreate]
+    public static void AddRegistries(IRegistryManager registryManager)
+    {
+        registryManager.AddRegistry<ShaderModuleRegistry>();
+    }
+
+    [StateFunction("process_registried")]
+    [OnFrameEnter]
+    public static void ProcessRegistries(IRegistryManager registryManager)
+    {
+        registryManager.ProcessAllMissing<ShaderModuleRegistry>();
+    }
+
     [StateFunction("destroy_device")]
     [OnDestroy]
     public static void DestroyDevice(IVulkanContextStateFacade vulkanContext)

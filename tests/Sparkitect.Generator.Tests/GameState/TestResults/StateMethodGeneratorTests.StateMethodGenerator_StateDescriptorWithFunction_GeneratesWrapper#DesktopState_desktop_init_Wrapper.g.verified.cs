@@ -15,7 +15,7 @@ public partial class DesktopState
         [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
-            Initialize(
+            DesktopState.Initialize(
 
     _param0  
 );

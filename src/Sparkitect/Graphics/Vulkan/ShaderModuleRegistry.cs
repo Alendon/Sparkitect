@@ -1,23 +1,22 @@
-using Microsoft.Win32;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Graphics.Vulkan;
 
 [Registry(Identifier = "shader_module")]
-[UseResourceFile(Identifier = "module", Required = true)]
-public partial class ShaderModuleRegistry : IRegistry
+[UseResourceFile(Key = "module", Required = true, Primary = true)]
+public partial class ShaderModuleRegistry(IShaderManager shaderManager) : IRegistry
 {
-
     [RegistryMethod]
     public void RegisterShaderModule(Identification id)
     {
-        
+        shaderManager.RegisterModule(id);
     }
-    
+
     public void Unregister(Identification id)
     {
-        throw new NotImplementedException();
+        shaderManager.UnregisterModule(id);
     }
 
     public static string Identifier => "shader_module";
+    public static string ResourceFolder => "shaders";
 }

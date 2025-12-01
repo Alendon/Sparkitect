@@ -15,7 +15,9 @@ public partial class PongState : IStateDescriptor
 
     public static IReadOnlyList<Identification> Modules =>
     [
-        StateModuleID.PongMod.Pong
+        StateModuleID.PongMod.Pong,
+        StateModuleID.Sparkitect.Vulkan,
+        StateModuleID.Sparkitect.Windowing
     ];
 
     [StateFunction("pong_init")]

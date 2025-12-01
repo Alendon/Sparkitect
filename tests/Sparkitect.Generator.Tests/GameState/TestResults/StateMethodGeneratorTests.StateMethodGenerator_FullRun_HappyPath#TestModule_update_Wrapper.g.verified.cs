@@ -17,7 +17,7 @@ public partial class TestModule
         [global::System.Diagnostics.DebuggerStepThroughAttribute]
         public void Execute()
         {
-            Update(
+            TestModule.Update(
 
     _param0  ,
     _param1  

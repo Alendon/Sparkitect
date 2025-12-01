@@ -13,8 +13,6 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
 {
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
     [
-        RegistryDiagnostics.YamlEntryMissingId,
-        RegistryDiagnostics.YamlFileXorFiles,
         RegistryDiagnostics.YamlUnknownRegistryKey,
         RegistryDiagnostics.YamlUnknownFileKey,
         RegistryDiagnostics.YamlMissingRequiredFileKey,
@@ -46,17 +44,18 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
 
-        Dictionary<string, List<ResourceYamlEntry>> root;
+        Dictionary<string, List<Dictionary<string, object>>>? root;
         try
         {
-            root = deserializer.Deserialize<Dictionary<string, List<ResourceYamlEntry>>>(raw);
+            root = deserializer.Deserialize<Dictionary<string, List<Dictionary<string, object>>>>(raw);
         }
         catch
         {
-            // If YAML is malformed, ignore here — a separate diagnostic could handle parse errors later.
             return;
         }
-        
+
+        if (root is null) return;
+
         // Track duplicates per registry key
         var idSets = new Dictionary<string, HashSet<string>>();
 
@@ -64,7 +63,7 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
         {
             var registryKey = cur.Key;
             var entries = cur.Value;
-            
+
             if (entries is null) continue;
             if (!idSets.TryGetValue(registryKey, out var set))
             {
@@ -72,31 +71,18 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
                 idSets[registryKey] = set;
             }
 
-            foreach (var e in entries)
+            foreach (var entryDict in entries)
             {
-                var id = e.Id ?? string.Empty;
-                var file = e.File ?? string.Empty;
-                var files = e.Files ?? new Dictionary<string, string>();
+                // New format: each entry is a single-key dictionary where key=ID
+                if (entryDict.Count != 1) continue;
 
-                if (string.IsNullOrWhiteSpace(id))
-                {
-                    Report(ctx, RegistryDiagnostics.YamlEntryMissingId, path);
-                }
+                var kvp = entryDict.First();
+                var id = kvp.Key;
+                if (string.IsNullOrWhiteSpace(id)) continue;
 
-                var hasFile = !string.IsNullOrWhiteSpace(file);
-                var hasFiles = files.Count > 0;
-                if (hasFile && hasFiles)
+                if (!set.Add(id))
                 {
-                    Report(ctx, RegistryDiagnostics.YamlFileXorFiles, idOrUnknown(id), path);
-                }
-
-                if (!string.IsNullOrWhiteSpace(id))
-                {
-                    if (!set.Add(id))
-                    {
-                        // Duplicate within the same registry key (per file scope)
-                        Report(ctx, RegistryDiagnostics.YamlDuplicateId, id, registryKey);
-                    }
+                    Report(ctx, RegistryDiagnostics.YamlDuplicateId, id, registryKey);
                 }
             }
         }
@@ -106,15 +92,6 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
     {
         var location = Location.Create(ctx.AdditionalFile.Path, default, default);
         ctx.ReportDiagnostic(Diagnostic.Create(descriptor, location, args));
-    }
-
-    private static string idOrUnknown(string id) => string.IsNullOrWhiteSpace(id) ? "<unknown>" : id;
-
-    private sealed class ResourceYamlEntry
-    {
-        public string? Id { get; set; }
-        public Dictionary<string, string>? Files { get; set; }
-        public string? File { get; set; }
     }
 
     private static void AnalyzeYamlWithCompilation(CompilationAnalysisContext ctx)
@@ -133,10 +110,10 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
             var raw = text.ToString();
             if (string.IsNullOrWhiteSpace(raw)) continue;
 
-            Dictionary<string, List<ResourceYamlEntry>>? root = null;
+            Dictionary<string, List<Dictionary<string, object>>>? root = null;
             try
             {
-                root = deserializer.Deserialize<Dictionary<string, List<ResourceYamlEntry>>>(raw);
+                root = deserializer.Deserialize<Dictionary<string, List<Dictionary<string, object>>>>(raw);
             }
             catch
             {
@@ -148,14 +125,13 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
             {
                 var registryKey = cur.Key;
                 var entries = cur.Value;
-                
-                
+
                 if (entries is null) continue;
 
                 // Parse key: Namespace.Type.Method
                 var idx = registryKey.LastIndexOf('.');
                 if (idx <= 0 || idx >= registryKey.Length - 1)
-                    continue; // malformed key; skip
+                    continue;
 
                 var fullTypeName = registryKey.Substring(0, idx);
                 var methodName = registryKey.Substring(idx + 1);
@@ -181,32 +157,61 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
                 // Gather declared resource file identifiers for this registry
                 var declared = registryType.GetAttributes()
                     .Where(a => a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) ==
-                                "Sparkitect.Modding.UseResourceFileAttribute")
+                                "Sparkitect.Modding.UseResourceFileAttribute"
+                                || a.AttributeClass?.OriginalDefinition.ToDisplayString(DisplayFormats.NamespaceAndType) ==
+                                   "Sparkitect.Modding.UseResourceFileAttribute<TResource>")
                     .Select(a => new
                     {
-                        Identifier = a.NamedArguments.FirstOrDefault(x => x.Key == "Identifier").Value.Value as string,
-                        Required = a.NamedArguments.FirstOrDefault(x => x.Key == "Required").Value.Value as bool? ?? false
+                        Key = a.NamedArguments.FirstOrDefault(x => x.Key == "Key").Value.Value as string,
+                        Required = a.NamedArguments.FirstOrDefault(x => x.Key == "Required").Value.Value as bool? ?? false,
+                        Primary = a.NamedArguments.FirstOrDefault(x => x.Key == "Primary").Value.Value as bool? ?? false
                     })
-                    .Where(x => !string.IsNullOrWhiteSpace(x.Identifier))
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Key))
                     .ToArray();
 
-                var declaredKeys = declared.Select(x => x.Identifier!).ToImmutableHashSet();
-                var requiredKeys = declared.Where(x => x.Required).Select(x => x.Identifier!).ToImmutableHashSet();
+                var declaredKeys = declared.Select(x => x.Key!).ToImmutableHashSet();
+                var requiredKeys = declared.Where(x => x.Required).Select(x => x.Key!).ToImmutableHashSet();
+                var primaryKey = declared.FirstOrDefault(x => x.Primary)?.Key
+                                 ?? (declared.Length == 1 ? declared[0].Key : null);
 
-                foreach (var e in entries)
+                foreach (var entryDict in entries)
                 {
-                    var files = e.Files ?? new Dictionary<string, string>();
-                    var useSingleFile = !string.IsNullOrWhiteSpace(e.File);
+                    if (entryDict.Count != 1) continue;
+                    var kvp = entryDict.First();
+                    var id = kvp.Key;
 
-                    // SPARK2043: unknown file key (only when using 'files' dictionary)
-                    if (files.Count > 0)
+                    // Determine files from the value
+                    var files = new Dictionary<string, string>();
+                    var useSingleFile = false;
+
+                    if (kvp.Value is string singleFile)
+                    {
+                        useSingleFile = true;
+                        if (primaryKey is not null)
+                        {
+                            files[primaryKey] = singleFile;
+                        }
+                    }
+                    else if (kvp.Value is Dictionary<object, object> multiFiles)
+                    {
+                        foreach (var f in multiFiles)
+                        {
+                            if (f.Key is string fileKey && f.Value is string fileName)
+                            {
+                                files[fileKey] = fileName;
+                            }
+                        }
+                    }
+
+                    // SPARK2043: unknown file key (only when using multi-file dictionary)
+                    if (!useSingleFile && files.Count > 0)
                     {
                         foreach (var key in files.Keys)
                         {
                             if (!declaredKeys.Contains(key))
                             {
                                 var valid = string.Join(", ", declaredKeys.OrderBy(s => s));
-                                ReportFile(ctx, RegistryDiagnostics.YamlUnknownFileKey, file.Path, key, file.Path, registryType.Name + (string.IsNullOrEmpty(valid) ? string.Empty : ""), valid);
+                                ReportFile(ctx, RegistryDiagnostics.YamlUnknownFileKey, file.Path, key, file.Path, registryType.Name, valid);
                             }
                         }
                     }
@@ -214,10 +219,10 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
                     // SPARK2044: missing required file key
                     foreach (var req in requiredKeys)
                     {
-                        var satisfied = files.ContainsKey(req) || (useSingleFile && declaredKeys.Count == 1 && declaredKeys.Contains(req));
+                        var satisfied = files.ContainsKey(req);
                         if (!satisfied)
                         {
-                            ReportFile(ctx, RegistryDiagnostics.YamlMissingRequiredFileKey, file.Path, e.Id ?? "<unknown>", file.Path, req);
+                            ReportFile(ctx, RegistryDiagnostics.YamlMissingRequiredFileKey, file.Path, id, file.Path, req);
                         }
                     }
                 }

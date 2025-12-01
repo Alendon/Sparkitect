@@ -24,8 +24,9 @@ public static partial class TestData
         [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
         public class UseResourceFileAttribute : Attribute
         {
-            public required string Identifier { get; set; }
+            public required string Key { get; set; }
             public bool Required { get; set; } = false;
+            public bool Primary { get; set; } = false;
         }
 
         [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = true)]

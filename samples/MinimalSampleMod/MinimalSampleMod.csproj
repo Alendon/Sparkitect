@@ -38,10 +38,6 @@
         <PackageReference Include="OneOf" Version="3.0.271" />
     </ItemGroup>
 
-    <ItemGroup>
-      <None Remove="Sample.sparkres.yaml" />
-    </ItemGroup>
-
     <!-- Import Sparkitect SDK targets directly -->
     <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.targets"/>
 </Project>

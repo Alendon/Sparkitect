@@ -22,5 +22,7 @@ public interface IRegistry : IRegistryBase
     /// Gets the registry category identifier.
     /// </summary>
     static abstract string Identifier { get; }
+
+    static virtual string? ResourceFolder => null;
 }
 

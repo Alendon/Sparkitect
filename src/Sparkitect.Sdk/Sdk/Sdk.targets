@@ -14,6 +14,11 @@
         <CompilerVisibleProperty Include="DisableLogEnrichmentGenerator" />
         <CompilerVisibleProperty Include="SgOutputNamespace"/>
     </ItemGroup>
+
+    <!-- Include sparkres files as AdditionalFiles for source generator -->
+    <ItemGroup>
+        <AdditionalFiles Include="**/*.sparkres.yaml" />
+    </ItemGroup>
     
     <!-- Properties for mod packaging -->    
     <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>

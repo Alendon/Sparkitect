@@ -1,12 +1,10 @@
 ﻿#pragma warning disable CS9113
 #pragma warning disable CS1591
+#nullable enable
 
 namespace MinimalSampleMod;
 
 public partial class DummyRegistry
 {
-public class RegisterResourceFileAttribute(string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
-    {
-        public bool GroupAtRoot { get; set; } = false;public string? File { get; set; }
-    }
+
 }

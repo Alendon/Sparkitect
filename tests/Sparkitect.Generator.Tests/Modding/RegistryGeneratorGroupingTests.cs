@@ -10,7 +10,7 @@ public class RegistryGeneratorGroupingTests
     [Test]
     public async Task GroupUnitsByRegistry_Providers_MergesAndSorts()
     {
-        var model = new RegistryModel("Reg", "cat", "NS", ImmutableValueArray.From<RegisterMethodModel>(), ImmutableValueArray.From<(string,bool)>());
+        var model = new RegistryModel("Reg", "cat", "NS", ImmutableValueArray.From<RegisterMethodModel>(), ImmutableValueArray.From<(string, bool, bool)>());
 
         var u1 = new RegistrationUnit(model, SourceKind.Provider, "Providers",
             ImmutableValueArray.From(new RegistrationEntry("b", EntryKind.Method, "Register", "NS.Prov", "M", ImmutableValueArray.From<(string,string)>( ("f2","b.txt") ), [])));
@@ -28,7 +28,7 @@ public class RegistryGeneratorGroupingTests
     [Test]
     public async Task GroupUnitsByRegistry_Resources_KindFiltered()
     {
-        var model = new RegistryModel("Reg2", "cat2", "NS2", ImmutableValueArray.From<RegisterMethodModel>(), ImmutableValueArray.From<(string,bool)>());
+        var model = new RegistryModel("Reg2", "cat2", "NS2", ImmutableValueArray.From<RegisterMethodModel>(), ImmutableValueArray.From<(string, bool, bool)>());
 
         var prov = new RegistrationUnit(model, SourceKind.Provider, "Providers",
             ImmutableValueArray.From(new RegistrationEntry("x", EntryKind.Method, "Register", "NS2.P", "M", ImmutableValueArray.From<(string,string)>(), [])));

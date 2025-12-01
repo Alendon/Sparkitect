@@ -45,11 +45,11 @@
         <PackageReference Include="Semver" Version="3.0.0" />
         <PackageReference Include="Serilog.Exceptions" Version="8.4.0" />
         <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
-        <PackageReference Include="Silk.NET.Input.Sdl" Version="2.22.0" />
+        <PackageReference Include="Silk.NET.Input.Glfw" Version="2.22.0" />
         <PackageReference Include="Silk.NET.Vulkan" Version="2.22.0" />
         <PackageReference Include="Silk.NET.Vulkan.Extensions.EXT" Version="2.22.0" />
         <PackageReference Include="Silk.NET.Vulkan.Extensions.KHR" Version="2.22.0" />
-        <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.22.0" />
+        <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.22.0" />
         <PackageReference Include="Slangc.NET" Version="2025.22.1" />
         <PackageReference Include="Sundew.DiscriminatedUnions" Version="5.3.11" />
         <PackageReference Include="System.Text.Json" Version="10.0.0" />

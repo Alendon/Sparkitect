@@ -117,8 +117,8 @@ public partial class RegistryGenerator
         
         var registerMethodsString = string.Join(";", model.RegisterMethods.Select(m => m.FunctionName));
         
-        var resourceFilesString = string.Join(";", model.ResourceFiles.Select(rf => 
-            $"{rf.identifier}:{(rf.optional ? 1 : 0)}"));
+        var resourceFilesString = string.Join(";", model.ResourceFiles.Select(rf =>
+            $"{rf.Key}:{(rf.Required ? 1 : 0)}:{(rf.Primary ? 1 : 0)}"));
         
         var metadataModel = new
         {

@@ -44,7 +44,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             "MinimalSampleMod",
             ImmutableValueArray.From(new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None,
                 TypeConstraintFlag.None, [])),
-            ImmutableValueArray.From(("asset", true))
+            ImmutableValueArray.From(("asset", true, true))
         );
 
         var ok = RegistryGenerator.RenderRegistryAttributes(model, out var code, out var file);
@@ -260,7 +260,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             "DummyRegistry", "dummy", "DiTest",
             ImmutableValueArray.From(new RegisterMethodModel("RegisterType", PrimaryParameterKind.Type,
                 TypeConstraintFlag.None, ImmutableValueArray.From<string>())),
-            ImmutableValueArray.From<(string, bool)>());
+            ImmutableValueArray.From<(string, bool, bool)>());
 
         var regMap = RegistryGenerator.RegistryMap.Create((new[] { model }.ToImmutableArray(),
             ImmutableValueArray.From<RegistryModel>()));
@@ -290,7 +290,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             "DummyRegistry", "dummy", "MinimalSampleMod",
             ImmutableValueArray.From(new RegisterMethodModel("RegisterType", PrimaryParameterKind.Type,
                 TypeConstraintFlag.None, ImmutableValueArray.From<string>())),
-            ImmutableValueArray.From<(string, bool)>());
+            ImmutableValueArray.From<(string, bool, bool)>());
 
         var unit = new RegistrationUnit(model, SourceKind.Provider, "abcd",
             ImmutableValueArray.From(new RegistrationEntry("hello3", EntryKind.Type, "RegisterType", string.Empty,
@@ -309,7 +309,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             "DummyRegistry", "dummy", "MinimalSampleMod",
             ImmutableValueArray.From(new RegisterMethodModel("RegisterType", PrimaryParameterKind.Type,
                 TypeConstraintFlag.None, ImmutableValueArray.From<string>())),
-            ImmutableValueArray.From<(string, bool)>());
+            ImmutableValueArray.From<(string, bool, bool)>());
 
         var unit = new RegistrationUnit(model, SourceKind.Provider, "abcd",
             ImmutableValueArray.From(
@@ -339,20 +339,20 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             "MinimalSampleMod",
             ImmutableValueArray.From(new RegisterMethodModel("RegisterValue", PrimaryParameterKind.Value,
                 TypeConstraintFlag.None, ImmutableValueArray.From("global::System.String"))),
-            ImmutableValueArray.From(("foo", false), ("bar", true))
+            ImmutableValueArray.From(("foo", true, false), ("bar", false, false))
         );
 
         var ok = RegistryGenerator.RenderRegistryAttributes(model, out var code, out var file);
         await Assert.That(ok).IsTrue();
         await Assert.That(file).IsEqualTo("DummyRegistry_Attributes.g.cs");
         await Assert.That(code).Contains("class RegisterValueAttribute");
-        await Assert.That(code).Contains(" string Foo ");
-        await Assert.That(code).Contains(" string? Bar ");
-        await Verifier.Verify(code);
+        await Assert.That(code).Contains(" string FooFile ");
+        await Assert.That(code).Contains(" string? BarFile ");
+        await Verifier.Verify(code, verifySettings);
     }
 
     [Test]
-    public async Task MapProviderCandidateToUnit_SingleFile_MapsFileToDefault()
+    public async Task MapProviderCandidateToUnit_MapsKeyedFileProps()
     {
         var model = new RegistryModel(
             "DummyRegistry",
@@ -361,7 +361,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             ImmutableValueArray.From(
                 new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, [])
             ),
-            ImmutableValueArray.From(("texture", false))
+            ImmutableValueArray.From(("texture", true, true))
         );
 
         var regMap = RegistryGenerator.RegistryMap.Create(([model],
@@ -376,7 +376,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             false,
             "MinimalSampleMod.RegistryExample",
             "ProvideValue",
-            ImmutableValueArray.From(new RegistryGenerator.ProviderFileArg("File", "foo.png")),
+            ImmutableValueArray.From(new RegistryGenerator.ProviderFileArg("TextureFile", "foo.png")),
             []);
 
         var unit = RegistryGenerator.MapProviderCandidateToUnit(cand, regMap);
@@ -384,12 +384,12 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(unit!.Model.TypeName).IsEqualTo("DummyRegistry");
         await Assert.That(unit.Entries.Count).IsEqualTo(1);
         var entry = unit.Entries.First();
-        await Assert.That(entry.Files.Contains(("default", "foo.png"))).IsTrue();
+        await Assert.That(entry.Files.Contains(("texture", "foo.png"))).IsTrue();
         await Assert.That(entry.Kind).IsEqualTo(EntryKind.Method);
     }
 
     [Test]
-    public async Task MapProviderCandidateToUnit_MultiFile_MapsPascalPropsToIds()
+    public async Task MapProviderCandidateToUnit_MultiFile_MapsKeyedFileProps()
     {
         var model = new RegistryModel(
             "DummyRegistry",
@@ -398,7 +398,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             ImmutableValueArray.From(
                 new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, [])
             ),
-            ImmutableValueArray.From(("foo", false), ("bar", true))
+            ImmutableValueArray.From(("foo", true, false), ("bar", false, false))
         );
 
         var regMap = RegistryGenerator.RegistryMap.Create((new[] { model }.ToImmutableArray(),
@@ -414,8 +414,8 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             "MinimalSampleMod.RegistryExample",
             "ProvideValue",
             ImmutableValueArray.From(
-                new RegistryGenerator.ProviderFileArg("Foo", "fileA.dat"),
-                new RegistryGenerator.ProviderFileArg("Bar", "fileB.dat")
+                new RegistryGenerator.ProviderFileArg("FooFile", "fileA.dat"),
+                new RegistryGenerator.ProviderFileArg("BarFile", "fileB.dat")
             ),
             []);
 
@@ -432,7 +432,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
     public async Task Render_IdContainer_Framework_Snapshot()
     {
         var model = new RegistryModel("DummyRegistry", "dummy", "Minimal",
-            ImmutableValueArray.From<RegisterMethodModel>(), ImmutableValueArray.From<(string, bool)>());
+            ImmutableValueArray.From<RegisterMethodModel>(), ImmutableValueArray.From<(string, bool, bool)>());
 
         var ok1 = RegistryGenerator.RenderRegistryIdContainer(model, BuildSettings, out var code1, out var file1);
         await Assert.That(ok1).IsTrue();
@@ -444,7 +444,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
     public async Task Render_IdExtensions_Framework_Snapshot()
     {
         var model = new RegistryModel("DummyRegistry", "dummy", "Minimal",
-            ImmutableValueArray.From<RegisterMethodModel>(), ImmutableValueArray.From<(string, bool)>());
+            ImmutableValueArray.From<RegisterMethodModel>(), ImmutableValueArray.From<(string, bool, bool)>());
 
         var ok2 = RegistryGenerator.RenderRegistryIdExtensionsFramework(model, BuildSettings, out var code2,
             out var file2);
@@ -459,7 +459,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         var model = new RegistryModel("DummyRegistry", "dummy", "MinimalSampleMod",
             ImmutableValueArray.From(new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None,
                 TypeConstraintFlag.None, [])),
-            ImmutableValueArray.From(("res", false)));
+            ImmutableValueArray.From(("res", true, true)));
 
         var unit = new RegistrationUnit(model, SourceKind.Yaml, "abcd",
             ImmutableValueArray.From(new RegistrationEntry("hello", EntryKind.Resource, "RegisterResourceFile",
@@ -480,7 +480,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         var model = new RegistryModel("DummyRegistry", "dummy", "MinimalSampleMod",
             ImmutableValueArray.From(new RegisterMethodModel("RegisterResourceFile", PrimaryParameterKind.None,
                 TypeConstraintFlag.None, [])),
-            ImmutableValueArray.From(("res", false)));
+            ImmutableValueArray.From(("res", true, true)));
 
         var unit = new RegistrationUnit(model, SourceKind.Yaml, "abcd",
             ImmutableValueArray.From(new RegistrationEntry("hello", EntryKind.Resource, "RegisterResourceFile",

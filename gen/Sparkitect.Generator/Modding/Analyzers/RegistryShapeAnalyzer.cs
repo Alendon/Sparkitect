@@ -23,8 +23,9 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         RegistryDiagnostics.GenericValueMismatch,
         RegistryDiagnostics.FirstParameterMustBeIdentification,
         RegistryDiagnostics.DuplicateRegistryMethodName,
-        RegistryDiagnostics.UseResourceFileMissingIdentifier,
-        RegistryDiagnostics.DuplicateResourceFileIdentifier
+        RegistryDiagnostics.UseResourceFileMissingKey,
+        RegistryDiagnostics.DuplicateResourceFileKey,
+        RegistryDiagnostics.MultiplePrimaryResourceFiles
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -116,6 +117,59 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
                     g.Key,
                     type.Name));
             }
+        }
+
+        // Analyze UseResourceFile attributes
+        var resourceFileAttrs = type.GetAttributes()
+            .Where(a => a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) ==
+                        "Sparkitect.Modding.UseResourceFileAttribute"
+                        || a.AttributeClass?.OriginalDefinition.ToDisplayString(DisplayFormats.NamespaceAndType) ==
+                           "Sparkitect.Modding.UseResourceFileAttribute<TResource>")
+            .ToArray();
+
+        var seenKeys = new System.Collections.Generic.HashSet<string>();
+        var primaryCount = 0;
+
+        foreach (var attr in resourceFileAttrs)
+        {
+            var keyArg = attr.NamedArguments.FirstOrDefault(x => x.Key == "Key");
+            var key = keyArg.Value.Value as string;
+
+            // SPARK2016: Key must be non-empty
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    RegistryDiagnostics.UseResourceFileMissingKey,
+                    type.Locations.FirstOrDefault(),
+                    type.Name));
+                continue;
+            }
+
+            // SPARK2017: Duplicate keys
+            if (!seenKeys.Add(key))
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    RegistryDiagnostics.DuplicateResourceFileKey,
+                    type.Locations.FirstOrDefault(),
+                    key,
+                    type.Name));
+            }
+
+            // Count primaries
+            var primaryArg = attr.NamedArguments.FirstOrDefault(x => x.Key == "Primary");
+            if (primaryArg.Value.Value is true)
+            {
+                primaryCount++;
+            }
+        }
+
+        // SPARK2018: Multiple primaries
+        if (primaryCount > 1)
+        {
+            ctx.ReportDiagnostic(Diagnostic.Create(
+                RegistryDiagnostics.MultiplePrimaryResourceFiles,
+                type.Locations.FirstOrDefault(),
+                type.Name));
         }
     }
 
