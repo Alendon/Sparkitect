@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using static Sparkitect.Generator.GameState.Diagnostics;
 using static Sparkitect.Generator.GameState.StateUtils;
@@ -20,7 +22,8 @@ public class StateFunctionAnalyzer : DiagnosticAnalyzer
         StateFunctionParameterNotAbstract,
         OrderingInvalidTargetType,
         StateFunctionInvalidKey,
-        StateFunctionNotInModule
+        StateFunctionNotInModule,
+        OrderingKeyMustBeConstField
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -172,6 +175,9 @@ public class StateFunctionAnalyzer : DiagnosticAnalyzer
             if (!isOrderingAttr)
                 continue;
 
+            // Validate that the key argument is a const field reference, not a string literal
+            ValidateOrderingKeyIsConstField(context, attr, method);
+
             // If generic, validate that the type argument is a valid module or state descriptor
             if (isGeneric && attr.AttributeClass?.TypeArguments.Length > 0)
             {
@@ -192,5 +198,45 @@ public class StateFunctionAnalyzer : DiagnosticAnalyzer
                 }
             }
         }
+    }
+
+    private void ValidateOrderingKeyIsConstField(SymbolAnalysisContext context, AttributeData attr, IMethodSymbol method)
+    {
+        var syntaxRef = attr.ApplicationSyntaxReference;
+        if (syntaxRef is null)
+            return;
+
+        var syntax = syntaxRef.GetSyntax();
+        if (syntax is not AttributeSyntax attrSyntax)
+            return;
+
+        var args = attrSyntax.ArgumentList?.Arguments;
+        if (args is null || args.Value.Count == 0)
+            return;
+
+        var firstArg = args.Value[0].Expression;
+
+        // Check if it's a string literal - this is now disallowed
+        if (firstArg is LiteralExpressionSyntax literal && literal.IsKind(SyntaxKind.StringLiteralExpression))
+        {
+            var literalValue = literal.Token.ValueText;
+            var suggestedConstName = ToPascalCase(literalValue) + "_Key";
+
+            context.ReportDiagnostic(Diagnostic.Create(
+                OrderingKeyMustBeConstField,
+                literal.GetLocation(),
+                method.Name,
+                literalValue,
+                suggestedConstName));
+        }
+    }
+
+    private static string ToPascalCase(string snakeCase)
+    {
+        return string.Concat(
+            snakeCase.Split('_')
+                .Select(part => part.Length > 0
+                    ? char.ToUpperInvariant(part[0]) + part.Substring(1).ToLowerInvariant()
+                    : ""));
     }
 }

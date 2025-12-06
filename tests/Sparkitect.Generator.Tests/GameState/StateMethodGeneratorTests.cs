@@ -46,14 +46,14 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
 
                 [StateFunction("update")]
                 [PerFrame]
-                [OrderAfter("init")]
+                [OrderAfter(Initialize_Key)]
                 public static void Update(ITestService service, ITestFacade facade)
                 {
                 }
 
                 [StateFunction("cleanup")]
                 [OnDestroy]
-                [OrderBefore("update")]
+                [OrderBefore(Update_Key)]
                 public static void Cleanup()
                 {
                 }
@@ -66,7 +66,7 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
 
                 [StateFunction("process")]
                 [OnFrameEnter]
-                [OrderAfter<TestModule>("init")]
+                [OrderAfter<TestModule>(TestModule.Initialize_Key)]
                 public static void Process()
                 {
                 }

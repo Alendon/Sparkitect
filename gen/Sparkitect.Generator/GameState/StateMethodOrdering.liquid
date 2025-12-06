@@ -11,8 +11,8 @@ internal class {{ ClassName }} : global::Sparkitect.GameState.StateMethodOrderin
     {
 {% for order in Orderings %}
         ordering.Add(new global::Sparkitect.GameState.OrderingEntry(
-            ({{ order.BeforeParentId }}, "{{ order.BeforeMethodKey }}"),
-            ({{ order.AfterParentId }}, "{{ order.AfterMethodKey }}")));
+            ({{ order.BeforeParentId }}, {{ order.BeforeMethodKeyExpression }}),
+            ({{ order.AfterParentId }}, {{ order.AfterMethodKeyExpression }})));
 {% endfor %}
     }
 }

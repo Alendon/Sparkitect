@@ -22,7 +22,7 @@ public partial class SampleEntryState : IStateDescriptor
 
     [StateFunction("test_command_pool")]
     [OnCreate]
-    [OrderAfter<VulkanModule>("create_device")]
+    [OrderAfter<VulkanModule>(VulkanModule.CreateDevice_Key)]
     public static void TestCommandPool(IVulkanContext vulkanContext)
     {
         Log.Information("Testing VkCommandPool...");

@@ -52,7 +52,6 @@
         <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.22.0" />
         <PackageReference Include="Slangc.NET" Version="2025.22.1" />
         <PackageReference Include="Sundew.DiscriminatedUnions" Version="5.3.11" />
-        <PackageReference Include="System.Text.Json" Version="10.0.0" />
         <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
 
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.2" />

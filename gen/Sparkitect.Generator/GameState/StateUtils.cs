@@ -209,9 +209,13 @@ public static class StateUtils
     }
 
     /// <summary>
-    /// Gets ordering constraints from a method's attributes
+    /// Gets ordering constraints from a method's attributes.
+    /// Extracts expressions referencing const key fields from syntax.
     /// </summary>
-    internal static System.Collections.Generic.IEnumerable<OrderingConstraint> GetOrderingConstraints(IMethodSymbol method)
+    internal static System.Collections.Generic.IEnumerable<OrderingConstraint> GetOrderingConstraints(
+        IMethodSymbol method,
+        INamedTypeSymbol containingType,
+        Compilation compilation)
     {
         var attributes = method.GetAttributes();
 
@@ -221,7 +225,7 @@ public static class StateUtils
             var isGeneric = attr.AttributeClass?.IsGenericType ?? false;
 
             OrderingDirection? direction = null;
-            string? targetKey = null;
+            string? targetKeyExpression = null;
             string? targetModuleOrStateType = null;
 
             // Determine direction
@@ -237,24 +241,77 @@ public static class StateUtils
             if (direction is null)
                 continue;
 
-            // Extract target key from constructor arguments
-            if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string key)
-            {
-                targetKey = key;
-            }
+            // Extract target key expression from syntax (const field reference)
+            targetKeyExpression = ExtractKeyExpressionFromAttribute(attr, containingType, compilation);
 
-            // If generic, extract the type argument
+            // If generic, extract the type argument for cross-module ordering
             if (isGeneric && attr.AttributeClass?.TypeArguments.Length > 0)
             {
                 var typeArg = attr.AttributeClass.TypeArguments[0];
                 targetModuleOrStateType = typeArg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + ".Identification";
             }
 
-            if (targetKey is not null)
+            if (targetKeyExpression is not null)
             {
-                yield return new OrderingConstraint(direction.Value, targetKey, targetModuleOrStateType);
+                yield return new OrderingConstraint(direction.Value, targetKeyExpression, targetModuleOrStateType);
             }
         }
+    }
+
+    /// <summary>
+    /// Extracts the key expression from an ordering attribute's constructor argument.
+    /// Returns a fully qualified expression for const field references, null for invalid usages.
+    /// </summary>
+    private static string? ExtractKeyExpressionFromAttribute(
+        AttributeData attr,
+        INamedTypeSymbol containingType,
+        Compilation compilation)
+    {
+        var syntaxRef = attr.ApplicationSyntaxReference;
+        if (syntaxRef is null)
+            return null;
+
+        var syntax = syntaxRef.GetSyntax();
+        if (syntax is not AttributeSyntax attrSyntax)
+            return null;
+
+        var args = attrSyntax.ArgumentList?.Arguments;
+        if (args is null || args.Value.Count == 0)
+            return null;
+
+        var firstArg = args.Value[0].Expression;
+
+        // String literals are no longer allowed - must use const field reference
+        if (firstArg is LiteralExpressionSyntax { RawKind: (int)SyntaxKind.StringLiteralExpression })
+        {
+            // Skip string literals - analyzer will report error
+            return null;
+        }
+
+        // Simple identifier (e.g., VulkanInit_Key) - qualify with containing type
+        if (firstArg is IdentifierNameSyntax identifier)
+        {
+            var typeName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            return $"{typeName}.{identifier.Identifier.Text}";
+        }
+
+        // Member access (e.g., OtherModule.SomeKey) - resolve and fully qualify
+        if (firstArg is MemberAccessExpressionSyntax memberAccess)
+        {
+            var semanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
+            var targetSymbol = semanticModel.GetSymbolInfo(memberAccess.Expression).Symbol;
+
+            if (targetSymbol is INamedTypeSymbol targetType)
+            {
+                var qualifiedTypeName = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                return $"{qualifiedTypeName}.{memberAccess.Name.Identifier.Text}";
+            }
+
+            // Fallback: skip if we can't resolve the target type
+            return null;
+        }
+
+        return null;
     }
 
     /// <summary>

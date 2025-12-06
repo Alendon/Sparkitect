@@ -41,9 +41,12 @@ public record StateParameterModel(
 /// <summary>
 /// Represents an ordering constraint on a state function
 /// </summary>
+/// <param name="Direction">Before or After</param>
+/// <param name="TargetKeyExpression">The expression referencing the target key (e.g., global::Namespace.Module.Key_Field)</param>
+/// <param name="TargetModuleOrStateType">The target module/state type expression if cross-module ordering, null for same-module</param>
 public record OrderingConstraint(
     OrderingDirection Direction,
-    string TargetKey,
+    string TargetKeyExpression,
     string? TargetModuleOrStateType);
 
 /// <summary>
@@ -97,11 +100,15 @@ public record StateMethodOrderingModel(
 /// <summary>
 /// Model for a single ordering relationship
 /// </summary>
+/// <param name="BeforeParentId">Expression for the module/state identification of the before-function</param>
+/// <param name="BeforeMethodKeyExpression">Expression referencing the before-function's key const</param>
+/// <param name="AfterParentId">Expression for the module/state identification of the after-function</param>
+/// <param name="AfterMethodKeyExpression">Expression referencing the after-function's key const</param>
 public record OrderingRelationship(
     string BeforeParentId,
-    string BeforeMethodKey,
+    string BeforeMethodKeyExpression,
     string AfterParentId,
-    string AfterMethodKey);
+    string AfterMethodKeyExpression);
 
 /// <summary>
 /// Model for state service mapping output

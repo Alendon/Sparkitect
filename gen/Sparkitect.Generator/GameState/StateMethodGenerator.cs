@@ -153,7 +153,7 @@ public class StateMethodGenerator : IIncrementalGenerator
                 .ToImmutableValueArray();
 
             // Extract ordering constraints
-            var orderingConstraints = GetOrderingConstraints(method).ToImmutableValueArray();
+            var orderingConstraints = GetOrderingConstraints(method, parentType, compilation).ToImmutableValueArray();
 
             functions.Add(new StateFunctionModel(
                 method.Name,
@@ -262,7 +262,12 @@ public class StateMethodGenerator : IIncrementalGenerator
 
             foreach (var function in sortedFunctions)
             {
-                foreach (var constraint in function.OrderingConstraints.OrderBy(c => c.TargetKey))
+                // Build fully qualified key expression for this function
+                var thisKeyExpression = function.GenerateConstField
+                    ? $"global::{module.ModuleNamespace}.{module.ModuleTypeName}.{function.KeyExpression}"
+                    : function.KeyExpression;
+
+                foreach (var constraint in function.OrderingConstraints.OrderBy(c => c.TargetKeyExpression))
                 {
                     // Determine parent ID for the constraint
                     string targetParentId = constraint.TargetModuleOrStateType ?? module.ModuleIdentification;
@@ -275,9 +280,9 @@ public class StateMethodGenerator : IIncrementalGenerator
                         // So: target comes after this
                         relationship = new OrderingRelationship(
                             module.ModuleIdentification,
-                            function.FunctionKey,
+                            thisKeyExpression,
                             targetParentId,
-                            constraint.TargetKey);
+                            constraint.TargetKeyExpression);
                     }
                     else // After
                     {
@@ -285,9 +290,9 @@ public class StateMethodGenerator : IIncrementalGenerator
                         // So: this comes after target
                         relationship = new OrderingRelationship(
                             targetParentId,
-                            constraint.TargetKey,
+                            constraint.TargetKeyExpression,
                             module.ModuleIdentification,
-                            function.FunctionKey);
+                            thisKeyExpression);
                     }
 
                     orderings.Add(relationship);

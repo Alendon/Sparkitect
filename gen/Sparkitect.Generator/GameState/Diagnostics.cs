@@ -63,4 +63,9 @@ public static class Diagnostics
         new("SPARK3014", "StateService interface missing StateFacade attribute",
             "Interface '{0}' used in [StateService<{0}>] must have at least one [StateFacade<T>] attribute",
             "Sparkitect", DiagnosticSeverity.Error, true);
+
+    public static readonly DiagnosticDescriptor OrderingKeyMustBeConstField =
+        new("SPARK3015", "Ordering attribute key must use const field reference",
+            "Ordering attribute on method '{0}' uses string literal '{1}'; use a const field reference (e.g., {2}) instead",
+            "Sparkitect", DiagnosticSeverity.Error, true);
 }

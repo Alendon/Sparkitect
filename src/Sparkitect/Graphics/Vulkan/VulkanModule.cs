@@ -68,7 +68,7 @@ public partial class VulkanModule : IStateModule
 
     [StateFunction("destroy_physical_device")]
     [OnDestroy]
-    [OrderAfter("destroy_device")]
+    [OrderAfter(DestroyDevice_Key)]
     public static void DestroyPhysicalDevice(IVulkanContextStateFacade vulkanContext)
     {
         vulkanContext.DestroyPhysicalDevice();
@@ -76,7 +76,7 @@ public partial class VulkanModule : IStateModule
 
     [StateFunction("destroy_instance")]
     [OnDestroy]
-    [OrderAfter("destroy_physical_device")]
+    [OrderAfter(DestroyPhysicalDevice_Key)]
     public static void DestroyInstance(IVulkanContextStateFacade vulkanContext)
     {
         vulkanContext.DestroyInstance();
@@ -84,7 +84,7 @@ public partial class VulkanModule : IStateModule
 
     [StateFunction("vulkan_shutdown")]
     [OnDestroy]
-    [OrderAfter("destroy_instance")]
+    [OrderAfter(DestroyInstance_Key)]
     public static void VulkanShutdown(IVulkanContextStateFacade vulkanContext)
     {
         vulkanContext.Shutdown();

@@ -211,6 +211,8 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
             {
                 public static Identification Identification => Identification.Empty;
                 public static Span<Identification> RequiredModules => [];
+                
+                public const string SomeKey = "some_key";
             }
 
             public class TestModule : IStateModule
@@ -220,7 +222,7 @@ public class StateFunctionAnalyzerTests : AnalyzerTestBase<StateFunctionAnalyzer
 
                 [StateFunction("test")]
                 [PerFrame]
-                [OrderAfter<OtherModule>("some_key")]
+                [OrderAfter<OtherModule>(OtherModule.SomeKey)]
                 public static void TestMethod() { }
             }
             """;

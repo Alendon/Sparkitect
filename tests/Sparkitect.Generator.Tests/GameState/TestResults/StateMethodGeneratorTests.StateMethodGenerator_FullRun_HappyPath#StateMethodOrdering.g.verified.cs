@@ -12,16 +12,16 @@ internal class GeneratedStateMethodOrdering : global::Sparkitect.GameState.State
     {
 
         ordering.Add(new global::Sparkitect.GameState.OrderingEntry(
-            (global::GameStateTest.TestModule.Identification, "init"),
-            (global::GameStateTest.AnotherModule.Identification, "process")));
+            (global::GameStateTest.TestModule.Identification, global::GameStateTest.TestModule.Initialize_Key),
+            (global::GameStateTest.AnotherModule.Identification, global::GameStateTest.AnotherModule.Process_Key)));
 
         ordering.Add(new global::Sparkitect.GameState.OrderingEntry(
-            (global::GameStateTest.TestModule.Identification, "cleanup"),
-            (global::GameStateTest.TestModule.Identification, "update")));
+            (global::GameStateTest.TestModule.Identification, global::GameStateTest.TestModule.Cleanup_Key),
+            (global::GameStateTest.TestModule.Identification, global::GameStateTest.TestModule.Update_Key)));
 
         ordering.Add(new global::Sparkitect.GameState.OrderingEntry(
-            (global::GameStateTest.TestModule.Identification, "init"),
-            (global::GameStateTest.TestModule.Identification, "update")));
+            (global::GameStateTest.TestModule.Identification, global::GameStateTest.TestModule.Initialize_Key),
+            (global::GameStateTest.TestModule.Identification, global::GameStateTest.TestModule.Update_Key)));
 
     }
 }
