@@ -1,15 +1,10 @@
-using Silk.NET.Windowing;
+using Sparkitect.Graphics.Vulkan;
 
 namespace Sparkitect.Windowing;
 
 public interface IWindowManager
 {
-    IWindow? Window { get; }
-    bool IsOpen { get; }
-
-    void CreateWindow(string title, int width, int height);
-    void PollEvents();
-    void Close();
+    ISparkitWindow CreateWindow(string title, int width, int height, SwapchainConfig? config = null);
 
     IReadOnlyList<string> GetRequiredVulkanExtensions();
 }

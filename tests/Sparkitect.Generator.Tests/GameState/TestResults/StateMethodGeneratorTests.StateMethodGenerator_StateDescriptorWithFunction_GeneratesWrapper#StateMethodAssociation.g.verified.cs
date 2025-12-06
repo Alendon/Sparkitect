@@ -13,7 +13,7 @@ internal class GeneratedStateMethodAssociation : global::Sparkitect.GameState.St
 
         builder.Add(
             global::GameStateTest.DesktopState.Identification,
-            "desktop_init",
+            global::GameStateTest.DesktopState.Initialize_Key,
             typeof(global::GameStateTest.DesktopState.desktop_initWrapper),
             global::Sparkitect.GameState.StateMethodSchedule.OnFrameEnter);
 

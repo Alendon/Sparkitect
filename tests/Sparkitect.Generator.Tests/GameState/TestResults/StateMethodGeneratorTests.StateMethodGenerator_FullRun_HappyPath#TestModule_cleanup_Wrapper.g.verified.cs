@@ -6,6 +6,10 @@ namespace GameStateTest;
 
 public partial class TestModule
 {
+
+    public const string Cleanup_Key = "cleanup";
+
+
     internal class cleanupWrapper : global::Sparkitect.GameState.IStateMethod
     {
 

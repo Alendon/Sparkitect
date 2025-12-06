@@ -12,7 +12,7 @@ internal class {{ ClassName }} : global::Sparkitect.GameState.StateMethodAssocia
 {% for registration in Registrations %}
         builder.Add(
             {{ registration.ModuleIdentification }},
-            "{{ registration.FunctionKey }}",
+            {{ registration.KeyExpression }},
             typeof({{ registration.WrapperTypeName }}),
             global::Sparkitect.GameState.StateMethodSchedule.{{ registration.ScheduleName }});
 {% endfor %}

@@ -1,4 +1,5 @@
 ﻿using Silk.NET.Vulkan;
+using Silk.NET.Windowing;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Utils;
@@ -24,10 +25,11 @@ public interface IVulkanContext
     VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex);
 
     /// <summary>
-    /// Creates a surface from the current window.
+    /// Creates a Vulkan surface for the given window.
     /// </summary>
-    /// <returns>The surface, or null if windowing is not available.</returns>
-    VkSurface? CreateSurface();
+    /// <param name="window">The window to create a surface for.</param>
+    /// <returns>The surface, or null if surface creation failed.</returns>
+    VkSurface? CreateSurface(IWindow window);
 
     /// <summary>
     /// Creates a shader module from SPIR-V bytecode.

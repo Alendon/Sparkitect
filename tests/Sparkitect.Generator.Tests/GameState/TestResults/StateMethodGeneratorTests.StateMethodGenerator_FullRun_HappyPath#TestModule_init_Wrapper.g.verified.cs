@@ -6,6 +6,10 @@ namespace GameStateTest;
 
 public partial class TestModule
 {
+
+    public const string Initialize_Key = "init";
+
+
     internal class initWrapper : global::Sparkitect.GameState.IStateMethod
     {
 

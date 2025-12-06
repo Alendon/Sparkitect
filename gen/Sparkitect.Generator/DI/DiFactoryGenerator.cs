@@ -93,11 +93,11 @@ public class DiFactoryGenerator : IIncrementalGenerator
             classSymbol.ContainingNamespace.ToDisplayString(),
             constructor.Parameters
                 .Select(x =>
-                    new ConstructorArgument(x.Type.ToDisplayString(),
+                    new ConstructorArgument(x.Type.ToDisplayString(DisplayFormats.NamespaceAndType.WithGenericsOptions(SymbolDisplayGenericsOptions.IncludeTypeParameters)),
                         x.NullableAnnotation == NullableAnnotation.Annotated))
                 .ToImmutableValueArray(),
             requiredProperties.Select(x =>
-                    new RequiredProperty(x.Type.ToDisplayString(), x.SetMethod!.Name,
+                    new RequiredProperty(x.Type.ToDisplayString(DisplayFormats.NamespaceAndType.WithGenericsOptions(SymbolDisplayGenericsOptions.IncludeTypeParameters)), x.SetMethod!.Name,
                         x.NullableAnnotation == NullableAnnotation.Annotated))
                 .ToImmutableValueArray()
         );

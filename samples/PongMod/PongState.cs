@@ -2,6 +2,7 @@ using PongMod.CompilerGenerated.IdExtensions;
 using Serilog;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 
@@ -21,6 +22,7 @@ public partial class PongState : IStateDescriptor
     ];
 
     [StateFunction("pong_init")]
+    [OrderAfter<VulkanModule>(VulkanModule.CreateDevice_Key)]
     [OnCreate]
     public static void Initialize(IPongRuntimeService pongRuntime)
     {
@@ -32,20 +34,16 @@ public partial class PongState : IStateDescriptor
     [PerFrame]
     public static void Frame(IPongRuntimeService pongRuntime)
     {
-        // TODO: Input handling (stub for now)
-        // pongRuntime.MoveLeftPaddle(inputDelta);
-        // pongRuntime.MoveRightPaddle(inputDelta);
-
-        // Tick simulation (handles timing internally)
         pongRuntime.Tick();
-
-        // TODO: Render (stub - will call compute shader)
+        pongRuntime.Render();
     }
-
+    
     [StateFunction("pong_cleanup")]
     [OnDestroy]
-    public static void Cleanup()
+    [OrderBefore<VulkanModule>(VulkanModule.DestroyDevice_Key)]
+    public static void Cleanup(IPongRuntimeService pongRuntime)
     {
+        pongRuntime.Cleanup();
         Log.Information("Pong state cleanup");
     }
 }

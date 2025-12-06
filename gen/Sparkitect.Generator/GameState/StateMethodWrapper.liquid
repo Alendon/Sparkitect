@@ -5,6 +5,10 @@ namespace {{ ModuleNamespace }};
 
 public partial class {{ ModuleTypeName }}
 {
+{% if GenerateConstField %}
+    public const string {{ MethodName }}_Key = "{{ FunctionKey }}";
+
+{% endif %}
     internal class {{ FunctionKey }}Wrapper : global::Sparkitect.GameState.IStateMethod
     {
 {% for param in Parameters %}

@@ -7,6 +7,8 @@ public interface IPongRuntimeService
 
     void Initialize();
     void Tick();
+    void Render();
+    void Cleanup();
     void MoveLeftPaddle(float delta);
     void MoveRightPaddle(float delta);
     void ResetBall();

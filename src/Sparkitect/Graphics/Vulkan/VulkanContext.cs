@@ -7,6 +7,7 @@ using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan.Extensions.KHR;
+using Silk.NET.Windowing;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.GameState;
@@ -39,7 +40,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     public required ICliArgumentHandler CliArgumentHandler { private get; init; }
 
     // Optional - present if WindowingModule is active
-    public IWindowManager? WindowManager { private get; init; }
+    public required IWindowManager? WindowManager { private get; init; }
 
     private bool ValidationEnabled() => true;
 
@@ -77,8 +78,8 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             }
         }
 
-        // Add window surface extensions if windowing is active
-        if (WindowManager?.Window != null)
+        // Add window surface extensions if windowing module is active
+        if (WindowManager != null)
         {
             var windowExtensions = WindowManager.GetRequiredVulkanExtensions();
             foreach (var ext in windowExtensions)
@@ -135,8 +136,8 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             if (validationEnabled)
                 SetupDebugMessenger();
 
-            // Initialize KhrSurface extension if surface extensions are enabled
-            if (WindowManager?.Window != null)
+            // Initialize KhrSurface extension if windowing module is active
+            if (WindowManager != null)
             {
                 if (VkApi.TryGetInstanceExtension(instance, out _khrSurface))
                 {
@@ -272,6 +273,13 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             ModDIService.CreateEntrypointContainer<IVulkanDeviceConfigurator>(GameStateManager.LoadedMods);
         configuratorContainer.ProcessMany(c => c.Configure(configContext));
 
+        // Add swapchain extension if windowing module is active
+        if (WindowManager is not null)
+        {
+            if (!configContext.AddExtension("VK_KHR_swapchain"))
+                Log.Warning("VK_KHR_swapchain extension not available");
+        }
+
         var queueRequests = configContext.GetQueueRequests();
         if (queueRequests.Count == 0)
         {
@@ -387,15 +395,15 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         return VkResult<VkCommandPool>._Success(new VkCommandPool(pool, this));
     }
 
-    public unsafe VkSurface? CreateSurface()
+    public unsafe VkSurface? CreateSurface(IWindow window)
     {
-        if (WindowManager?.Window?.VkSurface == null || _khrSurface == null)
+        if (window.VkSurface == null || _khrSurface == null)
         {
-            Log.Warning("Cannot create surface: windowing not available or KHR_surface not loaded");
+            Log.Warning("Cannot create surface: window has no VkSurface or KHR_surface not loaded");
             return null;
         }
 
-        var rawHandle = WindowManager.Window.VkSurface.Create<AllocationCallbacks>(
+        var rawHandle = window.VkSurface.Create<AllocationCallbacks>(
             VkInstance.Handle.ToHandle(), null);
 
         if (rawHandle.Handle == 0)

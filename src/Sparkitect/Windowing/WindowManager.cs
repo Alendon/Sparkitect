@@ -1,63 +1,61 @@
 using Serilog;
 using Silk.NET.Core.Native;
+using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.Vulkan;
+using Sparkitect.Graphics.Vulkan.VulkanObjects;
 
 namespace Sparkitect.Windowing;
 
 [StateService<IWindowManager, WindowingModule>]
 internal class WindowManager : IWindowManager
 {
-    private IWindow? _window;
+    private IWindow? _preInitWindow;
 
-    public IWindow? Window => _window;
-    public bool IsOpen => _window is { IsClosing: false };
+    internal required IVulkanContext VulkanContext { private get; init; }
 
-    public void CreateWindow(string title, int width, int height)
+    public ISparkitWindow CreateWindow(string title, int width, int height, SwapchainConfig? config = null)
     {
-        if (_window != null)
+        var options = new WindowOptions(ViewOptions.DefaultVulkan)
         {
-            Log.Warning("Window already exists, closing existing window");
-            _window.Close();
-            _window.Dispose();
-        }
-
-        var options = WindowOptions.DefaultVulkan with
-        {
+            Size = new Vector2D<int>(width, height),
             Title = title,
-            Size = new(width, height),
-            VSync = false,
-            WindowBorder = WindowBorder.Resizable
         };
 
-        _window = Silk.NET.Windowing.Window.Create(options);
-        _window.Initialize();
+        var silkWindow = Window.Create(options);
+        silkWindow.Initialize();
+
+        var surface = VulkanContext.CreateSurface(silkWindow)
+            ?? throw new InvalidOperationException("Failed to create Vulkan surface");
+
+        var swapchain = new VkSwapchain(surface, config ?? SwapchainConfig.Default, VulkanContext);
+
+        var window = new SparkitWindow(silkWindow, surface, swapchain);
 
         Log.Information("Window created: {Title} ({Width}x{Height})", title, width, height);
-    }
 
-    public void PollEvents()
-    {
-        _window?.DoEvents();
-    }
-
-    public void Close()
-    {
-        if (_window == null) return;
-
-        _window.Close();
-        _window.Dispose();
-        _window = null;
-
-        Log.Information("Window closed");
+        return window;
     }
 
     public unsafe IReadOnlyList<string> GetRequiredVulkanExtensions()
     {
-        if (_window?.VkSurface == null)
+        if (_preInitWindow == null)
+        {
+            var options = new WindowOptions(ViewOptions.DefaultVulkan)
+            {
+                Size = new Vector2D<int>(1, 1),
+                Title = "Extension Query",
+                IsVisible = false,
+            };
+            _preInitWindow = Window.Create(options);
+            _preInitWindow.Initialize();
+        }
+
+        if (_preInitWindow.VkSurface == null)
             return [];
 
-        var extensions = _window.VkSurface.GetRequiredExtensions(out var count);
+        var extensions = _preInitWindow.VkSurface.GetRequiredExtensions(out var count);
         var result = new List<string>((int)count);
 
         for (var i = 0; i < count; i++)

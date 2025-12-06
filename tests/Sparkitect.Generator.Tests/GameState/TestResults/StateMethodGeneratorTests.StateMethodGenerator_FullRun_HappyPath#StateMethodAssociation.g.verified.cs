@@ -13,25 +13,25 @@ internal class GeneratedStateMethodAssociation : global::Sparkitect.GameState.St
 
         builder.Add(
             global::GameStateTest.AnotherModule.Identification,
-            "process",
+            global::GameStateTest.AnotherModule.Process_Key,
             typeof(global::GameStateTest.AnotherModule.processWrapper),
             global::Sparkitect.GameState.StateMethodSchedule.OnFrameEnter);
 
         builder.Add(
             global::GameStateTest.TestModule.Identification,
-            "cleanup",
+            global::GameStateTest.TestModule.Cleanup_Key,
             typeof(global::GameStateTest.TestModule.cleanupWrapper),
             global::Sparkitect.GameState.StateMethodSchedule.OnDestroy);
 
         builder.Add(
             global::GameStateTest.TestModule.Identification,
-            "init",
+            global::GameStateTest.TestModule.Initialize_Key,
             typeof(global::GameStateTest.TestModule.initWrapper),
             global::Sparkitect.GameState.StateMethodSchedule.OnCreate);
 
         builder.Add(
             global::GameStateTest.TestModule.Identification,
-            "update",
+            global::GameStateTest.TestModule.Update_Key,
             typeof(global::GameStateTest.TestModule.updateWrapper),
             global::Sparkitect.GameState.StateMethodSchedule.PerFrame);
 

@@ -14,9 +14,18 @@ public record StateModuleModel(
 /// <summary>
 /// Model for a state function within a module
 /// </summary>
+/// <param name="MethodName">The C# method name</param>
+/// <param name="FunctionKey">The string key value from StateFunctionAttribute</param>
+/// <param name="KeyExpression">The expression to reference the key (either generated const or existing const reference)</param>
+/// <param name="GenerateConstField">Whether to generate a const field for this key</param>
+/// <param name="Schedule">When this function should execute</param>
+/// <param name="Parameters">Parameters to inject</param>
+/// <param name="OrderingConstraints">Ordering constraints relative to other functions</param>
 public record StateFunctionModel(
     string MethodName,
     string FunctionKey,
+    string KeyExpression,
+    bool GenerateConstField,
     StateMethodSchedule Schedule,
     ImmutableValueArray<StateParameterModel> Parameters,
     ImmutableValueArray<OrderingConstraint> OrderingConstraints);
@@ -73,6 +82,7 @@ public record StateMethodRegistration(
     string ModuleTypeName,
     string ModuleIdentification,
     string FunctionKey,
+    string KeyExpression,
     string WrapperTypeName,
     string ScheduleName);
 

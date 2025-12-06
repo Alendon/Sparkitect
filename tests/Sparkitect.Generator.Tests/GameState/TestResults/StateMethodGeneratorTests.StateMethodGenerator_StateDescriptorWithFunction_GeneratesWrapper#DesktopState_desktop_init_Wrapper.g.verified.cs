@@ -6,6 +6,10 @@ namespace GameStateTest;
 
 public partial class DesktopState
 {
+
+    public const string Initialize_Key = "desktop_init";
+
+
     internal class desktop_initWrapper : global::Sparkitect.GameState.IStateMethod
     {
 

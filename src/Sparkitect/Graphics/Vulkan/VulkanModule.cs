@@ -10,6 +10,7 @@ namespace Sparkitect.Graphics.Vulkan;
 [ModuleRegistry.RegisterModule("vulkan")]
 public partial class VulkanModule : IStateModule
 {
+    
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
     public static Identification Identification => StateModuleID.Sparkitect.Vulkan;
 
@@ -22,8 +23,7 @@ public partial class VulkanModule : IStateModule
 
     [StateFunction("create_instance")]
     [OnCreate]
-    [OrderAfter("vulkan_init")]
-    [OrderAfter<WindowingModule>("create_window")]
+    [OrderAfter(VulkanInit_Key)]
     public static void CreateInstance(IVulkanContextStateFacade vulkanContext)
     {
         vulkanContext.CreateInstance();
@@ -31,7 +31,7 @@ public partial class VulkanModule : IStateModule
 
     [StateFunction("select_physical_device")]
     [OnCreate]
-    [OrderAfter("create_instance")]
+    [OrderAfter(CreateInstance_Key)]
     public static void SelectPhysicalDevice(IVulkanContextStateFacade vulkanContext)
     {
         vulkanContext.SelectPhysicalDevice();
@@ -39,7 +39,7 @@ public partial class VulkanModule : IStateModule
 
     [StateFunction("create_device")]
     [OnCreate]
-    [OrderAfter("select_physical_device")]
+    [OrderAfter(SelectPhysicalDevice_Key)]
     public static void CreateDevice(IVulkanContextStateFacade vulkanContext)
     {
         vulkanContext.CreateDevice();

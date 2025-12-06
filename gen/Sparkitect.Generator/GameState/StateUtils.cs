@@ -1,5 +1,7 @@
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Sparkitect.Generator.GameState;
 
@@ -108,6 +110,54 @@ public static class StateUtils
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Analyzes the key argument of a StateFunction attribute to determine if it's a literal or const reference.
+    /// </summary>
+    /// <param name="stateFunctionAttr">The StateFunction attribute data</param>
+    /// <param name="containingType">The type containing the method</param>
+    /// <returns>
+    /// IsLiteral: true if the argument is a string literal, false if it references a const field.
+    /// ConstFieldReference: If not a literal, the expression to reference the const (e.g., "ModuleName.KeyField").
+    /// </returns>
+    internal static (bool IsLiteral, string? ConstFieldReference) AnalyzeKeyArgument(
+        AttributeData stateFunctionAttr,
+        INamedTypeSymbol containingType)
+    {
+        var syntaxRef = stateFunctionAttr.ApplicationSyntaxReference;
+        if (syntaxRef is null)
+            return (true, null);
+
+        var syntax = syntaxRef.GetSyntax();
+        if (syntax is not AttributeSyntax attrSyntax)
+            return (true, null);
+
+        var args = attrSyntax.ArgumentList?.Arguments;
+        if (args is null || args.Value.Count == 0)
+            return (true, null);
+
+        var firstArg = args.Value[0].Expression;
+
+        // Check if it's a string literal
+        if (firstArg is LiteralExpressionSyntax { RawKind: (int)SyntaxKind.StringLiteralExpression })
+            return (true, null);
+
+        // Not a literal - extract the const field reference expression
+        var constRef = firstArg.ToString();
+
+        // If it's a simple identifier (e.g., InitKey), qualify it with the containing type
+        if (firstArg is IdentifierNameSyntax)
+        {
+            constRef = $"global::{containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted))}.{constRef}";
+        }
+        else if (firstArg is MemberAccessExpressionSyntax memberAccess)
+        {
+            // Already qualified (e.g., OtherModule.SomeKey) - make it global
+            constRef = $"global::{memberAccess}";
+        }
+
+        return (false, constRef);
     }
 
     /// <summary>

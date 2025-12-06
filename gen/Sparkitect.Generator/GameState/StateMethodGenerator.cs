@@ -124,6 +124,26 @@ public class StateMethodGenerator : IIncrementalGenerator
             if (schedule is null)
                 continue;
 
+            // Analyze whether key is a literal or const reference
+            var (isLiteral, constFieldRef) = AnalyzeKeyArgument(stateFunctionAttr, parentType);
+
+            // Determine key expression and whether to generate const field
+            string keyExpression;
+            bool generateConstField;
+
+            if (isLiteral)
+            {
+                // Generate const field: MethodName_Key
+                generateConstField = true;
+                keyExpression = $"{method.Name}_Key";
+            }
+            else
+            {
+                // Reuse existing const reference
+                generateConstField = false;
+                keyExpression = constFieldRef ?? $"\"{key}\""; // Fallback to string literal if analysis failed
+            }
+
             // Extract parameters
             var parameters = method.Parameters
                 .Select(p => new StateParameterModel(
@@ -138,6 +158,8 @@ public class StateMethodGenerator : IIncrementalGenerator
             functions.Add(new StateFunctionModel(
                 method.Name,
                 key!,
+                keyExpression,
+                generateConstField,
                 schedule.Value,
                 parameters,
                 orderingConstraints));
@@ -171,6 +193,7 @@ public class StateMethodGenerator : IIncrementalGenerator
             module.ModuleTypeName,
             function.MethodName,
             function.FunctionKey,
+            function.GenerateConstField,
             Parameters = function.Parameters.Select((p, i) => new
             {
                 Index = i,
@@ -198,10 +221,16 @@ public class StateMethodGenerator : IIncrementalGenerator
 
             foreach (var function in sortedFunctions)
             {
+                // Build fully qualified key expression
+                var fullyQualifiedKeyExpr = function.GenerateConstField
+                    ? $"global::{module.ModuleNamespace}.{module.ModuleTypeName}.{function.KeyExpression}"
+                    : function.KeyExpression;
+
                 registrations.Add(new StateMethodRegistration(
                     $"global::{module.ModuleNamespace}.{module.ModuleTypeName}",
                     module.ModuleIdentification,
                     function.FunctionKey,
+                    fullyQualifiedKeyExpr,
                     $"global::{module.ModuleNamespace}.{module.ModuleTypeName}.{function.FunctionKey}Wrapper",
                     function.Schedule.ToString()));
             }

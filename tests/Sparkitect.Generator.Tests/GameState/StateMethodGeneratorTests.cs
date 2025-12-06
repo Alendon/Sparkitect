@@ -231,4 +231,84 @@ public class StateMethodGeneratorTests : SourceGeneratorTestBase<StateMethodGene
         await Assert.That(function.FunctionKey).IsEqualTo("desktop_init");
         await Assert.That(function.Schedule).IsEqualTo(StateMethodSchedule.OnFrameEnter);
     }
+
+    [Test]
+    public async Task ExtractStateModuleModel_LiteralKey_GeneratesConstField(CancellationToken token)
+    {
+        TestSources.Add(("TestModule.cs",
+            """
+            using Sparkitect.GameState;
+            using Sparkitect.Modding;
+
+            namespace GameStateTest;
+
+            public sealed class TestModule : IStateModule
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+                public static Span<Identification> RequiredModules => [];
+
+                [StateFunction("my_function")]
+                [PerFrame]
+                public static void MyFunction()
+                {
+                }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("GameStateTest.TestModule");
+
+        await Assert.That(type).IsNotNull();
+
+        var model = StateMethodGenerator.ExtractStateParentModel(type!, compilation, token);
+
+        await Assert.That(model).IsNotNull();
+        await Assert.That(model!.Functions).HasCount().EqualTo(1);
+
+        var function = model.Functions[0];
+        await Assert.That(function.FunctionKey).IsEqualTo("my_function");
+        await Assert.That(function.GenerateConstField).IsTrue();
+        await Assert.That(function.KeyExpression).IsEqualTo("MyFunction_Key");
+    }
+
+    [Test]
+    public async Task ExtractStateModuleModel_ConstKey_ReusesExistingConst(CancellationToken token)
+    {
+        TestSources.Add(("TestModule.cs",
+            """
+            using Sparkitect.GameState;
+            using Sparkitect.Modding;
+
+            namespace GameStateTest;
+
+            public sealed class TestModule : IStateModule
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+                public static Span<Identification> RequiredModules => [];
+
+                public const string InitKey = "init_value";
+
+                [StateFunction(InitKey)]
+                [OnCreate]
+                public static void Initialize()
+                {
+                }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("GameStateTest.TestModule");
+
+        await Assert.That(type).IsNotNull();
+
+        var model = StateMethodGenerator.ExtractStateParentModel(type!, compilation, token);
+
+        await Assert.That(model).IsNotNull();
+        await Assert.That(model!.Functions).HasCount().EqualTo(1);
+
+        var function = model.Functions[0];
+        await Assert.That(function.FunctionKey).IsEqualTo("init_value");
+        await Assert.That(function.GenerateConstField).IsFalse();
+        await Assert.That(function.KeyExpression).Contains("InitKey");
+    }
 }

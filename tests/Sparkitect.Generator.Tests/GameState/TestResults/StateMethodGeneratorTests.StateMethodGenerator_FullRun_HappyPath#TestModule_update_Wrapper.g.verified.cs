@@ -6,6 +6,10 @@ namespace GameStateTest;
 
 public partial class TestModule
 {
+
+    public const string Update_Key = "update";
+
+
     internal class updateWrapper : global::Sparkitect.GameState.IStateMethod
     {
 

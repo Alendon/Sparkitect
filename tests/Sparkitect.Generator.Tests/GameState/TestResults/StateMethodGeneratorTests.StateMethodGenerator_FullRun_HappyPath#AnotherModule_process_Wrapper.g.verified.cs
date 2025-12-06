@@ -6,6 +6,10 @@ namespace GameStateTest;
 
 public partial class AnotherModule
 {
+
+    public const string Process_Key = "process";
+
+
     internal class processWrapper : global::Sparkitect.GameState.IStateMethod
     {
 
