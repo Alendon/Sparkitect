@@ -70,6 +70,11 @@ public readonly struct Identification : IEquatable<Identification>
         return HashCode.Combine(ModId, CategoryId, ItemId);
     }
 
+    public override string ToString()
+    {
+        return $"{ModId}:{CategoryId}:{ItemId}";
+    }
+
     private string GetDebuggerDisplay()
     {
         return IdentificationDebuggerProxy.FormatIdentification(this) ?? $"{ModId}:{CategoryId}:{ItemId}";

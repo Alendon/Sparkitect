@@ -52,7 +52,7 @@ public partial class VulkanModule : IStateModule
         registryManager.AddRegistry<ShaderModuleRegistry>();
     }
 
-    [StateFunction("process_registried")]
+    [StateFunction("process_registries")]
     [OnFrameEnter]
     public static void ProcessRegistries(IRegistryManager registryManager)
     {

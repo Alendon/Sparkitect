@@ -1,6 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Serilog;
+using Silk.NET.Vulkan;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Graphics.Vulkan;
@@ -12,10 +17,11 @@ internal class ShaderManager : IShaderManager
     private const string ShaderResourceKey = "module";
 
     public required IResourceManager ResourceManager { private get; init; }
+    public required IVulkanContext VulkanContext { private get; init; }
 
-    private readonly Dictionary<Identification, byte[]> _loadedModules = new();
+    private readonly Dictionary<Identification, VkShaderModule> _loadedModules = new();
 
-    public void RegisterModule(Identification id)
+    public unsafe void RegisterModule(Identification id)
     {
         using var stream = ResourceManager.GetResourceStream(id, ShaderResourceKey);
         if (stream is null)
@@ -27,7 +33,33 @@ internal class ShaderManager : IShaderManager
 
         ValidateSpirvBinary(bytes, id);
 
-        _loadedModules[id] = bytes;
+        Span<uint> spirvCode = MemoryMarshal.Cast<byte, uint>(bytes.AsSpan());
+
+        Result result;
+        ShaderModule module;
+        fixed(uint* codeStart = spirvCode)
+        {
+            ShaderModuleCreateInfo createInfo = new()
+            {
+                SType = StructureType.ShaderModuleCreateInfo,
+                PCode = codeStart,
+                CodeSize = (UIntPtr)spirvCode.Length
+            };
+            result = VulkanContext.VkApi.CreateShaderModule(VulkanContext.VkDevice.Handle, in createInfo,
+                VulkanContext.DefaultAllocationCallbacks, out module);
+        }
+
+        if (result != Result.Success)
+        {
+            throw new Exception($"Failed to create Shader Module for {id}, Reason: {result}");
+        }
+        
+        _loadedModules[id] = new VkShaderModule(module, VulkanContext);
+    }
+
+    public bool TryGetRegisteredShaderModule(Identification id, [NotNullWhen(true)] out VkShaderModule? shaderModule)
+    {
+        return _loadedModules.TryGetValue(id, out shaderModule);
     }
 
     public void UnregisterModule(Identification id)
@@ -48,7 +80,7 @@ internal class ShaderManager : IShaderManager
         if (magic != SpirvMagicNumber)
             throw new InvalidOperationException(
                 $"Shader {id}: Invalid SPIR-V magic number (expected 0x{SpirvMagicNumber:X8}, got 0x{magic:X8})");
-        
+
         Log.Debug("Validated spirv binary for {ShaderModuleId}", id);
     }
 }

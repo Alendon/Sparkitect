@@ -418,26 +418,6 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         return new VkSurface(surfaceHandle, _khrSurface, this);
     }
 
-    public unsafe VkResult<VkShaderModule> CreateShaderModule(ReadOnlySpan<byte> spirvCode)
-    {
-        fixed (byte* codePtr = spirvCode)
-        {
-            var createInfo = new ShaderModuleCreateInfo
-            {
-                SType = StructureType.ShaderModuleCreateInfo,
-                CodeSize = (nuint)spirvCode.Length,
-                PCode = (uint*)codePtr
-            };
-
-            var result = VkApi.CreateShaderModule(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var module);
-
-            if (result != Result.Success)
-                return VkResult<VkShaderModule>._Error(result);
-
-            return VkResult<VkShaderModule>._Success(new VkShaderModule(module, this));
-        }
-    }
-
     private void RetrieveQueues(IReadOnlyList<QueueFamilyRequest> requests,
         IReadOnlyList<QueueFamilyProperties> familyProperties)
     {

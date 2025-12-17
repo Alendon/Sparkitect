@@ -32,11 +32,6 @@ public interface IVulkanContext
     VkSurface? CreateSurface(IWindow window);
 
     /// <summary>
-    /// Creates a shader module from SPIR-V bytecode.
-    /// </summary>
-    VkResult<VkShaderModule> CreateShaderModule(ReadOnlySpan<byte> spirvCode);
-
-    /// <summary>
     /// Gets all queues belonging to a queue family.
     /// </summary>
     IReadOnlyList<VulkanQueue> GetQueuesForFamily(uint familyIndex);

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Graphics.Vulkan;
@@ -13,6 +15,8 @@ public interface IShaderManager
     /// <param name="id">The identification of the shader module.</param>
     /// <exception cref="InvalidOperationException">Thrown when SPIR-V validation fails.</exception>
     void RegisterModule(Identification id);
+
+    bool TryGetRegisteredShaderModule(Identification id, [NotNullWhen(true)] out VkShaderModule? shaderModule);
 
     /// <summary>
     /// Unregisters a shader module.
