@@ -22,7 +22,7 @@ public partial class PongState : IStateDescriptor
     ];
 
     [StateFunction("pong_init")]
-    [OrderAfter<VulkanModule>(VulkanModule.CreateDevice_Key)]
+    [OrderAfter<VulkanModule>(VulkanModule.ProcessRegistries_Key)]
     [OnCreate]
     public static void Initialize(IPongRuntimeService pongRuntime)
     {

@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using System.Numerics;
+using PongMod.CompilerGenerated.IdExtensions;
 using Serilog;
-using Serilog.Core;
 using Silk.NET.Vulkan;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Modding;
+using Sparkitect.Modding.IDs;
 using Sparkitect.Windowing;
 using VkSemaphore = Silk.NET.Vulkan.Semaphore;
 
@@ -28,9 +30,18 @@ internal class PongRuntimeService : IPongRuntimeService
     private uint _graphicsQueueFamily;
     private Queue _graphicsQueue;
 
+    // Compute pipeline resources
+    private DescriptorSetLayout _descriptorSetLayout;
+    private PipelineLayout _pipelineLayout;
+    private Pipeline _computePipeline;
+    private DescriptorPool _descriptorPool;
+    private DescriptorSet[] _descriptorSets = [];
+    private ImageView[] _storageImageViews = [];
+
     public required IWindowManager WindowManager { private get; init; }
     public required IVulkanContext VulkanContext { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
+    public required IShaderManager ShaderManager { private get; init; }
 
     public ref PongGameData GameData => ref _gameData;
     public float DeltaTime { get; private set; }
@@ -81,7 +92,151 @@ internal class PongRuntimeService : IPongRuntimeService
         vk.CreateSemaphore(device, semaphoreInfo, null, out _renderFinishedSemaphore);
         vk.CreateFence(device, fenceInfo, null, out _inFlightFence);
 
+        CreateComputePipeline(vk, device);
+        CreateDescriptorResources(vk, device);
+
         Log.Debug("Pong runtime initialized with Vulkan resources");
+    }
+
+    private unsafe void CreateComputePipeline(Vk vk, Device device)
+    {
+        // Get shader module
+        if (!ShaderManager.TryGetRegisteredShaderModule(ShaderModuleID.PongMod.Pong, out var shaderModule))
+            throw new InvalidOperationException("Pong shader not registered");
+
+        // Descriptor set layout: binding 0 = storage image
+        var binding = new DescriptorSetLayoutBinding
+        {
+            Binding = 0,
+            DescriptorType = DescriptorType.StorageImage,
+            DescriptorCount = 1,
+            StageFlags = ShaderStageFlags.ComputeBit
+        };
+        var layoutInfo = new DescriptorSetLayoutCreateInfo
+        {
+            SType = StructureType.DescriptorSetLayoutCreateInfo,
+            BindingCount = 1,
+            PBindings = &binding
+        };
+        vk.CreateDescriptorSetLayout(device, layoutInfo, null, out _descriptorSetLayout);
+
+        // Pipeline layout: push constants + descriptor set
+        var pushConstantRange = new PushConstantRange
+        {
+            StageFlags = ShaderStageFlags.ComputeBit,
+            Offset = 0,
+            Size = (uint)sizeof(PongGameData)
+        };
+        var setLayout = _descriptorSetLayout;
+        var pipelineLayoutInfo = new PipelineLayoutCreateInfo
+        {
+            SType = StructureType.PipelineLayoutCreateInfo,
+            SetLayoutCount = 1,
+            PSetLayouts = &setLayout,
+            PushConstantRangeCount = 1,
+            PPushConstantRanges = &pushConstantRange
+        };
+        vk.CreatePipelineLayout(device, pipelineLayoutInfo, null, out _pipelineLayout);
+
+        // Compute pipeline
+        var entryPoint = "computeMain"u8;
+        fixed (byte* entryPointPtr = entryPoint)
+        {
+            var stageInfo = new PipelineShaderStageCreateInfo
+            {
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.ComputeBit,
+                Module = shaderModule.Handle,
+                PName = entryPointPtr
+            };
+            var computePipelineInfo = new ComputePipelineCreateInfo
+            {
+                SType = StructureType.ComputePipelineCreateInfo,
+                Stage = stageInfo,
+                Layout = _pipelineLayout
+            };
+            vk.CreateComputePipelines(device, default, 1, computePipelineInfo, null, out _computePipeline);
+        }
+    }
+
+    private unsafe void CreateDescriptorResources(Vk vk, Device device)
+    {
+        var swapchain = _window!.Swapchain;
+        var imageCount = (int)swapchain.ImageCount;
+
+        // Descriptor pool
+        var poolSize = new DescriptorPoolSize
+        {
+            Type = DescriptorType.StorageImage,
+            DescriptorCount = (uint)imageCount
+        };
+        var poolInfo = new DescriptorPoolCreateInfo
+        {
+            SType = StructureType.DescriptorPoolCreateInfo,
+            MaxSets = (uint)imageCount,
+            PoolSizeCount = 1,
+            PPoolSizes = &poolSize
+        };
+        vk.CreateDescriptorPool(device, poolInfo, null, out _descriptorPool);
+
+        // Storage image views
+        _storageImageViews = new ImageView[imageCount];
+        for (var i = 0; i < imageCount; i++)
+        {
+            var viewInfo = new ImageViewCreateInfo
+            {
+                SType = StructureType.ImageViewCreateInfo,
+                Image = swapchain.Images[i].Handle,
+                ViewType = ImageViewType.Type2D,
+                Format = swapchain.ImageFormat,
+                SubresourceRange = new ImageSubresourceRange
+                {
+                    AspectMask = ImageAspectFlags.ColorBit,
+                    BaseMipLevel = 0,
+                    LevelCount = 1,
+                    BaseArrayLayer = 0,
+                    LayerCount = 1
+                }
+            };
+            vk.CreateImageView(device, viewInfo, null, out _storageImageViews[i]);
+        }
+
+        // Allocate descriptor sets
+        _descriptorSets = new DescriptorSet[imageCount];
+        var layouts = new DescriptorSetLayout[imageCount];
+        Array.Fill(layouts, _descriptorSetLayout);
+        fixed (DescriptorSetLayout* layoutsPtr = layouts)
+        fixed (DescriptorSet* setsPtr = _descriptorSets)
+        {
+            var allocInfo = new DescriptorSetAllocateInfo
+            {
+                SType = StructureType.DescriptorSetAllocateInfo,
+                DescriptorPool = _descriptorPool,
+                DescriptorSetCount = (uint)imageCount,
+                PSetLayouts = layoutsPtr
+            };
+            vk.AllocateDescriptorSets(device, allocInfo, setsPtr);
+        }
+
+        // Write descriptor sets
+        for (var i = 0; i < imageCount; i++)
+        {
+            var imageInfo = new DescriptorImageInfo
+            {
+                ImageView = _storageImageViews[i],
+                ImageLayout = ImageLayout.General
+            };
+            var write = new WriteDescriptorSet
+            {
+                SType = StructureType.WriteDescriptorSet,
+                DstSet = _descriptorSets[i],
+                DstBinding = 0,
+                DescriptorCount = 1,
+                DescriptorType = DescriptorType.StorageImage,
+                PImageInfo = &imageInfo
+            };
+            vk.UpdateDescriptorSets(device, 1, write, 0, null);
+        }
     }
 
     private uint FindGraphicsQueueFamily(VkPhysicalDevice physicalDevice)
@@ -141,12 +296,12 @@ internal class PongRuntimeService : IPongRuntimeService
         };
         vk.BeginCommandBuffer(cmd, beginInfo);
 
-        // Transition image to transfer dst
+        // Transition image to General for compute write
         var barrier = new ImageMemoryBarrier
         {
             SType = StructureType.ImageMemoryBarrier,
             OldLayout = ImageLayout.Undefined,
-            NewLayout = ImageLayout.TransferDstOptimal,
+            NewLayout = ImageLayout.General,
             SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
             DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
             Image = swapchain.Images[(int)imageIndex].Handle,
@@ -159,33 +314,38 @@ internal class PongRuntimeService : IPongRuntimeService
                 LayerCount = 1
             },
             SrcAccessMask = 0,
-            DstAccessMask = AccessFlags.TransferWriteBit
+            DstAccessMask = AccessFlags.ShaderWriteBit
         };
         vk.CmdPipelineBarrier(cmd,
             PipelineStageFlags.TopOfPipeBit,
-            PipelineStageFlags.TransferBit,
+            PipelineStageFlags.ComputeShaderBit,
             0, 0, null, 0, null, 1, barrier);
 
-        // Clear to blue
-        var clearColor = new ClearColorValue(0.0f, 0.2f, 0.4f, 1.0f);
-        var range = new ImageSubresourceRange
+        // Bind compute pipeline and dispatch
+        vk.CmdBindPipeline(cmd, PipelineBindPoint.Compute, _computePipeline);
+        var descriptorSet = _descriptorSets[imageIndex];
+        vk.CmdBindDescriptorSets(cmd, PipelineBindPoint.Compute, _pipelineLayout, 0, 1, &descriptorSet, 0, null);
+
+        // Update screen dimensions and push constants
+        _gameData.ScreenWidth = swapchain.Extent.Width;
+        _gameData.ScreenHeight = swapchain.Extent.Height;
+        fixed (PongGameData* gameDataPtr = &_gameData)
         {
-            AspectMask = ImageAspectFlags.ColorBit,
-            BaseMipLevel = 0,
-            LevelCount = 1,
-            BaseArrayLayer = 0,
-            LayerCount = 1
-        };
-        vk.CmdClearColorImage(cmd, swapchain.Images[(int)imageIndex].Handle,
-            ImageLayout.TransferDstOptimal, clearColor, 1, range);
+            vk.CmdPushConstants(cmd, _pipelineLayout, ShaderStageFlags.ComputeBit, 0, (uint)sizeof(PongGameData), gameDataPtr);
+        }
+
+        // Dispatch compute shader (8x8 workgroups)
+        var groupCountX = (swapchain.Extent.Width + 7) / 8;
+        var groupCountY = (swapchain.Extent.Height + 7) / 8;
+        vk.CmdDispatch(cmd, groupCountX, groupCountY, 1);
 
         // Transition to present
-        barrier.OldLayout = ImageLayout.TransferDstOptimal;
+        barrier.OldLayout = ImageLayout.General;
         barrier.NewLayout = ImageLayout.PresentSrcKhr;
-        barrier.SrcAccessMask = AccessFlags.TransferWriteBit;
+        barrier.SrcAccessMask = AccessFlags.ShaderWriteBit;
         barrier.DstAccessMask = 0;
         vk.CmdPipelineBarrier(cmd,
-            PipelineStageFlags.TransferBit,
+            PipelineStageFlags.ComputeShaderBit,
             PipelineStageFlags.BottomOfPipeBit,
             0, 0, null, 0, null, 1, barrier);
 
@@ -219,6 +379,16 @@ internal class PongRuntimeService : IPongRuntimeService
         var device = VulkanContext.VkDevice.Handle;
 
         vk.DeviceWaitIdle(device);
+
+        // Cleanup compute resources
+        foreach (var view in _storageImageViews)
+            vk.DestroyImageView(device, view, null);
+        _storageImageViews = [];
+
+        vk.DestroyDescriptorPool(device, _descriptorPool, null);
+        vk.DestroyPipeline(device, _computePipeline, null);
+        vk.DestroyPipelineLayout(device, _pipelineLayout, null);
+        vk.DestroyDescriptorSetLayout(device, _descriptorSetLayout, null);
 
         vk.DestroyFence(device, _inFlightFence, null);
         vk.DestroySemaphore(device, _renderFinishedSemaphore, null);

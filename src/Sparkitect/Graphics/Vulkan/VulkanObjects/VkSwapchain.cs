@@ -132,7 +132,8 @@ public class VkSwapchain : VulkanObject
             ImageColorSpace = surfaceFormat.ColorSpace,
             ImageExtent = extent,
             ImageArrayLayers = 1,
-            ImageUsage = ImageUsageFlags.ColorAttachmentBit,
+            // TODO: Make ImageUsage configurable via SwapchainConfig for flexibility
+            ImageUsage = ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.StorageBit,
             ImageSharingMode = SharingMode.Exclusive,
             PreTransform = capabilities.CurrentTransform,
             CompositeAlpha = CompositeAlphaFlagsKHR.OpaqueBitKhr,
@@ -227,7 +228,16 @@ public class VkSwapchain : VulkanObject
                 return preferred;
         }
 
-        // Fallback: B8G8R8A8_SRGB with SRGB colorspace
+        // Fallback: B8G8R8A8_UNORM (storage-compatible) with SRGB colorspace
+        // TODO: SRGB formats don't support storage bit, prefer UNORM for compute compatibility
+        var unorm = formats.FirstOrDefault(f =>
+            f.Format == Format.B8G8R8A8Unorm &&
+            f.ColorSpace == ColorSpaceKHR.SpaceSrgbNonlinearKhr);
+
+        if (unorm.Format != Format.Undefined)
+            return unorm;
+
+        // Try SRGB if UNORM not available
         var srgb = formats.FirstOrDefault(f =>
             f.Format == Format.B8G8R8A8Srgb &&
             f.ColorSpace == ColorSpaceKHR.SpaceSrgbNonlinearKhr);
