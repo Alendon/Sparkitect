@@ -46,4 +46,22 @@ public partial class PongState : IStateDescriptor
         pongRuntime.Cleanup();
         Log.Information("Pong state cleanup");
     }
+
+    interface A<B>
+    {
+        public void Do(B value);
+    }
+
+    class C : A<string>, A<int>
+    {
+        public void Do(string value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Do(int value)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
