@@ -490,27 +490,35 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
 
         var facadeMap = LoadFacadeMap(additionalMods);
-        var deltaModules = stateMetadata.ModuleIds;
+        var allMods = LoadedMods.Concat(additionalMods);
+
+        // Build state stack: existing frames + new state
+        var stateStack = _stateStack
+            .Reverse()
+            .Select(f => ((IReadOnlyList<Identification>)_registeredStates[f.StateId].ModuleIds.ToList(), f.StateId))
+            .Append(((IReadOnlyList<Identification>)stateMetadata.ModuleIds.ToList(), stateId))
+            .ToList();
 
         var transitionEnterCtx = new TransitionContext
         {
-            TargetStateId = stateId,
-            ActiveModuleIds = deltaModules.ToList(),
+            StateStack = stateStack,
             IsEnterTransition = true
         };
         var transitionExitCtx = transitionEnterCtx with { IsEnterTransition = false };
 
+        var perFrameCtx = new PerFrameContext { StateStack = stateStack };
+
         var transitionEnterMethods = FunctionManager.GetSorted<
             TransitionFunctionAttribute, TransitionContext, TransitionRegistry>(
-            container, facadeMap, transitionEnterCtx);
+            container, facadeMap, transitionEnterCtx, allMods);
 
         var transitionExitMethods = FunctionManager.GetSorted<
             TransitionFunctionAttribute, TransitionContext, TransitionRegistry>(
-            container, facadeMap, transitionExitCtx);
+            container, facadeMap, transitionExitCtx, allMods);
 
         var perFrameMethods = FunctionManager.GetSorted<
             PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry>(
-            container, facadeMap, PerFrameContext.Instance);
+            container, facadeMap, perFrameCtx, allMods);
 
         return new ActiveStateFrame(
             stateId,
@@ -544,17 +552,6 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         // Dispose container
         frame.Container.Dispose();
-
-        // Dispose methods if they implement IDisposable
-        foreach (var method in frame.PerFrameMethods
-            .Concat(frame.TransitionEnterMethods)
-            .Concat(frame.TransitionExitMethods))
-        {
-            if (method is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-        }
 
         return frame;
     }

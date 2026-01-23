@@ -1,7 +1,8 @@
 using Sparkitect.DI;
 using Sparkitect.Modding;
+using Sparkitect.Stateless;
 
-namespace Sparkitect.Stateless;
+namespace Sparkitect.GameState;
 
 // TODO: Minimize generics - implement "genericless base marker" pattern.
 // SchedulingAttribute currently requires 4 generic params for CLR but SG only needs TStatelessFunction.

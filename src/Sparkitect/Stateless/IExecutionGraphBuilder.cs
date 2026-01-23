@@ -6,5 +6,5 @@ public interface IExecutionGraphBuilder
 {
     void AddNode(Identification node);
     void AddEdge(Identification from, Identification to, bool optional);
-    object Resolve();
+    IReadOnlyList<Identification> Resolve();
 }

@@ -1,6 +1,7 @@
 using Sparkitect.Modding;
+using Sparkitect.Stateless;
 
-namespace Sparkitect.Stateless;
+namespace Sparkitect.GameState;
 
 /// <summary>
 /// Registry-facaded interface for registering stateless functions.

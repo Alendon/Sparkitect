@@ -7,6 +7,7 @@ using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
+using Sparkitect.Stateless;
 
 namespace MinimalSampleMod;
 
@@ -20,9 +21,9 @@ public partial class SampleEntryState : IStateDescriptor
     [DummyRegistry.RegisterValue("hello1")]
     public static string SomeValueToRegister() => "Hello World";
 
-    [StateFunction("test_command_pool")]
-    [OnCreate]
-    [OrderAfter<VulkanModule>(VulkanModule.CreateDevice_Key)]
+    [TransitionFunction("test_command_pool")]
+    [OnCreateScheduling]
+    [OrderAfter<VulkanModule.CreateDeviceFunc>]
     public static void TestCommandPool(IVulkanContext vulkanContext)
     {
         Log.Information("Testing VkCommandPool...");
@@ -51,8 +52,8 @@ public partial class SampleEntryState : IStateDescriptor
         Log.Information("Command pool disposed (single buffer auto-freed)");
     }
 
-    [PerFrame]
-    [StateFunction("print_on_frame")]
+    [PerFrameFunction("print_on_frame")]
+    [PerFrameScheduling]
     public static void PrintOnFrame(IDummyValueManager dummyValueManager)
     {
         Log.Information("Dummy Value fetched for {Id} as: {Value}", DummyID.MinimalSampleMod.Hello1, dummyValueManager.GetDummyValue(DummyID.MinimalSampleMod.Hello1));

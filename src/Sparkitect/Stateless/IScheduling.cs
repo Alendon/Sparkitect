@@ -16,9 +16,11 @@ public interface IScheduling<TStatelessFunction, TContext, TRegistry>
 {
     /// <summary>
     /// Builds graph nodes/edges for this function. Typically adds one node and its ordering edges.
+    /// Conditionally includes the function based on context and owner.
     /// </summary>
     /// <param name="builder">Builder for constructing the DAG.</param>
     /// <param name="context">Contextual data for filtering/configuration.</param>
     /// <param name="functionId">The function's identification.</param>
-    void BuildGraph(IExecutionGraphBuilder builder, TContext context, Identification functionId);
+    /// <param name="ownerId">The owning module/state identification for filtering.</param>
+    void BuildGraph(IExecutionGraphBuilder builder, TContext context, Identification functionId, Identification ownerId);
 }

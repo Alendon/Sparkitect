@@ -5,6 +5,7 @@ using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
+using Sparkitect.Stateless;
 
 namespace PongMod;
 
@@ -21,26 +22,26 @@ public partial class PongState : IStateDescriptor
         StateModuleID.Sparkitect.Windowing
     ];
 
-    [StateFunction("pong_init")]
-    [OrderAfter<VulkanModule>(VulkanModule.ProcessRegistries_Key)]
-    [OnCreate]
+    [TransitionFunction("pong_init")]
+    [OnCreateScheduling]
+    [OrderAfter<VulkanModule.ProcessRegistriesFunc>]
     public static void Initialize(IPongRuntimeService pongRuntime)
     {
         pongRuntime.Initialize();
         Log.Information("Pong state initialized");
     }
 
-    [StateFunction("pong_frame")]
-    [PerFrame]
+    [PerFrameFunction("pong_frame")]
+    [PerFrameScheduling]
     public static void Frame(IPongRuntimeService pongRuntime)
     {
         pongRuntime.Tick();
         pongRuntime.Render();
     }
-    
-    [StateFunction("pong_cleanup")]
-    [OnDestroy]
-    [OrderBefore<VulkanModule>(VulkanModule.DestroyDevice_Key)]
+
+    [TransitionFunction("pong_cleanup")]
+    [OnDestroyScheduling]
+    [OrderBefore<VulkanModule.DestroyDeviceFunc>]
     public static void Cleanup(IPongRuntimeService pongRuntime)
     {
         pongRuntime.Cleanup();

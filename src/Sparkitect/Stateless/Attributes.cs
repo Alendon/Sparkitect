@@ -1,3 +1,4 @@
+using Sparkitect.GameState;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
@@ -56,3 +57,10 @@ public sealed class TransitionFunctionAttribute(string identifier)
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 public sealed class ParentIdAttribute<TOwner> : Attribute
     where TOwner : IHasIdentification;
+
+/// <summary>
+/// Marker base for scheduling parameter attributes. Used by analyzers to validate
+/// that these attributes are only applied to stateless function methods.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
+public abstract class SchedulingParameterAttribute : Attribute;

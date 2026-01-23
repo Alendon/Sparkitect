@@ -5,6 +5,7 @@
 // are outside its concern.
 
 using Sparkitect.CompilerGenerated.IdExtensions;
+using Sparkitect.GameState;
 using Sparkitect.Stateless;
 
 #pragma warning disable CS9113
