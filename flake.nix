@@ -24,6 +24,7 @@
         vulkan-tools
         shader-slang
         glfw
+        trashy
         stdenv.cc.cc.lib  # libstdc++ for native NuGet libraries
       ];
 

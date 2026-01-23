@@ -2,28 +2,29 @@ using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
-// TODO: Define payload structure for function registration once SG output is finalized.
-// Payload will include: functionId, wrapperType, optional ParentId (static property on wrapper).
-
 /// <summary>
 /// Base class for stateless function registries. Provides common registration logic.
 /// Actual registries (PerFrameRegistry, TransitionRegistry) are shallow wrappers.
 /// </summary>
 public abstract class StatelessFunctionRegistryBase : IRegistryBase
 {
-    // TODO: Implement registration storage and lookup once payload is defined.
+    private readonly Dictionary<Identification, Type> _wrapperTypes = new();
 
     public required IStatelessFunctionRegistrar Registrar { get; init; }
-    
+
     public void Register<TStatelessFunction>(Identification id) where TStatelessFunction : IStatelessFunction
     {
+        _wrapperTypes[id] = typeof(TStatelessFunction);
         Registrar.AddFunction<TStatelessFunction>(id);
     }
-    
+
     public void Unregister(Identification id)
     {
-        // TODO: Remove function from registry
+        _wrapperTypes.Remove(id);
     }
+
+    internal bool TryGetWrapperType(Identification id, out Type wrapperType)
+        => _wrapperTypes.TryGetValue(id, out wrapperType!);
 }
 
 /// <summary>

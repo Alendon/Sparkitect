@@ -3,15 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Serilog;
-using OneOf.Types;
-using QuikGraph;
-using QuikGraph.Algorithms;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.Modding;
 using Sparkitect.DI;
 using Sparkitect.Modding.IDs;
+using Sparkitect.Stateless;
 using Sparkitect.Utils;
 
 namespace Sparkitect.GameState;
@@ -25,7 +23,6 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     private readonly Dictionary<Identification, StateMetadata> _registeredStates = new();
     private readonly Dictionary<Identification, ModuleMetadata> _registeredModules = new();
     private readonly Stack<ActiveStateFrame> _stateStack = new();
-    private readonly HashSet<Identification> _addedModules = new();
 
     public IEnumerable<string> LoadedMods => _stateStack.SelectMany(x => x.AddedMods);
 
@@ -39,6 +36,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     public required IModManager ModManager { get; init; }
     public required IRegistryManager RegistryManager { get; init; }
     public required IModDIService ModDIService { get; init; }
+    public required IStatelessFunctionManager FunctionManager { get; init; }
 
     public ICoreContainer CurrentCoreContainer => _stateStack.Count > 0 ? _stateStack.Peek().Container : RootContainer;
     public ICoreContainer RootContainer { get; set; } = null!;
@@ -93,8 +91,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         PushState(entryFrame);
 
         // Execute entry sequence
-        ExecuteMethods(entryFrame.OnCreateMethods);
-        ExecuteMethods(entryFrame.OnFrameEnterMethods);
+        ExecuteMethods(entryFrame.TransitionEnterMethods);
 
         Log.Information("Entry state active, starting main loop");
         StartMainLoop();
@@ -201,7 +198,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
             // Parent is currently leaf - execute parent OnFrameExit
             var parentFrame = _stateStack.Peek();
-            ExecuteMethods(parentFrame.OnFrameExitMethods);
+            ExecuteMethods(parentFrame.TransitionExitMethods);
 
             // Create child frame
             var parentContainer = _stateStack.Peek().Container;
@@ -213,8 +210,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             PushState(childFrame);
 
             // Execute child entry sequence
-            ExecuteMethods(childFrame.OnCreateMethods);
-            ExecuteMethods(childFrame.OnFrameEnterMethods);
+            ExecuteMethods(childFrame.TransitionEnterMethods);
 
             Log.Information("Transition with mod change complete: now in state {StateId}", childFrame.StateId);
         }
@@ -438,26 +434,6 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return facadeHolder.GetFacadeMapping();
     }
 
-    private IReadOnlyDictionary<(Identification, string, StateMethodSchedule), Type> LoadMethodAssociations(IEnumerable<string> additionalMods)
-    {
-        var builder = new StateMethodAssociationBuilder();
-
-        using var associationContainer = ModDIService.CreateEntrypointContainer<StateMethodAssociation>(LoadedMods.Concat(additionalMods));
-        associationContainer.ProcessMany(x => x.Configure(builder));
-
-        return builder.Build();
-    }
-
-    private HashSet<OrderingEntry> LoadMethodOrdering(IEnumerable<string> additionalMods)
-    {
-        var ordering = new HashSet<OrderingEntry>();
-
-        using var orderingContainer = ModDIService.CreateEntrypointContainer<StateMethodOrdering>(LoadedMods.Concat(additionalMods));
-        orderingContainer.ProcessMany(x => x.ConfigureOrdering(ordering));
-
-        return ordering;
-    }
-
     private ICoreContainer BuildContainerForState(Identification stateId, ICoreContainer parentContainer, IEnumerable<string> additionalMods)
     {
         if (!_registeredStates.TryGetValue(stateId, out var stateMetadata))
@@ -492,77 +468,8 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return builder.Build();
     }
 
-    private Dictionary<(Identification Parent, string Key), IStateMethod> InstantiateStateMethods(
-        Identification parentId,
-        ICoreContainer container,
-        IReadOnlyDictionary<Type, Type> facadeMap,
-        IReadOnlyDictionary<(Identification, string, StateMethodSchedule), Type> methodAssociations,
-        StateMethodSchedule schedule)
-    {
-        var methods = new Dictionary<(Identification Parent, string Key), IStateMethod>();
-
-        foreach (var ((id, key, sch), wrapperType) in methodAssociations)
-        {
-            if (!id.Equals(parentId) || sch != schedule) continue;
-            var wrapper = (IStateMethod)Activator.CreateInstance(wrapperType)!;
-            wrapper.Initialize(container, facadeMap);
-            methods[(id, key)] = wrapper;
-        }
-
-        return methods;
-    }
-
-    private IReadOnlyList<IStateMethod> SortMethods(
-        Dictionary<(Identification Parent, string Key), IStateMethod> methods,
-        IReadOnlySet<OrderingEntry> ordering)
-    {
-        if (methods.Count == 0)
-            return Array.Empty<IStateMethod>();
-
-        // Build set of parent IDs present in the methods collection
-        var presentParents = new HashSet<Identification>(methods.Keys.Select(k => k.Parent));
-
-        // Build dependency graph with composite keys
-        var graph = new AdjacencyGraph<(Identification Parent, string Key), Edge<(Identification, string)>>();
-
-        foreach (var key in methods.Keys)
-        {
-            graph.AddVertex(key);
-        }
-
-        // Add edges from ordering constraints
-        foreach (var entry in ordering)
-        {
-            // Only apply constraint if BOTH parents are present in this methods collection
-            if (presentParents.Contains(entry.Before.Parent) && presentParents.Contains(entry.After.Parent))
-            {
-                var beforeKey = (entry.Before.Parent, entry.Before.Method);
-                var afterKey = (entry.After.Parent, entry.After.Method);
-
-                if (methods.ContainsKey(beforeKey) && methods.ContainsKey(afterKey))
-                {
-                    // entry.Before should execute before entry.After
-                    // Edge: Before -> After means Before appears before After in topological sort output
-                    graph.AddEdge(new Edge<(Identification, string)>(beforeKey, afterKey));
-                }
-            }
-        }
-
-        // Topological sort
-        var sortedKeys = graph.TopologicalSort();
-        var result = new List<IStateMethod>();
-
-        foreach (var key in sortedKeys)
-        {
-            result.Add(methods[key]);
-        }
-
-        return result;
-    }
-
-    // mark as step through for easier state method debugging
     [DebuggerStepThrough]
-    private void ExecuteMethods(IReadOnlyList<IStateMethod> methods)
+    private void ExecuteMethods(IReadOnlyList<IStatelessFunction> methods)
     {
         foreach (var method in methods)
         {
@@ -583,72 +490,35 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
 
         var facadeMap = LoadFacadeMap(additionalMods);
-        var methodAssociations = LoadMethodAssociations(additionalMods);
-        var methodOrdering = LoadMethodOrdering(additionalMods);
-
         var deltaModules = stateMetadata.ModuleIds;
-        var allModules = GetAllInheritedModules(stateId);
 
-        // Collect onCreate/onDestroy from state + delta modules only
-        var onCreateDict = InstantiateStateMethods(stateId, container, facadeMap, methodAssociations, StateMethodSchedule.OnCreate);
-        var onDestroyDict = InstantiateStateMethods(stateId, container, facadeMap, methodAssociations, StateMethodSchedule.OnDestroy);
-
-        foreach (var moduleId in deltaModules)
+        var transitionEnterCtx = new TransitionContext
         {
-            var moduleCreate = InstantiateStateMethods(moduleId, container, facadeMap, methodAssociations, StateMethodSchedule.OnCreate);
-            var moduleDestroy = InstantiateStateMethods(moduleId, container, facadeMap, methodAssociations, StateMethodSchedule.OnDestroy);
+            TargetStateId = stateId,
+            ActiveModuleIds = deltaModules.ToList(),
+            IsEnterTransition = true
+        };
+        var transitionExitCtx = transitionEnterCtx with { IsEnterTransition = false };
 
-            foreach (var (key, method) in moduleCreate)
-                onCreateDict[key] = method;
+        var transitionEnterMethods = FunctionManager.GetSorted<
+            TransitionFunctionAttribute, TransitionContext, TransitionRegistry>(
+            container, facadeMap, transitionEnterCtx);
 
-            foreach (var (key, method) in moduleDestroy)
-                onDestroyDict[key] = method;
+        var transitionExitMethods = FunctionManager.GetSorted<
+            TransitionFunctionAttribute, TransitionContext, TransitionRegistry>(
+            container, facadeMap, transitionExitCtx);
 
-            // Track module as added
-            if (!_addedModules.Add(moduleId))
-            {
-                Log.Warning("Module {ModuleId} added by state {StateId} was already added by parent",
-                    moduleId, stateId);
-            }
-        }
-
-        // Collect onFrameEnter/onFrameExit/PerFrame from state + all modules
-        var perFrameDict = InstantiateStateMethods(stateId, container, facadeMap, methodAssociations, StateMethodSchedule.PerFrame);
-        var onFrameEnterDict = InstantiateStateMethods(stateId, container, facadeMap, methodAssociations, StateMethodSchedule.OnFrameEnter);
-        var onFrameExitDict = InstantiateStateMethods(stateId, container, facadeMap, methodAssociations, StateMethodSchedule.OnFrameExit);
-
-        foreach (var moduleId in allModules)
-        {
-            var modulePerFrame = InstantiateStateMethods(moduleId, container, facadeMap, methodAssociations, StateMethodSchedule.PerFrame);
-            var moduleFrameEnter = InstantiateStateMethods(moduleId, container, facadeMap, methodAssociations, StateMethodSchedule.OnFrameEnter);
-            var moduleFrameExit = InstantiateStateMethods(moduleId, container, facadeMap, methodAssociations, StateMethodSchedule.OnFrameExit);
-
-            foreach (var (key, method) in modulePerFrame)
-                perFrameDict[key] = method;
-
-            foreach (var (key, method) in moduleFrameEnter)
-                onFrameEnterDict[key] = method;
-
-            foreach (var (key, method) in moduleFrameExit)
-                onFrameExitDict[key] = method;
-        }
-
-        // Sort all methods together
-        var perFrameMethods = SortMethods(perFrameDict, methodOrdering);
-        var onCreateMethods = SortMethods(onCreateDict, methodOrdering);
-        var onDestroyMethods = SortMethods(onDestroyDict, methodOrdering);
-        var onFrameEnterMethods = SortMethods(onFrameEnterDict, methodOrdering);
-        var onFrameExitMethods = SortMethods(onFrameExitDict, methodOrdering);
+        var perFrameMethods = FunctionManager.GetSorted<
+            PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry>(
+            container, facadeMap, PerFrameContext.Instance);
 
         return new ActiveStateFrame(
             stateId,
             container,
-            Array.Empty<string>(),
-            perFrameMethods,
-            onCreateMethods,
-            onDestroyMethods,
-            onFrameEnterMethods,
-            onFrameExitMethods);
+            [],
+            transitionEnterMethods,
+            transitionExitMethods,
+            perFrameMethods);
     }
 
     private void PushState(ActiveStateFrame frame)
@@ -676,9 +546,9 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         frame.Container.Dispose();
 
         // Dispose methods if they implement IDisposable
-        foreach (var method in frame.PerFrameMethods.Concat(frame.OnCreateMethods)
-            .Concat(frame.OnDestroyMethods).Concat(frame.OnFrameEnterMethods)
-            .Concat(frame.OnFrameExitMethods))
+        foreach (var method in frame.PerFrameMethods
+            .Concat(frame.TransitionEnterMethods)
+            .Concat(frame.TransitionExitMethods))
         {
             if (method is IDisposable disposable)
             {
@@ -699,17 +569,16 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         var childFrame = _stateStack.Peek();
 
         // Execute child exit sequence
-        ExecuteMethods(childFrame.OnFrameExitMethods);
-        ExecuteMethods(childFrame.OnDestroyMethods);
+        ExecuteMethods(childFrame.TransitionExitMethods);
 
         // Pop child
         PopState();
 
-        // Parent is now leaf - execute parent OnFrameEnter
+        // Parent is now leaf - execute parent enter transition
         if (_stateStack.Count > 0)
         {
             var parentFrame = _stateStack.Peek();
-            ExecuteMethods(parentFrame.OnFrameEnterMethods);
+            ExecuteMethods(parentFrame.TransitionEnterMethods);
             Log.Information("Transitioned to parent: {StateId}", parentFrame.StateId);
         }
     }
@@ -718,11 +587,11 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         Identification childStateId,
         ICoreContainer parentContainer)
     {
-        // Parent is currently leaf - execute parent OnFrameExit
+        // Parent is currently leaf - execute parent exit transition
         if (_stateStack.Count > 0)
         {
             var parentFrame = _stateStack.Peek();
-            ExecuteMethods(parentFrame.OnFrameExitMethods);
+            ExecuteMethods(parentFrame.TransitionExitMethods);
         }
 
         // Create and push child
@@ -730,8 +599,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         PushState(childFrame);
 
         // Execute child entry sequence
-        ExecuteMethods(childFrame.OnCreateMethods);
-        ExecuteMethods(childFrame.OnFrameEnterMethods);
+        ExecuteMethods(childFrame.TransitionEnterMethods);
 
         Log.Information("Transitioned to child: {StateId}", childStateId);
     }
@@ -836,8 +704,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         if (_stateStack.Count > 0)
         {
             var rootFrame = _stateStack.Peek();
-            ExecuteMethods(rootFrame.OnFrameExitMethods);
-            ExecuteMethods(rootFrame.OnDestroyMethods);
+            ExecuteMethods(rootFrame.TransitionExitMethods);
             PopState();
         }
 
