@@ -1,27 +1,28 @@
 using QuikGraph;
+using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
-public class ExecutionGraphBuilder<TNode> : IExecutionGraphBuilder<TNode> where TNode : unmanaged
+public class ExecutionGraphBuilder : IExecutionGraphBuilder
 {
-    private Dictionary<Edge<TNode>, bool> _edgesAndOptional = [];
-    private HashSet<TNode> _added = [];
+    private Dictionary<Edge<Identification>, bool> _edgesAndOptional = [];
+    private HashSet<Identification> _added = [];
     
     
-    public void AddNode(TNode node)
+    public void AddNode(Identification node)
     {
         _added.Add(node);
     }
 
-    public void AddEdge(TNode from, TNode to, bool optional)
+    public void AddEdge(Identification from, Identification to, bool optional)
     {
-        var edge = new Edge<TNode>(from, to);
+        var edge = new Edge<Identification>(from, to);
         _edgesAndOptional[edge] = optional;
     }
 
     public object Resolve()
     {
-        AdjacencyGraph<TNode, Edge<TNode>> graph = new(true, _added.Count, _edgesAndOptional.Count);
+        AdjacencyGraph<Identification, Edge<Identification>> graph = new(true, _added.Count, _edgesAndOptional.Count);
         graph.AddVertexRange(_added);
         graph.AddEdgeRange(_edgesAndOptional.Where(x =>
         {

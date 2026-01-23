@@ -1,8 +1,10 @@
+using Sparkitect.Modding;
+
 namespace Sparkitect.Stateless;
 
-public interface IExecutionGraphBuilder<in TNode> where TNode : unmanaged
+public interface IExecutionGraphBuilder
 {
-    void AddNode(TNode node);
-    void AddEdge(TNode from, TNode to, bool optional);
+    void AddNode(Identification node);
+    void AddEdge(Identification from, Identification to, bool optional);
     object Resolve();
 }

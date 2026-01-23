@@ -6,6 +6,8 @@ namespace Sparkitect.Modding;
 /// Marks a class as a registry implementation. Triggers source generation of keyed factory and configurator.
 /// The class must implement <see cref="IRegistry"/> and be partial.
 /// </summary>
+/// <remarks> Marker attributes inherited by this class will be treated as specialized Registries and not be
+/// processed by the Registry SG beyond their basic one time setup (eg no registry method parsing)</remarks>
 [FactoryGenerationType(FactoryGenerationType.Factory)]
 public class RegistryAttribute : Attribute, IFactoryMarker<IRegistryBase>
 {
