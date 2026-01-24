@@ -22,12 +22,10 @@ public class ApplySchedulingEntrypointAttribute<TStatelessFunction> : Attribute
 /// </summary>
 /// <typeparam name="TStatelessFunction">The stateless function attribute type.</typeparam>
 /// <typeparam name="TContext">The context type.</typeparam>
-/// <typeparam name="TRegistry">The registry type.</typeparam>
-public abstract class ApplySchedulingEntrypoint<TStatelessFunction, TContext, TRegistry>
+public abstract class ApplySchedulingEntrypoint<TStatelessFunction, TContext>
     : IConfigurationEntrypoint<ApplySchedulingEntrypointAttribute<TStatelessFunction>>
-    where TStatelessFunction : StatelessFunctionAttribute<TContext, TRegistry>
+    where TStatelessFunction : StatelessFunctionAttribute
     where TContext : class
-    where TRegistry : IRegistry
 {
     /// <summary>
     /// Builds the execution graph by instantiating scheduling objects and invoking their BuildGraph methods.

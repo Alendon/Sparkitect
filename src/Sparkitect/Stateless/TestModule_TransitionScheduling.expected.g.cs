@@ -14,7 +14,7 @@ internal class TestModule_TransitionScheduling
     : global::Sparkitect.GameState.ApplySchedulingEntrypoint<
         global::Sparkitect.Stateless.TransitionFunctionAttribute,
         global::Sparkitect.GameState.TransitionContext,
-        global::Sparkitect.GameState.TransitionRegistry>
+        global::Sparkitect.Stateless.TransitionRegistry>
 {
     public override void BuildGraph(
         global::Sparkitect.Stateless.IExecutionGraphBuilder builder,

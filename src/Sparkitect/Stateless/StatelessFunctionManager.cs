@@ -1,10 +1,10 @@
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.GeneratorAttributes;
+using Sparkitect.GameState;
 using Sparkitect.Modding;
-using Sparkitect.Stateless;
 
-namespace Sparkitect.GameState;
+namespace Sparkitect.Stateless;
 
 [CreateServiceFactory<IStatelessFunctionManager>]
 internal sealed class StatelessFunctionManager : IStatelessFunctionManager, IStatelessFunctionRegistrar
@@ -31,7 +31,7 @@ internal sealed class StatelessFunctionManager : IStatelessFunctionManager, ISta
         var graphBuilder = CreateGraphBuilder();
 
         using var entrypointContainer = ModDIService.CreateEntrypointContainer<
-            ApplySchedulingEntrypoint<TStatelessFunction, TContext, TRegistry>>(loadedMods);
+            ApplySchedulingEntrypoint<TStatelessFunction, TContext>>(loadedMods);
 
         entrypointContainer.ProcessMany(entrypoint =>
             entrypoint.BuildGraph(graphBuilder, context));

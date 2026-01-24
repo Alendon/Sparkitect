@@ -1,8 +1,7 @@
 using Sparkitect.DI.Container;
 using Sparkitect.Modding;
-using Sparkitect.Stateless;
 
-namespace Sparkitect.GameState;
+namespace Sparkitect.Stateless;
 
 [RegistryFacade<IStatelessFunctionRegistrar>]
 public interface IStatelessFunctionManager

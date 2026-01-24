@@ -1,7 +1,6 @@
 using Sparkitect.Modding;
-using Sparkitect.Stateless;
 
-namespace Sparkitect.GameState;
+namespace Sparkitect.Stateless;
 
 /// <summary>
 /// Base class for stateless function registries. Provides common registration logic.
