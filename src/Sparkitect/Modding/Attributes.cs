@@ -15,6 +15,12 @@ public class RegistryAttribute : Attribute, IFactoryMarker<IRegistryBase>
     /// Unique registry category identifier.
     /// </summary>
     [Key] public required string Identifier { get; set; }
+
+    /// <summary>
+    /// When true, the registry is managed by an external source generator.
+    /// The base Registry SG skips registration attribute generation; external SG handles registration.
+    /// </summary>
+    public bool External { get; set; } = false;
 }
 
 /// <summary>

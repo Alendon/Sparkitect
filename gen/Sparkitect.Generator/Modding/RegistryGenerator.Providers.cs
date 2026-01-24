@@ -161,20 +161,26 @@ public partial class RegistryGenerator
             }
         }
 
-        var files = filesBuilder.ToImmutableValueArray();
+        var files = filesBuilder.OrderBy(f => f.fileId).ToImmutableValueArray();
 
-        var kind = cand.IsPropertyProvider
-            ? EntryKind.Property
-            : (cand.IsTypeProvider ? EntryKind.Type : EntryKind.Method);
-
-        var entry = new RegistrationEntry(
-            cand.Id,
-            kind,
-            cand.MethodName,
-            cand.ProviderContainingTypeFullName,
-            cand.ProviderMethodOrTypeName,
-            files,
-            cand.DiParameters);
+        RegistrationEntry entry;
+        if (cand.IsPropertyProvider)
+        {
+            var providerFull = $"global::{cand.ProviderContainingTypeFullName}.{cand.ProviderMethodOrTypeName}";
+            entry = new PropertyRegistrationEntry(cand.Id, files, cand.MethodName, providerFull);
+        }
+        else if (cand.IsTypeProvider)
+        {
+            var typeFull = cand.ProviderMethodOrTypeName.StartsWith("global::")
+                ? cand.ProviderMethodOrTypeName
+                : $"global::{cand.ProviderMethodOrTypeName}";
+            entry = new TypeRegistrationEntry(cand.Id, files, cand.MethodName, typeFull);
+        }
+        else
+        {
+            var providerFull = $"global::{cand.ProviderContainingTypeFullName}.{cand.ProviderMethodOrTypeName}";
+            entry = new MethodRegistrationEntry(cand.Id, files, cand.MethodName, providerFull, cand.DiParameters);
+        }
 
         var entries = new ImmutableValueArray<RegistrationEntry>.Builder();
         entries.Add(entry);

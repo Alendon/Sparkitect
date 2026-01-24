@@ -26,21 +26,3 @@ public abstract class StatelessFunctionRegistryBase : IRegistryBase
     internal bool TryGetWrapperType(Identification id, out Type wrapperType)
         => _wrapperTypes.TryGetValue(id, out wrapperType!);
 }
-
-/// <summary>
-/// Registry for per-frame stateless functions.
-/// </summary>
-[StatelessRegistry(Identifier = "perframe_function")]
-public sealed partial class PerFrameRegistry : StatelessFunctionRegistryBase, IRegistry
-{
-    public static string Identifier => "perframe_function";
-}
-
-/// <summary>
-/// Registry for transition stateless functions.
-/// </summary>
-[StatelessRegistry(Identifier = "transition_function")]
-public sealed partial class TransitionRegistry : StatelessFunctionRegistryBase, IRegistry
-{
-    public static string Identifier => "transition_function";
-}

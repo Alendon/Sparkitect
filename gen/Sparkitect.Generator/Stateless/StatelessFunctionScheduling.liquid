@@ -1,0 +1,42 @@
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace {{ Namespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.GameState.ApplySchedulingEntrypointAttribute<{{ StatelessFunctionAttributeType }}>]
+internal class {{ ClassName }}
+    : global::Sparkitect.GameState.ApplySchedulingEntrypoint<{{ StatelessFunctionAttributeType }}, {{ ContextType }}>
+{
+    public override void BuildGraph(
+        global::Sparkitect.Stateless.IExecutionGraphBuilder builder,
+        {{ ContextType }} context)
+    {
+{% for func in Functions %}
+        {
+{% for param in func.SchedulingParams %}
+{% if param.IsArray %}
+            {{ param.AttributeTypeName }}[] param_{{ forloop.index0 }} = [
+{% for inst in param.Instances %}
+                new {{ param.AttributeTypeName }}{% if inst.GenericArgs.size > 0 %}<{% for g in inst.GenericArgs %}{{ g }}{% unless forloop.last %}, {% endunless %}{% endfor %}>{% endif %}({% for a in inst.CtorArgs %}{{ a }}{% unless forloop.last %}, {% endunless %}{% endfor %}){% unless forloop.last %},{% endunless %}
+{% endfor %}
+            ];
+{% else %}
+{% if param.Instances.size > 0 %}
+{% assign inst = param.Instances.first %}
+            var param_{{ forloop.index0 }} = new {{ param.AttributeTypeName }}{% if inst.GenericArgs.size > 0 %}<{% for g in inst.GenericArgs %}{{ g }}{% unless forloop.last %}, {% endunless %}{% endfor %}>{% endif %}({% for a in inst.CtorArgs %}{{ a }}{% unless forloop.last %}, {% endunless %}{% endfor %});
+{% elsif param.IsNullable %}
+            {{ param.AttributeTypeName }}? param_{{ forloop.index0 }} = null;
+{% endif %}
+{% endif %}
+{% endfor %}
+            var scheduling = new {{ func.SchedulingTypeName }}(
+{% for param in func.SchedulingParams %}
+                param_{{ forloop.index0 }}{% unless forloop.last %},{% endunless %}
+{% endfor %}
+            );
+            scheduling.BuildGraph(builder, context, {{ func.IdPropertyExpr }}, {{ func.ParentIdentificationExpr }});
+        }
+{% endfor %}
+    }
+}

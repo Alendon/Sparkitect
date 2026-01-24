@@ -6,7 +6,7 @@ namespace Sparkitect.Generator.Modding;
 
 public partial class RegistryGenerator
 {
-    internal static bool RenderRegistryRegistrationsUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
+    public static bool RenderRegistryRegistrationsUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
     {
         var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
         fileName = $"{unit.Model.TypeName}Registrations_{suffix}.g.cs";
@@ -17,16 +17,16 @@ public partial class RegistryGenerator
 
         var entries = unit.Entries
             .OrderBy(e => e.Id)
-            .Select(e => new
+            .Select(e =>
             {
-                Id = e.Id,
-                PropertyName = ToPascalCase(e.Id),
-                Kind = e.Kind.ToString(),
-                MethodName = e.MethodName,
-                ProviderFullName = string.IsNullOrWhiteSpace(e.ProviderContainingType) ? string.Empty : $"global::{e.ProviderContainingType}.{e.ProviderMemberName}",
-                TypeFullName = e.ProviderMemberName.StartsWith("global::") ? e.ProviderMemberName : (string.IsNullOrWhiteSpace(e.ProviderMemberName) ? string.Empty : $"global::{e.ProviderMemberName}"),
-                Files = e.Files.OrderBy(f => f.fileId).Select(f => new { fileId = f.fileId, fileName = f.fileName }).ToArray(),
-                DiParams = e.DiParameters.Select(p => new { Type = p.paramType.StartsWith("global::") ? p.paramType : $"global::{p.paramType}", IsNullable = p.isNullable }).ToArray()
+                var propName = ToPascalCase(e.Id);
+                return new
+                {
+                    Id = e.Id,
+                    PropertyName = propName,
+                    Files = e.Files.OrderBy(f => f.fileId).Select(f => new { fileId = f.fileId, fileName = f.fileName }).ToArray(),
+                    RegistrationCode = e.EmitRegistrationEntryCode("registry", propName)
+                };
             })
             .ToArray();
 
@@ -57,7 +57,7 @@ public partial class RegistryGenerator
         return FluidHelper.TryRenderTemplate("Modding.RegistryIdContainer.Framework.liquid", tpl, out code);
     }
 
-    internal static bool RenderRegistryIdExtensionsFramework(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
+    public static bool RenderRegistryIdExtensionsFramework(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
     {
         var categoryPascal = ToPascalCase(model.Key);
         var modPascal = ToPascalCase(settings.ModId);
@@ -77,7 +77,7 @@ public partial class RegistryGenerator
         return FluidHelper.TryRenderTemplate("Modding.RegistryIdExtensions.Framework.liquid", tpl, out code);
     }
 
-    internal static bool RenderRegistryIdPropertiesUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
+    public static bool RenderRegistryIdPropertiesUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
     {
         var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
         fileName = $"{unit.Model.TypeName}.IdProperties_{suffix}.g.cs";
@@ -127,6 +127,7 @@ public partial class RegistryGenerator
             TypeName = model.TypeName,
             Key = model.Key,
             ContainingNamespace = model.ContainingNamespace,
+            IsExternal = model.IsExternal ? "true" : "false",
             RegisterMethods = registerMethodsString,
             ResourceFiles = resourceFilesString,
             RegisterMethodsMetadata = methodsMetadata
@@ -160,6 +161,8 @@ public partial class RegistryGenerator
 
     internal static void OutputRegistryAttributes(SourceProductionContext context, RegistryModel model)
     {
+        if (model.IsExternal) return;
+
         if (RenderRegistryAttributes(model, out var code, out var fileName))
         {
             context.AddSource(fileName, code);

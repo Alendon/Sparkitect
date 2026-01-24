@@ -6,6 +6,7 @@ public record RegistryModel(
     string TypeName,
     string Key,
     string ContainingNamespace,
+    bool IsExternal,
     ImmutableValueArray<RegisterMethodModel> RegisterMethods,
     ImmutableValueArray<(string Key, bool Required, bool Primary)> ResourceFiles);
 

@@ -1,0 +1,44 @@
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace {{ ParentNamespace }};
+
+public partial class {{ ParentTypeName }}
+{
+    public class {{ WrapperClassName }} : global::Sparkitect.Stateless.IStatelessFunction, global::Sparkitect.Modding.IHasIdentification
+    {
+        public global::Sparkitect.Modding.Identification Identification => {{ IdPropertyExpr }};
+        static global::Sparkitect.Modding.Identification global::Sparkitect.Modding.IHasIdentification.Identification => {{ IdPropertyExpr }};
+
+        public global::Sparkitect.Modding.Identification ParentIdentification => {{ ParentIdentificationExpr }};
+
+{% for param in Parameters %}
+        private {{ param.ParameterType }} _param{{ param.Index }};
+{% endfor %}
+
+        [global::System.Diagnostics.DebuggerStepThroughAttribute]
+        public void Execute()
+        {
+            {{ ParentTypeName }}.{{ MethodName }}(
+{% for param in Parameters %}
+                _param{{ param.Index }}{% unless forloop.last %},{% endunless %}
+{% endfor %}
+            );
+        }
+
+        public void Initialize(
+            global::Sparkitect.DI.Container.ICoreContainer container,
+            global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+        {
+{% for param in Parameters %}
+            if (!container.TryResolveMapped<{{ param.ParameterType }}>(out _param{{ param.Index }}, facadeMap))
+            {
+{% unless param.IsOptional %}
+                throw new global::System.InvalidOperationException(
+                    "Failed to resolve {{ param.ParameterType }} for stateless function {{ Identifier }}");
+{% endunless %}
+            }
+{% endfor %}
+        }
+    }
+}

@@ -238,9 +238,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 }
             }
 
-            var files = resolvedFiles.ToImmutableValueArray();
-            var entry = new RegistrationEntry(e.Id, EntryKind.Resource, e.MethodName, string.Empty, string.Empty, files,
-                []);
+            var files = resolvedFiles.OrderBy(f => f.fileId).ToImmutableValueArray();
+            var entry = new ResourceRegistrationEntry(e.Id, files, e.MethodName);
             bucket.builder.Add(entry);
             map[key] = bucket;
         }
@@ -249,18 +248,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
         var units = new ImmutableValueArray<RegistrationUnit>.Builder();
         foreach (var kvp in map)
         {
-            // Sort entries by Id, and files by fileId for determinism
             var sortedEntries = kvp.Value.builder
                 .OrderBy(x => x.Id)
-                .Select(x => new RegistrationEntry(
-                    x.Id,
-                    x.Kind,
-                    x.MethodName,
-                    x.ProviderContainingType,
-                    x.ProviderMemberName,
-                    x.Files.ToImmutableValueArray(),
-                    x.DiParameters
-                ))
                 .ToImmutableValueArray();
 
             units.Add(new RegistrationUnit(
@@ -289,16 +278,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
             foreach (var e in unit.Entries)
             {
-                // Ensure files within entry are ordered by fileId for determinism
-                var orderedFiles = e.Files.OrderBy(f => f.fileId).ToImmutableValueArray();
-                builder.Add(new RegistrationEntry(
-                    e.Id,
-                    e.Kind,
-                    e.MethodName,
-                    e.ProviderContainingType,
-                    e.ProviderMemberName,
-                    orderedFiles,
-                    e.DiParameters));
+                // Files are already sorted at creation time
+                builder.Add(e);
             }
         }
 
@@ -326,11 +307,13 @@ public partial class RegistryGenerator : IIncrementalGenerator
         if (string.IsNullOrWhiteSpace(namespaceName) ||
             symbol.ContainingNamespace?.IsGlobalNamespace is true) return null;
 
+        var externalEntry = registryAttribute.NamedArguments.FirstOrDefault(x => x.Key == "External");
+        var isExternal = externalEntry.Value.Value is true;
 
         //TODO Registry Analyzer: Registry class cannot live outside namespace
         //General Analyzer (Utility class): No Type outside defined root namespace
         //Alternative: Define "GeneratorBaseNamespace", where the generator places it general entries
-        return new RegistryModel(symbol.Name, id, namespaceName!, ExtractRegisterMethods(symbol),
+        return new RegistryModel(symbol.Name, id, namespaceName!, isExternal, ExtractRegisterMethods(symbol),
             ExtractResourceFiles(symbol));
     }
 
@@ -519,6 +502,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             Of("TypeName"),
             Of("Key"),
             Of("ContainingNamespace"),
+            reader.OfBool("IsExternal"),
             methodModels.ToImmutableValueArray(),
             resourceFiles.ToImmutableValueArray());
 
@@ -599,6 +583,18 @@ public partial class RegistryGenerator : IIncrementalGenerator
             {
                 AllValid = false;
                 return 0;
+            }
+
+            return data;
+        }
+
+        public bool OfBool(string fieldName)
+        {
+            var field = symbol.GetMembers(fieldName).OfType<IFieldSymbol>().FirstOrDefault();
+            if (field is not { IsConst: true, HasConstantValue: true } || field.ConstantValue is not bool data)
+            {
+                AllValid = false;
+                return false;
             }
 
             return data;
