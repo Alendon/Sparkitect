@@ -1,0 +1,26 @@
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace {{ Namespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.DI.RegistrationsEntrypoint<{{ RegistryTypeName }}>]
+internal class {{ ClassName }}
+    : global::Sparkitect.DI.Registrations<{{ RegistryTypeName }}>
+{
+    public override string CategoryIdentifier => "{{ CategoryIdentifier }}";
+
+{% for entry in Entries %}
+    public static global::Sparkitect.Modding.Identification {{ entry.PropertyName }} { get; private set; }
+{% endfor %}
+
+    public override void ProcessRegistrations({{ RegistryTypeName }} registry)
+    {
+{% for entry in Entries %}
+        {
+            {{ entry.PropertyName }} = global::Sparkitect.Modding.IdentificationManager.RegisterObject("{{ ModId }}", "{{ CategoryIdentifier }}", "{{ entry.Id }}");
+            {{ entry.RegistrationCode }}
+        }
+{% endfor %}
+    }
+}

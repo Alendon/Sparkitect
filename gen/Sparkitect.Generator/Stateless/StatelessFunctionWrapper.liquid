@@ -1,16 +1,16 @@
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
-namespace {{ ParentNamespace }};
+namespace {{ Namespace }};
 
 public partial class {{ ParentTypeName }}
 {
     public class {{ WrapperClassName }} : global::Sparkitect.Stateless.IStatelessFunction, global::Sparkitect.Modding.IHasIdentification
     {
-        public global::Sparkitect.Modding.Identification Identification => {{ IdPropertyExpr }};
-        static global::Sparkitect.Modding.Identification global::Sparkitect.Modding.IHasIdentification.Identification => {{ IdPropertyExpr }};
+        public global::Sparkitect.Modding.Identification Identification => global::Sparkitect.Modding.IdentificationHelper.Read<{{ WrapperClassName }}>();
+        static global::Sparkitect.Modding.Identification global::Sparkitect.Modding.IHasIdentification.Identification => {{ IdPropertyPath }};
 
-        public global::Sparkitect.Modding.Identification ParentIdentification => {{ ParentIdentificationExpr }};
+        public global::Sparkitect.Modding.Identification ParentIdentification => global::Sparkitect.Modding.IdentificationHelper.Read<{{ ParentTypeName }}>();
 
 {% for param in Parameters %}
         private {{ param.ParameterType }} _param{{ param.Index }};

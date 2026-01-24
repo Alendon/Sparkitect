@@ -35,7 +35,7 @@ internal class {{ ClassName }}
                 param_{{ forloop.index0 }}{% unless forloop.last %},{% endunless %}
 {% endfor %}
             );
-            scheduling.BuildGraph(builder, context, {{ func.IdPropertyExpr }}, {{ func.ParentIdentificationExpr }});
+            scheduling.BuildGraph(builder, context, global::Sparkitect.Modding.IdentificationHelper.Read<{{ func.WrapperFullTypeName }}>(), global::Sparkitect.Modding.IdentificationHelper.Read<{{ func.ParentTypeName }}>());
         }
 {% endfor %}
     }

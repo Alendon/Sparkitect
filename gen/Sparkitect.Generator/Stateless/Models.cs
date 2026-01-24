@@ -7,9 +7,12 @@ namespace Sparkitect.Generator.Stateless;
 /// <param name="Identifier">The string identifier from StatelessFunctionAttribute</param>
 /// <param name="IdentifierPascal">PascalCase version of identifier for property names</param>
 /// <param name="WrapperClassName">Generated wrapper class name</param>
+/// <param name="WrapperFullTypeName">Full type name of the wrapper (e.g., "global::Namespace.Parent.WrapperClass")</param>
 /// <param name="SchedulingTypeName">Full type name of the scheduling implementation (e.g., OnCreateScheduling)</param>
 /// <param name="RegistryTypeName">Full type name of the associated registry</param>
+/// <param name="RegistryKey">The registry category key (e.g., "transition_function")</param>
 /// <param name="ContextTypeName">Full type name of the context type</param>
+/// <param name="ParentTypeName">Full type name of the parent (implements IHasIdentification)</param>
 /// <param name="Parameters">Parameters to inject via DI</param>
 /// <param name="SchedulingParams">Constructor parameters for the scheduling type, with matched attributes</param>
 public record StatelessFunctionModel(
@@ -17,9 +20,12 @@ public record StatelessFunctionModel(
     string Identifier,
     string IdentifierPascal,
     string WrapperClassName,
+    string WrapperFullTypeName,
     string SchedulingTypeName,
     string RegistryTypeName,
+    string RegistryKey,
     string ContextTypeName,
+    string ParentTypeName,
     ImmutableValueArray<StatelessParameterModel> Parameters,
     ImmutableValueArray<SchedulingConstructorParam> SchedulingParams);
 
@@ -58,14 +64,14 @@ public record SchedulingAttributeInstance(
 /// <summary>
 /// Model for a parent type containing stateless functions
 /// </summary>
-/// <param name="ParentTypeName">The containing type name</param>
+/// <param name="ParentTypeName">Short type name of the containing type</param>
 /// <param name="ParentNamespace">The namespace of the containing type</param>
-/// <param name="ParentIdentificationExpr">Expression to get parent's Identification (e.g., "ModuleName.Identification")</param>
+/// <param name="ParentFullTypeName">Full type name (global::...) implementing IHasIdentification</param>
 /// <param name="Functions">All stateless functions in this parent</param>
 public record StatelessParentModel(
     string ParentTypeName,
     string ParentNamespace,
-    string ParentIdentificationExpr,
+    string ParentFullTypeName,
     ImmutableValueArray<StatelessFunctionModel> Functions);
 
 /// <summary>

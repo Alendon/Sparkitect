@@ -669,4 +669,35 @@ public partial class RegistryGenerator : IIncrementalGenerator
     }
 
     // TODO: Analyzer: prevent duplicate registry class names across namespaces (assumption: unique type names).
+
+    /// <summary>
+    /// Extracts the registry key (Identifier) from a registry type symbol.
+    /// Used by external SGs to look up registry category information.
+    /// </summary>
+    public static bool TryExtractRegistryKey(INamedTypeSymbol registryType, out string key)
+    {
+        key = string.Empty;
+
+        var registryAttribute = registryType.GetAttributes().FirstOrDefault(x =>
+        {
+            var attrClass = x.AttributeClass;
+            // Check if attribute inherits from RegistryAttribute
+            while (attrClass is not null)
+            {
+                if (attrClass.ToDisplayString(DisplayFormats.NamespaceAndType) == RegistryMarkerAttribute)
+                    return true;
+                attrClass = attrClass.BaseType;
+            }
+            return false;
+        });
+
+        if (registryAttribute is null) return false;
+
+        var identifierEntry = registryAttribute.NamedArguments.FirstOrDefault(x => x.Key is RegistryAttributeIdField);
+        if (identifierEntry.Value.Value is not string id || string.IsNullOrWhiteSpace(id))
+            return false;
+
+        key = id;
+        return true;
+    }
 }
