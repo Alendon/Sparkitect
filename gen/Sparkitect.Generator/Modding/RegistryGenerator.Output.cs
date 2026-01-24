@@ -103,7 +103,7 @@ public partial class RegistryGenerator
         return FluidHelper.TryRenderTemplate("Modding.RegistryIdProperties.Unit.liquid", tpl, out code);
     }
     
-        internal static bool RenderRegistryMetadata(RegistryModel model, out string code, out string fileName)
+    internal static bool RenderRegistryMetadata(RegistryModel model, out string code, out string fileName)
     {
         fileName = $"{model.TypeName}_Metadata.g.cs";
         

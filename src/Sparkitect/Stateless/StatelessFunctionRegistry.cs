@@ -30,17 +30,17 @@ public abstract class StatelessFunctionRegistryBase : IRegistryBase
 /// <summary>
 /// Registry for per-frame stateless functions.
 /// </summary>
-[StatelessRegistry(Identifier = "stateless:perframe")]
+[StatelessRegistry(Identifier = "perframe_function")]
 public sealed partial class PerFrameRegistry : StatelessFunctionRegistryBase, IRegistry
 {
-    public static string Identifier => "stateless:perframe";
+    public static string Identifier => "perframe_function";
 }
 
 /// <summary>
 /// Registry for transition stateless functions.
 /// </summary>
-[StatelessRegistry(Identifier = "stateless:transition")]
+[StatelessRegistry(Identifier = "transition_function")]
 public sealed partial class TransitionRegistry : StatelessFunctionRegistryBase, IRegistry
 {
-    public static string Identifier => "stateless:transition";
+    public static string Identifier => "transition_function";
 }

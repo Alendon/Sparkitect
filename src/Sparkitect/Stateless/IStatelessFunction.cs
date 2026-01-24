@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Sparkitect.DI.Container;
+using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
@@ -20,4 +21,7 @@ public interface IStatelessFunction
     /// <param name="container">The DI container for resolving dependencies.</param>
     /// <param name="facadeMap">Type substitution map for facade resolution.</param>
     public void Initialize(ICoreContainer container, IReadOnlyDictionary<Type, Type> facadeMap);
+    
+    public Identification Identification { get; }
+    public Identification ParentIdentication { get; }
 }

@@ -6,6 +6,7 @@
 
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Stateless;
 
 #pragma warning disable CS9113
@@ -14,20 +15,19 @@ using Sparkitect.Stateless;
 namespace GameStateTest;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-[global::Sparkitect.Stateless.StatelessRegistrationEntrypoint<global::Sparkitect.Stateless.TransitionFunctionAttribute>]
+[global::Sparkitect.DI.RegistrationsEntrypoint<TransitionRegistry>]
 internal class TestModule_TransitionRegistration
-    : global::Sparkitect.Stateless.StatelessRegistration<global::Sparkitect.Stateless.TransitionFunctionAttribute>
+    : global::Sparkitect.DI.Registrations<TransitionRegistry>
 {
-    public override void Register(TransitionRegistry registry)
+    public override string CategoryIdentifier => "transition_function";
+
+    public static global::Sparkitect.Modding.Identification VulkanInit { get; private set; }
+    
+    public override void ProcessRegistrations(TransitionRegistry registry)
     {
-        // Registration invocation structure TBD via Registry Generator helper.
-        // Functions to register:
-        // - TestModule.initWrapper (OnCreate)
-        // - TestModule.cleanupWrapper (OnDestroy)
-        throw new global::System.NotImplementedException("Stub - actual structure via Registry SG");
-        
-        // Implementation provided by Registry SG, but not called by Registry SG
-        TransitionFunctionIDs.Sparkitect.Init = ...; //register identification
-        registry.Register<TestModule.initWrapper>(TransitionFunctionIDs.Sparkitect.Init);
+        {
+            VulkanInit = IdentificationManager.RegisterObject("sparkitect", "transition_function", "vulkan_init");
+            registry.Register<VulkanModule.VulkanInitFunc>(VulkanInit);
+        }
     }
 }
