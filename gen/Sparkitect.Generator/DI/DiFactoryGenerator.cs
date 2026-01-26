@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Sparkitect.Generator.DI.DiUtils;
@@ -83,8 +84,7 @@ public class DiFactoryGenerator : IIncrementalGenerator
         if (serviceType is null || constructor is null) return null;
 
 
-        var requiredProperties = classSymbol.GetMembers().OfType<IPropertySymbol>().Where(x => x.SetMethod is not null)
-            .Where(x => x.IsRequired);
+        var requiredProperties = GetInjectableProperties(classSymbol);
 
 
         return new ServiceFactoryModel(
@@ -97,8 +97,11 @@ public class DiFactoryGenerator : IIncrementalGenerator
                         x.NullableAnnotation == NullableAnnotation.Annotated))
                 .ToImmutableValueArray(),
             requiredProperties.Select(x =>
-                    new RequiredProperty(x.Type.ToDisplayString(DisplayFormats.NamespaceAndType.WithGenericsOptions(SymbolDisplayGenericsOptions.IncludeTypeParameters)), x.SetMethod!.Name,
-                        x.NullableAnnotation == NullableAnnotation.Annotated))
+                    new RequiredProperty(
+                        x.Type.ToDisplayString(DisplayFormats.NamespaceAndType.WithGenericsOptions(SymbolDisplayGenericsOptions.IncludeTypeParameters)),
+                        x.SetMethod!.Name,
+                        x.NullableAnnotation == NullableAnnotation.Annotated,
+                        x.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))
                 .ToImmutableValueArray()
         );
     }
@@ -118,8 +121,7 @@ public class DiFactoryGenerator : IIncrementalGenerator
         var keyInfo = ExtractKeyInfo(factoryAttribute, classSymbol);
         if (keyInfo is null) return null; // Key is required for KeyedFactory
 
-        var requiredProperties = classSymbol.GetMembers().OfType<IPropertySymbol>().Where(x => x.SetMethod is not null)
-            .Where(x => x.IsRequired);
+        var requiredProperties = GetInjectableProperties(classSymbol);
 
         return new KeyedFactoryModel(
             baseType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -131,12 +133,28 @@ public class DiFactoryGenerator : IIncrementalGenerator
                         x.NullableAnnotation == NullableAnnotation.Annotated))
                 .ToImmutableValueArray(),
             requiredProperties.Select(x =>
-                    new RequiredProperty(x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    new RequiredProperty(
+                        x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         x.SetMethod!.Name,
-                        x.NullableAnnotation == NullableAnnotation.Annotated))
+                        x.NullableAnnotation == NullableAnnotation.Annotated,
+                        x.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))
                 .ToImmutableValueArray(),
             keyInfo
         );
+    }
+
+    internal static IEnumerable<IPropertySymbol> GetInjectableProperties(INamedTypeSymbol typeSymbol)
+    {
+        List<INamedTypeSymbol> stack = [];
+        var walker = typeSymbol;
+        while (walker is not null)
+        {
+            stack.Add(walker);
+            walker = walker.BaseType;
+        }
+
+        var properties = new HashSet<IPropertySymbol>(stack.SelectMany(x => x.GetMembers().OfType<IPropertySymbol>()) ,SymbolEqualityComparer.Default);
+        return properties.Where(x => x.SetMethod is not null && x.IsRequired);
     }
 
     internal static KeyInfo? ExtractKeyInfo(AttributeData factoryAttribute, INamedTypeSymbol classSymbol)

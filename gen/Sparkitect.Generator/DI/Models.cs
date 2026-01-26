@@ -27,7 +27,7 @@ public record KeyedFactoryModel(
     KeyInfo? KeyInfo);
 
 public record ConstructorArgument(string Type, bool IsOptional);
-public record RequiredProperty(string Type, string SetterName, bool IsOptional);
+public record RequiredProperty(string Type, string SetterName, bool IsOptional, string DeclaringTypeName);
 
 /// <summary>
 /// Base class for key information used in keyed factories

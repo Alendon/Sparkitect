@@ -82,8 +82,8 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
                 new ConstructorArgument("global::DiTest.IDependencyB", true)
             ),
             ImmutableValueArray.From(
-                new RequiredProperty("global::DiTest.IDependencyC", "set_C", false),
-                new RequiredProperty("global::DiTest.IDependencyD", "set_D", true)
+                new RequiredProperty("global::DiTest.IDependencyC", "set_C", false, "global::DiTest.TestService"),
+                new RequiredProperty("global::DiTest.IDependencyD", "set_D", true, "global::DiTest.TestService")
             )
         );
 
@@ -197,7 +197,7 @@ public class DiFactoryGeneratorTests : SourceGeneratorTestBase<DiFactoryGenerato
                 new ConstructorArgument("global::DiTest.ILogger", false)
             ),
             ImmutableValueArray.From(
-                new RequiredProperty("global::DiTest.ISerializer", "set_Serializer", true)
+                new RequiredProperty("global::DiTest.ISerializer", "set_Serializer", true, "global::DiTest.JsonProcessor")
             ),
             new DirectKeyInfo("json")
         );

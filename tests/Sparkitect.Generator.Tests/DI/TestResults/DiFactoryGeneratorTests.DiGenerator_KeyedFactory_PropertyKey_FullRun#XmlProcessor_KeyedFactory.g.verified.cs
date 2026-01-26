@@ -110,7 +110,7 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
         
     
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_Serializer")]
-        static extern void SetProperty_1(XmlProcessor target, global::DiTest.ISerializer value);
+        static extern void SetProperty_1(global::DiTest.XmlProcessor target, global::DiTest.ISerializer value);
     
     }
 }

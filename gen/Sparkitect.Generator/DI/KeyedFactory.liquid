@@ -120,7 +120,7 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
         
     {% for argument in RequiredProperties %}
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "{{ argument.SetterName }}")]
-        static extern void SetProperty_{{ forloop.index }}({{ ImplementationTypeName }} target, {{ argument.Type }} value);
+        static extern void SetProperty_{{ forloop.index }}({{ argument.DeclaringTypeName }} target, {{ argument.Type }} value);
     {% endfor %}
     }
 }

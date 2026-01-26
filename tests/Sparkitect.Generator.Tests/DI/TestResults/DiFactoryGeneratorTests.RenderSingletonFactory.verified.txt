@@ -158,10 +158,10 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
 
     
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_C")]
-        static extern void SetProperty_1(TestService target, global::DiTest.IDependencyC value);
+        static extern void SetProperty_1(global::DiTest.TestService target, global::DiTest.IDependencyC value);
     
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_D")]
-        static extern void SetProperty_2(TestService target, global::DiTest.IDependencyD value);
+        static extern void SetProperty_2(global::DiTest.TestService target, global::DiTest.IDependencyD value);
     
 
     }
