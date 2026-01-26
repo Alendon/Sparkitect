@@ -23,5 +23,5 @@ public interface IStatelessFunction
     public void Initialize(ICoreContainer container, IReadOnlyDictionary<Type, Type> facadeMap);
     
     public Identification Identification { get; }
-    public Identification ParentIdentication { get; }
+    public Identification ParentIdentification { get; }
 }

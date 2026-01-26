@@ -3,7 +3,6 @@ using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
-[RegistryFacade<IStatelessFunctionRegistrar>]
 public interface IStatelessFunctionManager
 {
     IReadOnlyList<IStatelessFunction> GetSorted<TStatelessFunction, TContext, TRegistry>(
@@ -16,4 +15,11 @@ public interface IStatelessFunctionManager
         where TRegistry : IRegistry;
 
     IExecutionGraphBuilder CreateGraphBuilder();
+    
+    /// <summary>
+    /// Registers a stateless function with its identification.
+    /// </summary>
+    /// <typeparam name="TStatelessFunction">The generated wrapper type implementing IStatelessFunction.</typeparam>
+    /// <param name="id">The function's identification.</param>
+    internal void AddFunction<TStatelessFunction>(Identification id) where TStatelessFunction : IStatelessFunction;
 }

@@ -3,13 +3,6 @@ using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
-/// <summary>
-/// Marks a registry as a stateless function registry. The base registry generator
-/// only generates minimal output (RegistryConfigurator, RegistryMetadata, IdFramework).
-/// Actual function registration handled by stateless function source generator.
-/// </summary>
-public class StatelessRegistryAttribute : RegistryAttribute;
-
 // TODO: SG Analyzer - Validate StatelessFunctionAttribute usage:
 //   - Method must be static
 //   - Method must have exactly one scheduling attribute matching TContext/TRegistry

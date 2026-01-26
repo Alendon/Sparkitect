@@ -7,7 +7,7 @@ using Sparkitect.Modding;
 namespace Sparkitect.Stateless;
 
 [CreateServiceFactory<IStatelessFunctionManager>]
-internal sealed class StatelessFunctionManager : IStatelessFunctionManager, IStatelessFunctionRegistrar
+internal sealed class StatelessFunctionManager : IStatelessFunctionManager
 {
     private readonly Dictionary<Identification, Type> _wrapperTypes = new();
 

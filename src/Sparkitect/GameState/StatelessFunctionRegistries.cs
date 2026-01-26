@@ -6,7 +6,7 @@ namespace Sparkitect.GameState;
 /// <summary>
 /// Registry for per-frame stateless functions.
 /// </summary>
-[StatelessRegistry(Identifier = "perframe_function", External = true)]
+[Registry(Identifier = "perframe_function", External = true)]
 public sealed partial class PerFrameRegistry : StatelessFunctionRegistryBase, IRegistry
 {
     public static string Identifier => "perframe_function";
@@ -15,7 +15,7 @@ public sealed partial class PerFrameRegistry : StatelessFunctionRegistryBase, IR
 /// <summary>
 /// Registry for transition stateless functions.
 /// </summary>
-[StatelessRegistry(Identifier = "transition_function", External = true)]
+[Registry(Identifier = "transition_function", External = true)]
 public sealed partial class TransitionRegistry : StatelessFunctionRegistryBase, IRegistry
 {
     public static string Identifier => "transition_function";

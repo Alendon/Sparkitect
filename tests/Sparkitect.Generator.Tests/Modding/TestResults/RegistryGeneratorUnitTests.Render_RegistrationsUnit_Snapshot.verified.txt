@@ -22,6 +22,6 @@ public static global::Sparkitect.Modding.Identification Hello { get; private set
 
             ResourceManager?.SetResource(Hello, "default", "f.txt");
 registry.RegisterResourceFile(Hello);
-}
+        }
 } 
 }

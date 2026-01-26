@@ -53,7 +53,7 @@ public sealed class OnCreateScheduling : IScheduling<TransitionFunctionAttribute
     public void BuildGraph(IExecutionGraphBuilder builder, TransitionContext context, Identification functionId, Identification ownerId)
     {
         if (!context.IsEnterTransition) return;
-        if (!context.DeltaModules.Contains(ownerId)) return;
+        if (!context.DeltaModules.Contains(ownerId) && context.StateStack[^1].StateId != ownerId) return;
 
         builder.AddNode(functionId);
 
@@ -87,7 +87,7 @@ public sealed class OnDestroyScheduling : IScheduling<TransitionFunctionAttribut
     public void BuildGraph(IExecutionGraphBuilder builder, TransitionContext context, Identification functionId, Identification ownerId)
     {
         if (context.IsEnterTransition) return;
-        if (!context.DeltaModules.Contains(ownerId)) return;
+        if (!context.DeltaModules.Contains(ownerId) && context.StateStack[^1].StateId != ownerId) return;
 
         builder.AddNode(functionId);
 
@@ -121,7 +121,7 @@ public sealed class OnFrameEnterScheduling : IScheduling<TransitionFunctionAttri
     public void BuildGraph(IExecutionGraphBuilder builder, TransitionContext context, Identification functionId, Identification ownerId)
     {
         if (!context.IsEnterTransition) return;
-        if (!context.IsModuleLoaded(ownerId)) return;
+        if (!context.IsModuleLoaded(ownerId) && context.StateStack[^1].StateId != ownerId) return;
 
         builder.AddNode(functionId);
 
@@ -155,7 +155,7 @@ public sealed class OnFrameExitScheduling : IScheduling<TransitionFunctionAttrib
     public void BuildGraph(IExecutionGraphBuilder builder, TransitionContext context, Identification functionId, Identification ownerId)
     {
         if (context.IsEnterTransition) return;
-        if (!context.IsModuleLoaded(ownerId)) return;
+        if (!context.IsModuleLoaded(ownerId) && context.StateStack[^1].StateId != ownerId) return;
 
         builder.AddNode(functionId);
 

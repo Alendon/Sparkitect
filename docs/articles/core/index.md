@@ -34,6 +34,12 @@ The engine initialization process ties together all core systems, managing the s
 
 [Learn more about the Engine Initialization process](engine-initialization.md)
 
+### Stateless Functions
+
+Stateless Functions provide a unified mechanism for defining behavior in modules and states. They use attribute-based scheduling, dependency injection for parameters, and source-generated wrappers for execution.
+
+[Learn more about Stateless Functions](stateless-functions.md)
+
 ## System Integration
 
 These core systems are tightly integrated:

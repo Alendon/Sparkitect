@@ -10,12 +10,12 @@ public abstract class StatelessFunctionRegistryBase : IRegistryBase
 {
     private readonly Dictionary<Identification, Type> _wrapperTypes = new();
 
-    public required IStatelessFunctionRegistrar Registrar { get; init; }
+    public required IStatelessFunctionManager StatelessFunctionManager { get; init; }
 
     public void Register<TStatelessFunction>(Identification id) where TStatelessFunction : IStatelessFunction
     {
         _wrapperTypes[id] = typeof(TStatelessFunction);
-        Registrar.AddFunction<TStatelessFunction>(id);
+        StatelessFunctionManager.AddFunction<TStatelessFunction>(id);
     }
 
     public void Unregister(Identification id)

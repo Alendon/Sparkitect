@@ -20,6 +20,6 @@ public static global::Sparkitect.Modding.Identification Hello3 { get; private se
 {
             Hello3 = IdentificationManager.RegisterObject("sample_test", "dummy", "hello3");
 registry.RegisterType<global::MinimalSampleMod.RegistryExample.SampleType>(Hello3);
-}
+        }
 } 
 }

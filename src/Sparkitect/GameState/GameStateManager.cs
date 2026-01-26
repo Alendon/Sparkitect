@@ -58,10 +58,14 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         
         RegistryManager.AddRegistry<ModuleRegistry>();
         RegistryManager.AddRegistry<StateRegistry>();
+        RegistryManager.AddRegistry<PerFrameRegistry>();
+        RegistryManager.AddRegistry<TransitionRegistry>();
 
         // Process registries for root mods
         RegistryManager.ProcessRegistry<ModuleRegistry>(rootMods);
         RegistryManager.ProcessRegistry<StateRegistry>(rootMods);
+        RegistryManager.ProcessRegistry<PerFrameRegistry>(rootMods);
+        RegistryManager.ProcessRegistry<TransitionRegistry>(rootMods);
 
         // Finalize registrations
         FinalizeRegistrations();
@@ -161,6 +165,8 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         // Process registries for the newly loaded mods
         RegistryManager.ProcessRegistry<ModuleRegistry>(additionalMods);
         RegistryManager.ProcessRegistry<StateRegistry>(additionalMods);
+        RegistryManager.ProcessRegistry<PerFrameRegistry>(additionalMods);
+        RegistryManager.ProcessRegistry<TransitionRegistry>(additionalMods);
 
         // Finalize registrations (validates state/module hierarchy)
         FinalizeRegistrations();

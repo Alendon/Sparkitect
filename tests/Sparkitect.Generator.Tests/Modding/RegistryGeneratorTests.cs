@@ -82,6 +82,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                 public const string TypeName = "TestRegistry";
                 public const string Key = "test";
                 public const string ContainingNamespace = "DiTest";
+                public const bool IsExternal = false;
                 public const string RegisterMethods = "RegisterItem;RegisterType";
                 public const string ResourceFiles = "data:1:0;config:0:0";
                 
@@ -236,6 +237,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             "TestRegistry",
             "test",
             "DiTest",
+            false,
             ImmutableValueArray.From(
                 new RegisterMethodModel("RegisterItem", PrimaryParameterKind.Value, TypeConstraintFlag.None,
                     ImmutableValueArray.From("global::System.String")),
@@ -264,12 +266,14 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                 "TestRegistry1",
                 "test1",
                 "DiTest",
+                false,
                 [],
                 []),
             new(
                 "TestRegistry2",
                 "test2",
                 "DiTest.Nested",
+                false,
                 [],
                 [])
         ];
@@ -340,7 +344,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             new Dictionary<string, RegistryModel>
             {
                 {
-                    "MinimalSampleMod.DummyRegistry", new RegistryModel("DummyRegistry", "dummy", "MinimalSampleMod",
+                    "MinimalSampleMod.DummyRegistry", new RegistryModel("DummyRegistry", "dummy", "MinimalSampleMod", false,
                         ImmutableValueArray.From(new RegisterMethodModel(
                             "RegisterResourceFile", PrimaryParameterKind.None, TypeConstraintFlag.None, [])), [])
                 }

@@ -31,7 +31,7 @@ public sealed class PerFrameScheduling : IScheduling<PerFrameFunctionAttribute, 
 
     public void BuildGraph(IExecutionGraphBuilder builder, PerFrameContext context, Identification functionId, Identification ownerId)
     {
-        if (!context.IsModuleLoaded(ownerId)) return;
+        if (!context.IsModuleLoaded(ownerId) && context.StateStack[^1].StateId != ownerId) return;
 
         builder.AddNode(functionId);
 

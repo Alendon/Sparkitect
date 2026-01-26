@@ -4,6 +4,8 @@
   href: dependency-injection.md
 - name: Game State System
   href: game-state-system.md
+- name: Stateless Functions
+  href: stateless-functions.md
 - name: Registry System
   href: registry-system.md
 - name: Modding Framework

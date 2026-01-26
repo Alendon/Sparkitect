@@ -34,14 +34,9 @@ A **module** is a reusable unit of functionality that can be included in multipl
 
 ### State Functions
 
-**State functions** are static methods that define behavior. They use attribute-based scheduling to declare when they run and dependency injection to access services.
+**State functions** are static methods that define behavior in modules and states. They use the [Stateless Function](stateless-functions.md) system for attribute-based scheduling, dependency injection, and execution ordering.
 
-**Scheduling types:**
-- `[OnCreate]`: Runs once when the module/state is created
-- `[OnDestroy]`: Runs once when the module/state is destroyed
-- `[OnFrameEnter]`: Runs when the state becomes the active leaf
-- `[OnFrameExit]`: Runs when the state stops being the active leaf
-- `[PerFrame]`: Runs every frame while the state is the active leaf
+See [Stateless Functions](stateless-functions.md) for the complete attribute reference.
 
 ## Defining Modules
 
@@ -59,23 +54,23 @@ public partial class MyGameModule : IStateModule
         StateModuleID.Sparkitect.Core
     ];
 
-    // State functions defined below
-    [StateFunction("initialize")]
-    [OnCreate]
+    // Stateless functions defined below
+    [TransitionFunction("initialize")]
+    [OnCreateScheduling]
     private static void Initialize(IMyService service)
     {
         // Runs once when this module is created
     }
 
-    [StateFunction("update")]
-    [PerFrame]
+    [PerFrameFunction("update")]
+    [PerFrameScheduling]
     private static void Update(IMyService service)
     {
         // Runs every frame
     }
 
-    [StateFunction("cleanup")]
-    [OnDestroy]
+    [TransitionFunction("cleanup")]
+    [OnDestroyScheduling]
     private static void Cleanup(IMyService service)
     {
         // Runs once when this module is destroyed
@@ -115,8 +110,8 @@ public partial class GameMenuState : IStateDescriptor
     ];
 
     // Optional: state-specific functions
-    [StateFunction("enter_menu")]
-    [OnFrameEnter]
+    [TransitionFunction("enter_menu")]
+    [OnFrameEnterScheduling]
     public static void EnterMenu(IMenuService menu)
     {
         // Runs when this state becomes active
@@ -142,57 +137,19 @@ public partial class GameMenuState : IStateDescriptor
 
 ## State Functions
 
-State functions are static methods with two required attributes:
-
-1. **`[StateFunction("key")]`**: Identifies the function (must be unique within the module/state)
-2. **Scheduling attribute**: One of `[OnCreate]`, `[OnDestroy]`, `[OnFrameEnter]`, `[OnFrameExit]`, or `[PerFrame]`
+State functions use the [Stateless Function](stateless-functions.md) system. Each function requires a function attribute and a scheduling attribute.
 
 ```csharp
-[StateFunction("process_input")]
-[PerFrame]
+[PerFrameFunction("process_input")]
+[PerFrameScheduling]
 public static void ProcessInput(IInputService input, IPhysicsService physics)
 {
-    // Dependencies injected automatically
     var commands = input.GetPlayerCommands();
     physics.ApplyCommands(commands);
 }
 ```
 
-### Dependency Injection
-
-State functions receive dependencies as method parameters:
-- Parameters are resolved from the current state's DI container
-- If a dependency is missing, the system throws an exception at state creation time
-- Use interface types, not concrete implementations
-- Services are resolved using facade mapping (see [Dependency Injection](dependency-injection.md))
-
-### Function Ordering
-
-You can control execution order using ordering attributes:
-
-```csharp
-[StateFunction("setup")]
-[OnCreate]
-public static void Setup(IService service) { }
-
-[StateFunction("configure")]
-[OnCreate]
-[OrderAfter("setup")]
-public static void Configure(IService service)
-{
-    // Runs after Setup
-}
-```
-
-**Ordering within same scope:**
-- `[OrderBefore("key")]`: Run before another function in the same module/state
-- `[OrderAfter("key")]`: Run after another function in the same module/state
-
-**Cross-module ordering:**
-- `[OrderBefore<TModule>("key")]`: Run before a function in another module
-- `[OrderAfter<TModule>("key")]`: Run after a function in another module
-
-If the referenced module isn't active, the ordering constraint is ignored.
+For details on dependency injection, ordering attributes, and scheduling types, see [Stateless Functions](stateless-functions.md).
 
 ### Lifecycle Sequence
 
@@ -240,8 +197,8 @@ See [Dependency Injection](dependency-injection.md) for more details on service 
 States transition through the `IGameStateManager` service:
 
 ```csharp
-[StateFunction("handle_input")]
-[PerFrame]
+[PerFrameFunction("handle_input")]
+[PerFrameScheduling]
 public static void HandleInput(IInputService input, IGameStateManager stateManager)
 {
     if (input.IsMenuRequested())
