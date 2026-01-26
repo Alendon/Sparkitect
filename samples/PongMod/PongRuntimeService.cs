@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Numerics;
 using PongMod.CompilerGenerated.IdExtensions;
 using Serilog;
+using Silk.NET.Input;
 using Silk.NET.Vulkan;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan;
@@ -9,6 +10,7 @@ using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Windowing;
+using Sparkitect.Graphics.Vulkan.Vma;
 using VkSemaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace PongMod;
@@ -20,8 +22,9 @@ internal class PongRuntimeService : IPongRuntimeService
     private readonly Stopwatch _frameTimer = new();
     private float _lastFrameTime;
 
-    // Vulkan resources
+    // Window and input
     private ISparkitWindow? _window;
+    private IInputContext? _inputContext;
     private VkCommandPool? _commandPool;
     private VkCommandBuffer? _commandBuffer;
     private VkSemaphore _imageAvailableSemaphore;
@@ -30,13 +33,17 @@ internal class PongRuntimeService : IPongRuntimeService
     private uint _graphicsQueueFamily;
     private Queue _graphicsQueue;
 
+    // VMA and storage image
+    private VmaAllocator? _vmaAllocator;
+    private VmaImage? _storageImage;
+    private ImageView _storageImageView;
+
     // Compute pipeline resources
     private DescriptorSetLayout _descriptorSetLayout;
     private PipelineLayout _pipelineLayout;
     private Pipeline _computePipeline;
     private DescriptorPool _descriptorPool;
-    private DescriptorSet[] _descriptorSets = [];
-    private ImageView[] _storageImageViews = [];
+    private DescriptorSet _descriptorSet;
 
     public required IWindowManager WindowManager { private get; init; }
     public required IVulkanContext VulkanContext { private get; init; }
@@ -52,8 +59,9 @@ internal class PongRuntimeService : IPongRuntimeService
         _frameTimer.Start();
         _lastFrameTime = 0;
 
-        // Create window
+        // Create window and input context
         _window = WindowManager.CreateWindow("Pong", 800, 600);
+        _inputContext = _window.SilkWindow.CreateInput();
 
         // Find graphics queue
         var physicalDevice = VulkanContext.VkPhysicalDevice;
@@ -91,6 +99,52 @@ internal class PongRuntimeService : IPongRuntimeService
         vk.CreateSemaphore(device, semaphoreInfo, null, out _imageAvailableSemaphore);
         vk.CreateSemaphore(device, semaphoreInfo, null, out _renderFinishedSemaphore);
         vk.CreateFence(device, fenceInfo, null, out _inFlightFence);
+
+        // Create VMA allocator
+        _vmaAllocator = VmaAllocator.Create(
+            VulkanContext.VkInstance.Handle,
+            VulkanContext.VkPhysicalDevice.PhysicalDevice,
+            device);
+
+        // Create storage image (R8G8B8A8_UNORM supports STORAGE_BIT)
+        var swapchain = _window!.Swapchain;
+        var imageInfo = new ImageCreateInfo
+        {
+            SType = StructureType.ImageCreateInfo,
+            ImageType = ImageType.Type2D,
+            Format = Format.R8G8B8A8Unorm,
+            Extent = new Extent3D(swapchain.Extent.Width, swapchain.Extent.Height, 1),
+            MipLevels = 1,
+            ArrayLayers = 1,
+            Samples = SampleCountFlags.Count1Bit,
+            Tiling = ImageTiling.Optimal,
+            Usage = ImageUsageFlags.StorageBit | ImageUsageFlags.TransferSrcBit,
+            SharingMode = SharingMode.Exclusive,
+            InitialLayout = ImageLayout.Undefined
+        };
+        var allocInfo = new VmaAllocationCreateInfo
+        {
+            Usage = VmaMemoryUsage.GpuOnly
+        };
+        _storageImage = _vmaAllocator.CreateImage(imageInfo, allocInfo);
+
+        // Create storage image view
+        var storageViewInfo = new ImageViewCreateInfo
+        {
+            SType = StructureType.ImageViewCreateInfo,
+            Image = _storageImage.Image,
+            ViewType = ImageViewType.Type2D,
+            Format = Format.R8G8B8A8Unorm,
+            SubresourceRange = new ImageSubresourceRange
+            {
+                AspectMask = ImageAspectFlags.ColorBit,
+                BaseMipLevel = 0,
+                LevelCount = 1,
+                BaseArrayLayer = 0,
+                LayerCount = 1
+            }
+        };
+        vk.CreateImageView(device, storageViewInfo, null, out _storageImageView);
 
         CreateComputePipeline(vk, device);
         CreateDescriptorResources(vk, device);
@@ -139,7 +193,7 @@ internal class PongRuntimeService : IPongRuntimeService
         vk.CreatePipelineLayout(device, pipelineLayoutInfo, null, out _pipelineLayout);
 
         // Compute pipeline
-        var entryPoint = "computeMain"u8;
+        var entryPoint = "main"u8;
         fixed (byte* entryPointPtr = entryPoint)
         {
             var stageInfo = new PipelineShaderStageCreateInfo
@@ -161,82 +215,51 @@ internal class PongRuntimeService : IPongRuntimeService
 
     private unsafe void CreateDescriptorResources(Vk vk, Device device)
     {
-        var swapchain = _window!.Swapchain;
-        var imageCount = (int)swapchain.ImageCount;
-
-        // Descriptor pool
+        // Descriptor pool (only need 1)
         var poolSize = new DescriptorPoolSize
         {
             Type = DescriptorType.StorageImage,
-            DescriptorCount = (uint)imageCount
+            DescriptorCount = 1
         };
         var poolInfo = new DescriptorPoolCreateInfo
         {
             SType = StructureType.DescriptorPoolCreateInfo,
-            MaxSets = (uint)imageCount,
+            MaxSets = 1,
             PoolSizeCount = 1,
             PPoolSizes = &poolSize
         };
         vk.CreateDescriptorPool(device, poolInfo, null, out _descriptorPool);
 
-        // Storage image views
-        _storageImageViews = new ImageView[imageCount];
-        for (var i = 0; i < imageCount; i++)
+        // Allocate single descriptor set
+        var setLayout = _descriptorSetLayout;
+        var allocInfo = new DescriptorSetAllocateInfo
         {
-            var viewInfo = new ImageViewCreateInfo
-            {
-                SType = StructureType.ImageViewCreateInfo,
-                Image = swapchain.Images[i].Handle,
-                ViewType = ImageViewType.Type2D,
-                Format = swapchain.ImageFormat,
-                SubresourceRange = new ImageSubresourceRange
-                {
-                    AspectMask = ImageAspectFlags.ColorBit,
-                    BaseMipLevel = 0,
-                    LevelCount = 1,
-                    BaseArrayLayer = 0,
-                    LayerCount = 1
-                }
-            };
-            vk.CreateImageView(device, viewInfo, null, out _storageImageViews[i]);
+            SType = StructureType.DescriptorSetAllocateInfo,
+            DescriptorPool = _descriptorPool,
+            DescriptorSetCount = 1,
+            PSetLayouts = &setLayout
+        };
+        fixed (DescriptorSet* setPtr = &_descriptorSet)
+        {
+            vk.AllocateDescriptorSets(device, allocInfo, setPtr);
         }
 
-        // Allocate descriptor sets
-        _descriptorSets = new DescriptorSet[imageCount];
-        var layouts = new DescriptorSetLayout[imageCount];
-        Array.Fill(layouts, _descriptorSetLayout);
-        fixed (DescriptorSetLayout* layoutsPtr = layouts)
-        fixed (DescriptorSet* setsPtr = _descriptorSets)
+        // Write descriptor pointing to storage image
+        var imageInfo = new DescriptorImageInfo
         {
-            var allocInfo = new DescriptorSetAllocateInfo
-            {
-                SType = StructureType.DescriptorSetAllocateInfo,
-                DescriptorPool = _descriptorPool,
-                DescriptorSetCount = (uint)imageCount,
-                PSetLayouts = layoutsPtr
-            };
-            vk.AllocateDescriptorSets(device, allocInfo, setsPtr);
-        }
-
-        // Write descriptor sets
-        for (var i = 0; i < imageCount; i++)
+            ImageView = _storageImageView,
+            ImageLayout = ImageLayout.General
+        };
+        var write = new WriteDescriptorSet
         {
-            var imageInfo = new DescriptorImageInfo
-            {
-                ImageView = _storageImageViews[i],
-                ImageLayout = ImageLayout.General
-            };
-            var write = new WriteDescriptorSet
-            {
-                SType = StructureType.WriteDescriptorSet,
-                DstSet = _descriptorSets[i],
-                DstBinding = 0,
-                DescriptorCount = 1,
-                DescriptorType = DescriptorType.StorageImage,
-                PImageInfo = &imageInfo
-            };
-            vk.UpdateDescriptorSets(device, 1, write, 0, null);
-        }
+            SType = StructureType.WriteDescriptorSet,
+            DstSet = _descriptorSet,
+            DstBinding = 0,
+            DescriptorCount = 1,
+            DescriptorType = DescriptorType.StorageImage,
+            PImageInfo = &imageInfo
+        };
+        vk.UpdateDescriptorSets(device, 1, write, 0, null);
     }
 
     private uint FindGraphicsQueueFamily(VkPhysicalDevice physicalDevice)
@@ -296,15 +319,15 @@ internal class PongRuntimeService : IPongRuntimeService
         };
         vk.BeginCommandBuffer(cmd, beginInfo);
 
-        // Transition image to General for compute write
-        var barrier = new ImageMemoryBarrier
+        // Transition storage image to General for compute write
+        var storageBarrier = new ImageMemoryBarrier
         {
             SType = StructureType.ImageMemoryBarrier,
             OldLayout = ImageLayout.Undefined,
             NewLayout = ImageLayout.General,
             SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
             DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
-            Image = swapchain.Images[(int)imageIndex].Handle,
+            Image = _storageImage!.Image,
             SubresourceRange = new ImageSubresourceRange
             {
                 AspectMask = ImageAspectFlags.ColorBit,
@@ -319,11 +342,11 @@ internal class PongRuntimeService : IPongRuntimeService
         vk.CmdPipelineBarrier(cmd,
             PipelineStageFlags.TopOfPipeBit,
             PipelineStageFlags.ComputeShaderBit,
-            0, 0, null, 0, null, 1, barrier);
+            0, 0, null, 0, null, 1, storageBarrier);
 
         // Bind compute pipeline and dispatch
         vk.CmdBindPipeline(cmd, PipelineBindPoint.Compute, _computePipeline);
-        var descriptorSet = _descriptorSets[imageIndex];
+        var descriptorSet = _descriptorSet;
         vk.CmdBindDescriptorSets(cmd, PipelineBindPoint.Compute, _pipelineLayout, 0, 1, &descriptorSet, 0, null);
 
         // Update screen dimensions and push constants
@@ -339,15 +362,80 @@ internal class PongRuntimeService : IPongRuntimeService
         var groupCountY = (swapchain.Extent.Height + 7) / 8;
         vk.CmdDispatch(cmd, groupCountX, groupCountY, 1);
 
-        // Transition to present
-        barrier.OldLayout = ImageLayout.General;
-        barrier.NewLayout = ImageLayout.PresentSrcKhr;
-        barrier.SrcAccessMask = AccessFlags.ShaderWriteBit;
-        barrier.DstAccessMask = 0;
+        // Transition storage image: GENERAL -> TRANSFER_SRC_OPTIMAL
+        storageBarrier.OldLayout = ImageLayout.General;
+        storageBarrier.NewLayout = ImageLayout.TransferSrcOptimal;
+        storageBarrier.SrcAccessMask = AccessFlags.ShaderWriteBit;
+        storageBarrier.DstAccessMask = AccessFlags.TransferReadBit;
         vk.CmdPipelineBarrier(cmd,
             PipelineStageFlags.ComputeShaderBit,
+            PipelineStageFlags.TransferBit,
+            0, 0, null, 0, null, 1, storageBarrier);
+
+        // Transition swapchain image: UNDEFINED -> TRANSFER_DST_OPTIMAL
+        var swapchainBarrier = new ImageMemoryBarrier
+        {
+            SType = StructureType.ImageMemoryBarrier,
+            OldLayout = ImageLayout.Undefined,
+            NewLayout = ImageLayout.TransferDstOptimal,
+            SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
+            DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
+            Image = swapchain.Images[(int)imageIndex].Handle,
+            SubresourceRange = new ImageSubresourceRange
+            {
+                AspectMask = ImageAspectFlags.ColorBit,
+                BaseMipLevel = 0,
+                LevelCount = 1,
+                BaseArrayLayer = 0,
+                LayerCount = 1
+            },
+            SrcAccessMask = 0,
+            DstAccessMask = AccessFlags.TransferWriteBit
+        };
+        vk.CmdPipelineBarrier(cmd,
+            PipelineStageFlags.TopOfPipeBit,
+            PipelineStageFlags.TransferBit,
+            0, 0, null, 0, null, 1, swapchainBarrier);
+
+        // Blit storage image to swapchain
+        var blitRegion = new ImageBlit
+        {
+            SrcSubresource = new ImageSubresourceLayers
+            {
+                AspectMask = ImageAspectFlags.ColorBit,
+                MipLevel = 0,
+                BaseArrayLayer = 0,
+                LayerCount = 1
+            },
+            DstSubresource = new ImageSubresourceLayers
+            {
+                AspectMask = ImageAspectFlags.ColorBit,
+                MipLevel = 0,
+                BaseArrayLayer = 0,
+                LayerCount = 1
+            }
+        };
+        // Source region (storage image)
+        blitRegion.SrcOffsets[0] = new Offset3D(0, 0, 0);
+        blitRegion.SrcOffsets[1] = new Offset3D((int)swapchain.Extent.Width, (int)swapchain.Extent.Height, 1);
+        // Destination region (swapchain image)
+        blitRegion.DstOffsets[0] = new Offset3D(0, 0, 0);
+        blitRegion.DstOffsets[1] = new Offset3D((int)swapchain.Extent.Width, (int)swapchain.Extent.Height, 1);
+
+        vk.CmdBlitImage(cmd,
+            _storageImage.Image, ImageLayout.TransferSrcOptimal,
+            swapchain.Images[(int)imageIndex].Handle, ImageLayout.TransferDstOptimal,
+            1, blitRegion, Filter.Nearest);
+
+        // Transition swapchain to present
+        swapchainBarrier.OldLayout = ImageLayout.TransferDstOptimal;
+        swapchainBarrier.NewLayout = ImageLayout.PresentSrcKhr;
+        swapchainBarrier.SrcAccessMask = AccessFlags.TransferWriteBit;
+        swapchainBarrier.DstAccessMask = 0;
+        vk.CmdPipelineBarrier(cmd,
+            PipelineStageFlags.TransferBit,
             PipelineStageFlags.BottomOfPipeBit,
-            0, 0, null, 0, null, 1, barrier);
+            0, 0, null, 0, null, 1, swapchainBarrier);
 
         vk.EndCommandBuffer(cmd);
 
@@ -380,10 +468,10 @@ internal class PongRuntimeService : IPongRuntimeService
 
         vk.DeviceWaitIdle(device);
 
-        // Cleanup compute resources
-        foreach (var view in _storageImageViews)
-            vk.DestroyImageView(device, view, null);
-        _storageImageViews = [];
+        // Cleanup storage image resources
+        vk.DestroyImageView(device, _storageImageView, null);
+        _storageImage?.Dispose();
+        _vmaAllocator?.Dispose();
 
         vk.DestroyDescriptorPool(device, _descriptorPool, null);
         vk.DestroyPipeline(device, _computePipeline, null);
@@ -395,6 +483,7 @@ internal class PongRuntimeService : IPongRuntimeService
         vk.DestroySemaphore(device, _imageAvailableSemaphore, null);
 
         _commandPool?.Dispose();
+        _inputContext?.Dispose();
         _window?.Dispose();
 
         Log.Debug("Pong runtime cleanup complete");
@@ -402,6 +491,25 @@ internal class PongRuntimeService : IPongRuntimeService
 
     private void UpdateSimulation()
     {
+        // Poll input for paddle movement
+        if (_inputContext?.Keyboards.Count > 0)
+        {
+            var keyboard = _inputContext.Keyboards[0];
+            var paddleSpeed = 0.8f;
+
+            // Left paddle: W/S
+            if (keyboard.IsKeyPressed(Key.W))
+                MoveLeftPaddle(-paddleSpeed * DeltaTime);
+            if (keyboard.IsKeyPressed(Key.S))
+                MoveLeftPaddle(paddleSpeed * DeltaTime);
+
+            // Right paddle: Up/Down arrows
+            if (keyboard.IsKeyPressed(Key.Up))
+                MoveRightPaddle(-paddleSpeed * DeltaTime);
+            if (keyboard.IsKeyPressed(Key.Down))
+                MoveRightPaddle(paddleSpeed * DeltaTime);
+        }
+
         var deltaTime = DeltaTime;
         _gameData.BallPosition += _gameData.BallVelocity * deltaTime;
 
@@ -417,7 +525,11 @@ internal class PongRuntimeService : IPongRuntimeService
         {
             if (Math.Abs(_gameData.BallPosition.Y - _gameData.LeftPaddleY) < _gameData.PaddleHeight / 2)
             {
-                _gameData.BallVelocity.X = Math.Abs(_gameData.BallVelocity.X);
+                float speed = _gameData.BallVelocity.Length();
+                float offset = (_gameData.BallPosition.Y - _gameData.LeftPaddleY) / (_gameData.PaddleHeight / 2);
+                float maxAngle = 0.6f;
+                _gameData.BallVelocity = new Vector2(1, offset * maxAngle);
+                _gameData.BallVelocity = Vector2.Normalize(_gameData.BallVelocity) * speed;
                 _gameData.BallPosition.X = _gameData.PaddleWidth + _gameData.BallRadius;
             }
         }
@@ -426,7 +538,11 @@ internal class PongRuntimeService : IPongRuntimeService
         {
             if (Math.Abs(_gameData.BallPosition.Y - _gameData.RightPaddleY) < _gameData.PaddleHeight / 2)
             {
-                _gameData.BallVelocity.X = -Math.Abs(_gameData.BallVelocity.X);
+                float speed = _gameData.BallVelocity.Length();
+                float offset = (_gameData.BallPosition.Y - _gameData.RightPaddleY) / (_gameData.PaddleHeight / 2);
+                float maxAngle = 0.6f;
+                _gameData.BallVelocity = new Vector2(-1, offset * maxAngle);
+                _gameData.BallVelocity = Vector2.Normalize(_gameData.BallVelocity) * speed;
                 _gameData.BallPosition.X = 1 - _gameData.PaddleWidth - _gameData.BallRadius;
             }
         }

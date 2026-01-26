@@ -15,6 +15,11 @@ public sealed class VmaAllocator : IDisposable
         _allocator = allocator;
     }
 
+    static VmaAllocator()
+    {
+        Vortice.Vulkan.Vulkan.vkInitialize();
+    }
+
     public static VmaAllocator Create(Instance instance, PhysicalDevice physicalDevice, Device device, uint vulkanApiVersion = 0)
     {
         var createInfo = new VmaAllocatorCreateInfo

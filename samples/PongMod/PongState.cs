@@ -25,6 +25,7 @@ public partial class PongState : IStateDescriptor
     [TransitionFunction("pong_init")]
     [OnCreateScheduling]
     [OrderAfter<VulkanModule.ProcessRegistriesFunc>]
+    [OrderAfter<VulkanModule.CreateDeviceFunc>]
     public static void Initialize(IPongRuntimeService pongRuntime)
     {
         pongRuntime.Initialize();
@@ -46,23 +47,5 @@ public partial class PongState : IStateDescriptor
     {
         pongRuntime.Cleanup();
         Log.Information("Pong state cleanup");
-    }
-
-    interface A<B>
-    {
-        public void Do(B value);
-    }
-
-    class C : A<string>, A<int>
-    {
-        public void Do(string value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Do(int value)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

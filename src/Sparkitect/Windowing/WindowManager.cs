@@ -29,7 +29,7 @@ internal class WindowManager : IWindowManager
         var surface = VulkanContext.CreateSurface(silkWindow)
             ?? throw new InvalidOperationException("Failed to create Vulkan surface");
 
-        var swapchain = new VkSwapchain(surface, config ?? SwapchainConfig.Default, VulkanContext);
+        var swapchain = new VkSwapchain(surface, config ?? SwapchainConfig.Default, VulkanContext, (uint)width, (uint)height);
 
         var window = new SparkitWindow(silkWindow, surface, swapchain);
 

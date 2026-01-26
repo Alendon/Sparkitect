@@ -9,5 +9,5 @@ riderModule.iml
 *.user
 
 docs/export.txt
-**/.claude/**
+**/.claude**
 .envrc

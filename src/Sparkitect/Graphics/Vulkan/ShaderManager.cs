@@ -43,7 +43,7 @@ internal class ShaderManager : IShaderManager
             {
                 SType = StructureType.ShaderModuleCreateInfo,
                 PCode = codeStart,
-                CodeSize = (UIntPtr)spirvCode.Length
+                CodeSize = (UIntPtr)spirvCode.Length * sizeof(uint)
             };
             result = VulkanContext.VkApi.CreateShaderModule(VulkanContext.VkDevice.Handle, in createInfo,
                 VulkanContext.DefaultAllocationCallbacks, out module);

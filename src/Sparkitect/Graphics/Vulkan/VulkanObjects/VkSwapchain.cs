@@ -27,7 +27,7 @@ public class VkSwapchain : VulkanObject
     public unsafe VkSwapchain(
         VkSurface surface,
         SwapchainConfig config,
-        IVulkanContext context) : base(context)
+        IVulkanContext context, uint width, uint height) : base(context)
     {
         Surface = surface;
         _config = config;
@@ -37,7 +37,7 @@ public class VkSwapchain : VulkanObject
         if (!Vk.TryGetDeviceExtension(context.VkInstance.Handle, context.VkDevice.Handle, out _khrSwapchain))
             throw new InvalidOperationException("KHR_swapchain extension not available");
 
-        CreateSwapchain(0, 0);
+        CreateSwapchain(width, height);
     }
 
     /// <summary>
@@ -132,8 +132,8 @@ public class VkSwapchain : VulkanObject
             ImageColorSpace = surfaceFormat.ColorSpace,
             ImageExtent = extent,
             ImageArrayLayers = 1,
-            // TODO: Make ImageUsage configurable via SwapchainConfig for flexibility
-            ImageUsage = ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.StorageBit,
+            // ImageUsage: ColorAttachment for rendering, TransferDst for blit from storage image
+            ImageUsage = ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.TransferDstBit,
             ImageSharingMode = SharingMode.Exclusive,
             PreTransform = capabilities.CurrentTransform,
             CompositeAlpha = CompositeAlphaFlagsKHR.OpaqueBitKhr,

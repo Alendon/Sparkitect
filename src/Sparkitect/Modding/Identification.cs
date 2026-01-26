@@ -13,6 +13,16 @@ namespace Sparkitect.Modding;
 [DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
 public readonly struct Identification : IEquatable<Identification>
 {
+    public static bool operator ==(Identification left, Identification right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(Identification left, Identification right)
+    {
+        return !left.Equals(right);
+    }
+
     /// <summary>
     /// Numeric ID of the source mod.
     /// </summary>

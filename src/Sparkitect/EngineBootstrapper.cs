@@ -9,6 +9,7 @@ using Sparkitect.DI.Container;
 using Sparkitect.DI.Exceptions;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
+using Sparkitect.Stateless;
 using Sparkitect.Utils;
 
 namespace Sparkitect;
@@ -125,6 +126,7 @@ public class EngineBootstrapper
         builder.Register<RegistryManager_Factory>();
         builder.Register<GameStateManager_Factory>();
         builder.Register<ModDIService_Factory>();
+        builder.Register<StatelessFunctionManager_Factory>();
 
         try
         {

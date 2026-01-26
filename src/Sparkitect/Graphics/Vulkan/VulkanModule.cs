@@ -55,6 +55,7 @@ public partial class VulkanModule : IStateModule
 
     [TransitionFunction("process_registries")]
     [OnFrameEnterScheduling]
+    [OrderAfter<AddRegistriesFunc>]
     public static void ProcessRegistries(IRegistryManager registryManager)
     {
         registryManager.ProcessAllMissing<ShaderModuleRegistry>();

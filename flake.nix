@@ -26,6 +26,7 @@
         glfw
         trashy
         stdenv.cc.cc.lib  # libstdc++ for native NuGet libraries
+        nodejs_24
       ];
 
       runtimeLibPath = pkgs.lib.makeLibraryPath runtimeLibs;
