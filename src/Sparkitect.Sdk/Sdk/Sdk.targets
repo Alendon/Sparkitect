@@ -20,8 +20,9 @@
         <AdditionalFiles Include="**/*.sparkres.yaml" />
     </ItemGroup>
     
-    <!-- Properties for mod packaging -->    
+    <!-- Properties for mod packaging -->
     <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
+    <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.Shader.targets"/>
     <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.targets"/>
     
     <!-- Validate mod properties -->

@@ -1,0 +1,61 @@
+<Project>
+
+    <PropertyGroup>
+        <!-- Configurable slangc path with fallbacks -->
+        <SlangCompilerPath Condition="'$(SlangCompilerPath)' == '' AND '$(VULKAN_SDK)' != '' AND Exists('$(VULKAN_SDK)/bin/slangc')">$(VULKAN_SDK)/bin/slangc</SlangCompilerPath>
+        <SlangCompilerPath Condition="'$(SlangCompilerPath)' == '' AND '$(VULKAN_SDK)' != '' AND Exists('$(VULKAN_SDK)/bin/slangc.exe')">$(VULKAN_SDK)/bin/slangc.exe</SlangCompilerPath>
+        <SlangCompilerPath Condition="'$(SlangCompilerPath)' == ''">slangc</SlangCompilerPath>
+
+        <!-- Resource directory (may be redefined in Sparkitect.Sdk.targets, but needed here for early evaluation) -->
+        <SparkitectResourceDirectory Condition="'$(SparkitectResourceDirectory)' == ''">$(MSBuildProjectDirectory)/Resources</SparkitectResourceDirectory>
+
+        <!-- Default shader output directory -->
+        <SlangShaderOutputPath Condition="'$(SlangShaderOutputPath)' == ''">$(SparkitectResourceDirectory)/shaders</SlangShaderOutputPath>
+
+        <!-- Default include paths -->
+        <SlangIncludePaths Condition="'$(SlangIncludePaths)' == ''">$(MSBuildProjectDirectory)/Shaders</SlangIncludePaths>
+    </PropertyGroup>
+
+    <!-- Visual Studio Fast Up-to-Date Check integration -->
+    <ItemGroup>
+        <UpToDateCheckInput Include="@(SlangShader)" />
+    </ItemGroup>
+
+    <Target Name="CompileSlangShaders"
+            BeforeTargets="BeforeBuild"
+            Condition="'@(SlangShader)' != ''"
+            Inputs="@(SlangShader)"
+            Outputs="@(SlangShader->'$(SlangShaderOutputPath)/%(Filename).spv')">
+
+        <!-- Create output directory -->
+        <MakeDir Directories="$(SlangShaderOutputPath)" />
+
+        <!-- Convert include paths to item group for transformation -->
+        <ItemGroup>
+            <_SlangIncludePath Include="$(SlangIncludePaths)" />
+        </ItemGroup>
+
+        <!-- Build include path arguments -->
+        <PropertyGroup>
+            <_SlangIncludeArgs>@(_SlangIncludePath->'-I"%(Identity)"', ' ')</_SlangIncludeArgs>
+        </PropertyGroup>
+
+        <!-- Compile each shader -->
+        <Exec Command="&quot;$(SlangCompilerPath)&quot; &quot;%(SlangShader.FullPath)&quot; -target spirv -o &quot;$(SlangShaderOutputPath)/%(SlangShader.Filename).spv&quot; $(_SlangIncludeArgs) %(SlangShader.AdditionalOptions)"
+              WorkingDirectory="$(MSBuildProjectDirectory)"
+              StandardOutputImportance="Low"
+              StandardErrorImportance="High" />
+
+        <!-- Register outputs for FUTDC -->
+        <ItemGroup>
+            <UpToDateCheckBuilt Include="$(SlangShaderOutputPath)/%(SlangShader.Filename).spv"
+                                Original="%(SlangShader.FullPath)" />
+        </ItemGroup>
+    </Target>
+
+    <!-- Clean target -->
+    <Target Name="CleanSlangShaders" AfterTargets="Clean">
+        <Delete Files="@(SlangShader->'$(SlangShaderOutputPath)/%(Filename).spv')" />
+    </Target>
+
+</Project>
