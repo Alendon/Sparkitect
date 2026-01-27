@@ -9,12 +9,15 @@
         <ModVersion></ModVersion>
         <ModAuthor></ModAuthor>
         <ModDescription></ModDescription>
-        <ModType></ModType>        
+        <ModType></ModType>
         <OutputType>Exe</OutputType>
-        
+
         <!-- Enable dependency file generation -->
         <GenerateDependencyFile>true</GenerateDependencyFile>
         <SparkitectAutoDetectDependencies Condition="'$(SparkitectAutoDetectDependencies)' == ''">true</SparkitectAutoDetectDependencies>
         <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
+
+        <!-- Enable interceptors for CallerContext generator -->
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);$(RootNamespace).CallerContext</InterceptorsNamespaces>
     </PropertyGroup>
 </Project>  

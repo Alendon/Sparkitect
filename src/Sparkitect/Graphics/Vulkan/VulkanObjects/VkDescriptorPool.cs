@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
+using Sparkitect.Utils;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
@@ -8,15 +9,17 @@ public class VkDescriptorPool : VulkanObject
 {
     private readonly HashSet<VkDescriptorSet> _allocatedSets = [];
 
-    internal VkDescriptorPool(DescriptorPool handle, IVulkanContext vulkanContext)
-        : base(vulkanContext)
+    internal VkDescriptorPool(DescriptorPool handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
+        : base(vulkanContext, callerContext)
     {
         Handle = handle;
     }
 
     public DescriptorPool Handle { get; }
 
-    public unsafe VkResult<VkDescriptorSet> AllocateDescriptorSet(DescriptorSetLayout layout)
+    public unsafe VkResult<VkDescriptorSet> AllocateDescriptorSet(
+        DescriptorSetLayout layout,
+        [InjectCallerContext] CallerContext callerContext = default)
     {
         var allocInfo = new DescriptorSetAllocateInfo
         {
@@ -29,12 +32,14 @@ public class VkDescriptorPool : VulkanObject
         var result = Vk.AllocateDescriptorSets(Device, allocInfo, out var descriptorSet);
         if (result != Result.Success) return VkResult<VkDescriptorSet>._Error(result);
 
-        var set = new VkDescriptorSet(descriptorSet, VulkanContext, this);
+        var set = new VkDescriptorSet(descriptorSet, VulkanContext, this, callerContext);
         _allocatedSets.Add(set);
         return VkResult<VkDescriptorSet>._Success(set);
     }
 
-    public unsafe VkResult<VkDescriptorSet[]> AllocateDescriptorSets(ReadOnlySpan<DescriptorSetLayout> layouts)
+    public unsafe VkResult<VkDescriptorSet[]> AllocateDescriptorSets(
+        ReadOnlySpan<DescriptorSetLayout> layouts,
+        [InjectCallerContext] CallerContext callerContext = default)
     {
         if (layouts.Length == 0) return VkResult<VkDescriptorSet[]>._Success([]);
 
@@ -61,7 +66,7 @@ public class VkDescriptorPool : VulkanObject
             var sets = new VkDescriptorSet[layouts.Length];
             for (var i = 0; i < layouts.Length; i++)
             {
-                sets[i] = new VkDescriptorSet(handles[i], VulkanContext, this);
+                sets[i] = new VkDescriptorSet(handles[i], VulkanContext, this, callerContext);
                 _allocatedSets.Add(sets[i]);
             }
 

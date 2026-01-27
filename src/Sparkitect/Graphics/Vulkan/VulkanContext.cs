@@ -379,7 +379,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         
     }
 
-    public VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex)
+    public VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex, [InjectCallerContext] CallerContext callerContext = default)
     {
         CommandPoolCreateInfo createInfo = new()
         {
@@ -392,20 +392,20 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
 
         if (result != Result.Success || pool.Handle == 0) return VkResult<VkCommandPool>._Error(result);
 
-        return VkResult<VkCommandPool>._Success(new VkCommandPool(pool, this));
+        return VkResult<VkCommandPool>._Success(new VkCommandPool(pool, this, callerContext));
     }
 
-    public unsafe VkResult<VkDescriptorPool> CreateDescriptorPool(in DescriptorPoolCreateInfo createInfo)
+    public unsafe VkResult<VkDescriptorPool> CreateDescriptorPool(in DescriptorPoolCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default)
     {
         fixed (DescriptorPoolCreateInfo* infoPtr = &createInfo)
         {
             var result = VkApi.CreateDescriptorPool(VkDevice.Handle, infoPtr, DefaultAllocationCallbacks, out var pool);
             if (result != Result.Success) return VkResult<VkDescriptorPool>._Error(result);
-            return VkResult<VkDescriptorPool>._Success(new VkDescriptorPool(pool, this));
+            return VkResult<VkDescriptorPool>._Success(new VkDescriptorPool(pool, this, callerContext));
         }
     }
 
-    public VkResult<VkSemaphore> CreateSemaphore(SemaphoreCreateFlags flags = 0)
+    public VkResult<VkSemaphore> CreateSemaphore(SemaphoreCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default)
     {
         var createInfo = new SemaphoreCreateInfo
         {
@@ -414,10 +414,10 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         };
         var result = VkApi.CreateSemaphore(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var semaphore);
         if (result != Result.Success) return VkResult<VkSemaphore>._Error(result);
-        return VkResult<VkSemaphore>._Success(new VkSemaphore(semaphore, this));
+        return VkResult<VkSemaphore>._Success(new VkSemaphore(semaphore, this, callerContext));
     }
 
-    public VkResult<VkFence> CreateFence(FenceCreateFlags flags = 0)
+    public VkResult<VkFence> CreateFence(FenceCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default)
     {
         var createInfo = new FenceCreateInfo
         {
@@ -426,36 +426,36 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         };
         var result = VkApi.CreateFence(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var fence);
         if (result != Result.Success) return VkResult<VkFence>._Error(result);
-        return VkResult<VkFence>._Success(new VkFence(fence, this));
+        return VkResult<VkFence>._Success(new VkFence(fence, this, callerContext));
     }
 
-    public VkResult<VkDescriptorSetLayout> CreateDescriptorSetLayout(in DescriptorSetLayoutCreateInfo createInfo)
+    public VkResult<VkDescriptorSetLayout> CreateDescriptorSetLayout(in DescriptorSetLayoutCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default)
     {
         fixed (DescriptorSetLayoutCreateInfo* infoPtr = &createInfo)
         {
             var result = VkApi.CreateDescriptorSetLayout(VkDevice.Handle, infoPtr, DefaultAllocationCallbacks, out var layout);
             if (result != Result.Success) return VkResult<VkDescriptorSetLayout>._Error(result);
-            return VkResult<VkDescriptorSetLayout>._Success(new VkDescriptorSetLayout(layout, this));
+            return VkResult<VkDescriptorSetLayout>._Success(new VkDescriptorSetLayout(layout, this, callerContext));
         }
     }
 
-    public VkResult<VkPipelineLayout> CreatePipelineLayout(in PipelineLayoutCreateInfo createInfo)
+    public VkResult<VkPipelineLayout> CreatePipelineLayout(in PipelineLayoutCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default)
     {
         fixed (PipelineLayoutCreateInfo* infoPtr = &createInfo)
         {
             var result = VkApi.CreatePipelineLayout(VkDevice.Handle, infoPtr, DefaultAllocationCallbacks, out var layout);
             if (result != Result.Success) return VkResult<VkPipelineLayout>._Error(result);
-            return VkResult<VkPipelineLayout>._Success(new VkPipelineLayout(layout, this));
+            return VkResult<VkPipelineLayout>._Success(new VkPipelineLayout(layout, this, callerContext));
         }
     }
 
-    public VkResult<VkPipeline> CreateComputePipeline(in ComputePipelineCreateInfo createInfo)
+    public VkResult<VkPipeline> CreateComputePipeline(in ComputePipelineCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default)
     {
         fixed (ComputePipelineCreateInfo* infoPtr = &createInfo)
         {
             var result = VkApi.CreateComputePipelines(VkDevice.Handle, default, 1, infoPtr, DefaultAllocationCallbacks, out var pipeline);
             if (result != Result.Success) return VkResult<VkPipeline>._Error(result);
-            return VkResult<VkPipeline>._Success(new VkPipeline(pipeline, this));
+            return VkResult<VkPipeline>._Success(new VkPipeline(pipeline, this, callerContext));
         }
     }
 
@@ -545,6 +545,17 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
 
     public void Shutdown()
     {
+        var leakedCount = ObjectTracker.Count;
+        if (leakedCount > 0)
+        {
+            Log.Warning("Vulkan resource leaks detected: {Count} object(s) not disposed", leakedCount);
+            foreach (var (obj, callsite) in ObjectTracker.GetTrackingEntries())
+            {
+                Log.Warning("  Leaked {Type} created at {Callsite}",
+                    obj.GetType().Name, callsite);
+            }
+        }
+
         VkApi?.Dispose();
         VkApi = null!;
     }

@@ -1,0 +1,35 @@
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace {{ interceptorNamespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+file static class {{ fullClassName }}
+{
+    {% for intercept in interceptions %}
+
+    {{ intercept.interceptLocationAttribute }}
+    public static {{ intercept.returnType }} CallerContextIntercept_{{ forloop.index }}(
+    {%- unless intercept.staticCall -%}
+    this {{ intercept.targetClass }} __target
+        {%- unless intercept.allParameters.size == 0-%},{%- endunless -%}
+    {%- endunless -%}
+    {%- for param in intercept.allParameters -%}
+    {{ param.refKind }}{{ param.type }} {{ param.name }}{% unless forloop.last %}, {%- endunless -%}
+    {%- endfor -%}
+    )
+    {
+        {% if intercept.staticCall -%}
+        return {{- intercept.targetClass -}}
+        {%- else -%}
+        return __target
+        {%- endif -%}
+        .{{ intercept.targetMethod }}(
+        {%- for param in intercept.parameters -%}
+        {{ param.refKind }}{{ param.name }},
+        {%- endfor -%}
+        new global::Sparkitect.Utils.CallerContext("{{ intercept.filePath }}", {{ intercept.lineNumber }})
+        );
+    }
+    {% endfor %}
+}

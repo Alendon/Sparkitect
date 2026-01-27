@@ -14,6 +14,13 @@ public interface IObjectTracker<T>
     Handle Track(T obj);
 
     /// <summary>
+    /// Registers an object for tracking with callsite information.
+    /// </summary>
+    /// <param name="obj">The object to track.</param>
+    /// <param name="callsite">The caller context capturing where the object was created.</param>
+    Handle Track(T obj, CallerContext callsite);
+
+    /// <summary>
     /// Unregisters an object from tracking.
     /// </summary>
     /// <param name="obj">The object to untrack.</param>
@@ -24,6 +31,18 @@ public interface IObjectTracker<T>
     /// </summary>
     /// <returns>Read-only collection of tracked objects.</returns>
     ICollection<T> GetTracked();
+
+    /// <summary>
+    /// Gets all tracked objects with their callsite information.
+    /// </summary>
+    /// <returns>Enumerable of tuples containing the tracked object and its callsite.</returns>
+    IEnumerable<(T Object, CallerContext Callsite)> GetTrackingEntries();
+
+    /// <summary>
+    /// Dumps the current tracking state to the log.
+    /// </summary>
+    /// <param name="context">Optional context string to include in log messages.</param>
+    void DumpToLog(string context = "");
 
     /// <summary>
     /// Gets the count of currently tracked objects.

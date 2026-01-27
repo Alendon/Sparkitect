@@ -14,10 +14,10 @@ public abstract class VulkanObject : IDisposable
     protected unsafe AllocationCallbacks* AllocationCallbacks => VulkanContext.DefaultAllocationCallbacks;
     protected Device Device => VulkanContext.VkDevice.Handle;
 
-    protected VulkanObject(IVulkanContext vulkanContext)
+    protected VulkanObject(IVulkanContext vulkanContext, CallerContext callerContext = default)
     {
         VulkanContext = vulkanContext;
-        _trackerHandle = VulkanContext.ObjectTracker.Track(this);
+        _trackerHandle = VulkanContext.ObjectTracker.Track(this, callerContext);
     }
 
     public void Dispose()

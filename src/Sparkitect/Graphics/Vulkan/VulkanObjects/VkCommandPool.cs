@@ -8,7 +8,8 @@ public class VkCommandPool : VulkanObject
 {
     private readonly HashSet<VkCommandBuffer> _allocatedBuffers = [];
 
-    public VkCommandPool(CommandPool pCommandPool, IVulkanContext vulkanContext) : base(vulkanContext)
+    public VkCommandPool(CommandPool pCommandPool, IVulkanContext vulkanContext, CallerContext callerContext = default)
+        : base(vulkanContext, callerContext)
     {
         Handle = pCommandPool;
     }

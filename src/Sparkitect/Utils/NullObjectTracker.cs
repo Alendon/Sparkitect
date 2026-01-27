@@ -18,11 +18,23 @@ public sealed class NullObjectTracker<T> : IObjectTracker<T>
         return new IObjectTracker<T>.Handle(this, obj);
     }
 
+    public IObjectTracker<T>.Handle Track(T obj, CallerContext callsite)
+    {
+        return new IObjectTracker<T>.Handle(this, obj);
+    }
+
     public void Untrack(T obj)
     {
     }
 
     public ICollection<T> GetTracked() => Array.Empty<T>();
+
+    public IEnumerable<(T Object, CallerContext Callsite)> GetTrackingEntries()
+        => Enumerable.Empty<(T, CallerContext)>();
+
+    public void DumpToLog(string context = "")
+    {
+    }
 
     public int Count => 0;
 }

@@ -22,15 +22,15 @@ public interface IVulkanContext
     /// <returns>The queue, or null if not found.</returns>
     VulkanQueue? GetQueue(uint familyIndex, uint queueIndex);
 
-    VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex);
+    VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex, [InjectCallerContext] CallerContext callerContext = default);
 
-    VkResult<VkDescriptorPool> CreateDescriptorPool(in DescriptorPoolCreateInfo createInfo);
+    VkResult<VkDescriptorPool> CreateDescriptorPool(in DescriptorPoolCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default);
 
-    VkResult<VkSemaphore> CreateSemaphore(SemaphoreCreateFlags flags = 0);
-    VkResult<VkFence> CreateFence(FenceCreateFlags flags = 0);
-    VkResult<VkDescriptorSetLayout> CreateDescriptorSetLayout(in DescriptorSetLayoutCreateInfo createInfo);
-    VkResult<VkPipelineLayout> CreatePipelineLayout(in PipelineLayoutCreateInfo createInfo);
-    VkResult<VkPipeline> CreateComputePipeline(in ComputePipelineCreateInfo createInfo);
+    VkResult<VkSemaphore> CreateSemaphore(SemaphoreCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default);
+    VkResult<VkFence> CreateFence(FenceCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default);
+    VkResult<VkDescriptorSetLayout> CreateDescriptorSetLayout(in DescriptorSetLayoutCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default);
+    VkResult<VkPipelineLayout> CreatePipelineLayout(in PipelineLayoutCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default);
+    VkResult<VkPipeline> CreateComputePipeline(in ComputePipelineCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default);
 
     /// <summary>
     /// Creates a Vulkan surface for the given window.

@@ -1,13 +1,14 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
+using Sparkitect.Utils;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
 [PublicAPI]
 public class VkDescriptorSet : VulkanObject
 {
-    internal VkDescriptorSet(DescriptorSet handle, IVulkanContext vulkanContext, VkDescriptorPool parentPool)
-        : base(vulkanContext)
+    internal VkDescriptorSet(DescriptorSet handle, IVulkanContext vulkanContext, VkDescriptorPool parentPool, CallerContext callerContext = default)
+        : base(vulkanContext, callerContext)
     {
         Handle = handle;
         ParentPool = parentPool;

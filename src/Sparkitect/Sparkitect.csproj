@@ -24,7 +24,7 @@
         <ModIdentifier>sparkitect</ModIdentifier>
         <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
         
-        <InterceptorsNamespaces>$(InterceptorsNamespaces);Sparkitect.LogEnricher</InterceptorsNamespaces>
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Sparkitect.LogEnricher;Sparkitect.CallerContext</InterceptorsNamespaces>
     </PropertyGroup>
     
     <ItemGroup>

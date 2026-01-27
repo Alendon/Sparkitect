@@ -1,13 +1,14 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
+using Sparkitect.Utils;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
 [PublicAPI]
 public class VkPipelineLayout : VulkanObject
 {
-    internal unsafe VkPipelineLayout(PipelineLayout handle, IVulkanContext vulkanContext)
-        : base(vulkanContext)
+    internal VkPipelineLayout(PipelineLayout handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
+        : base(vulkanContext, callerContext)
     {
         Handle = handle;
     }
