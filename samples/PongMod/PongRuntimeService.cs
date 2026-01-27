@@ -24,7 +24,6 @@ internal class PongRuntimeService : IPongRuntimeService
 
     // Window and input
     private ISparkitWindow? _window;
-    private IInputContext? _inputContext;
     private VkCommandPool? _commandPool;
     private VkCommandBuffer? _commandBuffer;
     private VkSemaphore _imageAvailableSemaphore;
@@ -59,9 +58,8 @@ internal class PongRuntimeService : IPongRuntimeService
         _frameTimer.Start();
         _lastFrameTime = 0;
 
-        // Create window and input context
+        // Create window
         _window = WindowManager.CreateWindow("Pong", 800, 600);
-        _inputContext = _window.SilkWindow.CreateInput();
 
         // Find graphics queue
         var physicalDevice = VulkanContext.VkPhysicalDevice;
@@ -483,7 +481,6 @@ internal class PongRuntimeService : IPongRuntimeService
         vk.DestroySemaphore(device, _imageAvailableSemaphore, null);
 
         _commandPool?.Dispose();
-        _inputContext?.Dispose();
         _window?.Dispose();
 
         Log.Debug("Pong runtime cleanup complete");
@@ -492,21 +489,21 @@ internal class PongRuntimeService : IPongRuntimeService
     private void UpdateSimulation()
     {
         // Poll input for paddle movement
-        if (_inputContext?.Keyboards.Count > 0)
+        if (_window != null)
         {
-            var keyboard = _inputContext.Keyboards[0];
+            var keyboard = _window.Keyboard;
             var paddleSpeed = 0.8f;
 
             // Left paddle: W/S
-            if (keyboard.IsKeyPressed(Key.W))
+            if (keyboard.IsKeyDown(Key.W))
                 MoveLeftPaddle(-paddleSpeed * DeltaTime);
-            if (keyboard.IsKeyPressed(Key.S))
+            if (keyboard.IsKeyDown(Key.S))
                 MoveLeftPaddle(paddleSpeed * DeltaTime);
 
             // Right paddle: Up/Down arrows
-            if (keyboard.IsKeyPressed(Key.Up))
+            if (keyboard.IsKeyDown(Key.Up))
                 MoveRightPaddle(-paddleSpeed * DeltaTime);
-            if (keyboard.IsKeyPressed(Key.Down))
+            if (keyboard.IsKeyDown(Key.Down))
                 MoveRightPaddle(paddleSpeed * DeltaTime);
         }
 

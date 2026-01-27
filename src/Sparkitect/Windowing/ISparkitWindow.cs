@@ -3,6 +3,7 @@ using Silk.NET.Vulkan;
 using Silk.NET.Windowing;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Windowing.Input;
 using VkSemaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace Sparkitect.Windowing;
@@ -16,6 +17,9 @@ public interface ISparkitWindow : IDisposable
     int Height { get; }
     string Title { get; set; }
     bool IsOpen { get; }
+
+    IKeyboard Keyboard { get; }
+    IMouseInput Mouse { get; }
 
     VkSurface Surface { get; }
     VkSwapchain Swapchain { get; }
