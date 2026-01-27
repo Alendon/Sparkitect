@@ -127,13 +127,12 @@ The attribute-based registration:
 
 ### Managing Registries in State Functions
 
-Registries are added and processed in state functions:
+Registries are added and processed in state functions (static methods with scheduling attributes):
 
 ```csharp
 public static class MyModule : IStateModule
 {
-    [StateFunction("add_registry")]
-    [OnCreate]
+    [OnCreate("add_registry")]
     private static void AddRegistry(IRegistryManager registryManager)
     {
         // Add the registry
@@ -143,8 +142,7 @@ public static class MyModule : IStateModule
         registryManager.ProcessAllMissing<ItemRegistry>();
     }
 
-    [StateFunction("remove_registry")]
-    [OnDestroy]
+    [OnDestroy("remove_registry")]
     private static void RemoveRegistry(IRegistryManager registryManager)
     {
         // Clean up all registered objects
@@ -217,16 +215,14 @@ public static BlockData Stone => new BlockData
 };
 
 // 3. Manage registry lifecycle in state functions
-[StateFunction("init_blocks")]
-[OnCreate]
+[OnCreate("init_blocks")]
 private static void InitBlocks(IRegistryManager rm)
 {
     rm.AddRegistry<BlockRegistry>();
     rm.ProcessAllMissing<BlockRegistry>();
 }
 
-[StateFunction("cleanup_blocks")]
-[OnDestroy]
+[OnDestroy("cleanup_blocks")]
 private static void CleanupBlocks(IRegistryManager rm)
 {
     rm.UnregisterAllRemaining<BlockRegistry>();

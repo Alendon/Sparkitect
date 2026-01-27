@@ -12,6 +12,11 @@ namespace Sparkitect.Generator.Modding.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
 {
+    private static Location? GetAttributeLocation(AttributeData attr)
+    {
+        return attr.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
+    }
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
     [
         RegistryDiagnostics.ProviderMissingId,
@@ -99,7 +104,7 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
                     var items = kv.Value.ToArray();
                     var registryName = items.FirstOrDefault().RegistryName ?? kv.Key;
 
-                    // SPARK2030: duplicate ids within registry
+                    // SPARK0230: duplicate ids within registry
                     foreach (var grp in items.GroupBy(x => x.Id))
                     {
                         if (grp.Count() <= 1) continue;
@@ -114,7 +119,7 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
                         }
                     }
 
-                    // SPARK2050: duplicate normalized property names
+                    // SPARK0250: duplicate normalized property names
                     foreach (var grp in items.GroupBy(x => x.Pascal))
                     {
                         if (grp.Count() <= 1) continue;
@@ -162,30 +167,33 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
                 out var methodName, out _))
             return;
 
-        // SPARK2020: parse id; if absent -> diagnostic
+        // SPARK0220: parse id; if absent -> diagnostic
         if (!RegistryGenerator.TryParseProviderArguments(attrSyntax, out var id, out _))
         {
             Report(ctx, RegistryDiagnostics.ProviderMissingId, attrSyntax.GetLocation(), attrSyntax.Name.ToString());
             return; // further checks rely on an id
         }
 
-        // SPARK2031: id must be snake_case
+        // SPARK0231: id must be snake_case
         if (!IsSnakeCase(id))
         {
             Report(ctx, RegistryDiagnostics.RegistrationIdNotSnakeCase, attrSyntax.GetLocation(), id);
         }
 
-        // SPARK2021: provider member must be static (methods/properties)
+        // SPARK0221: provider member must be static (methods/properties)
+        // Report at the provider attribute location
         if (targetSymbol is IMethodSymbol ms && !ms.IsStatic)
         {
-            Report(ctx, RegistryDiagnostics.ProviderMemberMustBeStatic, ms.Locations.FirstOrDefault(), ms.Name);
+            var memberAttrLocation = GetAttributeLocation(attrData);
+            Report(ctx, RegistryDiagnostics.ProviderMemberMustBeStatic, memberAttrLocation ?? ms.Locations.FirstOrDefault(), ms.Name);
         }
         else if (targetSymbol is IPropertySymbol ps && !ps.IsStatic)
         {
-            Report(ctx, RegistryDiagnostics.ProviderMemberMustBeStatic, ps.Locations.FirstOrDefault(), ps.Name);
+            var memberAttrLocation = GetAttributeLocation(attrData);
+            Report(ctx, RegistryDiagnostics.ProviderMemberMustBeStatic, memberAttrLocation ?? ps.Locations.FirstOrDefault(), ps.Name);
         }
 
-        // SPARK2022: Unknown registry (not discoverable)
+        // SPARK0222: Unknown registry (not discoverable)
         var comp = ctx.SemanticModel.Compilation;
         INamedTypeSymbol? registryType = null;
         if (!string.IsNullOrWhiteSpace(regTypeName))
@@ -208,7 +216,7 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
             return; // can't check method without registry
         }
 
-        // SPARK2023: Unknown registry method name
+        // SPARK0223: Unknown registry method name
         var hasMethod = registryType.GetMembers().OfType<IMethodSymbol>().Any(m =>
             m.Name == methodName && m.GetAttributes().Any(a =>
                 a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) ==
@@ -232,14 +240,14 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
         var methodKind = GetRegistryMethodKind(registryMethod);
         var usageKind = (targetSymbol is INamedTypeSymbol) ? ProviderUsageKind.Type : ProviderUsageKind.Value;
 
-        // SPARK2024: kind mismatch
+        // SPARK0224: kind mismatch
         if (methodKind == PrimaryKind.None || (usageKind == ProviderUsageKind.Type && methodKind != PrimaryKind.Type) ||
             (usageKind == ProviderUsageKind.Value && methodKind == PrimaryKind.Type))
         {
             Report(ctx, RegistryDiagnostics.ProviderKindMismatch, attrSyntax.GetLocation(), attrSyntax.Name.ToString(), usageKind.ToString(), methodKind.ToString());
         }
 
-        // SPARK2025: return type incompatible for non-generic value methods
+        // SPARK0225: return type incompatible for non-generic value methods
         if (usageKind == ProviderUsageKind.Value && methodKind == PrimaryKind.Value)
         {
             var expected = registryMethod.Parameters.Length >= 2 ? registryMethod.Parameters[1].Type : null;
@@ -268,7 +276,7 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        // SPARK2026: generic constraints for Type and GenericValue
+        // SPARK0226: generic constraints for Type and GenericValue
         if (registryMethod.TypeParameters.Length == 1)
         {
             var tp = registryMethod.TypeParameters[0];
@@ -291,9 +299,11 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        // SPARK2032: DI parameter guidance for provider methods
+        // SPARK0232: DI parameter guidance for provider methods
+        // Report at the provider attribute location for consistency
         if (targetSymbol is IMethodSymbol providerMethod)
         {
+            var paramAttrLocation = GetAttributeLocation(attrData);
             foreach (var p in providerMethod.Parameters)
             {
                 if (p.Type is INamedTypeSymbol pt)
@@ -302,7 +312,7 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
                     var isNullable = p.NullableAnnotation == NullableAnnotation.Annotated;
                     if (!isAbstractOrInterface && !isNullable)
                     {
-                        Report(ctx, RegistryDiagnostics.DiParameterShouldBeAbstract, p.Locations.FirstOrDefault(), p.Name, pt.ToDisplayString(DisplayFormats.NamespaceAndType));
+                        Report(ctx, RegistryDiagnostics.DiParameterShouldBeAbstract, paramAttrLocation ?? p.Locations.FirstOrDefault(), p.Name, pt.ToDisplayString(DisplayFormats.NamespaceAndType));
                     }
                 }
             }

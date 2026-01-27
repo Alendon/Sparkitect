@@ -23,7 +23,7 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
     public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => {{ ImplementationTypeName }}.{{ KeyInfo.PropertyName }};
     {% endif %}
     {% else %}
-    #error "KeyedFactory generated without key information - this should have been caught by the analyzer (SPARK1006)"
+    #error "KeyedFactory generated without key information - this should have been caught by the analyzer (SPARK0106)"
     {% endif %}
     
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [

@@ -28,8 +28,8 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
     {
         var analyzer = new RegistryResourceSchemaAnalyzer();
         var ids = analyzer.SupportedDiagnostics.Select(d => d.Id).ToArray();
-        await Assert.That(ids.Contains("SPARK2042")).IsTrue();
-        await Assert.That(ids.Contains("SPARK2045")).IsTrue();
+        await Assert.That(ids.Contains("SPARK0242")).IsTrue();
+        await Assert.That(ids.Contains("SPARK0245")).IsTrue();
     }
 
     [Test]
@@ -48,7 +48,7 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
         TestSources.Add(("Empty.cs", "namespace N { class C { } }"));
 
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2045", 2);
+        await AssertDiagnosticCount(diagnostics, "SPARK0245", 2);
     }
 
     [Test]
@@ -77,7 +77,7 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
         TestSources.Add(("R.cs", regCode));
 
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2042", 2);
+        await AssertDiagnosticCount(diagnostics, "SPARK0242", 2);
     }
 
     [Test]
@@ -106,7 +106,7 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
         TestSources.Add(("R2.cs", regCode));
 
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2043", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0243", 1);
     }
 
     [Test]
@@ -136,6 +136,6 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
         TestSources.Add(("R3.cs", regCode));
 
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2044", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0244", 1);
     }
 }

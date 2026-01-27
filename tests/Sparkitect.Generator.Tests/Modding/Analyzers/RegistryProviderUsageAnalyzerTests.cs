@@ -28,8 +28,8 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
     {
         var analyzer = new RegistryProviderUsageAnalyzer();
         var ids = analyzer.SupportedDiagnostics.Select(d => d.Id).ToArray();
-        await Assert.That(ids.Contains("SPARK2020")).IsTrue();
-        await Assert.That(ids.Contains("SPARK2031")).IsTrue();
+        await Assert.That(ids.Contains("SPARK0220")).IsTrue();
+        await Assert.That(ids.Contains("SPARK0231")).IsTrue();
     }
 
     [Test]
@@ -56,7 +56,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P1.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2020", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0220", 1);
     }
 
     [Test]
@@ -83,7 +83,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P2.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2021", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0221", 1);
     }
 
     [Test]
@@ -111,7 +111,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P3.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2022", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0222", 1);
     }
 
     [Test]
@@ -138,7 +138,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P4.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2023", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0223", 1);
     }
 
     [Test]
@@ -165,7 +165,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P5.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2031", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0231", 1);
     }
 
     [Test]
@@ -192,7 +192,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P5b.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await Assert.That(diagnostics.Any(d => d.Id == "SPARK2031")).IsFalse();
+        await Assert.That(diagnostics.Any(d => d.Id == "SPARK0231")).IsFalse();
     }
 
     [Test]
@@ -216,7 +216,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P6.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2024", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0224", 1);
     }
 
     [Test]
@@ -243,7 +243,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P7.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2025", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0225", 1);
     }
 
     [Test]
@@ -268,7 +268,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P8.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2026", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0226", 1);
     }
 
     [Test]
@@ -297,7 +297,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P9.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2032", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0232", 1);
     }
 
     [Test]
@@ -327,7 +327,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P10.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2030", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0230", 1);
     }
 
     [Test]
@@ -357,6 +357,6 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         TestSources.Add(("P11.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2050", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0250", 1);
     }
 }

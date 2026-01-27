@@ -12,6 +12,11 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
 {
     private const string StateServiceAttributeMetadataName = "Sparkitect.GameState.StateServiceAttribute`1";
 
+    private static Location? GetAttributeLocation(AttributeData attr)
+    {
+        return attr.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
+    }
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
         StateServiceInterfaceNotImplemented,
         StateServiceFacadeNotImplemented,
@@ -50,12 +55,15 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
         if (attribute.AttributeClass?.TypeArguments.FirstOrDefault() is not INamedTypeSymbol interfaceType)
             return;
 
+        // Get attribute location for reporting attribute-related errors
+        var attrLocation = GetAttributeLocation(attribute);
+
         // Validate: Implementation must implement the declared interface
         if (!ImplementsInterface(implementationType, interfaceType))
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 StateServiceInterfaceNotImplemented,
-                implementationType.Locations.FirstOrDefault(),
+                attrLocation ?? implementationType.Locations.FirstOrDefault(),
                 implementationType.Name,
                 interfaceType.Name));
             return; // No point checking facades if interface isn't implemented
@@ -71,7 +79,7 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 StateServiceInterfaceMissingFacade,
-                implementationType.Locations.FirstOrDefault(),
+                attrLocation ?? implementationType.Locations.FirstOrDefault(),
                 interfaceType.Name));
             return;
         }
@@ -86,7 +94,7 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     StateServiceFacadeNotImplemented,
-                    implementationType.Locations.FirstOrDefault(),
+                    attrLocation ?? implementationType.Locations.FirstOrDefault(),
                     implementationType.Name,
                     interfaceType.Name,
                     facadeType.Name));

@@ -9,6 +9,11 @@ namespace Sparkitect.Generator.Modding.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
 {
+    private static Location? GetAttributeLocation(AttributeData attr)
+    {
+        return attr.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
+    }
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
     [
         RegistryDiagnostics.RegistryRequiresInterface,
@@ -46,14 +51,17 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) == "Sparkitect.Modding.RegistryAttribute");
         if (regAttr is null) return; // not a registry type
 
-        // SPARK2001: Must implement IRegistry
+        // Get attribute location for reporting attribute-related errors
+        var regAttrLocation = GetAttributeLocation(regAttr);
+
+        // SPARK0201: Must implement IRegistry
         var implementsIRegistry = type.AllInterfaces.Any(i =>
             i.ToDisplayString(DisplayFormats.NamespaceAndType) == "Sparkitect.Modding.IRegistry");
         if (!implementsIRegistry)
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.RegistryRequiresInterface,
-                type.Locations.FirstOrDefault(),
+                regAttrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name));
         }
 
@@ -68,36 +76,36 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        // SPARK2002: Missing/empty Identifier
+        // SPARK0202: Missing/empty Identifier
         if (string.IsNullOrWhiteSpace(identifier))
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.RegistryMissingIdentifier,
-                type.Locations.FirstOrDefault(),
+                regAttrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name));
         }
 
-        // SPARK2003: Must be top-level and in a namespace (not global, not nested)
+        // SPARK0203: Must be top-level and in a namespace (not global, not nested)
         var isTopLevel = type.ContainingType is null;
         var hasNamespace = type.ContainingNamespace is { IsGlobalNamespace: false };
         if (!isTopLevel || !hasNamespace)
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.RegistryMustBeTopLevelInNamespace,
-                type.Locations.FirstOrDefault(),
+                regAttrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name));
         }
 
-        // SPARK2006: Identifier must be snake_case (letters and underscores only)
+        // SPARK0206: Identifier must be snake_case (letters and underscores only)
         if (!string.IsNullOrWhiteSpace(identifier) && !IsSnakeCase(identifier!))
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.CategoryIdentifierNotSnakeCase,
-                type.Locations.FirstOrDefault(),
+                regAttrLocation ?? type.Locations.FirstOrDefault(),
                 identifier));
         }
 
-        // SPARK2015: Duplicate registry method names within a registry
+        // SPARK0215: Duplicate registry method names within a registry
         var regMethodNames = type.GetMembers()
             .OfType<IMethodSymbol>()
             .Where(m => m.GetAttributes().Any(a =>
@@ -135,22 +143,25 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             var keyArg = attr.NamedArguments.FirstOrDefault(x => x.Key == "Key");
             var key = keyArg.Value.Value as string;
 
-            // SPARK2016: Key must be non-empty
+            // Get attribute location for this specific UseResourceFile attribute
+            var resourceAttrLocation = GetAttributeLocation(attr);
+
+            // SPARK0216: Key must be non-empty
             if (string.IsNullOrWhiteSpace(key))
             {
                 ctx.ReportDiagnostic(Diagnostic.Create(
                     RegistryDiagnostics.UseResourceFileMissingKey,
-                    type.Locations.FirstOrDefault(),
+                    resourceAttrLocation ?? type.Locations.FirstOrDefault(),
                     type.Name));
                 continue;
             }
 
-            // SPARK2017: Duplicate keys
+            // SPARK0217: Duplicate keys
             if (!seenKeys.Add(key))
             {
                 ctx.ReportDiagnostic(Diagnostic.Create(
                     RegistryDiagnostics.DuplicateResourceFileKey,
-                    type.Locations.FirstOrDefault(),
+                    resourceAttrLocation ?? type.Locations.FirstOrDefault(),
                     key,
                     type.Name));
             }
@@ -163,12 +174,12 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        // SPARK2018: Multiple primaries
+        // SPARK0218: Multiple primaries
         if (primaryCount > 1)
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.MultiplePrimaryResourceFiles,
-                type.Locations.FirstOrDefault(),
+                regAttrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name));
         }
     }
@@ -194,7 +205,10 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             "Sparkitect.Modding.RegistryMethodAttribute");
         if (methodAttr is null) return;
 
-        // SPARK2010: Must be inside a type implementing IRegistry
+        // Get attribute location for reporting attribute-related errors
+        var attrLocation = GetAttributeLocation(methodAttr);
+
+        // SPARK0210: Must be inside a type implementing IRegistry
         var containing = method.ContainingType;
         var isInsideRegistry = containing?.AllInterfaces.Any(i =>
             i.ToDisplayString(DisplayFormats.NamespaceAndType) == "Sparkitect.Modding.IRegistry") == true;
@@ -202,7 +216,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.RegistryMethodOutsideRegistry,
-                method.Locations.FirstOrDefault()));
+                attrLocation ?? method.Locations.FirstOrDefault()));
             return; // other checks rely on being inside a registry
         }
 
@@ -215,7 +229,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.TooManyTypeParameters,
-                method.Locations.FirstOrDefault(),
+                attrLocation ?? method.Locations.FirstOrDefault(),
                 method.Name));
             return; // don't flood with follow-up diagnostics
         }
@@ -225,7 +239,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.InvalidRegistryMethodSignature,
-                method.Locations.FirstOrDefault(),
+                attrLocation ?? method.Locations.FirstOrDefault(),
                 method.Name));
             return;
         }
@@ -236,7 +250,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.FirstParameterMustBeIdentification,
-                method.Locations.FirstOrDefault(),
+                attrLocation ?? method.Locations.FirstOrDefault(),
                 method.Name));
             return;
         }
@@ -252,14 +266,14 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         RegistryDiagnostics.GenericValueMismatch,
-                        method.Locations.FirstOrDefault(),
+                        attrLocation ?? method.Locations.FirstOrDefault(),
                         method.Name));
                     return;
                 }
             }
         }
 
-        // SPARK2015: Duplicate registry method names within a registry
+        // SPARK0215: Duplicate registry method names within a registry
         // Check once per containing type through AnalyzeRegistryType to avoid N^2; noop here.
     }
 }

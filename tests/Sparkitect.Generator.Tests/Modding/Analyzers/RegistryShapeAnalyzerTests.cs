@@ -28,8 +28,8 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     {
         var analyzer = new RegistryShapeAnalyzer();
         var ids = analyzer.SupportedDiagnostics.Select(d => d.Id).ToArray();
-        await Assert.That(ids.Contains("SPARK2001")).IsTrue();
-        await Assert.That(ids.Contains("SPARK2006")).IsTrue();
+        await Assert.That(ids.Contains("SPARK0201")).IsTrue();
+        await Assert.That(ids.Contains("SPARK0206")).IsTrue();
     }
 
     [Test]
@@ -46,7 +46,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("R1.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2001", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0201", 1);
     }
 
     [Test]
@@ -63,7 +63,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("R2.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2002", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0202", 1);
     }
 
     [Test]
@@ -78,7 +78,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("R3.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2003", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0203", 1);
     }
 
     [Test]
@@ -99,7 +99,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("R4.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2003", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0203", 1);
     }
 
     [Test]
@@ -116,7 +116,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("R5.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2006", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0206", 1);
     }
 
     [Test]
@@ -133,7 +133,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("R6.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await Assert.That(diagnostics.Any(d => d.Id == "SPARK2006")).IsFalse();
+        await Assert.That(diagnostics.Any(d => d.Id == "SPARK0206")).IsFalse();
     }
 
     [Test]
@@ -150,7 +150,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("R6b.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await Assert.That(diagnostics.Any(d => d.Id == "SPARK2006")).IsFalse();
+        await Assert.That(diagnostics.Any(d => d.Id == "SPARK0206")).IsFalse();
     }
 
     [Test]
@@ -170,7 +170,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("M1.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2010", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0210", 1);
     }
 
     [Test]
@@ -192,7 +192,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("M2.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2012", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0212", 1);
     }
 
     [Test]
@@ -214,7 +214,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("M3.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2014", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0214", 1);
     }
 
     [Test]
@@ -236,7 +236,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("M4.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2013", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0213", 1);
     }
 
     [Test]
@@ -258,7 +258,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
 
         TestSources.Add(("M5.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK2011", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0211", 1);
     }
 
     [Test]
@@ -284,6 +284,6 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
         TestSources.Add(("M6.cs", code));
         var diagnostics = await RunAnalyzerAsync();
         // Duplicate should report for the second occurrence only
-        await AssertDiagnosticCount(diagnostics, "SPARK2015", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0215", 1);
     }
 }

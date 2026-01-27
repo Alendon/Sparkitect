@@ -39,7 +39,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1002", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0102", 1);
     }
 
     [Test]
@@ -85,7 +85,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1001", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0101", 1);
     }
 
     [Test]
@@ -154,8 +154,8 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1003", 1);
-        await AssertDiagnostic(diagnostics, "SPARK1003", 9, 33, "Dependency");
+        await AssertDiagnosticCount(diagnostics, "SPARK0103", 1);
+        await AssertDiagnostic(diagnostics, "SPARK0103", 9, 33, "Dependency");
     }
 
     [Test]
@@ -201,7 +201,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1001", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0101", 1);
     }
 
     [Test]
@@ -221,7 +221,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1004", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0104", 1);
     }
 
     [Test]
@@ -241,7 +241,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1005", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0105", 1);
     }
 
     [Test]
@@ -260,7 +260,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1006", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0106", 1);
     }
 
     [Test]
@@ -320,7 +320,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0107", 1);
     }
 
     [Test]
@@ -342,7 +342,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0107", 1);
     }
 
     [Test]
@@ -364,7 +364,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1008", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0108", 1);
     }
 
     [Test]
@@ -394,10 +394,10 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         // Should have multiple diagnostics
         await Assert.That(diagnostics.Length).IsGreaterThanOrEqualTo(4);
-        await AssertDiagnosticCount(diagnostics, "SPARK1001", 2); // Two concrete dependencies
-        await AssertDiagnosticCount(diagnostics, "SPARK1002", 1); // Multiple constructors
-        await AssertDiagnosticCount(diagnostics, "SPARK1003", 1); // Required property not init-only
-        await AssertDiagnosticCount(diagnostics, "SPARK1004", 1); // Multiple same markers
+        await AssertDiagnosticCount(diagnostics, "SPARK0101", 2); // Two concrete dependencies
+        await AssertDiagnosticCount(diagnostics, "SPARK0102", 1); // Multiple constructors
+        await AssertDiagnosticCount(diagnostics, "SPARK0103", 1); // Required property not init-only
+        await AssertDiagnosticCount(diagnostics, "SPARK0104", 1); // Multiple same markers
     }
 
     [Test]
@@ -419,7 +419,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0107", 1);
     }
 
     [Test]
@@ -441,7 +441,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0107", 1);
     }
 
     [Test]
@@ -510,7 +510,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1007", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0107", 1);
     }
 
     [Test]
@@ -529,7 +529,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1006", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0106", 1);
     }
 
     [Test]
@@ -548,7 +548,7 @@ public class DiFactoryAnalyzerTests : AnalyzerTestBase<DiFactoryAnalyzer>
         
         var diagnostics = await RunAnalyzerAsync();
         
-        await AssertDiagnosticCount(diagnostics, "SPARK1006", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0106", 1);
     }
 
     [Test]

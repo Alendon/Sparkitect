@@ -203,7 +203,7 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
                         }
                     }
 
-                    // SPARK2043: unknown file key (only when using multi-file dictionary)
+                    // SPARK0243: unknown file key (only when using multi-file dictionary)
                     if (!useSingleFile && files.Count > 0)
                     {
                         foreach (var key in files.Keys)
@@ -216,7 +216,7 @@ public sealed class RegistryResourceSchemaAnalyzer : DiagnosticAnalyzer
                         }
                     }
 
-                    // SPARK2044: missing required file key
+                    // SPARK0244: missing required file key
                     foreach (var req in requiredKeys)
                     {
                         var satisfied = files.ContainsKey(req);

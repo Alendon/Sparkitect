@@ -11,6 +11,11 @@ namespace Sparkitect.Generator.DI;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class DiFactoryAnalyzer : DiagnosticAnalyzer
 {
+    private static Location? GetAttributeLocation(AttributeData attr)
+    {
+        return attr.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
+    }
+
     public override void Initialize(AnalysisContext context)
     {
         context.EnableConcurrentExecution();
@@ -83,6 +88,9 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
 
         if (factoryAttributes.Count <= 1) return;
 
+        // Report at first factory attribute location
+        var firstAttrLocation = GetAttributeLocation(factoryAttributes[0]);
+
         // Check if they're conflicting (different generation types)
         var generationTypes = factoryAttributes
             .Select(x => GetFactoryGenerationType(x.AttributeClass))
@@ -94,7 +102,7 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
             var typesString = string.Join(", ", generationTypes);
             context.ReportDiagnostic(Diagnostic.Create(
                 ConflictingGenerationMarker,
-                type.Locations.FirstOrDefault(),
+                firstAttrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name,
                 typesString));
         }
@@ -102,7 +110,7 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 SingleGenerationMarker,
-                type.Locations.FirstOrDefault(),
+                firstAttrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name));
         }
     }
@@ -174,30 +182,33 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        // SPARK1006: Must have exactly one key association
+        // SPARK0106: Must have exactly one key association
         var hasKey = !string.IsNullOrEmpty(keyValue);
         var hasKeyProperty = !string.IsNullOrEmpty(keyPropertyName);
+
+        // Report at the factory attribute location for attribute-related errors
+        var attrLocation = GetAttributeLocation(factoryAttribute);
 
         if (!hasKey && !hasKeyProperty)
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 KeyedFactoryMissingKey,
-                type.Locations.FirstOrDefault(),
+                attrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name));
             return;
         }
 
-        // SPARK1008: Cannot have both key types
+        // SPARK0108: Cannot have both key types
         if (hasKey && hasKeyProperty)
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 KeyedFactoryConflictingKeys,
-                type.Locations.FirstOrDefault(),
+                attrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name));
             return;
         }
 
-        // SPARK1007: Validate KeyProperty if present
+        // SPARK0107: Validate KeyProperty if present
         if (hasKeyProperty)
         {
             ValidateKeyProperty(context, type, keyPropertyName!);
