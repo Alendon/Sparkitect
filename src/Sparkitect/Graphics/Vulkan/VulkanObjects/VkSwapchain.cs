@@ -2,7 +2,6 @@ using JetBrains.Annotations;
 using Serilog;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
-using VkSemaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
@@ -53,8 +52,9 @@ public class VkSwapchain : VulkanObject
         bool autoRecreate = false)
     {
         uint imageIndex = uint.MaxValue;
+        var semaphoreHandle = signalSemaphore.Handle;
         var result = _khrSwapchain.AcquireNextImage(
-            Device, _handle, timeout, signalSemaphore, (Fence)default, ref imageIndex);
+            Device, _handle, timeout, semaphoreHandle, (Fence)default, ref imageIndex);
 
         if (result == Result.ErrorOutOfDateKhr)
         {
@@ -62,7 +62,7 @@ public class VkSwapchain : VulkanObject
             {
                 Recreate(Extent.Width, Extent.Height);
                 result = _khrSwapchain.AcquireNextImage(
-                    Device, _handle, timeout, signalSemaphore, default, ref imageIndex);
+                    Device, _handle, timeout, semaphoreHandle, default, ref imageIndex);
             }
             else
             {
@@ -86,11 +86,12 @@ public class VkSwapchain : VulkanObject
     public unsafe Result Present(uint imageIndex, VkSemaphore waitSemaphore, Queue presentQueue)
     {
         var swapchain = _handle;
+        var semaphoreHandle = waitSemaphore.Handle;
         var presentInfo = new PresentInfoKHR
         {
             SType = StructureType.PresentInfoKhr,
             WaitSemaphoreCount = 1,
-            PWaitSemaphores = &waitSemaphore,
+            PWaitSemaphores = &semaphoreHandle,
             SwapchainCount = 1,
             PSwapchains = &swapchain,
             PImageIndices = &imageIndex

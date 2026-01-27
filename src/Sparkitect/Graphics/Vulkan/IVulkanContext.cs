@@ -24,6 +24,14 @@ public interface IVulkanContext
 
     VkResult<VkCommandPool> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex);
 
+    VkResult<VkDescriptorPool> CreateDescriptorPool(in DescriptorPoolCreateInfo createInfo);
+
+    VkResult<VkSemaphore> CreateSemaphore(SemaphoreCreateFlags flags = 0);
+    VkResult<VkFence> CreateFence(FenceCreateFlags flags = 0);
+    VkResult<VkDescriptorSetLayout> CreateDescriptorSetLayout(in DescriptorSetLayoutCreateInfo createInfo);
+    VkResult<VkPipelineLayout> CreatePipelineLayout(in PipelineLayoutCreateInfo createInfo);
+    VkResult<VkPipeline> CreateComputePipeline(in ComputePipelineCreateInfo createInfo);
+
     /// <summary>
     /// Creates a Vulkan surface for the given window.
     /// </summary>

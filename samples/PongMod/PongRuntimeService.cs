@@ -11,8 +11,6 @@ using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Windowing;
 using Sparkitect.Graphics.Vulkan.Vma;
-using VkSemaphore = Silk.NET.Vulkan.Semaphore;
-
 namespace PongMod;
 
 [StateService<IPongRuntimeService, PongModule>]
@@ -26,9 +24,9 @@ internal class PongRuntimeService : IPongRuntimeService
     private ISparkitWindow? _window;
     private VkCommandPool? _commandPool;
     private VkCommandBuffer? _commandBuffer;
-    private VkSemaphore _imageAvailableSemaphore;
-    private VkSemaphore _renderFinishedSemaphore;
-    private Fence _inFlightFence;
+    private VkSemaphore? _imageAvailableSemaphore;
+    private VkSemaphore? _renderFinishedSemaphore;
+    private VkFence? _inFlightFence;
     private uint _graphicsQueueFamily;
     private Queue _graphicsQueue;
 
@@ -38,11 +36,11 @@ internal class PongRuntimeService : IPongRuntimeService
     private ImageView _storageImageView;
 
     // Compute pipeline resources
-    private DescriptorSetLayout _descriptorSetLayout;
-    private PipelineLayout _pipelineLayout;
-    private Pipeline _computePipeline;
-    private DescriptorPool _descriptorPool;
-    private DescriptorSet _descriptorSet;
+    private VkDescriptorSetLayout? _descriptorSetLayout;
+    private VkPipelineLayout? _pipelineLayout;
+    private VkPipeline? _computePipeline;
+    private VkDescriptorPool? _descriptorPool;
+    private VkDescriptorSet? _descriptorSet;
 
     public required IWindowManager WindowManager { private get; init; }
     public required IVulkanContext VulkanContext { private get; init; }
@@ -84,19 +82,23 @@ internal class PongRuntimeService : IPongRuntimeService
         _commandBuffer = ((VkResult<VkCommandBuffer>.Success)bufferResult).value;
 
         // Create sync objects
-        var semaphoreInfo = new SemaphoreCreateInfo { SType = StructureType.SemaphoreCreateInfo };
-        var fenceInfo = new FenceCreateInfo
-        {
-            SType = StructureType.FenceCreateInfo,
-            Flags = FenceCreateFlags.SignaledBit
-        };
+        var semaphoreResult1 = VulkanContext.CreateSemaphore();
+        if (semaphoreResult1 is VkResult<VkSemaphore>.Error semaphoreError1)
+            throw new InvalidOperationException($"Failed to create semaphore: {semaphoreError1.errorResult}");
+        _imageAvailableSemaphore = ((VkResult<VkSemaphore>.Success)semaphoreResult1).value;
+
+        var semaphoreResult2 = VulkanContext.CreateSemaphore();
+        if (semaphoreResult2 is VkResult<VkSemaphore>.Error semaphoreError2)
+            throw new InvalidOperationException($"Failed to create semaphore: {semaphoreError2.errorResult}");
+        _renderFinishedSemaphore = ((VkResult<VkSemaphore>.Success)semaphoreResult2).value;
+
+        var fenceResult = VulkanContext.CreateFence(FenceCreateFlags.SignaledBit);
+        if (fenceResult is VkResult<VkFence>.Error fenceError)
+            throw new InvalidOperationException($"Failed to create fence: {fenceError.errorResult}");
+        _inFlightFence = ((VkResult<VkFence>.Success)fenceResult).value;
 
         var vk = VulkanContext.VkApi;
         var device = VulkanContext.VkDevice.Handle;
-
-        vk.CreateSemaphore(device, semaphoreInfo, null, out _imageAvailableSemaphore);
-        vk.CreateSemaphore(device, semaphoreInfo, null, out _renderFinishedSemaphore);
-        vk.CreateFence(device, fenceInfo, null, out _inFlightFence);
 
         // Create VMA allocator
         _vmaAllocator = VmaAllocator.Create(
@@ -144,13 +146,13 @@ internal class PongRuntimeService : IPongRuntimeService
         };
         vk.CreateImageView(device, storageViewInfo, null, out _storageImageView);
 
-        CreateComputePipeline(vk, device);
-        CreateDescriptorResources(vk, device);
+        CreateComputePipeline();
+        CreateDescriptorResources();
 
         Log.Debug("Pong runtime initialized with Vulkan resources");
     }
 
-    private unsafe void CreateComputePipeline(Vk vk, Device device)
+    private unsafe void CreateComputePipeline()
     {
         // Get shader module
         if (!ShaderManager.TryGetRegisteredShaderModule(ShaderModuleID.PongMod.Pong, out var shaderModule))
@@ -170,7 +172,10 @@ internal class PongRuntimeService : IPongRuntimeService
             BindingCount = 1,
             PBindings = &binding
         };
-        vk.CreateDescriptorSetLayout(device, layoutInfo, null, out _descriptorSetLayout);
+        var layoutResult = VulkanContext.CreateDescriptorSetLayout(layoutInfo);
+        if (layoutResult is VkResult<VkDescriptorSetLayout>.Error layoutError)
+            throw new InvalidOperationException($"Failed to create descriptor set layout: {layoutError.errorResult}");
+        _descriptorSetLayout = ((VkResult<VkDescriptorSetLayout>.Success)layoutResult).value;
 
         // Pipeline layout: push constants + descriptor set
         var pushConstantRange = new PushConstantRange
@@ -179,7 +184,7 @@ internal class PongRuntimeService : IPongRuntimeService
             Offset = 0,
             Size = (uint)sizeof(PongGameData)
         };
-        var setLayout = _descriptorSetLayout;
+        var setLayout = _descriptorSetLayout.Handle;
         var pipelineLayoutInfo = new PipelineLayoutCreateInfo
         {
             SType = StructureType.PipelineLayoutCreateInfo,
@@ -188,7 +193,10 @@ internal class PongRuntimeService : IPongRuntimeService
             PushConstantRangeCount = 1,
             PPushConstantRanges = &pushConstantRange
         };
-        vk.CreatePipelineLayout(device, pipelineLayoutInfo, null, out _pipelineLayout);
+        var pipelineLayoutResult = VulkanContext.CreatePipelineLayout(pipelineLayoutInfo);
+        if (pipelineLayoutResult is VkResult<VkPipelineLayout>.Error pipelineLayoutError)
+            throw new InvalidOperationException($"Failed to create pipeline layout: {pipelineLayoutError.errorResult}");
+        _pipelineLayout = ((VkResult<VkPipelineLayout>.Success)pipelineLayoutResult).value;
 
         // Compute pipeline
         var entryPoint = "main"u8;
@@ -205,13 +213,16 @@ internal class PongRuntimeService : IPongRuntimeService
             {
                 SType = StructureType.ComputePipelineCreateInfo,
                 Stage = stageInfo,
-                Layout = _pipelineLayout
+                Layout = _pipelineLayout.Handle
             };
-            vk.CreateComputePipelines(device, default, 1, computePipelineInfo, null, out _computePipeline);
+            var pipelineResult = VulkanContext.CreateComputePipeline(computePipelineInfo);
+            if (pipelineResult is VkResult<VkPipeline>.Error pipelineError)
+                throw new InvalidOperationException($"Failed to create compute pipeline: {pipelineError.errorResult}");
+            _computePipeline = ((VkResult<VkPipeline>.Success)pipelineResult).value;
         }
     }
 
-    private unsafe void CreateDescriptorResources(Vk vk, Device device)
+    private unsafe void CreateDescriptorResources()
     {
         // Descriptor pool (only need 1)
         var poolSize = new DescriptorPoolSize
@@ -226,21 +237,16 @@ internal class PongRuntimeService : IPongRuntimeService
             PoolSizeCount = 1,
             PPoolSizes = &poolSize
         };
-        vk.CreateDescriptorPool(device, poolInfo, null, out _descriptorPool);
+        var poolResult = VulkanContext.CreateDescriptorPool(poolInfo);
+        if (poolResult is VkResult<VkDescriptorPool>.Error descriptorPoolError)
+            throw new InvalidOperationException($"Failed to create descriptor pool: {descriptorPoolError.errorResult}");
+        _descriptorPool = ((VkResult<VkDescriptorPool>.Success)poolResult).value;
 
         // Allocate single descriptor set
-        var setLayout = _descriptorSetLayout;
-        var allocInfo = new DescriptorSetAllocateInfo
-        {
-            SType = StructureType.DescriptorSetAllocateInfo,
-            DescriptorPool = _descriptorPool,
-            DescriptorSetCount = 1,
-            PSetLayouts = &setLayout
-        };
-        fixed (DescriptorSet* setPtr = &_descriptorSet)
-        {
-            vk.AllocateDescriptorSets(device, allocInfo, setPtr);
-        }
+        var setResult = _descriptorPool.AllocateDescriptorSet(_descriptorSetLayout!.Handle);
+        if (setResult is VkResult<VkDescriptorSet>.Error setError)
+            throw new InvalidOperationException($"Failed to allocate descriptor set: {setError.errorResult}");
+        _descriptorSet = ((VkResult<VkDescriptorSet>.Success)setResult).value;
 
         // Write descriptor pointing to storage image
         var imageInfo = new DescriptorImageInfo
@@ -251,13 +257,13 @@ internal class PongRuntimeService : IPongRuntimeService
         var write = new WriteDescriptorSet
         {
             SType = StructureType.WriteDescriptorSet,
-            DstSet = _descriptorSet,
+            DstSet = _descriptorSet.Handle,
             DstBinding = 0,
             DescriptorCount = 1,
             DescriptorType = DescriptorType.StorageImage,
             PImageInfo = &imageInfo
         };
-        vk.UpdateDescriptorSets(device, 1, write, 0, null);
+        VulkanContext.VkApi.UpdateDescriptorSets(VulkanContext.VkDevice.Handle, 1, write, 0, null);
     }
 
     private uint FindGraphicsQueueFamily(VkPhysicalDevice physicalDevice)
@@ -297,11 +303,11 @@ internal class PongRuntimeService : IPongRuntimeService
         var swapchain = _window.Swapchain;
 
         // Wait for previous frame
-        vk.WaitForFences(device, 1, _inFlightFence, true, ulong.MaxValue);
-        vk.ResetFences(device, 1, _inFlightFence);
+        _inFlightFence!.Wait();
+        _inFlightFence.Reset();
 
         // Acquire image
-        var acquireResult = swapchain.AcquireNextImage(_imageAvailableSemaphore, autoRecreate: true);
+        var acquireResult = swapchain.AcquireNextImage(_imageAvailableSemaphore!, autoRecreate: true);
         if (acquireResult is VkResult<uint>.Error)
             return;
         var imageIndex = ((VkResult<uint>.Success)acquireResult).value;
@@ -343,16 +349,16 @@ internal class PongRuntimeService : IPongRuntimeService
             0, 0, null, 0, null, 1, storageBarrier);
 
         // Bind compute pipeline and dispatch
-        vk.CmdBindPipeline(cmd, PipelineBindPoint.Compute, _computePipeline);
-        var descriptorSet = _descriptorSet;
-        vk.CmdBindDescriptorSets(cmd, PipelineBindPoint.Compute, _pipelineLayout, 0, 1, &descriptorSet, 0, null);
+        vk.CmdBindPipeline(cmd, PipelineBindPoint.Compute, _computePipeline!.Handle);
+        var descriptorSet = _descriptorSet!.Handle;
+        vk.CmdBindDescriptorSets(cmd, PipelineBindPoint.Compute, _pipelineLayout!.Handle, 0, 1, &descriptorSet, 0, null);
 
         // Update screen dimensions and push constants
         _gameData.ScreenWidth = swapchain.Extent.Width;
         _gameData.ScreenHeight = swapchain.Extent.Height;
         fixed (PongGameData* gameDataPtr = &_gameData)
         {
-            vk.CmdPushConstants(cmd, _pipelineLayout, ShaderStageFlags.ComputeBit, 0, (uint)sizeof(PongGameData), gameDataPtr);
+            vk.CmdPushConstants(cmd, _pipelineLayout.Handle, ShaderStageFlags.ComputeBit, 0, (uint)sizeof(PongGameData), gameDataPtr);
         }
 
         // Dispatch compute shader (8x8 workgroups)
@@ -438,8 +444,8 @@ internal class PongRuntimeService : IPongRuntimeService
         vk.EndCommandBuffer(cmd);
 
         // Submit
-        var waitSemaphore = _imageAvailableSemaphore;
-        var signalSemaphore = _renderFinishedSemaphore;
+        var waitSemaphore = _imageAvailableSemaphore.Handle;
+        var signalSemaphore = _renderFinishedSemaphore!.Handle;
         var waitStage = PipelineStageFlags.ColorAttachmentOutputBit;
 
         var submitInfo = new SubmitInfo
@@ -453,7 +459,7 @@ internal class PongRuntimeService : IPongRuntimeService
             SignalSemaphoreCount = 1,
             PSignalSemaphores = &signalSemaphore
         };
-        vk.QueueSubmit(_graphicsQueue, 1, submitInfo, _inFlightFence);
+        vk.QueueSubmit(_graphicsQueue, 1, submitInfo, _inFlightFence.Handle);
 
         // Present
         swapchain.Present(imageIndex, _renderFinishedSemaphore, _graphicsQueue);
@@ -461,24 +467,22 @@ internal class PongRuntimeService : IPongRuntimeService
 
     public unsafe void Cleanup()
     {
-        var vk = VulkanContext.VkApi;
-        var device = VulkanContext.VkDevice.Handle;
-
-        vk.DeviceWaitIdle(device);
+        VulkanContext.VkApi.DeviceWaitIdle(VulkanContext.VkDevice.Handle);
 
         // Cleanup storage image resources
-        vk.DestroyImageView(device, _storageImageView, null);
+        VulkanContext.VkApi.DestroyImageView(VulkanContext.VkDevice.Handle, _storageImageView, null);
         _storageImage?.Dispose();
         _vmaAllocator?.Dispose();
 
-        vk.DestroyDescriptorPool(device, _descriptorPool, null);
-        vk.DestroyPipeline(device, _computePipeline, null);
-        vk.DestroyPipelineLayout(device, _pipelineLayout, null);
-        vk.DestroyDescriptorSetLayout(device, _descriptorSetLayout, null);
+        // Dispose wrappers (pool disposes its descriptor sets automatically)
+        _descriptorPool?.Dispose();
+        _computePipeline?.Dispose();
+        _pipelineLayout?.Dispose();
+        _descriptorSetLayout?.Dispose();
 
-        vk.DestroyFence(device, _inFlightFence, null);
-        vk.DestroySemaphore(device, _renderFinishedSemaphore, null);
-        vk.DestroySemaphore(device, _imageAvailableSemaphore, null);
+        _inFlightFence?.Dispose();
+        _renderFinishedSemaphore?.Dispose();
+        _imageAvailableSemaphore?.Dispose();
 
         _commandPool?.Dispose();
         _window?.Dispose();

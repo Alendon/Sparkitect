@@ -395,6 +395,70 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         return VkResult<VkCommandPool>._Success(new VkCommandPool(pool, this));
     }
 
+    public unsafe VkResult<VkDescriptorPool> CreateDescriptorPool(in DescriptorPoolCreateInfo createInfo)
+    {
+        fixed (DescriptorPoolCreateInfo* infoPtr = &createInfo)
+        {
+            var result = VkApi.CreateDescriptorPool(VkDevice.Handle, infoPtr, DefaultAllocationCallbacks, out var pool);
+            if (result != Result.Success) return VkResult<VkDescriptorPool>._Error(result);
+            return VkResult<VkDescriptorPool>._Success(new VkDescriptorPool(pool, this));
+        }
+    }
+
+    public VkResult<VkSemaphore> CreateSemaphore(SemaphoreCreateFlags flags = 0)
+    {
+        var createInfo = new SemaphoreCreateInfo
+        {
+            SType = StructureType.SemaphoreCreateInfo,
+            Flags = flags
+        };
+        var result = VkApi.CreateSemaphore(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var semaphore);
+        if (result != Result.Success) return VkResult<VkSemaphore>._Error(result);
+        return VkResult<VkSemaphore>._Success(new VkSemaphore(semaphore, this));
+    }
+
+    public VkResult<VkFence> CreateFence(FenceCreateFlags flags = 0)
+    {
+        var createInfo = new FenceCreateInfo
+        {
+            SType = StructureType.FenceCreateInfo,
+            Flags = flags
+        };
+        var result = VkApi.CreateFence(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var fence);
+        if (result != Result.Success) return VkResult<VkFence>._Error(result);
+        return VkResult<VkFence>._Success(new VkFence(fence, this));
+    }
+
+    public VkResult<VkDescriptorSetLayout> CreateDescriptorSetLayout(in DescriptorSetLayoutCreateInfo createInfo)
+    {
+        fixed (DescriptorSetLayoutCreateInfo* infoPtr = &createInfo)
+        {
+            var result = VkApi.CreateDescriptorSetLayout(VkDevice.Handle, infoPtr, DefaultAllocationCallbacks, out var layout);
+            if (result != Result.Success) return VkResult<VkDescriptorSetLayout>._Error(result);
+            return VkResult<VkDescriptorSetLayout>._Success(new VkDescriptorSetLayout(layout, this));
+        }
+    }
+
+    public VkResult<VkPipelineLayout> CreatePipelineLayout(in PipelineLayoutCreateInfo createInfo)
+    {
+        fixed (PipelineLayoutCreateInfo* infoPtr = &createInfo)
+        {
+            var result = VkApi.CreatePipelineLayout(VkDevice.Handle, infoPtr, DefaultAllocationCallbacks, out var layout);
+            if (result != Result.Success) return VkResult<VkPipelineLayout>._Error(result);
+            return VkResult<VkPipelineLayout>._Success(new VkPipelineLayout(layout, this));
+        }
+    }
+
+    public VkResult<VkPipeline> CreateComputePipeline(in ComputePipelineCreateInfo createInfo)
+    {
+        fixed (ComputePipelineCreateInfo* infoPtr = &createInfo)
+        {
+            var result = VkApi.CreateComputePipelines(VkDevice.Handle, default, 1, infoPtr, DefaultAllocationCallbacks, out var pipeline);
+            if (result != Result.Success) return VkResult<VkPipeline>._Error(result);
+            return VkResult<VkPipeline>._Success(new VkPipeline(pipeline, this));
+        }
+    }
+
     public unsafe VkSurface? CreateSurface(IWindow window)
     {
         if (window.VkSurface == null || _khrSurface == null)

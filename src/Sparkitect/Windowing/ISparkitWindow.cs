@@ -4,7 +4,6 @@ using Silk.NET.Windowing;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Windowing.Input;
-using VkSemaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace Sparkitect.Windowing;
 
