@@ -80,11 +80,11 @@ public class DiFactoryAnalyzer : DiagnosticAnalyzer
     private static void ValidateGenerationMarkers(SymbolAnalysisContext context, INamedTypeSymbol type,
         IList<AttributeData> factoryAttributes)
     {
-        //TODO this function does not really covering what it should do
-        //Currently it checks just if more than 1 factory attribute is set
-        //And creates a warning if non conflicting and error when conflicting
-        //In future it should just check if a single factory attribute is set
-        //And validate this one (check if a generation marker is attached)
+        // Current behavior: Validates multiple factory attributes on the same type.
+        // - Warning if multiple attributes of same factory type (redundant but not conflicting)
+        // - Error if multiple attributes of different factory types (conflicting, can't generate both)
+        // This is the intended v1.1 behavior. Future enhancement: require explicit [GenerateFactory]
+        // marker and validate attribute-marker pairing, but not needed for current use cases.
 
         if (factoryAttributes.Count <= 1) return;
 

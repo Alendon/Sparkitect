@@ -14,7 +14,7 @@ using Sparkitect.Graphics.Vulkan.Vma;
 namespace PongMod;
 
 [StateService<IPongRuntimeService, PongModule>]
-internal class PongRuntimeService : IPongRuntimeService
+internal class PongRuntimeService : IPongRuntimeService, IPongRuntimeServiceStateFacade
 {
     private PongGameData _gameData;
     private readonly Stopwatch _frameTimer = new();

@@ -1,7 +1,9 @@
+using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan;
 
 namespace Sparkitect.Windowing;
 
+[StateFacade<IWindowManager>]
 public interface IWindowManager
 {
     ISparkitWindow? MainWindow { get; set; }
@@ -10,3 +12,5 @@ public interface IWindowManager
 
     IReadOnlyList<string> GetRequiredVulkanExtensions();
 }
+
+public interface IWindowManagerStateFacade;

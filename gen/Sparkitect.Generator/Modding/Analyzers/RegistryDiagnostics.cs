@@ -53,7 +53,10 @@ public static class RegistryDiagnostics
 
     public static readonly DiagnosticDescriptor InvalidRegistryMethodSignature =
         new("SPARK0211", "Invalid [RegistryMethod] signature",
-            "Registry method '{0}' has invalid signature. Must match one of the allowed signatures (see docs).",
+            "Registry method '{0}' has invalid signature. Valid patterns: " +
+            "(1) partial void Name(Identification id); " +
+            "(2) partial void Name(Identification id, TValue value); " +
+            "(3) partial void Name<T>(Identification id, T value).",
             Category, DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor TooManyTypeParameters =

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
 
@@ -7,6 +8,7 @@ namespace Sparkitect.Graphics.Vulkan;
 /// <summary>
 /// Manages shader module registration and validation.
 /// </summary>
+[StateFacade<IShaderManagerStateFacade>]
 public interface IShaderManager
 {
     /// <summary>
@@ -24,3 +26,5 @@ public interface IShaderManager
     /// <param name="id">The identification of the shader module.</param>
     void UnregisterModule(Identification id);
 }
+
+public interface IShaderManagerStateFacade;

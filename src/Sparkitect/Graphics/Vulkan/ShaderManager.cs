@@ -11,7 +11,7 @@ using Sparkitect.Modding;
 namespace Sparkitect.Graphics.Vulkan;
 
 [StateService<IShaderManager, VulkanModule>]
-internal class ShaderManager : IShaderManager
+internal class ShaderManager : IShaderManager, IShaderManagerStateFacade
 {
     private const uint SpirvMagicNumber = 0x07230203;
     private const string ShaderResourceKey = "module";

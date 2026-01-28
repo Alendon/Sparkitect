@@ -9,7 +9,7 @@ using Sparkitect.Graphics.Vulkan.VulkanObjects;
 namespace Sparkitect.Windowing;
 
 [StateService<IWindowManager, WindowingModule>]
-internal class WindowManager : IWindowManager
+internal class WindowManager : IWindowManager, IWindowManagerStateFacade
 {
     private ISparkitWindow? _mainWindow;
 

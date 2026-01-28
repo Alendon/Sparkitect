@@ -10,7 +10,7 @@ namespace Sparkitect.Generator.GameState.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class StateServiceAnalyzer : DiagnosticAnalyzer
 {
-    private const string StateServiceAttributeMetadataName = "Sparkitect.GameState.StateServiceAttribute`1";
+    private const string StateServiceAttributeMetadataName = "Sparkitect.GameState.StateServiceAttribute";
 
     private static Location? GetAttributeLocation(AttributeData attr)
     {

@@ -151,4 +151,22 @@ public static partial class TestData
             }
         }
         """);
+
+    public static (string, object) StateServiceTypes => ("StateServiceTypes.cs",
+        """
+        namespace Sparkitect.DI.GeneratorAttributes
+        {
+            // Base class for facade marker attributes (matches StateUtils.FacadeMarkerBase)
+            public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;
+        }
+
+        namespace Sparkitect.GameState
+        {
+            [AttributeUsage(AttributeTargets.Class)]
+            public class StateServiceAttribute<TInterface> : Attribute where TInterface : class;
+
+            [AttributeUsage(AttributeTargets.Interface, AllowMultiple = true)]
+            public class StateFacadeAttribute<TFacade> : Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute<TFacade> where TFacade : class;
+        }
+        """);
 }

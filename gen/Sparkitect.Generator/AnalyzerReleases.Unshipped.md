@@ -53,3 +53,11 @@
 | SPARK0301 | Sparkitect | Error    | StateService does not implement declared interface                    |
 | SPARK0302 | Sparkitect | Error    | StateService does not implement required facade                       |
 | SPARK0303 | Sparkitect | Error    | StateService interface missing StateFacade attribute                  |
+
+<!-- Category 04: Stateless Function Diagnostics -->
+
+| SPARK0401 | Sparkitect | Error    | Stateless function must be static                                     |
+| SPARK0402 | Sparkitect | Error    | Multiple scheduling attributes not allowed                            |
+| SPARK0403 | Sparkitect | Warning  | Parameter may not be DI-resolvable                                    |
+| SPARK0404 | Sparkitect | Error    | Container must implement IHasIdentification                           |
+| SPARK0405 | Sparkitect | Warning  | Ordering attribute without scheduling                                 |

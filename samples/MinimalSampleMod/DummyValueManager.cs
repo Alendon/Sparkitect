@@ -5,7 +5,7 @@ using Sparkitect.Modding;
 namespace MinimalSampleMod;
 
 [StateService<IDummyValueManager, SampleModule>]
-public class DummyValueManager : IDummyValueManager
+public class DummyValueManager : IDummyValueManager, IDummyValueManagerStateFacade
 {
     private readonly Dictionary<Identification, string> _values = [];
     

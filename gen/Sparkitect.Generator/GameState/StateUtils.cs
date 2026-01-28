@@ -37,7 +37,7 @@ public static class StateUtils
     // Facade attributes
     internal const string StateFacadeAttribute = "Sparkitect.GameState.StateFacadeAttribute`1";
     internal const string RegistryFacadeAttribute = "Sparkitect.Modding.RegistryFacadeAttribute`1";
-    internal const string FacadeMarkerBase = "Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute`1";
+    internal const string FacadeMarkerBase = "Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute";
 
     /// <summary>
     /// Determines if a type implements IStateModule
