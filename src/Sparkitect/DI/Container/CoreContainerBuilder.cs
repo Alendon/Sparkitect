@@ -130,8 +130,8 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
                 }
 
                 if (!_registrations.ContainsKey(resolvedDependencyType))
-                    throw new DependencyResolutionException(
-                        $"Missing dependency {resolvedDependencyType.Name} for {serviceType.Name}");
+                    throw DependencyResolutionException.CreateForConstructor(
+                        serviceType, resolvedDependencyType, "unknown");
 
                 graph.AddEdge(new Edge<Type>(resolvedDependencyType, serviceType));
             }
@@ -160,8 +160,8 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
                 if(_parentContainer?.TryResolve(resolvedDependencyType, out _) is true) continue;
 
                 if (!_registrations.ContainsKey(resolvedDependencyType))
-                    throw new DependencyResolutionException(
-                        $"Missing property dependency {resolvedDependencyType.Name} for {serviceType.Name}");
+                    throw DependencyResolutionException.CreateForProperty(
+                        serviceType, resolvedDependencyType, "unknown");
             }
         }
     }

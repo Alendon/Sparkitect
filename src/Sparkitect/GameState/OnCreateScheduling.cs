@@ -58,14 +58,10 @@ public sealed class OnCreateScheduling : IScheduling<TransitionFunctionAttribute
         builder.AddNode(functionId);
 
         foreach (var after in _orderAfter)
-        {
-            builder.AddEdge(after.Other, functionId, after.Optional);
-        }
+            after.Apply(builder, functionId);
 
         foreach (var before in _orderBefore)
-        {
-            builder.AddEdge(functionId, before.Other, before.Optional);
-        }
+            before.Apply(builder, functionId);
     }
 }
 
@@ -92,14 +88,10 @@ public sealed class OnDestroyScheduling : IScheduling<TransitionFunctionAttribut
         builder.AddNode(functionId);
 
         foreach (var after in _orderAfter)
-        {
-            builder.AddEdge(after.Other, functionId, after.Optional);
-        }
+            after.Apply(builder, functionId);
 
         foreach (var before in _orderBefore)
-        {
-            builder.AddEdge(functionId, before.Other, before.Optional);
-        }
+            before.Apply(builder, functionId);
     }
 }
 
@@ -126,14 +118,10 @@ public sealed class OnFrameEnterScheduling : IScheduling<TransitionFunctionAttri
         builder.AddNode(functionId);
 
         foreach (var after in _orderAfter)
-        {
-            builder.AddEdge(after.Other, functionId, after.Optional);
-        }
+            after.Apply(builder, functionId);
 
         foreach (var before in _orderBefore)
-        {
-            builder.AddEdge(functionId, before.Other, before.Optional);
-        }
+            before.Apply(builder, functionId);
     }
 }
 
@@ -160,13 +148,9 @@ public sealed class OnFrameExitScheduling : IScheduling<TransitionFunctionAttrib
         builder.AddNode(functionId);
 
         foreach (var after in _orderAfter)
-        {
-            builder.AddEdge(after.Other, functionId, after.Optional);
-        }
+            after.Apply(builder, functionId);
 
         foreach (var before in _orderBefore)
-        {
-            builder.AddEdge(functionId, before.Other, before.Optional);
-        }
+            before.Apply(builder, functionId);
     }
 }

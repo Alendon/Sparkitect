@@ -23,6 +23,9 @@ internal class RegistryManager : IRegistryManager
     // Track which mods are processed per registry (registry identifier -> set of mod IDs)
     private readonly Dictionary<string, HashSet<string>> _processedModsByRegistry = new();
 
+    private bool _isMutationExpected;
+
+    public bool IsMutationExpected => _isMutationExpected;
 
     private HashSet<string>? _lastModSet;
     private IFactoryContainer<IRegistryBase>? _registryFactory;
@@ -113,27 +116,35 @@ internal class RegistryManager : IRegistryManager
             return;
         }
 
-        Log.Debug("Processing registry {RegistryIdentifier} for mods: {ModIds}",
-            registryIdentifier, string.Join(", ", modIds));
-
-        var registry = CreateRegistryInstance<TRegistry>();
-
-        // Process registrations for each mod
-        foreach (var modId in modIds)
+        _isMutationExpected = true;
+        try
         {
-            ProcessSingleModRegistration(registry, registryIdentifier, modId);
+            Log.Debug("Processing registry {RegistryIdentifier} for mods: {ModIds}",
+                registryIdentifier, string.Join(", ", modIds));
 
-            // Track that this mod is processed for this registry
-            if (!_processedModsByRegistry.TryGetValue(registryIdentifier, out var processedMods))
+            var registry = CreateRegistryInstance<TRegistry>();
+
+            // Process registrations for each mod
+            foreach (var modId in modIds)
             {
-                processedMods = new HashSet<string>();
-                _processedModsByRegistry[registryIdentifier] = processedMods;
+                ProcessSingleModRegistration(registry, registryIdentifier, modId);
+
+                // Track that this mod is processed for this registry
+                if (!_processedModsByRegistry.TryGetValue(registryIdentifier, out var processedMods))
+                {
+                    processedMods = new HashSet<string>();
+                    _processedModsByRegistry[registryIdentifier] = processedMods;
+                }
+
+                processedMods.Add(modId);
             }
 
-            processedMods.Add(modId);
+            Log.Debug("Completed processing registry {RegistryIdentifier} for {Count} mods", registryIdentifier, modIds.Count);
         }
-
-        Log.Debug("Completed processing registry {RegistryIdentifier} for {Count} mods", registryIdentifier, modIds.Count);
+        finally
+        {
+            _isMutationExpected = false;
+        }
     }
 
     public void ProcessAllMissing<TRegistry>() where TRegistry : class, IRegistry

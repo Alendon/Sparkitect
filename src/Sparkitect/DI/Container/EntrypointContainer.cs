@@ -1,4 +1,6 @@
-﻿namespace Sparkitect.DI.Container;
+﻿using Serilog;
+
+namespace Sparkitect.DI.Container;
 
 /// <summary>
 /// Implementation of an entrypoint container that stores and provides access to entrypoint instances
@@ -60,9 +62,9 @@ internal sealed class EntrypointContainer<TBase> : IEntrypointContainer<TBase>
                 {
                     disposable.Dispose();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Suppress exceptions during disposal
+                    Log.Error(ex, "Exception disposing {TypeName}", instance.GetType().Name);
                 }
             }
         }

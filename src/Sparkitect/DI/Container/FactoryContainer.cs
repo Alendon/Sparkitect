@@ -94,7 +94,7 @@ internal sealed class FactoryContainer<TBase> : IFactoryContainer<TBase>
                 catch (Exception ex)
                 {
                     // Log disposal exceptions but don't let them propagate to prevent cascading failures
-                    Log.Warning(ex, "Exception occurred while disposing factory of type {FactoryType}", factory.GetType().Name);
+                    Log.Error(ex, "Exception disposing {TypeName}", factory.GetType().Name);
                 }
             }
         }
