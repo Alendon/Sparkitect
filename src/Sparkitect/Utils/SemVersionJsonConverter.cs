@@ -8,7 +8,9 @@ public class SemVersionJsonConverter : JsonConverter<SemVersion>
 {
     public override SemVersion? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        SemVersion.TryParse(reader.GetString(), SemVersionStyles.Any, out var version);
+        var value = reader.GetString();
+        if (!SemVersion.TryParse(value, SemVersionStyles.Any, out var version))
+            throw new JsonException($"Invalid semantic version: '{value}'");
         return version;
     }
 
@@ -22,7 +24,9 @@ public class SemVersionRangeJsonConverter : JsonConverter<SemVersionRange>
 {
     public override SemVersionRange? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        SemVersionRange.TryParse(reader.GetString(), out var range);
+        var value = reader.GetString();
+        if (!SemVersionRange.TryParse(value, out var range))
+            throw new JsonException($"Invalid semantic version range: '{value}'");
         return range;
     }
 

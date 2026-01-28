@@ -88,7 +88,7 @@ internal class CoreContainer : ICoreContainer
                 catch (Exception ex)
                 {
                     // Log disposal exceptions but don't let them propagate to prevent cascading failures
-                    Log.Warning(ex, "Exception occurred while disposing service of type {ServiceType}", instance.GetType().Name);
+                    Log.Error(ex, "Exception disposing {TypeName}", instance.GetType().Name);
                 }
             }
         }
