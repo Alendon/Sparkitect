@@ -695,12 +695,10 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         Log.Information("Main loop exited, performing shutdown cleanup");
 
-        // Transition back to root state if not already there
-        if (_stateStack.Count > 1)
+        // Unwind all nested states back to root
+        while (_stateStack.Count > 1)
         {
-            var rootState = _stateStack.ToArray()[^1].StateId; // Bottom of stack
-            Request(rootState);
-            ExecuteTransition();
+            TransitionToParent();
         }
 
         // Exit and pop root state

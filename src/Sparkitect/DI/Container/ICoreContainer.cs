@@ -90,7 +90,7 @@ public interface ICoreContainer : IDisposable
     /// <returns>True if the service was resolved successfully.</returns>
     bool TryResolveMapped(Type serviceType, out object? service, IReadOnlyDictionary<Type, Type> map)
     {
-        if (map.TryGetValue(serviceType, out var mappedType) && TryResolve(mappedType, out service) && serviceType.IsAssignableTo(service?.GetType()))
+        if (map.TryGetValue(serviceType, out var mappedType) && TryResolve(mappedType, out service) && (service?.GetType().IsAssignableTo(serviceType) ?? false))
         {
             return true;
         }

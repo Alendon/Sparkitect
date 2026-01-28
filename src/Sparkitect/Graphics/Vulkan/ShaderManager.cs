@@ -64,7 +64,10 @@ internal class ShaderManager : IShaderManager
 
     public void UnregisterModule(Identification id)
     {
-        _loadedModules.Remove(id);
+        if (_loadedModules.Remove(id, out var module))
+        {
+            module.Dispose();
+        }
     }
 
     private static void ValidateSpirvBinary(byte[] bytes, Identification id)

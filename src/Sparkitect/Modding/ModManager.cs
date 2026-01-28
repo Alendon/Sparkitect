@@ -269,20 +269,28 @@ internal class ModManager : IModManager
             }
 
             // Handle regular mods with archives
-            var archive = ZipFile.OpenRead(modManifest.ModPath);
-
-            // Load required assemblies first
-            LoadModDependencies(modManifest, archive, modId, loadContext);
-
-
-            // Load the main mod assembly
-            var assembly = LoadModAssembly(archive, modManifest, modId, loadContext);
-            newLoadedMods.Add(new LoadedMod
+            ZipArchive? archive = null;
+            try
             {
-                Archive = archive,
-                Assembly = assembly,
-                Manifest = modManifest
-            });
+                archive = ZipFile.OpenRead(modManifest.ModPath);
+
+                // Load required assemblies first
+                LoadModDependencies(modManifest, archive, modId, loadContext);
+
+                // Load the main mod assembly
+                var assembly = LoadModAssembly(archive, modManifest, modId, loadContext);
+                newLoadedMods.Add(new LoadedMod
+                {
+                    Archive = archive,
+                    Assembly = assembly,
+                    Manifest = modManifest
+                });
+                archive = null; // Transfer ownership to LoadedMod, prevent disposal
+            }
+            finally
+            {
+                archive?.Dispose(); // Only disposes if exception occurred (archive not transferred)
+            }
         }
 
         foreach (var newLoadedMod in newLoadedMods)

@@ -11,7 +11,6 @@ namespace Sparkitect.Windowing;
 [StateService<IWindowManager, WindowingModule>]
 internal class WindowManager : IWindowManager
 {
-    private IWindow? _preInitWindow;
     private ISparkitWindow? _mainWindow;
 
     internal required IVulkanContext VulkanContext { private get; init; }
@@ -49,29 +48,34 @@ internal class WindowManager : IWindowManager
 
     public unsafe IReadOnlyList<string> GetRequiredVulkanExtensions()
     {
-        if (_preInitWindow == null)
+        var options = new WindowOptions(ViewOptions.DefaultVulkan)
         {
-            var options = new WindowOptions(ViewOptions.DefaultVulkan)
+            Size = new Vector2D<int>(1, 1),
+            Title = "Extension Query",
+            IsVisible = false,
+        };
+        var tempWindow = Window.Create(options);
+        tempWindow.Initialize();
+
+        try
+        {
+            if (tempWindow.VkSurface == null)
+                return [];
+
+            var extensions = tempWindow.VkSurface.GetRequiredExtensions(out var count);
+            var result = new List<string>((int)count);
+
+            for (var i = 0; i < count; i++)
             {
-                Size = new Vector2D<int>(1, 1),
-                Title = "Extension Query",
-                IsVisible = false,
-            };
-            _preInitWindow = Window.Create(options);
-            _preInitWindow.Initialize();
+                result.Add(SilkMarshal.PtrToString((nint)extensions[i]) ?? string.Empty);
+            }
+
+            return result;
         }
-
-        if (_preInitWindow.VkSurface == null)
-            return [];
-
-        var extensions = _preInitWindow.VkSurface.GetRequiredExtensions(out var count);
-        var result = new List<string>((int)count);
-
-        for (var i = 0; i < count; i++)
+        finally
         {
-            result.Add(SilkMarshal.PtrToString((nint)extensions[i]) ?? string.Empty);
+            tempWindow.Close();
+            tempWindow.Dispose();
         }
-
-        return result;
     }
 }

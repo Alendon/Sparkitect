@@ -47,6 +47,11 @@ internal class SparkitMouse : IMouseInput
 
     internal void SetFocusState(bool focused)
     {
+        // Reset last position when focus is regained to prevent delta spike
+        if (!_windowFocused && focused)
+        {
+            _lastPosition = _silkMouse.Position;
+        }
         _windowFocused = focused;
     }
 
