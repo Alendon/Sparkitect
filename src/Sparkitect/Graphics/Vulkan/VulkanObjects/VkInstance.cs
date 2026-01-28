@@ -7,7 +7,8 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkInstance : VulkanObject
 {
-    private readonly unsafe AllocationCallbacks* _allocationCallbacks;
+    // Custom allocation callbacks for Vulkan. Null uses default system allocator.
+    private readonly unsafe AllocationCallbacks* _allocationCallbacks = null;
 
     internal unsafe VkInstance(Instance handle, IVulkanContext vulkanContext)
         : base(vulkanContext)

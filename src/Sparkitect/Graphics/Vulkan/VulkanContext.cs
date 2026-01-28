@@ -290,12 +290,12 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                                           ?? throw new InvalidOperationException("No graphics queue family found");
                 configContext.RequestQueues(graphicsQueueFamily, 1);
                 var transferQueueFamily = configContext.FindQueueFamily(QueueFlags.TransferBit)
-                                          ?? throw new InvalidOperationException("No graphics queue family found");
+                                          ?? throw new InvalidOperationException("No transfer queue family found");
                 configContext.RequestQueues(transferQueueFamily, 1);
             }
             
             var computeQueueFamily = configContext.FindQueueFamily(QueueFlags.ComputeBit)
-                                     ?? throw new InvalidOperationException("No graphics queue family found");
+                                     ?? throw new InvalidOperationException("No compute queue family found");
             configContext.RequestQueues(computeQueueFamily, 1);
             
             

@@ -6,12 +6,21 @@ namespace Sparkitect.Modding;
 [CreateServiceFactory<IIdentificationManager>]
 internal class IdentificationManager : IIdentificationManager
 {
+    private readonly int _mainThreadId = Environment.CurrentManagedThreadId;
     private readonly BidirectionalDictionary<string, ushort> _modIds = new();
     private readonly BidirectionalDictionary<string, ushort> _categoryIds = new();
     private readonly Dictionary<(ushort modId, ushort categoryId), BidirectionalDictionary<string, uint>> _objectIds = new();
+
+    private void AssertMainThread([System.Runtime.CompilerServices.CallerMemberName] string caller = "")
+    {
+        if (Environment.CurrentManagedThreadId != _mainThreadId)
+            throw new InvalidOperationException(
+                $"{caller} must be called from the main thread");
+    }
     
     public ushort RegisterMod(string modId)
     {
+        AssertMainThread();
         if (_modIds.TryGetValue(modId, out var mod))
         {
             return mod;
@@ -29,6 +38,7 @@ internal class IdentificationManager : IIdentificationManager
 
     public ushort RegisterCategory(string categoryId)
     {
+        AssertMainThread();
         if (_categoryIds.TryGetValue(categoryId, out var category))
         {
             return category;
@@ -66,6 +76,7 @@ internal class IdentificationManager : IIdentificationManager
 
     public Identification RegisterObject(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId, string objectId)
     {
+        AssertMainThread();
         ushort resolvedModId = ResolveModId(modId);
         ushort resolvedCategoryId = ResolveCategoryId(categoryId);
         
@@ -224,6 +235,7 @@ internal class IdentificationManager : IIdentificationManager
 
     public bool UnregisterMod(ushort modId)
     {
+        AssertMainThread();
         if (!_modIds.Inverse.TryGetValue(modId, out var modIdString))
         {
             return false;
@@ -241,6 +253,7 @@ internal class IdentificationManager : IIdentificationManager
 
     public bool UnregisterCategory(ushort categoryId)
     {
+        AssertMainThread();
         if (!_categoryIds.Inverse.TryGetValue(categoryId, out var categoryIdString))
         {
             return false;
@@ -258,6 +271,7 @@ internal class IdentificationManager : IIdentificationManager
 
     public bool UnregisterObject(Identification id)
     {
+        AssertMainThread();
         var key = (id.ModId, id.CategoryId);
         
         if (!_objectIds.TryGetValue(key, out var idDict))

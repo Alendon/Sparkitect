@@ -11,6 +11,15 @@ public abstract class OrderBeforeAttribute() : Attribute
 {
     public abstract Identification Other { get; }
     public abstract bool Optional { get; }
+
+    /// <summary>
+    /// Applies this ordering constraint to the execution graph.
+    /// Adds an edge from functionId to Other (this function runs before Other).
+    /// </summary>
+    public void Apply(IExecutionGraphBuilder builder, Identification functionId)
+    {
+        builder.AddEdge(functionId, Other, Optional);
+    }
 }
 
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
@@ -18,6 +27,15 @@ public abstract class OrderAfterAttribute() : Attribute
 {
     public abstract Identification Other { get; }
     public abstract bool Optional { get; }
+
+    /// <summary>
+    /// Applies this ordering constraint to the execution graph.
+    /// Adds an edge from Other to functionId (this function runs after Other).
+    /// </summary>
+    public void Apply(IExecutionGraphBuilder builder, Identification functionId)
+    {
+        builder.AddEdge(Other, functionId, Optional);
+    }
 }
 
 
