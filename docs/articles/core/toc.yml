@@ -12,6 +12,12 @@
   href: modding-framework.md
 - name: Engine Initialization
   href: engine-initialization.md
+- name: Vulkan Graphics
+  href: vulkan-graphics.md
+- name: Shader Compilation
+  href: shader-compilation.md
+- name: Windowing and Input
+  href: windowing-input.md
 - name: ECS Requirements
   href: ecs-requirements.md
 - name: Module Dependencies

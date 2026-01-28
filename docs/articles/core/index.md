@@ -55,8 +55,6 @@ Together, they create a foundation that enables other engine systems to be modul
 
 While the systems above form the essential infrastructure, Sparkitect includes additional core systems that build upon this foundation:
 
-- **Entity Component System (ECS)**: The core simulation system
-- **Game States**: Management of engine states and transitions
-- **Serialization**: System for data persistence and network synchronization
-
-These systems will be documented as the engine implementation progresses.
+- **Entity Component System (ECS)**: Planned but not yet implemented (see [ECS Requirements](ecs-requirements.md) for design notes)
+- **Game States**: See [Game State System](game-state-system.md)
+- **Serialization**: Future work

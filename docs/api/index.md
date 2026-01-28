@@ -34,7 +34,7 @@ The Sparkitect Engine codebase is organized into the following primary namespace
   - (planned) IGameStateSystem — effectively covered by IGameStateManager
 
 - **Sparkitect.Graphics.Vulkan** - Vulkan rendering implementation
-  - [IVkEngine](xref:Sparkitect.Graphics.Vulkan.IVkEngine) - Vulkan engine interface
+  - [IVulkanContext](xref:Sparkitect.Graphics.Vulkan.IVulkanContext) - Vulkan context interface
   - [VkDevice](xref:Sparkitect.Graphics.Vulkan.VkDevice) - Vulkan device wrapper
 
 - **Sparkitect.Modding** - Modding framework and registry system

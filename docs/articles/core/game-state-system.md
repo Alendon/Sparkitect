@@ -140,12 +140,11 @@ public partial class GameMenuState : IStateDescriptor
 State functions use the [Stateless Function](stateless-functions.md) system. Each function requires a function attribute and a scheduling attribute.
 
 ```csharp
-[PerFrameFunction("process_input")]
+[PerFrameFunction("update_physics")]
 [PerFrameScheduling]
-public static void ProcessInput(IInputService input, IPhysicsService physics)
+public static void UpdatePhysics(ITimeService time, IPhysicsService physics)
 {
-    var commands = input.GetPlayerCommands();
-    physics.ApplyCommands(commands);
+    physics.Step(time.DeltaTime);
 }
 ```
 
@@ -197,11 +196,11 @@ See [Dependency Injection](dependency-injection.md) for more details on service 
 States transition through the `IGameStateManager` service:
 
 ```csharp
-[PerFrameFunction("handle_input")]
+[PerFrameFunction("check_menu_request")]
 [PerFrameScheduling]
-public static void HandleInput(IInputService input, IGameStateManager stateManager)
+public static void CheckMenuRequest(IMenuService menu, IGameStateManager stateManager)
 {
-    if (input.IsMenuRequested())
+    if (menu.IsMenuRequested())
     {
         // Request transition to menu state (must be parent or child)
         stateManager.Request(StateID.MyMod.MenuState);

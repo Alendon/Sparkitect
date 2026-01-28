@@ -143,6 +143,39 @@ Both attributes accept an optional `IsOptional` property:
 - `IsOptional = false` (default): Constraint required; error if target not present
 - `IsOptional = true`: Constraint ignored if target not present
 
+### Cross-Module Ordering and IsOptional
+
+When ordering against functions in other modules, the target module may not be loaded. Use `IsOptional` to handle this:
+
+```csharp
+// Required ordering (default) - ERROR if PhysicsModule not loaded
+[PerFrameFunction("render")]
+[PerFrameScheduling]
+[OrderAfter<PhysicsModule.RunPhysicsFunc>]
+public static void Render() { }
+
+// Optional ordering - silently ignored if PhysicsModule not loaded
+[PerFrameFunction("render")]
+[PerFrameScheduling]
+[OrderAfter<PhysicsModule.RunPhysicsFunc>(IsOptional = true)]
+public static void Render() { }
+```
+
+**When to use IsOptional:**
+
+| Scenario | IsOptional | Reason |
+|----------|------------|--------|
+| Same-module ordering | `false` | Always present |
+| Required module dependency | `false` | Module guaranteed loaded |
+| Optional module integration | `true` | Module may not be loaded |
+| Engine-provided function | `false` | Engine modules always present |
+
+**Error behavior:**
+- `IsOptional = false` (default): Throws exception if target function not found during scheduling
+- `IsOptional = true`: Constraint is silently ignored if target not found
+
+**Best practice:** Declare explicit module dependencies for functions you order against. Only use `IsOptional = true` when the ordering is truly optional (e.g., "if audio module is loaded, run after audio").
+
 ### Type-Safe References
 
 Ordering attributes use the generated wrapper type for type-safe cross-references:
@@ -170,7 +203,7 @@ For cross-module ordering:
 public static void Render() { }
 ```
 
-If the referenced module isn't active, optional constraints are ignored; required constraints cause an error.
+> **Note:** Cross-module ordering requires consideration of module availability. If the referenced module isn't active, optional constraints (`IsOptional = true`) are silently ignored, while required constraints cause a scheduling error. See [Cross-Module Ordering and IsOptional](#cross-module-ordering-and-isoptional) above for detailed guidance.
 
 ## Source Generation
 
@@ -207,19 +240,19 @@ Each function should do one thing. Prefer multiple small functions over one larg
 
 ```csharp
 // Good: focused functions
-[PerFrameFunction("read_input")]
+[PerFrameFunction("update_time")]
 [PerFrameScheduling]
-public static void ReadInput(IInputService input) { ... }
+public static void UpdateTime(ITimeService time) { ... }
 
 [PerFrameFunction("process_commands")]
 [PerFrameScheduling]
-[OrderAfter<ReadInputFunc>]
+[OrderAfter<UpdateTimeFunc>]
 public static void ProcessCommands(ICommandService commands) { ... }
 
 // Avoid: monolithic functions
 [PerFrameFunction("do_everything")]
 [PerFrameScheduling]
-public static void DoEverything(IInputService input, ICommandService commands, ...) { ... }
+public static void DoEverything(ITimeService time, ICommandService commands, ...) { ... }
 ```
 
 ### Use DI for Dependencies

@@ -36,6 +36,28 @@ Same applies when destroying a container.
 
 Once a container is created, it cannot be modified. Similarly, sub-containers cannot modify bindings from parent containers.
 
+### Choosing the Right Container
+
+| Need | Use | Example |
+|------|-----|---------|
+| Singleton service shared across states | CoreContainer | ILogger, IModManager |
+| Service scoped to a state/module | CoreContainer (state-level) | IPhysicsService |
+| Keyed objects resolved by string/ID | FactoryContainer | IRegistry by category |
+| Discover configurators from mods | EntrypointContainer | CoreConfigurator discovery |
+
+**Container Hierarchy:**
+
+```
+Root CoreContainer (engine services)
+  └── State CoreContainer (state services)
+        └── FactoryContainer<IRegistry> (registries)
+        └── EntrypointContainer<...> (configurators)
+```
+
+Each state level can have its own functional containers (Factory, Entrypoint). When a new state is pushed, functional containers from the parent are invalidated and must be recreated.
+
+**Key principle:** CoreContainer for services, FactoryContainer for keyed object factories, EntrypointContainer for mod-discovered configurators.
+
 ### Entrypoint Container
 
 Holds instances of a single ConfigurationEntrypoint base type and allows fetching all discovered implementations.
@@ -56,6 +78,46 @@ Service factories have both constructor-time dependencies (required for instanti
 Containers are immutable once built. Service registration and dependency configuration happens only during the builder phase.
 
 ### Service Factory Pattern
+
+Service factories encapsulate the logic to create service instances with their dependencies. The generated factories handle both constructor and property injection.
+
+### Property Injection for Circular Dependencies
+
+Constructor injection cannot resolve circular dependencies (A needs B, B needs A). Use property injection with `required` properties:
+
+```csharp
+[StateService<IServiceA, MyModule>]
+public class ServiceA : IServiceA
+{
+    // Constructor dependencies (resolved first)
+    public ServiceA(ILogger logger) { }
+
+    // Property dependencies (resolved after construction)
+    public required IServiceB ServiceB { get; init; }
+}
+
+[StateService<IServiceB, MyModule>]
+public class ServiceB : IServiceB
+{
+    public ServiceB(ILogger logger) { }
+
+    // Circular reference via property
+    public required IServiceA ServiceA { get; init; }
+}
+```
+
+The DI system resolves dependencies in two phases:
+1. **Constructor phase**: All services instantiated with constructor dependencies
+2. **Property phase**: Required properties are set on all instances
+
+This allows both ServiceA and ServiceB to exist before either's property is set.
+
+**When to use property injection:**
+- Circular dependencies between services
+- Optional dependencies that may not always be registered
+- Late-bound dependencies where constructor order matters
+
+**Prefer constructor injection** when there's no circular dependency - it makes dependencies explicit and fails fast on missing dependencies.
 
 ### Service Registration Attributes
 
@@ -248,6 +310,26 @@ The DI system is tightly coupled with the modding framework:
 1. Mods register their services with the DI container during loading
 2. The modding system creates appropriate containers for mod loading
 3. Services can be overridden by mods through appropriate registration
+
+## Naming Conventions
+
+### Vulkan Wrapper Types
+
+Sparkitect wraps Vulkan objects with managed types using a `Vk` prefix:
+
+| Wrapper Type | Wraps | Purpose |
+|--------------|-------|---------|
+| `VkCommandPool` | `CommandPool` | Command buffer allocation |
+| `VkSwapchain` | `SwapchainKHR` | Frame presentation |
+| `VkSurface` | `SurfaceKHR` | Window surface |
+| `VkShaderModule` | `ShaderModule` | Compiled shader |
+
+This naming convention:
+- Distinguishes managed wrappers from raw Silk.NET types
+- Indicates the type participates in automatic resource tracking
+- Provides consistent discovery (all Vulkan wrappers start with `Vk`)
+
+See [Vulkan Graphics](vulkan-graphics.md) for details on the wrapper system.
 
 ## Best Practices
 

@@ -23,10 +23,10 @@ The Registry System includes:
 
 Registries are managed by state functions rather than a single global pass:
 
-- **Module/State Creation** (`[OnCreate]` functions): Registries are added and processed when needed
-- **Module/State Destruction** (`[OnDestroy]` functions): Registries are cleaned up and unregistered
+- **Module/State Creation** (`[OnCreateScheduling]` functions): Registries are added and processed when needed
+- **Module/State Destruction** (`[OnDestroyScheduling]` functions): Registries are cleaned up and unregistered
 
-State functions control when registries are active, making registration deterministic and composable.
+State functions (marked with `[TransitionFunction]` + a scheduling attribute) control when registries are active, making registration deterministic and composable.
 
 ## Identifier System
 
@@ -105,6 +105,69 @@ public class RegisterItemAttribute : Attribute
 }
 ```
 
+### Valid Registry Method Signatures
+
+Methods marked with `[RegistryMethod]` must follow specific signature patterns for the source generator to create corresponding registration attributes.
+
+**Required Parameters:**
+
+| Parameter | Required | Purpose |
+|-----------|----------|---------|
+| `Identification id` | Yes | First parameter must be Identification |
+| Additional data | Optional | Any additional parameters become attribute constructor parameters |
+
+**Valid Signatures:**
+
+```csharp
+// Minimal: just identification
+[RegistryMethod]
+public void RegisterItem(Identification id) { }
+
+// With single data parameter
+[RegistryMethod]
+public void RegisterItem(Identification id, ItemData data) { }
+
+// With multiple data parameters
+[RegistryMethod]
+public void RegisterBlock(Identification id, BlockData data, BlockBehavior behavior) { }
+```
+
+**Invalid Signatures:**
+
+```csharp
+// Missing Identification as first parameter
+[RegistryMethod]
+public void RegisterItem(ItemData data) { } // ERROR
+
+// Identification not first
+[RegistryMethod]
+public void RegisterItem(ItemData data, Identification id) { } // ERROR
+
+// Non-public method
+[RegistryMethod]
+private void RegisterItem(Identification id) { } // ERROR
+```
+
+**Generated Attribute Usage:**
+
+For a registry method with signature:
+```csharp
+[RegistryMethod]
+public void RegisterItem(Identification id, ItemData data)
+```
+
+The generated attribute can be used as:
+```csharp
+// Key becomes part of Identification, data comes from property/method
+[ItemRegistry.RegisterItem("iron_sword")]
+public static ItemData IronSword => new ItemData { ... };
+```
+
+The attribute:
+- Takes a string key as the constructor parameter
+- Targets methods or properties that return the data type(s)
+- The string key is combined with the mod identifier and category to form the full Identification
+
 ### Using Registration Attributes
 
 Mods use the generated attributes to register objects:
@@ -127,12 +190,13 @@ The attribute-based registration:
 
 ### Managing Registries in State Functions
 
-Registries are added and processed in state functions (static methods with scheduling attributes):
+Registries are added and processed in state functions (static methods with `[TransitionFunction]` + scheduling attributes):
 
 ```csharp
 public static class MyModule : IStateModule
 {
-    [OnCreate("add_registry")]
+    [TransitionFunction("add_registry")]
+    [OnCreateScheduling]
     private static void AddRegistry(IRegistryManager registryManager)
     {
         // Add the registry
@@ -142,7 +206,8 @@ public static class MyModule : IStateModule
         registryManager.ProcessAllMissing<ItemRegistry>();
     }
 
-    [OnDestroy("remove_registry")]
+    [TransitionFunction("remove_registry")]
+    [OnDestroyScheduling]
     private static void RemoveRegistry(IRegistryManager registryManager)
     {
         // Clean up all registered objects
@@ -162,7 +227,7 @@ public static class MyModule : IStateModule
 The Registry System integrates with:
 
 - **Dependency Injection**: Registry classes are DI-instantiated and resolved from the current state's container
-- **Game State**: Registries are managed by state functions (`[OnCreate]`/`[OnDestroy]`)
+- **Game State**: Registries are managed by state functions (`[TransitionFunction]` + `[OnCreateScheduling]`/`[OnDestroyScheduling]`)
 - **Modding**: Registration attributes are discovered across all loaded mods
 - **Identification**: Registry categories use the identification system for object IDs
 
@@ -177,8 +242,8 @@ The Registry System integrates with:
 
 ### Registration Timing
 
-- Add and process registries in `[OnCreate]` functions
-- Unregister in `[OnDestroy]` functions to ensure cleanup
+- Add and process registries in `[OnCreateScheduling]` functions
+- Unregister in `[OnDestroyScheduling]` functions to ensure cleanup
 - Process registries after loading mods but before using registered objects
 
 ### Object Identification
@@ -215,14 +280,16 @@ public static BlockData Stone => new BlockData
 };
 
 // 3. Manage registry lifecycle in state functions
-[OnCreate("init_blocks")]
+[TransitionFunction("init_blocks")]
+[OnCreateScheduling]
 private static void InitBlocks(IRegistryManager rm)
 {
     rm.AddRegistry<BlockRegistry>();
     rm.ProcessAllMissing<BlockRegistry>();
 }
 
-[OnDestroy("cleanup_blocks")]
+[TransitionFunction("cleanup_blocks")]
+[OnDestroyScheduling]
 private static void CleanupBlocks(IRegistryManager rm)
 {
     rm.UnregisterAllRemaining<BlockRegistry>();

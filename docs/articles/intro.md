@@ -49,3 +49,80 @@ It's designed for PC platforms, aiming to support Windows, Linux, and macOS.
 Sparkitect is designed as a framework rather than a full-featured editor-centric engine. Unlike engines that focus on visual editors and built-in world creation tools, Sparkitect emphasizes programmatic control and mod-based extensibility.
 
 This makes it especially suitable for games that have minimal requirements for visual editing tools and instead focus on runtime behavior and systems.
+
+## Getting Started
+
+This section walks you through creating your first Sparkitect mod - a minimal "hello world" that loads and logs output.
+
+### Prerequisites
+
+- .NET 8.0 SDK or later
+- An IDE (Visual Studio, Rider, or VS Code with C# extension)
+
+### 1. Create the Project
+
+Create a new class library project referencing the Sparkitect SDK:
+
+```xml
+<Project Sdk="Sparkitect.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ModName>Hello World Mod</ModName>
+    <ModIdentifier>tutorial.helloworld</ModIdentifier>
+    <ModVersion>1.0.0</ModVersion>
+    <ModType>Root</ModType>
+  </PropertyGroup>
+</Project>
+```
+
+See [SDK Project Configuration](core/modding-framework.md#sdk-project-configuration) for all available properties.
+
+### 2. Create a Module
+
+Modules contain your mod's logic. Create a minimal module:
+
+```csharp
+using Serilog;
+using Sparkitect.Stateless;
+using Sparkitect.GameState;
+
+namespace HelloWorld;
+
+[ModuleRegistry.RegisterModule("hello_module")]
+public partial class HelloModule : IStateModule
+{
+    public static Identification Identification => StateModuleID.Tutorial.HelloModule;
+
+    public static IReadOnlyList<Identification> RequiredModules => [];
+
+    [TransitionFunction("say_hello")]
+    [OnCreateScheduling]
+    private static void SayHello(ILogger logger)
+    {
+        logger.Information("Hello from my first mod!");
+    }
+}
+```
+
+This module:
+- Registers itself with the module registry
+- Logs a message when the module is created
+- Uses dependency injection to receive the logger
+
+### 3. Build and Run
+
+Build your project. The SDK produces a mod archive (`.spark` file) in the output directory.
+
+Place the archive in the engine's `mods` folder and run the engine. You should see your log message in the console output.
+
+### Next Steps
+
+This minimal example demonstrates the core patterns. For deeper understanding, explore these topics:
+
+- **SDK Configuration**: [Modding Framework](core/modding-framework.md)
+- **Modules and States**: [Game State System](core/game-state-system.md)
+- **State Functions**: [Stateless Functions](core/stateless-functions.md)
+- **Service Registration**: [Dependency Injection](core/dependency-injection.md)
+- **Object Registration**: [Registry System](core/registry-system.md)
+
+For a complete working example with graphics, input, and gameplay, see the `samples/PongMod` directory in the Sparkitect repository.
