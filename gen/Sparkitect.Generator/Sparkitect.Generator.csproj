@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
@@ -6,22 +6,26 @@
         <IsRoslynComponent>true</IsRoslynComponent>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <Nullable>enable</Nullable>
-        
+
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     </PropertyGroup>
-    
+
     <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" Condition="Exists('$(SolutionDir)build\LocalNuGetPublish.targets')" />
-    
-  <ItemGroup>
+
+    <ItemGroup>
         <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
         <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-  </ItemGroup>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="..\..\shared\StringCase.cs" Link="Utilities\StringCase.cs" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.2" PrivateAssets="all" />
-        
+
         <EmbeddedResource Include="**\*.liquid" WithCulture="false" />
 
         <!-- All included packages must be packaged manually including transitive dependencies -->
@@ -42,13 +46,12 @@
         <None Include="$(PKGSystem_Text_Json)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
         <None Include="$(PKGMicrosoft_Bcl_HashCode)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
         <None Include="$(PKGYamlDotNet)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-
     </ItemGroup>
 
     <PropertyGroup>
         <GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
     </PropertyGroup>
-    
+
     <!-- Needed for all projects which directly consumes the SG as project reference -->
     <Target Name="GetDependencyTargetPaths">
         <ItemGroup>

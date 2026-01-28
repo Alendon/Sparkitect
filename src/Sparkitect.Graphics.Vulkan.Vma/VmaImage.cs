@@ -17,12 +17,18 @@ public sealed class VmaImage : IDisposable
         Image = image;
         Allocation = allocation;
         AllocationInfo = allocationInfo;
+
+        // Register with resource tracker for leak detection
+        _allocator.ResourceTracker.Track(this);
     }
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+
+        // Unregister from resource tracker
+        _allocator.ResourceTracker.Untrack(this);
         _allocator.DestroyImage(this);
     }
 }

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -15,27 +15,30 @@
         <LangVersion>preview</LangVersion>
         <RootNamespace>Sparkitect</RootNamespace>
         <SgOutputNamespace>Sparkitect.CompilerGenerated</SgOutputNamespace>
-        
+
         <DefineConstants>$(DefineConstants);JETBRAINS_ANNOTATIONS</DefineConstants>
     </PropertyGroup>
-    
+
     <PropertyGroup>
         <ModName>Sparkitect</ModName>
         <ModIdentifier>sparkitect</ModIdentifier>
         <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
-        
+
         <InterceptorsNamespaces>$(InterceptorsNamespaces);Sparkitect.LogEnricher;Sparkitect.CallerContext</InterceptorsNamespaces>
     </PropertyGroup>
-    
+
     <ItemGroup>
         <CompilerVisibleProperty Include="ModName" />
         <CompilerVisibleProperty Include="ModIdentifier" />
         <CompilerVisibleProperty Include="DisableLogEnrichmentGenerator" />
         <CompilerVisibleProperty Include="SgOutputNamespace" />
-        
     </ItemGroup>
-    
+
     <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" Condition="Exists('$(SolutionDir)build\LocalNuGetPublish.targets')" />
+
+    <ItemGroup>
+        <Compile Include="..\..\shared\StringCase.cs" Link="Utilities\StringCase.cs" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="BidirectionalDictionary" Version="1.3.0" />

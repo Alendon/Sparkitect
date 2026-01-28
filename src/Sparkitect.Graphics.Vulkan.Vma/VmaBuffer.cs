@@ -18,6 +18,9 @@ public sealed class VmaBuffer : IDisposable
         Buffer = buffer;
         Allocation = allocation;
         AllocationInfo = allocationInfo;
+
+        // Register with resource tracker for leak detection
+        _allocator.ResourceTracker.Track(this);
     }
 
     public nint Map() => _allocator.MapMemory(Allocation);
@@ -28,6 +31,9 @@ public sealed class VmaBuffer : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+
+        // Unregister from resource tracker
+        _allocator.ResourceTracker.Untrack(this);
         _allocator.DestroyBuffer(this);
     }
 }

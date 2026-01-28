@@ -1,3 +1,4 @@
+using Serilog;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.Vulkan.Vma.Internal;
 using Vortice.Vulkan;
@@ -10,9 +11,16 @@ public sealed class VmaAllocator : IDisposable
     private readonly VorticeAllocator _allocator;
     private bool _disposed;
 
-    private VmaAllocator(VorticeAllocator allocator)
+    /// <summary>
+    /// Resource tracker for debugging VMA memory allocations.
+    /// Tracks VmaBuffer and VmaImage instances to detect memory leaks.
+    /// </summary>
+    public IVmaResourceTracker ResourceTracker { get; }
+
+    private VmaAllocator(VorticeAllocator allocator, IVmaResourceTracker resourceTracker)
     {
         _allocator = allocator;
+        ResourceTracker = resourceTracker;
     }
 
     static VmaAllocator()
@@ -20,7 +28,29 @@ public sealed class VmaAllocator : IDisposable
         Vortice.Vulkan.Vulkan.vkInitialize();
     }
 
+    /// <summary>
+    /// Creates a new VMA allocator with resource tracking enabled.
+    /// </summary>
+    /// <param name="instance">The Vulkan instance.</param>
+    /// <param name="physicalDevice">The physical device.</param>
+    /// <param name="device">The logical device.</param>
+    /// <param name="vulkanApiVersion">The Vulkan API version.</param>
+    /// <returns>A new VmaAllocator instance with resource tracking enabled.</returns>
     public static VmaAllocator Create(Instance instance, PhysicalDevice physicalDevice, Device device, uint vulkanApiVersion = 0)
+    {
+        return Create(instance, physicalDevice, device, vulkanApiVersion, enableTracking: true);
+    }
+
+    /// <summary>
+    /// Creates a new VMA allocator with optional resource tracking.
+    /// </summary>
+    /// <param name="instance">The Vulkan instance.</param>
+    /// <param name="physicalDevice">The physical device.</param>
+    /// <param name="device">The logical device.</param>
+    /// <param name="vulkanApiVersion">The Vulkan API version.</param>
+    /// <param name="enableTracking">Whether to enable resource tracking for debugging. When false, uses a no-op tracker.</param>
+    /// <returns>A new VmaAllocator instance.</returns>
+    public static VmaAllocator Create(Instance instance, PhysicalDevice physicalDevice, Device device, uint vulkanApiVersion, bool enableTracking)
     {
         var createInfo = new VmaAllocatorCreateInfo
         {
@@ -31,7 +61,12 @@ public sealed class VmaAllocator : IDisposable
         };
 
         Vortice.Vulkan.Vma.vmaCreateAllocator(in createInfo, out var allocator).CheckResult();
-        return new VmaAllocator(allocator);
+
+        IVmaResourceTracker tracker = enableTracking
+            ? new VmaResourceTracker()
+            : NullVmaResourceTracker.Instance;
+
+        return new VmaAllocator(allocator, tracker);
     }
 
     public unsafe VmaBuffer CreateBuffer(in BufferCreateInfo bufferInfo, in VmaAllocationCreateInfo allocInfo)
@@ -157,6 +192,19 @@ public sealed class VmaAllocator : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+
+        // Log any unreleased resources for debugging
+        var leakedCount = ResourceTracker.Count;
+        if (leakedCount > 0)
+        {
+            Log.Warning("VMA resource leaks detected: {Count} resource(s) not disposed", leakedCount);
+            foreach (var (resource, callsite) in ResourceTracker.GetTrackingEntries())
+            {
+                Log.Warning("  Leaked {Type} created at {Callsite}",
+                    resource.GetType().Name, callsite);
+            }
+        }
+
         Vortice.Vulkan.Vma.vmaDestroyAllocator(_allocator);
     }
 
