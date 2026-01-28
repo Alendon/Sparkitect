@@ -90,9 +90,24 @@ public class CircularService1 : ICircularService1
 public class CircularService2 : ICircularService2
 {
     public ICircularService1 Service1 { get; }
-    
+
     public CircularService2(ICircularService1 service1)
     {
         Service1 = service1 ?? throw new ArgumentNullException(nameof(service1));
+    }
+}
+
+// Entrypoint test models
+public interface IEntrypointService;
+public class EntrypointService : IEntrypointService;
+public class AnotherEntrypointService : IEntrypointService;
+
+public class DisposableEntrypointService : IEntrypointService, IDisposable
+{
+    public bool IsDisposed { get; private set; }
+
+    public void Dispose()
+    {
+        IsDisposed = true;
     }
 }

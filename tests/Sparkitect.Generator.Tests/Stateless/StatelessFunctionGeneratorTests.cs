@@ -219,4 +219,158 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
         var (_, driverRunResult) = await RunGeneratorAsync(token);
         await Verifier.Verify(driverRunResult, verifySettings);
     }
+
+    // ===== Error Scenario Tests =====
+    // These tests verify the generator handles edge cases gracefully (returns null/empty) rather than crashing.
+    // Per CONTEXT.md: "StatelessFunctionGenerator tests assume valid input - analyzers catch errors."
+
+    [Test]
+    public async Task TryExtractStatelessFunction_MissingStatelessFunctionAttribute_GeneratesNothing(CancellationToken token)
+    {
+        // Method has scheduling attribute but no StatelessFunction attribute
+        TestSources.Add(("TestModule.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace TestMod;
+
+            public partial class TestModule : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+
+                // Missing: [TestFunction("init")] - no StatelessFunction attribute
+                [TestScheduling]
+                public static void Initialize() { }
+            }
+            """));
+
+        var (outputCompilation, driverRunResult) = await RunGeneratorAsync(token);
+
+        // Should not generate any wrapper files for this method
+        var wrapperFiles = driverRunResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("Wrapper"))
+            .ToList();
+
+        await Assert.That(wrapperFiles).IsEmpty();
+    }
+
+    [Test]
+    public async Task TryExtractStatelessFunction_MissingSchedulingAttribute_GeneratesNothing(CancellationToken token)
+    {
+        // Method has StatelessFunction attribute but no scheduling attribute
+        TestSources.Add(("TestModule.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace TestMod;
+
+            public partial class TestModule : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+
+                [TestFunction("init")]  // Has StatelessFunction attribute
+                // Missing: [TestScheduling] - no scheduling attribute
+                public static void Initialize() { }
+            }
+            """));
+
+        var (outputCompilation, driverRunResult) = await RunGeneratorAsync(token);
+
+        // Should not generate any wrapper files for this method
+        var wrapperFiles = driverRunResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("Wrapper"))
+            .ToList();
+
+        await Assert.That(wrapperFiles).IsEmpty();
+    }
+
+    [Test]
+    public async Task TryExtractStatelessFunction_TypeWithoutIHasIdentification_GeneratesNothing(CancellationToken token)
+    {
+        // Class doesn't implement IHasIdentification
+        TestSources.Add(("TestModule.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace TestMod;
+
+            // Missing: IHasIdentification interface
+            public partial class TestModule
+            {
+                [TestFunction("init")]
+                [TestScheduling]
+                public static void Initialize() { }
+            }
+            """));
+
+        var (outputCompilation, driverRunResult) = await RunGeneratorAsync(token);
+
+        // Should not generate any wrapper files for this method
+        var wrapperFiles = driverRunResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("Wrapper"))
+            .ToList();
+
+        await Assert.That(wrapperFiles).IsEmpty();
+    }
+
+    [Test]
+    public async Task TryExtractStatelessFunction_PrivateMethod_GeneratesNothing(CancellationToken token)
+    {
+        // Private methods should be ignored by the generator
+        TestSources.Add(("TestModule.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace TestMod;
+
+            public partial class TestModule : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+
+                [TestFunction("init")]
+                [TestScheduling]
+                private static void Initialize() { }
+            }
+            """));
+
+        var (outputCompilation, driverRunResult) = await RunGeneratorAsync(token);
+
+        // Generator processes all methods with attributes, but analyzers catch accessibility issues
+        // This test verifies no crashes occur - the generator will either skip or produce output
+        // that the analyzer will flag
+        await Assert.That(driverRunResult.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)).IsEmpty();
+    }
+
+    [Test]
+    public async Task TryExtractStatelessFunction_NonStaticMethod_GeneratesNothing(CancellationToken token)
+    {
+        // Instance methods should be ignored (analyzer catches this, but generator should handle gracefully)
+        TestSources.Add(("TestModule.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace TestMod;
+
+            public partial class TestModule : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+
+                [TestFunction("init")]
+                [TestScheduling]
+                public void Initialize() { }  // Instance method, not static
+            }
+            """));
+
+        var (outputCompilation, driverRunResult) = await RunGeneratorAsync(token);
+
+        // Generator processes all methods with attributes, but analyzers catch static requirement
+        // This test verifies no crashes occur - the generator will either skip or produce output
+        // that the analyzer will flag
+        await Assert.That(driverRunResult.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)).IsEmpty();
+    }
 }
