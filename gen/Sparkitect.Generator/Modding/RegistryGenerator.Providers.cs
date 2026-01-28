@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sparkitect.Utilities;
 
 namespace Sparkitect.Generator.Modding;
 
@@ -90,7 +91,7 @@ public partial class RegistryGenerator
         // Parse constructor and named args syntactically to be resilient to error types
         if (!TryParseProviderArguments(attrSyntax, out var id, out var files))
             return null;
-        if (!IsSnakeCase(id)) return null;
+        if (!StringCase.IsSnakeCase(id)) return null;
 
         bool isTypeProvider = targetSymbol is INamedTypeSymbol;
         bool isPropertyProvider = targetSymbol is IPropertySymbol;
@@ -149,7 +150,7 @@ public partial class RegistryGenerator
         var propToId = new Dictionary<string, string>();
         foreach (var rf in model.ResourceFiles)
         {
-            propToId[RegistryGenerator.ToPascalCase(rf.Key) + "File"] = rf.Key;
+            propToId[StringCase.ToPascalCase(rf.Key) + "File"] = rf.Key;
         }
 
         var filesBuilder = new ImmutableValueArray<(string fileId, string fileName)>.Builder();

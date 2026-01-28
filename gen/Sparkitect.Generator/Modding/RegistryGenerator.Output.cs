@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Sparkitect.Utilities;
 
 namespace Sparkitect.Generator.Modding;
 
@@ -19,7 +20,7 @@ public partial class RegistryGenerator
             .OrderBy(e => e.Id)
             .Select(e =>
             {
-                var propName = ToPascalCase(e.Id);
+                var propName = StringCase.ToPascalCase(e.Id);
                 return new
                 {
                     Id = e.Id,
@@ -49,18 +50,18 @@ public partial class RegistryGenerator
 
     internal static bool RenderRegistryIdContainer(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
     {
-        fileName = $"{ToPascalCase(model.Key)}ID.g.cs";
+        fileName = $"{StringCase.ToPascalCase(model.Key)}ID.g.cs";
         var tpl = new
         {
-            CategoryPascal = ToPascalCase(model.Key)
+            CategoryPascal = StringCase.ToPascalCase(model.Key)
         };
         return FluidHelper.TryRenderTemplate("Modding.RegistryIdContainer.Framework.liquid", tpl, out code);
     }
 
     public static bool RenderRegistryIdExtensionsFramework(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
     {
-        var categoryPascal = ToPascalCase(model.Key);
-        var modPascal = ToPascalCase(settings.ModId);
+        var categoryPascal = StringCase.ToPascalCase(model.Key);
+        var modPascal = StringCase.ToPascalCase(settings.ModId);
         var registrationsNs = settings.SgOutputNamespace;
         var extensionsNs = settings.SgOutputNamespace;
 
@@ -82,7 +83,7 @@ public partial class RegistryGenerator
         var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
         fileName = $"{unit.Model.TypeName}.IdProperties_{suffix}.g.cs";
 
-        var categoryPascal = ToPascalCase(unit.Model.Key);
+        var categoryPascal = StringCase.ToPascalCase(unit.Model.Key);
         var registrationsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
             ? unit.Model.ContainingNamespace + ".Registrations"
             : settings.SgOutputNamespace + ".Registrations";
@@ -93,11 +94,11 @@ public partial class RegistryGenerator
         var tpl = new
         {
             ExtensionsNamespace = extensionsNs,
-            ModStructName = ToPascalCase(settings.ModId) + categoryPascal + "IDs",
+            ModStructName = StringCase.ToPascalCase(settings.ModId) + categoryPascal + "IDs",
             RegistrationsNamespace = registrationsNs,
             RegistryName = unit.Model.TypeName,
             SourceTag = suffix,
-            Entries = unit.Entries.OrderBy(e => e.Id).Select(e => new { PropertyName = ToPascalCase(e.Id) }).ToArray()
+            Entries = unit.Entries.OrderBy(e => e.Id).Select(e => new { PropertyName = StringCase.ToPascalCase(e.Id) }).ToArray()
         };
 
         return FluidHelper.TryRenderTemplate("Modding.RegistryIdProperties.Unit.liquid", tpl, out code);

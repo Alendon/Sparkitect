@@ -49,7 +49,9 @@ internal class FacadeHolder : IFacadeHolder
 
     public void AddFacade(Type facadeType, Type serviceType)
     {
-        _facadeMapping.Add(facadeType, serviceType);
+        if (!_facadeMapping.TryAdd(facadeType, serviceType))
+            throw new InvalidOperationException(
+                $"Facade type {facadeType.Name} is already registered (mapped to {_facadeMapping[facadeType].Name})");
     }
 
     public IReadOnlyDictionary<Type, Type> GetFacadeMapping()

@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Sparkitect.Generator.Modding;
+using Sparkitect.Utilities;
 
 namespace Sparkitect.Generator.Modding.Analyzers;
 
@@ -90,7 +91,7 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
                     ? $"{ns}.{registryType.Name}"
                     : registryType.Name;
 
-                var pascal = Sparkitect.Generator.Modding.RegistryGenerator.ToPascalCase(id);
+                var pascal = StringCase.ToPascalCase(id);
 
                 var bag = byRegistry.GetOrAdd(regKey, _ => new System.Collections.Concurrent.ConcurrentBag<Seen>());
                 bag.Add(new Seen(id, pascal, attrSyntax.GetLocation(), registryType.Name));
@@ -175,7 +176,7 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
         }
 
         // SPARK0231: id must be snake_case
-        if (!IsSnakeCase(id))
+        if (!StringCase.IsSnakeCase(id))
         {
             Report(ctx, RegistryDiagnostics.RegistrationIdNotSnakeCase, attrSyntax.GetLocation(), id);
         }
@@ -333,18 +334,6 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
             foreach (var t in AllTypes(n))
                 yield return t;
         }
-    }
-
-    private static bool IsSnakeCase(string s)
-    {
-        if (string.IsNullOrEmpty(s)) return false;
-        foreach (var ch in s)
-        {
-            if (ch == '_') continue;
-            if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) continue;
-            return false;
-        }
-        return true;
     }
 
     private enum ProviderUsageKind { Value, Type }

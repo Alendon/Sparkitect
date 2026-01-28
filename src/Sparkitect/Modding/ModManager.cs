@@ -368,7 +368,7 @@ internal class ModManager : IModManager
         assemblyStream.CopyTo(assemblyMemoryStream);
         assemblyMemoryStream.Seek(0, SeekOrigin.Begin);
 
-        MemoryStream? pdbMemoryStream = pdbStream is not null ? new MemoryStream() : null;
+        using MemoryStream? pdbMemoryStream = pdbStream is not null ? new MemoryStream() : null;
         pdbStream?.CopyTo(pdbMemoryStream!);
         pdbMemoryStream?.Seek(0, SeekOrigin.Begin);
 
@@ -395,7 +395,7 @@ internal class ModManager : IModManager
             assemblyStream.CopyTo(assemblyMemoryStream);
             assemblyMemoryStream.Seek(0, SeekOrigin.Begin);
 
-            MemoryStream? pdbMemoryStream = pdbStream is not null ? new MemoryStream() : null;
+            using MemoryStream? pdbMemoryStream = pdbStream is not null ? new MemoryStream() : null;
             pdbStream?.CopyTo(pdbMemoryStream!);
             pdbMemoryStream?.Seek(0, SeekOrigin.Begin);
 

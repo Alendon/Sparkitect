@@ -1,6 +1,5 @@
-﻿namespace Sparkitect.Utils;
+namespace Sparkitect.Utils;
 
-public class PropertyManager : IPropertyManager
+public class PropertyManager : PropertyManagerBase
 {
-    
 }

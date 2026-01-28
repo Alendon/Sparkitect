@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sparkitect.Generator.Modding;
+using Sparkitect.Utilities;
 
 namespace Sparkitect.Generator.Stateless;
 
@@ -122,7 +123,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         // Extract scheduling constructor params and match attributes
         var schedulingParams = ExtractSchedulingParams(schedulingType, methodSymbol);
 
-        var identifierPascal = RegistryGenerator.ToPascalCase(identifier);
+        var identifierPascal = StringCase.ToPascalCase(identifier);
         var wrapperClassName = $"{identifierPascal}Func";
         var parentFullName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var wrapperFullTypeName = $"{parentFullName}.{wrapperClassName}";
@@ -463,8 +464,8 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         fileName = $"{parentShort}_{func.Identifier}_Wrapper.g.cs";
 
         // Build ID property path: {CategoryPascal}ID.{ModIdPascal}.{IdentifierPascal}
-        var categoryPascal = RegistryGenerator.ToPascalCase(func.RegistryKey);
-        var modIdPascal = RegistryGenerator.ToPascalCase(settings.ModId);
+        var categoryPascal = StringCase.ToPascalCase(func.RegistryKey);
+        var modIdPascal = StringCase.ToPascalCase(settings.ModId);
         var idPropertyPath = $"global::Sparkitect.Modding.IDs.{categoryPascal}ID.{modIdPascal}.{func.IdentifierPascal}";
 
         var model = new

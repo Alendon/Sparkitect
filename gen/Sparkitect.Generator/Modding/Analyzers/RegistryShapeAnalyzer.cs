@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Sparkitect.Generator;
+using Sparkitect.Utilities;
 
 namespace Sparkitect.Generator.Modding.Analyzers;
 
@@ -97,7 +98,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         }
 
         // SPARK0206: Identifier must be snake_case (letters and underscores only)
-        if (!string.IsNullOrWhiteSpace(identifier) && !IsSnakeCase(identifier!))
+        if (!string.IsNullOrWhiteSpace(identifier) && !StringCase.IsSnakeCase(identifier!))
         {
             ctx.ReportDiagnostic(Diagnostic.Create(
                 RegistryDiagnostics.CategoryIdentifierNotSnakeCase,
@@ -182,18 +183,6 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
                 regAttrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name));
         }
-    }
-
-    private static bool IsSnakeCase(string s)
-    {
-        if (string.IsNullOrEmpty(s)) return false;
-        foreach (var ch in s)
-        {
-            if (ch == '_') continue;
-            if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) continue;
-            return false;
-        }
-        return true;
     }
 
     private static void AnalyzeRegistryMethod(SymbolAnalysisContext ctx)

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sparkitect.Utilities;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -170,7 +171,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 var kvp = entryDict.First();
 
                 var id = kvp.Key;
-                if (string.IsNullOrWhiteSpace(id) || !IsSnakeCase(id)) continue;
+                if (string.IsNullOrWhiteSpace(id) || !StringCase.IsSnakeCase(id)) continue;
 
                 var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
 
@@ -301,7 +302,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
     {
         var identifierEntry = registryAttribute.NamedArguments.FirstOrDefault(x => x.Key is RegistryAttributeIdField);
         if (identifierEntry.Value.Value is not string id || string.IsNullOrWhiteSpace(id)) return null;
-        if (!IsSnakeCase(id)) return null;
+        if (!StringCase.IsSnakeCase(id)) return null;
 
         var namespaceName = symbol.ContainingNamespace?.ToDisplayString();
         if (string.IsNullOrWhiteSpace(namespaceName) ||
@@ -601,53 +602,6 @@ public partial class RegistryGenerator : IIncrementalGenerator
         }
     }
 
-
-    internal static string ToSnakeCase(string s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return s;
-        var sb = new System.Text.StringBuilder();
-        for (int i = 0; i < s.Length; i++)
-        {
-            var c = s[i];
-            if (char.IsUpper(c))
-            {
-                if (i > 0) sb.Append('_');
-                sb.Append(char.ToLowerInvariant(c));
-            }
-            else sb.Append(c);
-        }
-
-        return sb.ToString();
-    }
-
-    internal static string ToPascalCase(string s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return s;
-        var parts = s.Split(new[] { '_', '-', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-        var sb = new System.Text.StringBuilder();
-        foreach (var p in parts)
-        {
-            if (p.Length == 0) continue;
-            sb.Append(char.ToUpperInvariant(p[0]));
-            if (p.Length > 1) sb.Append(p.Substring(1));
-        }
-
-        return sb.ToString();
-    }
-
-    internal static bool IsSnakeCase(string s)
-    {
-        if (string.IsNullOrEmpty(s)) return false;
-        for (int i = 0; i < s.Length; i++)
-        {
-            var ch = s[i];
-            if (ch == '_') continue;
-            if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) continue;
-            return false;
-        }
-        return true;
-    }
-
     internal static bool RenderRegistryAttributes(RegistryModel model, out string code, out string fileName)
     {
         fileName = $"{model.TypeName}_Attributes.g.cs";
@@ -655,7 +609,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         // Always use keyed properties: {PascalCase(Key)}File
         var files = model.ResourceFiles
             .OrderBy(r => r.Key)
-            .Select(r => new { Prop = ToPascalCase(r.Key) + "File", IsNullable = !r.Required })
+            .Select(r => new { Prop = StringCase.ToPascalCase(r.Key) + "File", IsNullable = !r.Required })
             .ToArray();
 
         var templateModel = new
