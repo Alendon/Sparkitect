@@ -16,7 +16,8 @@ public record ModManifestModel(
     IReadOnlyList<string> Authors,
     IReadOnlyList<ModRelationshipModel> Relationships,
     string ModAssembly,
-    IReadOnlyList<string> RequiredAssemblies = null);
+    IReadOnlyList<string> RequiredAssemblies = null,
+    bool IsRootMod = false);
 
 /// <summary>
 /// Represents a relationship between mods (dependency, incompatibility, etc.)

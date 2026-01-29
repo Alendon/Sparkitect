@@ -9,6 +9,7 @@
         <ModAuthor>Alendon</ModAuthor>
         <ModDescription>Minimal sample mod for Sparkitect</ModDescription>
         <ModType>Game</ModType>
+        <IsRootMod>true</IsRootMod>
         <LangVersion>preview</LangVersion>
 
         <TargetFramework>net10.0</TargetFramework>
@@ -28,10 +29,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <!-- Project reference instead of package reference -->
-        <ProjectReference Include="..\..\src\Sparkitect\Sparkitect.csproj"/>
         <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer"/>
-        
+    </ItemGroup>
+
+    <!-- Mod dependencies -->
+    <ItemGroup>
+        <ModProjectDependency Include="..\..\src\Sparkitect\Sparkitect.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -20,6 +20,8 @@ namespace Sparkitect.GameState;
 [CreateServiceFactory<IGameStateManager>]
 internal sealed class GameStateManager : IGameStateManager, IGameStateManagerRegistryFacade, IGameStateManagerStateFacade
 {
+    private const string DefaultRootModConfigPath = "mods/roots.json";
+
     private readonly Dictionary<Identification, StateMetadata> _registeredStates = new();
     private readonly Dictionary<Identification, ModuleMetadata> _registeredModules = new();
     private readonly Stack<ActiveStateFrame> _stateStack = new();
@@ -48,10 +50,8 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     {
         Log.Information("Entering root state");
 
-        // Discover and load root mods
-        var rootMods = ModManager.DiscoveredArchives
-            .Select(a => a.Id)
-            .ToArray();
+        // Select and load root mods using config file or fallback logic
+        var rootMods = SelectRootMods();
 
         Log.Information("Loading {ModCount} root mods", rootMods.Length);
         ModManager.LoadMods(rootMods);
@@ -710,5 +710,102 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
 
         Log.Information("Shutdown complete");
+    }
+
+    /// <summary>
+    /// Selects which root mods to load at startup based on configuration.
+    /// </summary>
+    /// <returns>Array of mod IDs to load as roots.</returns>
+    /// <remarks>
+    /// <para>Selection priority:</para>
+    /// <list type="number">
+    ///   <item>If roots.json config exists: load only specified mods</item>
+    ///   <item>If no config but mods with IsRootMod=true exist: load those mods</item>
+    ///   <item>If no config and no IsRootMod mods: load all discovered mods (backward compatibility)</item>
+    /// </list>
+    /// </remarks>
+    private string[] SelectRootMods()
+    {
+        var configPath = DefaultRootModConfigPath;
+        var config = RootModConfiguration.LoadConfig(configPath);
+
+        if (config != null)
+        {
+            // Config exists: load only specified mods
+            return SelectRootModsFromConfig(config);
+        }
+
+        // No config: check for mods marked as IsRootMod
+        var rootMods = ModManager.DiscoveredArchives
+            .Where(m => m.IsRootMod)
+            .Select(m => m.Id)
+            .ToArray();
+
+        if (rootMods.Length > 0)
+        {
+            Log.Information("No root mod config found. Loading {Count} mods with IsRootMod=true", rootMods.Length);
+            return rootMods;
+        }
+
+        // Backward compatibility: no config + no IsRootMod mods = load all discovered mods
+        Log.Information("No root mod config and no IsRootMod mods found. Loading all {Count} discovered mods (backward compatibility)",
+            ModManager.DiscoveredArchives.Count);
+        return ModManager.DiscoveredArchives.Select(m => m.Id).ToArray();
+    }
+
+    /// <summary>
+    /// Selects root mods from configuration, validating each entry.
+    /// </summary>
+    /// <param name="config">The loaded root mod configuration.</param>
+    /// <returns>Array of mod IDs to load.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when config has validation errors.</exception>
+    private string[] SelectRootModsFromConfig(RootModConfig config)
+    {
+        var errors = new List<ValidationError>();
+        var selectedIds = new List<string>();
+
+        foreach (var entry in config.RootMods)
+        {
+            // Find matching manifest
+            ModManifest? selectedManifest;
+            if (entry.Version != null)
+            {
+                // Exact version match requested
+                selectedManifest = ModManager.DiscoveredArchives
+                    .FirstOrDefault(m => m.Id == entry.Id && m.Version == entry.Version);
+            }
+            else
+            {
+                // No version specified: pick newest using Semver comparison (stable > prerelease per research decision)
+                selectedManifest = ModManager.DiscoveredArchives
+                    .Where(m => m.Id == entry.Id)
+                    .OrderByDescending(m => m.Version)
+                    .FirstOrDefault();
+            }
+
+            if (selectedManifest == null)
+            {
+                errors.Add(new ValidationError.NotFound(entry.Id));
+                continue;
+            }
+
+            // Validate IsRootMod flag (per RESEARCH.md Pitfall 4)
+            if (!selectedManifest.IsRootMod)
+            {
+                errors.Add(new ValidationError.NotRootMod(entry.Id));
+                continue;
+            }
+
+            selectedIds.Add(selectedManifest.Id);
+        }
+
+        if (errors.Count > 0)
+        {
+            var errorMessages = string.Join(Environment.NewLine, errors.Select(e => $"  - {e.Message}"));
+            throw new InvalidOperationException($"Root mod configuration errors:{Environment.NewLine}{errorMessages}");
+        }
+
+        Log.Information("Root mod config loaded. Loading {Count} root mods", selectedIds.Count);
+        return selectedIds.ToArray();
     }
 }

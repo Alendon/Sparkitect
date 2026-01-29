@@ -68,8 +68,10 @@ internal class ModManager : IModManager
         // Find all .sparkmod files in the mods folder
         var modFiles = Directory.GetFiles(modsFolder, "*.sparkmod", SearchOption.TopDirectoryOnly);
 
-        // Clear any previously discovered archives
+        // Clear any previously discovered archives and duplicate tracking
         _discoveredArchives.Clear();
+        _seenModIdentifiers.Clear();
+        _modIdentifierPaths.Clear();
 
         // Check for additional mod directories specified in command line arguments
         var additionalModFiles = new List<string>();
@@ -95,6 +97,11 @@ internal class ModManager : IModManager
         Log.Information("Discovered {ModCount} mods", _discoveredArchives.Count);
     }
 
+    // Track seen mod identifiers for duplicate detection during discovery
+    private readonly HashSet<ModFileIdentifier> _seenModIdentifiers = [];
+    // Track first-seen path for each identifier for duplicate warning messages
+    private readonly Dictionary<ModFileIdentifier, string> _modIdentifierPaths = new();
+
     private void DiscoverModArchive(string modFile)
     {
         // Open the zip archive
@@ -119,7 +126,21 @@ internal class ModManager : IModManager
 
         manifest = manifest with { ModPath = modFile };
 
-        // For now, just store the archive for later loading
+        // Check for exact duplicate (same ID AND same Version)
+        var identifier = new ModFileIdentifier(manifest.Id, manifest.Version);
+        if (!_seenModIdentifiers.Add(identifier))
+        {
+            // Exact duplicate - warn and skip (same ID and same version)
+            var existingPath = _modIdentifierPaths.GetValueOrDefault(identifier, "unknown");
+            Log.Warning("Duplicate mod discovered: {Id}@{Version} (already found at {ExistingPath})",
+                manifest.Id, manifest.Version, existingPath);
+            return;
+        }
+
+        // Track the path for this identifier (for future duplicate warnings)
+        _modIdentifierPaths[identifier] = modFile;
+
+        // Store the archive for later loading
         _discoveredArchives.Add(manifest);
 
         Log.Information("Discovered mod: {ModFile}", Path.GetFileName(modFile));
@@ -151,8 +172,10 @@ internal class ModManager : IModManager
         }
     }
 
-    private void ValidateModDependencies(ReadOnlySpan<string> modIdsToLoad)
+    private ValidationResult ValidateModDependencies(ReadOnlySpan<string> modIdsToLoad)
     {
+        var errors = new List<ValidationError>();
+
         var allAvailableMods = new HashSet<string>(_loadedMods.Keys);
         foreach (var modId in modIdsToLoad)
         {
@@ -166,12 +189,19 @@ internal class ModManager : IModManager
 
             foreach (var relationship in modManifest.Relationships)
             {
+                // Check for self-reference (Pitfall 5)
+                if (relationship.Id == modId)
+                {
+                    errors.Add(new ValidationError.SelfReference(modId));
+                    continue;
+                }
+
                 if (relationship.RelationshipType == ModRelationshipType.Dependency)
                 {
                     if (!allAvailableMods.Contains(relationship.Id))
                     {
-                        throw new InvalidOperationException(
-                            $"Mod '{modId}' requires dependency '{relationship.Id}' which is not loaded or available.");
+                        errors.Add(new ValidationError.MissingDependency(modId, relationship.Id));
+                        continue;
                     }
 
                     var dependencyManifest = _discoveredArchives.FirstOrDefault(m => m.Id == relationship.Id)
@@ -179,8 +209,11 @@ internal class ModManager : IModManager
 
                     if (dependencyManifest != null && !relationship.VersionRange.Contains(dependencyManifest.Version))
                     {
-                        throw new InvalidOperationException(
-                            $"Mod '{modId}' requires '{relationship.Id}' version {relationship.VersionRange}, but found version {dependencyManifest.Version}.");
+                        errors.Add(new ValidationError.VersionMismatch(
+                            modId,
+                            relationship.Id,
+                            relationship.VersionRange.ToString(),
+                            dependencyManifest.Version.ToString()));
                     }
                 }
                 else if (relationship.RelationshipType == ModRelationshipType.Incompatible)
@@ -192,15 +225,24 @@ internal class ModManager : IModManager
 
                         if (incompatibleManifest != null && relationship.VersionRange.Contains(incompatibleManifest.Version))
                         {
-                            throw new InvalidOperationException(
-                                $"Mod '{modId}' is incompatible with '{relationship.Id}' version {incompatibleManifest.Version}.");
+                            errors.Add(new ValidationError.IncompatibleMod(
+                                modId,
+                                relationship.Id,
+                                incompatibleManifest.Version.ToString()));
                         }
                     }
                 }
             }
         }
 
+        if (errors.Count > 0)
+        {
+            Log.Debug("Mod dependency validation found {ErrorCount} errors for {Count} mods", errors.Count, modIdsToLoad.Length);
+            return ValidationResult.Failure(errors);
+        }
+
         Log.Debug("Mod dependency validation completed successfully for {Count} mods", modIdsToLoad.Length);
+        return ValidationResult.Success;
     }
 
     /// <summary>
@@ -209,12 +251,12 @@ internal class ModManager : IModManager
     /// <returns>A ModManifest representing the Sparkitect core</returns>
     private ModManifest CreateSparkitectModManifest()
     {
-        // This method will be implemented by the user later
+        // Virtual manifest for Sparkitect engine - values mirror Sparkitect.csproj properties
         return new ModManifest
         (
-            Id: Constants.VirtualSparkitectModId,
-            Name: "Sparkitect Core",
-            Version: SemVersion.Parse("1.0.0"),
+            Id: Constants.VirtualSparkitectModId,  // "sparkitect" - matches ModIdentifier in csproj
+            Name: "Sparkitect",                     // Matches ModName in csproj
+            Version: SemVersion.Parse("1.0.0"),     // Matches ModVersion in csproj
             Description: "Core engine functionality",
             ModAssembly: "Sparkitect",
             ModPath: null!, // No physical path for virtual mod
@@ -229,7 +271,13 @@ internal class ModManager : IModManager
     /// </summary>
     public void LoadMods(params ReadOnlySpan<string> modIds)
     {
-        ValidateModDependencies(modIds);
+        var validationResult = ValidateModDependencies(modIds);
+
+        if (!validationResult.IsValid)
+        {
+            var errorMessages = string.Join(Environment.NewLine, validationResult.Errors.Select(e => $"  - {e.Message}"));
+            throw new InvalidOperationException($"Mod dependency validation failed:{Environment.NewLine}{errorMessages}");
+        }
 
         _loadedModGroups.TryPeek(out var parentModGroup);
         var loadContext = new SparkitectLoadContext(parentModGroup?.LoadContextHandle.Target as SparkitectLoadContext,

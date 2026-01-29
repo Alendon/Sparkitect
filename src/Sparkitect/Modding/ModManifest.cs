@@ -16,6 +16,7 @@ namespace Sparkitect.Modding;
 /// <param name="Relationships">Mod dependencies and incompatibilities.</param>
 /// <param name="ModAssembly">Primary mod assembly file name.</param>
 /// <param name="RequiredAssemblies">Additional required assembly file names.</param>
+/// <param name="IsRootMod">Whether this mod can be loaded as a root mod at engine startup. Default is false.</param>
 public record ModManifest(
     string Id,
     string Name,
@@ -26,7 +27,8 @@ public record ModManifest(
     [property: JsonIgnore] string? ModPath,
     IReadOnlyList<ModRelationship> Relationships,
     string ModAssembly,
-    IReadOnlyList<string> RequiredAssemblies);
+    IReadOnlyList<string> RequiredAssemblies,
+    bool IsRootMod = false);
 
 /// <summary>
 /// Defines a relationship between mods (dependency, optional dependency, or incompatibility).

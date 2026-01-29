@@ -14,7 +14,13 @@
     <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.GenerateModManifest" AssemblyFile="$(SparkitectSdkTaskDll)" />
     <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.CreateModArchive" AssemblyFile="$(SparkitectSdkTaskDll)" />
     <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.ParseDependencyFile" AssemblyFile="$(SparkitectSdkTaskDll)" />
-    
+
+    <!-- Convert ModProjectDependency items to ProjectReference for compile-time resolution -->
+    <!-- This runs during evaluation phase so references are available for restore/compile -->
+    <ItemGroup>
+        <ProjectReference Include="@(ModProjectDependency)" />
+    </ItemGroup>
+
     <!-- Detect dependencies from deps.json file -->
     <Target Name="DetectSparkitectDependencies"
             BeforeTargets="GenerateModManifest"
@@ -50,6 +56,11 @@
             ModAuthor="$(ModAuthor)"
             AssemblyPath="$(TargetPath)"
             RequiredAssemblies="$(SparkitectRequiredAssemblies)"
+            ModProjectDependencies="@(ModProjectDependency)"
+            IsRootMod="$(IsRootMod)"
+            Configuration="$(Configuration)"
+            TargetFramework="$(TargetFramework)"
+            ProjectDirectory="$(MSBuildProjectDirectory)"
             OutputPath="$(SparkitectModManifestIntermediatePath)" />
     </Target>
     

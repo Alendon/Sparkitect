@@ -8,6 +8,7 @@
         <ModAuthor>Sparkitect</ModAuthor>
         <ModDescription>Minimal Pong game sample for Sparkitect</ModDescription>
         <ModType>Game</ModType>
+        <IsRootMod>true</IsRootMod>
         <LangVersion>preview</LangVersion>
 
         <TargetFramework>net10.0</TargetFramework>
@@ -28,12 +29,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Sparkitect\Sparkitect.csproj"/>
         <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer"/>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="OneOf" Version="3.0.271" />
+    </ItemGroup>
+
+    <!-- Mod dependencies -->
+    <ItemGroup>
+        <ModProjectDependency Include="..\..\src\Sparkitect\Sparkitect.csproj" />
     </ItemGroup>
 
     <!-- Slang shaders to compile -->

@@ -22,6 +22,7 @@
     <PropertyGroup>
         <ModName>Sparkitect</ModName>
         <ModIdentifier>sparkitect</ModIdentifier>
+        <ModVersion>1.0.0</ModVersion>
         <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
 
         <InterceptorsNamespaces>$(InterceptorsNamespaces);Sparkitect.LogEnricher;Sparkitect.CallerContext</InterceptorsNamespaces>

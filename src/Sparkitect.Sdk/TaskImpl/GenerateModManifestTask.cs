@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+using System.Text.Json;
+using System.Xml.Linq;
 using Microsoft.Build.Framework;
 using Semver;
 using Sparkitect.Sdk.TaskImpl.Models;
@@ -58,6 +59,35 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
     public string RequiredAssemblies { get; set; } = string.Empty;
 
     /// <summary>
+    /// ModProjectDependency items from the project file.
+    /// Each item's ItemSpec is the relative path to the referenced .csproj file.
+    /// </summary>
+    public ITaskItem[] ModProjectDependencies { get; set; } = Array.Empty<ITaskItem>();
+
+    // TODO: ModDependency (package-style) processing deferred to future phase.
+    // When implemented, add: public ITaskItem[] ModDependencies { get; set; } = Array.Empty<ITaskItem>();
+
+    /// <summary>
+    /// Whether this mod can be loaded as a root mod by the bootstrapper.
+    /// </summary>
+    public bool IsRootMod { get; set; } = false;
+
+    /// <summary>
+    /// The build configuration (Debug/Release) for finding referenced manifest files.
+    /// </summary>
+    public string Configuration { get; set; } = "Debug";
+
+    /// <summary>
+    /// The target framework for finding referenced manifest files.
+    /// </summary>
+    public string TargetFramework { get; set; } = "";
+
+    /// <summary>
+    /// The project directory for resolving relative paths in ModProjectDependency items.
+    /// </summary>
+    public string ProjectDirectory { get; set; } = "";
+
+    /// <summary>
     /// Executes the task to generate the manifest
     /// </summary>
     public override bool Execute()
@@ -88,6 +118,58 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
                     .Select(a => Path.GetFileName(a.Trim()))
                     .ToArray();
 
+            // Process ModProjectDependency items to build relationships list
+            // Read mod metadata directly from referenced .csproj files (no build order dependency)
+            var relationships = new List<ModRelationshipModel>();
+            foreach (var item in ModProjectDependencies)
+            {
+                var projectPath = item.ItemSpec;
+                var optional = string.Equals(item.GetMetadata("Optional"), "true", StringComparison.OrdinalIgnoreCase);
+
+                // Resolve the path relative to ProjectDirectory
+                var absoluteProjectPath = Path.IsPathRooted(projectPath)
+                    ? projectPath
+                    : Path.GetFullPath(Path.Combine(ProjectDirectory, projectPath));
+
+                if (!File.Exists(absoluteProjectPath))
+                {
+                    Log.LogError($"Could not find ModProjectDependency '{projectPath}' at '{absoluteProjectPath}'");
+                    continue;
+                }
+
+                // Read mod metadata directly from the .csproj file
+                string? referencedModId;
+                try
+                {
+                    var csprojDoc = XDocument.Load(absoluteProjectPath);
+                    referencedModId = csprojDoc.Descendants("ModIdentifier").FirstOrDefault()?.Value;
+                }
+                catch (Exception ex)
+                {
+                    Log.LogError($"Failed to parse .csproj for ModProjectDependency '{projectPath}': {ex.Message}");
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(referencedModId))
+                {
+                    Log.LogError($"ModProjectDependency '{projectPath}' does not have a ModIdentifier property. " +
+                                 "Ensure the referenced project is configured as a mod project.");
+                    continue;
+                }
+
+                // Validate no self-reference
+                if (string.Equals(referencedModId, ModIdentifier, StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.LogError($"Mod '{ModIdentifier}' cannot depend on itself via ModProjectDependency");
+                    continue;
+                }
+
+                var relationshipType = optional ? ModRelationshipType.OptionalDependency : ModRelationshipType.Dependency;
+                relationships.Add(new ModRelationshipModel(referencedModId, SemVersionRange.All, relationshipType));
+
+                Log.LogMessage(MessageImportance.Normal, $"Resolved ModProjectDependency '{projectPath}' to mod '{referencedModId}'");
+            }
+
             // Create the manifest model
             var manifest = new ModManifestModel(
                 ModIdentifier,
@@ -95,9 +177,10 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
                 ModDescription,
                 semVersion,
                 authorsList,
-                Array.Empty<ModRelationshipModel>(), // Empty relationships for now
+                relationships,
                 assemblyFileName,
-                requiredAssembliesList
+                requiredAssembliesList,
+                IsRootMod
             );
 
             // Serialize to JSON
