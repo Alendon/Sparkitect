@@ -41,4 +41,8 @@
             <Optional>false</Optional>
         </ModProjectDependency>
     </ItemDefinitionGroup>
-</Project>  
+    <!-- Expose MSBuild properties to Roslyn analyzers -->
+    <ItemGroup>
+        <CompilerVisibleProperty Include="ModIdentifier" />
+    </ItemGroup>
+</Project>

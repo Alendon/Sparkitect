@@ -28,7 +28,6 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
         RegistryDiagnostics.ProviderReturnTypeIncompatible,
         RegistryDiagnostics.TypeDoesNotSatisfyConstraints,
         RegistryDiagnostics.DuplicateRegistrationId,
-        RegistryDiagnostics.RegistrationIdNotSnakeCase,
         RegistryDiagnostics.DiParameterShouldBeAbstract,
         RegistryDiagnostics.DuplicateNormalizedPropertyName
     ];
@@ -173,12 +172,6 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
         {
             Report(ctx, RegistryDiagnostics.ProviderMissingId, attrSyntax.GetLocation(), attrSyntax.Name.ToString());
             return; // further checks rely on an id
-        }
-
-        // SPARK0231: id must be snake_case
-        if (!StringCase.IsSnakeCase(id))
-        {
-            Report(ctx, RegistryDiagnostics.RegistrationIdNotSnakeCase, attrSyntax.GetLocation(), id);
         }
 
         // SPARK0221: provider member must be static (methods/properties)

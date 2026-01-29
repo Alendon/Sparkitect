@@ -9,15 +9,15 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
 {
     public Type ServiceType => typeof(global::DiTest.ITestService);
     public Type ImplementationType => typeof(TestService);
-    
+
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
     
     ];
-    
+
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
     
     ];
-    
+
     public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         
@@ -33,7 +33,7 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
     }
 
     public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container) => CreateInstance(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
-    
+
     public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         if (instance is not TestService typedInstance)

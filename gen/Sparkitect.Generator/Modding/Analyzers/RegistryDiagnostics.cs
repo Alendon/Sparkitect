@@ -136,11 +136,6 @@ public static class RegistryDiagnostics
             "Duplicate registration id '{0}' for registry '{1}'. Rename one registration - each id must be unique.",
             Category, DiagnosticSeverity.Error, true, customTags: WellKnownDiagnosticTags.CompilationEnd);
 
-    public static readonly DiagnosticDescriptor RegistrationIdNotSnakeCase =
-        new("SPARK0231", "Registration id must be snake_case",
-            "Registration id '{0}' must be snake_case. Use only lowercase letters, digits, and underscores.",
-            Category, DiagnosticSeverity.Error, true);
-
     public static readonly DiagnosticDescriptor DiParameterShouldBeAbstract =
         new("SPARK0232", "Prefer abstract/interface DI parameters",
             "Parameter '{0}' of type '{1}' should be an interface or abstract class for DI resolution. Change to an interface or mark nullable.",

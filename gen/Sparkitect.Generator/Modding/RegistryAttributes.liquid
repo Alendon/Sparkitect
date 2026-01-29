@@ -7,7 +7,7 @@ namespace {{ Namespace }};
 public partial class {{ RegistryName }}
 {
 {% for method in Methods -%}
-    public class {{ method.Name }}Attribute(string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
+    public class {{ method.Name }}Attribute([global::Sparkitect.Utilities.SnakeCase] string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
     {
         public bool GroupAtRoot { get; set; } = false;
 {%- for f in method.Files -%}

@@ -14,25 +14,25 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
     
     private global::DiTest.ISerializer _prop_1;
     
-    
+
     public Type ImplementationType => typeof(XmlProcessor);
-    
+
     
     
     public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => XmlProcessor.ProcessorKey;
     
     
-    
+
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
     
         (typeof(global::DiTest.ILogger), false) 
     ];
-    
+
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
     
         (typeof(global::DiTest.ISerializer), false) 
     ];
-    
+
     public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         bool allResolved = true;
@@ -71,20 +71,20 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
     }
 
     public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container) => TryPrepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
-    
+
     public global::DiTest.IProcessor CreateInstance()
     {
         // Validate that all required dependencies are prepared
     
         
         if (_arg_1 is null)
-            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<XmlProcessor, global::DiTest.ILogger>();
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<XmlProcessor, global::DiTest.ILogger>("");
         
     
     
         
         if (_prop_1 is null)
-            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<XmlProcessor, global::DiTest.ISerializer>();
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForProperty<XmlProcessor, global::DiTest.ISerializer>("");
         
     
 
@@ -101,13 +101,13 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
     
 
         return instance;
-    
+
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
         static extern XmlProcessor Constructor(
 
     global::DiTest.ILogger arg_1  
 );
-        
+
     
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Method, Name = "set_Serializer")]
         static extern void SetProperty_1(global::DiTest.XmlProcessor target, global::DiTest.ISerializer value);

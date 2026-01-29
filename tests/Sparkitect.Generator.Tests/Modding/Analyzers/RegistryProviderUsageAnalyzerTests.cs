@@ -29,7 +29,6 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         var analyzer = new RegistryProviderUsageAnalyzer();
         var ids = analyzer.SupportedDiagnostics.Select(d => d.Id).ToArray();
         await Assert.That(ids.Contains("SPARK0220")).IsTrue();
-        await Assert.That(ids.Contains("SPARK0231")).IsTrue();
     }
 
     [Test]
@@ -142,7 +141,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
     }
 
     [Test]
-    public async Task Id_NotSnakeCase_Reports_2031()
+    public async Task ValidSnakeCase_NoUnrelatedDiagnostics()
     {
         var code = """
         using Sparkitect.Modding;
@@ -158,41 +157,14 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
 
         public static class Providers
         {
-            [DummyRegistry.RegisterValue("Bad-Id")] // not snake_case
-            public static string Value() => "x";
-        }
-        """;
-
-        TestSources.Add(("P5.cs", code));
-        var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK0231", 1);
-    }
-
-    [Test]
-    public async Task Id_WithNumbers_No_2031()
-    {
-        var code = """
-        using Sparkitect.Modding;
-
-        namespace DiTest;
-
-        [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
-        {
-            [RegistryMethod]
-            public void RegisterValue(Identification id, string value) { }
-        }
-
-        public static class Providers
-        {
-            [DummyRegistry.RegisterValue("id_123")] // allowed
+            [DummyRegistry.RegisterValue("id_123")] // valid snake_case
             public static string Value() => "x";
         }
         """;
 
         TestSources.Add(("P5b.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await Assert.That(diagnostics.Any(d => d.Id == "SPARK0231")).IsFalse();
+        await AssertNoDiagnostics(diagnostics);
     }
 
     [Test]

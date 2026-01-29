@@ -12,24 +12,24 @@ internal class JsonProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<
     private global::DiTest.ILogger _arg_1;
     
     
-    
+
     public Type ImplementationType => typeof(JsonProcessor);
-    
+
     
     
     public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => "json";
     
     
-    
+
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
     
         (typeof(global::DiTest.ILogger), false) 
     ];
-    
+
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
     
     ];
-    
+
     public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         bool allResolved = true;
@@ -59,14 +59,14 @@ internal class JsonProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<
     }
 
     public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container) => TryPrepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
-    
+
     public global::DiTest.IProcessor CreateInstance()
     {
         // Validate that all required dependencies are prepared
     
         
         if (_arg_1 is null)
-            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<JsonProcessor, global::DiTest.ILogger>();
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<JsonProcessor, global::DiTest.ILogger>("");
         
     
     
@@ -80,13 +80,13 @@ internal class JsonProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<
     
 
         return instance;
-    
+
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
         static extern JsonProcessor Constructor(
 
     global::DiTest.ILogger arg_1  
 );
-        
+
     
     }
 }

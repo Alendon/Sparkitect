@@ -61,3 +61,14 @@
 | SPARK0403 | Sparkitect | Warning  | Parameter may not be DI-resolvable                                    |
 | SPARK0404 | Sparkitect | Error    | Container must implement IHasIdentification                           |
 | SPARK0405 | Sparkitect | Warning  | Ordering attribute without scheduling                                 |
+
+<!-- Category 05: Naming Diagnostics -->
+
+| SPARK0501 | Sparkitect | Error    | ModIdentifier must be snake_case                                      |
+| SPARK0502 | Sparkitect | Error    | Identifier must be snake_case                                         |
+
+### Removed Rules
+
+| Rule ID   | Category   | Severity | Notes                                                                       |
+|-----------|------------|----------|-----------------------------------------------------------------------------|
+| SPARK0231 | Sparkitect | Error    | Replaced by SPARK0502 via [SnakeCase] attribute on generated provider attributes |

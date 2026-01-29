@@ -59,4 +59,47 @@ internal static class StringCase
         }
         return true;
     }
+
+    /// <summary>
+    /// Checks if a string is in strict snake_case format as required by Sparkitect naming validation.
+    /// Rules:
+    /// - Only lowercase letters (a-z), digits (0-9), and underscores
+    /// - Must start with a letter
+    /// - No consecutive underscores
+    /// - No leading or trailing underscores
+    /// - No dots
+    /// </summary>
+    internal static bool IsStrictSnakeCase(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return false;
+
+        // Must start with a letter
+        if (s[0] < 'a' || s[0] > 'z') return false;
+
+        // No trailing underscore
+        if (s[s.Length - 1] == '_') return false;
+
+        bool prevWasUnderscore = false;
+        for (int i = 0; i < s.Length; i++)
+        {
+            var ch = s[i];
+
+            if (ch == '_')
+            {
+                // No consecutive underscores
+                if (prevWasUnderscore) return false;
+                prevWasUnderscore = true;
+                continue;
+            }
+
+            prevWasUnderscore = false;
+
+            // Only a-z and 0-9 allowed (dots explicitly disallowed)
+            if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) continue;
+
+            return false;
+        }
+
+        return true;
+    }
 }

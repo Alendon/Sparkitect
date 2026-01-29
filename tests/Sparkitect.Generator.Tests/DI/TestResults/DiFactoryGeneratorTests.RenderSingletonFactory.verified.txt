@@ -8,19 +8,19 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
 {
     public Type ServiceType => typeof(global::DiTest.ITestService);
     public Type ImplementationType => typeof(TestService);
-    
+
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
     
         (typeof(global::DiTest.IDependencyA), false) ,
         (typeof(global::DiTest.IDependencyB), true) 
     ];
-    
+
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
     
         (typeof(global::DiTest.IDependencyC), false) ,
         (typeof(global::DiTest.IDependencyD), true) 
     ];
-    
+
     public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         
@@ -34,7 +34,7 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
                 if(!container.TryResolveInternal<global::DiTest.IDependencyA>(out arg_1))
                 {
                 
-                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyA>();
+                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<TestService, global::DiTest.IDependencyA>("");
                 
                 }
             }
@@ -43,7 +43,7 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
                 if(!container.TryResolveInternal(argType_1, out var resolved_1))
                 {
                 
-                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyA>();
+                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<TestService, global::DiTest.IDependencyA>("");
                 
                 }
                 arg_1 = (global::DiTest.IDependencyA)resolved_1;
@@ -86,7 +86,7 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
     }
 
     public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container) => CreateInstance(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
-    
+
     public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
     {
         if (instance is not TestService typedInstance)
@@ -103,7 +103,7 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
             if(!container.TryResolveInternal<global::DiTest.IDependencyC>(out arg_1))
             {
             
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyC>();
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForProperty<TestService, global::DiTest.IDependencyC>("");
             
             }
             else
@@ -116,7 +116,7 @@ internal class TestService_Factory : Sparkitect.DI.IServiceFactory
             if(!container.TryResolveInternal(propType_1, out var resolved_1))
             {
             
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.Create<TestService, global::DiTest.IDependencyC>();
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForProperty<TestService, global::DiTest.IDependencyC>("");
             
             }
             else
