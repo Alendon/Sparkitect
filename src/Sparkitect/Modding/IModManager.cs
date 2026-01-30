@@ -12,19 +12,19 @@ namespace Sparkitect.Modding;
 public interface IModManager
 {
     //TODO adjust to expose a "hierarchy" of loaded mods. Eg first a group of engine mods get loaded and later a group of game mods
-    
-    
+
+
 
     /// <summary>
-    /// Gets a collection of all loaded mods
+    /// Gets a collection of all loaded mods with their file identifiers (ID + Version).
     /// </summary>
-    IReadOnlyCollection<string> LoadedMods { get; }
+    IReadOnlyCollection<ModFileIdentifier> LoadedMods { get; }
 
     /// <summary>
     /// Gets loaded mods organized by loading groups. Each group represents a set of mods loaded together
     /// (e.g., engine mods first, then game mods).
     /// </summary>
-    IReadOnlyList<IReadOnlyList<string>> LoadedModsPerGroup { get; }
+    IReadOnlyList<IReadOnlyList<ModFileIdentifier>> LoadedModsPerGroup { get; }
 
     /// <summary>
     /// Gets all mod archives discovered during mod discovery.
@@ -37,13 +37,14 @@ public interface IModManager
     void DiscoverMods();
 
     /// <summary>
-    /// Loads all discovered mods
+    /// Loads the specified mods by their file identifiers.
     /// </summary>
-    void LoadMods(params ReadOnlySpan<string> modIds);
+    /// <param name="identifiers">The mod file identifiers (ID + Version) to load.</param>
+    void LoadMods(params ReadOnlySpan<ModFileIdentifier> identifiers);
 
     /// <summary>
-    /// Unloads the last loaded mod group
+    /// Unloads the last loaded mod group.
     /// </summary>
-    /// <returns>The mod IDs that were unloaded</returns>
-    IReadOnlyList<string> UnloadLastModGroup();
+    /// <returns>The mod file identifiers that were unloaded.</returns>
+    IReadOnlyList<ModFileIdentifier> UnloadLastModGroup();
 }

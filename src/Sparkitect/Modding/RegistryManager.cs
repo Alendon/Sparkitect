@@ -53,28 +53,28 @@ internal class RegistryManager : IRegistryManager
     [MemberNotNull(nameof(_registryFactory))]
     internal void UpdateCache(ICoreContainer? coreContainer = null)
     {
-        var modSet = ModManager.LoadedMods;
+        // Extract mod IDs for comparison (runtime identification is ID-based)
+        var modIds = ModManager.LoadedMods.Select(m => m.Id).ToList();
         var effectiveContainer = coreContainer ?? GameStateManager.CurrentCoreContainer;
-        
-        if (_lastModSet?.SetEquals(modSet) is true && _registryFactory is not null && effectiveContainer.Equals(_lastCoreContainer)) return;
-        
+
+        if (_lastModSet?.SetEquals(modIds) is true && _registryFactory is not null && effectiveContainer.Equals(_lastCoreContainer)) return;
+
         if (_lastModSet is null)
         {
-            _lastModSet = new HashSet<string>(modSet);
+            _lastModSet = new HashSet<string>(modIds);
         }
         else
         {
             _lastModSet.Clear();
-            _lastModSet.UnionWith(modSet);
+            _lastModSet.UnionWith(modIds);
         }
 
         _registryFactory?.Dispose();
 
-        
+
         var facadeHolder = new FacadeHolder();
 
-        var allLoadedMods = ModManager.LoadedMods.ToList();
-        using (var registryFacadeContainer = ModDIService.CreateEntrypointContainer<IRegistryFacadeConfigurator>(allLoadedMods))
+        using (var registryFacadeContainer = ModDIService.CreateEntrypointContainer<IRegistryFacadeConfigurator>(modIds))
         {
             registryFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
         }
@@ -88,7 +88,7 @@ internal class RegistryManager : IRegistryManager
             FactoryKeyType.String,
             facadeMap);
 
-        using var configuratorContainer = ModDIService.CreateEntrypointContainer<IRegistryConfigurator>(allLoadedMods);
+        using var configuratorContainer = ModDIService.CreateEntrypointContainer<IRegistryConfigurator>(modIds);
         configuratorContainer.ProcessMany(x => x.ConfigureRegistries(builder));
 
         _registryFactory = builder.Build(true);
@@ -151,8 +151,8 @@ internal class RegistryManager : IRegistryManager
     {
         var registryIdentifier = TRegistry.Identifier;
 
-        // Get all loaded mods
-        var allLoadedMods = ModManager.LoadedMods.ToHashSet();
+        // Get all loaded mod IDs (runtime identification is ID-based)
+        var allLoadedModIds = ModManager.LoadedMods.Select(m => m.Id).ToHashSet();
 
         // Get already processed mods for this registry
         var processedMods = _processedModsByRegistry.TryGetValue(registryIdentifier, out var processed)
@@ -160,7 +160,7 @@ internal class RegistryManager : IRegistryManager
             : new HashSet<string>();
 
         // Find missing mods
-        var missingMods = allLoadedMods.Except(processedMods).ToList();
+        var missingMods = allLoadedModIds.Except(processedMods).ToList();
 
         if (missingMods.Count == 0)
         {

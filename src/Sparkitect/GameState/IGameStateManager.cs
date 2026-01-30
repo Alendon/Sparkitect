@@ -35,9 +35,9 @@ public interface IGameStateManager
     /// Loads specified mods, processes their registrations, then transitions.
     /// </summary>
     /// <param name="stateIdFunc">Function returning the target state identification (called after mods are loaded).</param>
-    /// <param name="additionalMods">Mod IDs to load before transition.</param>
+    /// <param name="additionalMods">Mod file identifiers (ID + Version) to load before transition.</param>
     /// <param name="payload">Optional payload data passed to the target state.</param>
-    void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<string> additionalMods, object? payload = null);
+    void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<ModFileIdentifier> additionalMods, object? payload = null);
 
     /// <summary>
     /// Requests engine shutdown.

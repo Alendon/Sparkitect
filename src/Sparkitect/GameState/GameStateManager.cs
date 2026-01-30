@@ -55,24 +55,27 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         Log.Information("Loading {ModCount} root mods", rootMods.Length);
         ModManager.LoadMods(rootMods);
-        
+
+        // Extract mod IDs for registry processing and DI (runtime identification)
+        var rootModIds = rootMods.Select(m => m.Id).ToArray();
+
         RegistryManager.AddRegistry<ModuleRegistry>();
         RegistryManager.AddRegistry<StateRegistry>();
         RegistryManager.AddRegistry<PerFrameRegistry>();
         RegistryManager.AddRegistry<TransitionRegistry>();
 
-        // Process registries for root mods
-        RegistryManager.ProcessRegistry<ModuleRegistry>(rootMods);
-        RegistryManager.ProcessRegistry<StateRegistry>(rootMods);
-        RegistryManager.ProcessRegistry<PerFrameRegistry>(rootMods);
-        RegistryManager.ProcessRegistry<TransitionRegistry>(rootMods);
+        // Process registries for root mods (uses IDs)
+        RegistryManager.ProcessRegistry<ModuleRegistry>(rootModIds);
+        RegistryManager.ProcessRegistry<StateRegistry>(rootModIds);
+        RegistryManager.ProcessRegistry<PerFrameRegistry>(rootModIds);
+        RegistryManager.ProcessRegistry<TransitionRegistry>(rootModIds);
 
         // Finalize registrations
         FinalizeRegistrations();
 
         // Query entry state selector to determine initial active state
         // Note: Root state is registered but never framed - it's a semantic anchor
-        using var entrySelectorContainer = ModDIService.CreateEntrypointContainer<IEntryStateSelector>(rootMods);
+        using var entrySelectorContainer = ModDIService.CreateEntrypointContainer<IEntryStateSelector>(rootModIds);
         var entrySelector = entrySelectorContainer.ResolveMany().FirstOrDefault();
 
         if (entrySelector == null)
@@ -90,7 +93,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         Log.Information("Selected entry state: {StateId}", entryStateId);
 
         // Create entry state frame (not Root - Root is never framed)
-        var entryFrame = CreateStateFrame(entryStateId, RootContainer, rootMods);
+        var entryFrame = CreateStateFrame(entryStateId, RootContainer, rootModIds);
 
         PushState(entryFrame);
 
@@ -148,7 +151,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         Log.Debug("Queued state transition to {StateId}", stateId);
     }
 
-    public void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<string> additionalMods, object? payload = null)
+    public void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<ModFileIdentifier> additionalMods, object? payload = null)
     {
         if (_stateStack.Count == 0)
         {
@@ -159,14 +162,17 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         Log.Information("Loading {ModCount} additional mods for state transition", additionalMods.Count);
 
-        // Load the mods
+        // Load the mods (uses ModFileIdentifier for version-specific loading)
         ModManager.LoadMods(additionalMods.ToArray());
 
-        // Process registries for the newly loaded mods
-        RegistryManager.ProcessRegistry<ModuleRegistry>(additionalMods);
-        RegistryManager.ProcessRegistry<StateRegistry>(additionalMods);
-        RegistryManager.ProcessRegistry<PerFrameRegistry>(additionalMods);
-        RegistryManager.ProcessRegistry<TransitionRegistry>(additionalMods);
+        // Extract mod IDs for registry processing (runtime identification)
+        var additionalModIds = additionalMods.Select(m => m.Id).ToList();
+
+        // Process registries for the newly loaded mods (uses IDs)
+        RegistryManager.ProcessRegistry<ModuleRegistry>(additionalModIds);
+        RegistryManager.ProcessRegistry<StateRegistry>(additionalModIds);
+        RegistryManager.ProcessRegistry<PerFrameRegistry>(additionalModIds);
+        RegistryManager.ProcessRegistry<TransitionRegistry>(additionalModIds);
 
         // Finalize registrations (validates state/module hierarchy)
         FinalizeRegistrations();
@@ -206,12 +212,12 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             var parentFrame = _stateStack.Peek();
             ExecuteMethods(parentFrame.TransitionExitMethods);
 
-            // Create child frame
+            // Create child frame (uses IDs for state frame tracking)
             var parentContainer = _stateStack.Peek().Container;
-            var childFrame = CreateStateFrame(targetStateId, parentContainer, additionalMods);
+            var childFrame = CreateStateFrame(targetStateId, parentContainer, additionalModIds);
 
-            // Reconstruct frame with AddedMods
-            childFrame = childFrame with { AddedMods = additionalMods };
+            // Reconstruct frame with AddedMods (stores IDs for runtime tracking)
+            childFrame = childFrame with { AddedMods = additionalModIds };
 
             PushState(childFrame);
 
@@ -715,7 +721,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     /// <summary>
     /// Selects which root mods to load at startup based on configuration.
     /// </summary>
-    /// <returns>Array of mod IDs to load as roots.</returns>
+    /// <returns>Array of mod file identifiers to load as roots.</returns>
     /// <remarks>
     /// <para>Selection priority:</para>
     /// <list type="number">
@@ -724,7 +730,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     ///   <item>If no config and no IsRootMod mods: load all discovered mods (backward compatibility)</item>
     /// </list>
     /// </remarks>
-    private string[] SelectRootMods()
+    private ModFileIdentifier[] SelectRootMods()
     {
         var configPath = DefaultRootModConfigPath;
         var config = RootModConfiguration.LoadConfig(configPath);
@@ -738,7 +744,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         // No config: check for mods marked as IsRootMod
         var rootMods = ModManager.DiscoveredArchives
             .Where(m => m.IsRootMod)
-            .Select(m => m.Id)
+            .Select(m => new ModFileIdentifier(m.Id, m.Version))
             .ToArray();
 
         if (rootMods.Length > 0)
@@ -750,19 +756,19 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         // Backward compatibility: no config + no IsRootMod mods = load all discovered mods
         Log.Information("No root mod config and no IsRootMod mods found. Loading all {Count} discovered mods (backward compatibility)",
             ModManager.DiscoveredArchives.Count);
-        return ModManager.DiscoveredArchives.Select(m => m.Id).ToArray();
+        return ModManager.DiscoveredArchives.Select(m => new ModFileIdentifier(m.Id, m.Version)).ToArray();
     }
 
     /// <summary>
     /// Selects root mods from configuration, validating each entry.
     /// </summary>
     /// <param name="config">The loaded root mod configuration.</param>
-    /// <returns>Array of mod IDs to load.</returns>
+    /// <returns>Array of mod file identifiers to load.</returns>
     /// <exception cref="InvalidOperationException">Thrown when config has validation errors.</exception>
-    private string[] SelectRootModsFromConfig(RootModConfig config)
+    private ModFileIdentifier[] SelectRootModsFromConfig(RootModConfig config)
     {
         var errors = new List<ValidationError>();
-        var selectedIds = new List<string>();
+        var selectedIdentifiers = new List<ModFileIdentifier>();
 
         foreach (var entry in config.RootMods)
         {
@@ -796,7 +802,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
                 continue;
             }
 
-            selectedIds.Add(selectedManifest.Id);
+            selectedIdentifiers.Add(new ModFileIdentifier(selectedManifest.Id, selectedManifest.Version));
         }
 
         if (errors.Count > 0)
@@ -805,7 +811,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             throw new InvalidOperationException($"Root mod configuration errors:{Environment.NewLine}{errorMessages}");
         }
 
-        Log.Information("Root mod config loaded. Loading {Count} root mods", selectedIds.Count);
-        return selectedIds.ToArray();
+        Log.Information("Root mod config loaded. Loading {Count} root mods", selectedIdentifiers.Count);
+        return selectedIdentifiers.ToArray();
     }
 }

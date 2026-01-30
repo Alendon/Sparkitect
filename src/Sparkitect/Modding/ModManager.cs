@@ -44,12 +44,13 @@ internal class ModManager : IModManager
     }
 
     /// <summary>
-    /// Gets a collection of all loaded mods
+    /// Gets a collection of all loaded mods with their file identifiers (ID + Version).
     /// </summary>
-    public IReadOnlyCollection<string> LoadedMods => _loadedMods.Keys;
+    public IReadOnlyCollection<ModFileIdentifier> LoadedMods =>
+        _loadedMods.Values.Select(m => new ModFileIdentifier(m.Manifest.Id, m.Manifest.Version)).ToList();
 
-    public IReadOnlyList<IReadOnlyList<string>> LoadedModsPerGroup =>
-        _loadedModGroups.Select(g => g.ModIds).ToList();
+    public IReadOnlyList<IReadOnlyList<ModFileIdentifier>> LoadedModsPerGroup =>
+        _loadedModGroups.Select(g => g.ModIdentifiers).ToList();
 
     public IReadOnlyList<ModManifest> DiscoveredArchives => _discoveredArchives;
 
@@ -267,10 +268,13 @@ internal class ModManager : IModManager
     }
 
     /// <summary>
-    /// Loads all discovered mods
+    /// Loads the specified mods by their file identifiers.
     /// </summary>
-    public void LoadMods(params ReadOnlySpan<string> modIds)
+    /// <param name="identifiers">The mod file identifiers (ID + Version) to load.</param>
+    public void LoadMods(params ReadOnlySpan<ModFileIdentifier> identifiers)
     {
+        // Validation uses IDs only (dependencies are ID-based)
+        var modIds = identifiers.ToArray().Select(x => x.Id).ToArray();
         var validationResult = ValidateModDependencies(modIds);
 
         if (!validationResult.IsValid)
@@ -283,17 +287,18 @@ internal class ModManager : IModManager
         var loadContext = new SparkitectLoadContext(parentModGroup?.LoadContextHandle.Target as SparkitectLoadContext,
             _preLoadedAssemblies);
 
-        var newLoadedMods = new List<LoadedMod>(modIds.Length);
+        var newLoadedMods = new List<LoadedMod>(identifiers.Length);
 
-        foreach (var modId in modIds)
+        foreach (var identifier in identifiers)
         {
-            var modManifest = _discoveredArchives.FirstOrDefault(m => m.Id == modId);
-            IdentificationManager.RegisterMod(modId);
+            // Find manifest by BOTH Id AND Version for unambiguous selection
+            var modManifest = _discoveredArchives.FirstOrDefault(m => m.Id == identifier.Id && m.Version == identifier.Version);
+            IdentificationManager.RegisterMod(identifier.Id);
 
             if (modManifest is null)
             {
                 //TODO result based error handling
-                throw new InvalidOperationException($"Mod {modId} not found");
+                throw new InvalidOperationException($"Mod {identifier} not found");
             }
 
             // Check if it is a virtual mod (e.g. Sparkitect core)
@@ -301,7 +306,7 @@ internal class ModManager : IModManager
             {
                 if (!_preLoadedAssemblies.TryGetValue(modManifest.ModAssembly, out var preLoadedAssembly))
                 {
-                    Log.Warning("Virtual mod {ModId} assembly {Assembly} not found", modId, modManifest.ModAssembly);
+                    Log.Warning("Virtual mod {ModId} assembly {Assembly} not found", identifier.Id, modManifest.ModAssembly);
                     continue;
                 }
 
@@ -312,7 +317,7 @@ internal class ModManager : IModManager
                     Manifest = modManifest
                 });
 
-                Log.Information("Loaded virtual mod: {ModId}", modId);
+                Log.Information("Loaded virtual mod: {ModId}", identifier.Id);
                 continue;
             }
 
@@ -323,10 +328,10 @@ internal class ModManager : IModManager
                 archive = ZipFile.OpenRead(modManifest.ModPath);
 
                 // Load required assemblies first
-                LoadModDependencies(modManifest, archive, modId, loadContext);
+                LoadModDependencies(modManifest, archive, identifier.Id, loadContext);
 
                 // Load the main mod assembly
-                var assembly = LoadModAssembly(archive, modManifest, modId, loadContext);
+                var assembly = LoadModAssembly(archive, modManifest, identifier.Id, loadContext);
                 newLoadedMods.Add(new LoadedMod
                 {
                     Archive = archive,
@@ -350,7 +355,7 @@ internal class ModManager : IModManager
         var modGroup = new LoadedModGroup()
         {
             LoadContextHandle = GCHandle.Alloc(loadContext, GCHandleType.Normal),
-            ModIds = modIds.ToArray()
+            ModIdentifiers = identifiers.ToArray()
         };
 
         _loadedModGroups.Push(modGroup);
@@ -364,24 +369,24 @@ internal class ModManager : IModManager
         Log.Information("Loaded {ModCount} mods", _loadedMods.Count);
     }
 
-    public IReadOnlyList<string> UnloadLastModGroup()
+    public IReadOnlyList<ModFileIdentifier> UnloadLastModGroup()
     {
         if (_loadedModGroups.Count == 0)
         {
             Log.Warning("Attempted to unload mod group but no groups are loaded");
-            return Array.Empty<string>();
+            return Array.Empty<ModFileIdentifier>();
         }
 
         var group = _loadedModGroups.Pop();
-        var modIds = group.ModIds;
+        var identifiers = group.ModIdentifiers;
 
-        foreach (var modId in modIds)
+        foreach (var identifier in identifiers)
         {
-            if (_loadedMods.TryGetValue(modId, out var loadedMod))
+            if (_loadedMods.TryGetValue(identifier.Id, out var loadedMod))
             {
-                ResourceManager.OnModUnloaded(modId);
+                ResourceManager.OnModUnloaded(identifier.Id);
                 loadedMod.Archive?.Dispose();
-                _loadedMods.Remove(modId);
+                _loadedMods.Remove(identifier.Id);
             }
         }
 
@@ -391,11 +396,12 @@ internal class ModManager : IModManager
         }
         group.LoadContextHandle.Free();
 
-        // Notify ModDIService of unloaded mods
+        // Notify ModDIService of unloaded mods (uses IDs)
+        var modIds = identifiers.Select(i => i.Id).ToArray();
         ModDiService.UnregisterMods(modIds);
 
-        Log.Information("Unloaded {ModCount} mods from group", modIds.Length);
-        return modIds;
+        Log.Information("Unloaded {ModCount} mods from group", identifiers.Length);
+        return identifiers;
     }
 
     private static Assembly LoadModAssembly(ZipArchive archive, ModManifest modManifest, string modId,
@@ -462,7 +468,7 @@ internal class ModManager : IModManager
     private class LoadedModGroup
     {
         public required GCHandle LoadContextHandle { get; init; }
-        public required string[] ModIds { get; init; }
+        public required ModFileIdentifier[] ModIdentifiers { get; init; }
     }
 
     private class LoadedMod
