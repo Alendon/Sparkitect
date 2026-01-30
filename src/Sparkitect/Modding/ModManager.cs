@@ -197,28 +197,9 @@ internal class ModManager : IModManager
                     continue;
                 }
 
-                if (relationship.RelationshipType == ModRelationshipType.Dependency)
+                if (relationship.IsIncompatible)
                 {
-                    if (!allAvailableMods.Contains(relationship.Id))
-                    {
-                        errors.Add(new ValidationError.MissingDependency(modId, relationship.Id));
-                        continue;
-                    }
-
-                    var dependencyManifest = _discoveredArchives.FirstOrDefault(m => m.Id == relationship.Id)
-                        ?? _loadedMods.GetValueOrDefault(relationship.Id)?.Manifest;
-
-                    if (dependencyManifest != null && !relationship.VersionRange.Contains(dependencyManifest.Version))
-                    {
-                        errors.Add(new ValidationError.VersionMismatch(
-                            modId,
-                            relationship.Id,
-                            relationship.VersionRange.ToString(),
-                            dependencyManifest.Version.ToString()));
-                    }
-                }
-                else if (relationship.RelationshipType == ModRelationshipType.Incompatible)
-                {
+                    // Incompatibility check - error if incompatible mod is present
                     if (allAvailableMods.Contains(relationship.Id))
                     {
                         var incompatibleManifest = _discoveredArchives.FirstOrDefault(m => m.Id == relationship.Id)
@@ -233,6 +214,29 @@ internal class ModManager : IModManager
                         }
                     }
                 }
+                else if (!relationship.IsOptional)
+                {
+                    // Required dependency - error if missing
+                    if (!allAvailableMods.Contains(relationship.Id))
+                    {
+                        errors.Add(new ValidationError.MissingDependency(modId, relationship.Id));
+                        continue;
+                    }
+
+                    // Version check for required dependencies
+                    var dependencyManifest = _discoveredArchives.FirstOrDefault(m => m.Id == relationship.Id)
+                        ?? _loadedMods.GetValueOrDefault(relationship.Id)?.Manifest;
+
+                    if (dependencyManifest != null && !relationship.VersionRange.Contains(dependencyManifest.Version))
+                    {
+                        errors.Add(new ValidationError.VersionMismatch(
+                            modId,
+                            relationship.Id,
+                            relationship.VersionRange.ToString(),
+                            dependencyManifest.Version.ToString()));
+                    }
+                }
+                // Optional dependencies (IsOptional = true, IsIncompatible = false): no validation needed
             }
         }
 

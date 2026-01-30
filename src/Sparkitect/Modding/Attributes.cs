@@ -97,3 +97,43 @@ public class RegistryFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> w
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class RegistryFacadeAttribute : Attribute;
+
+/// <summary>
+/// Marks a class as containing code that depends on an optional mod's types.
+/// Isolate optional mod type references to marked classes to prevent TypeLoadException.
+/// </summary>
+/// <seealso cref="ModLoadedGuardAttribute"/>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+public sealed class OptionalModDependentAttribute : Attribute
+{
+    /// <summary>
+    /// Gets the mod ID that this class depends on.
+    /// </summary>
+    public string ModId { get; }
+
+    /// <param name="modId">The mod identifier this class depends on.</param>
+    public OptionalModDependentAttribute(string modId)
+    {
+        ModId = modId ?? throw new ArgumentNullException(nameof(modId));
+    }
+}
+
+/// <summary>
+/// Marks a method as a guarded entry point for optional mod code.
+/// Callers must check IsModLoaded before invoking this method.
+/// </summary>
+/// <seealso cref="OptionalModDependentAttribute"/>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
+public sealed class ModLoadedGuardAttribute : Attribute
+{
+    /// <summary>
+    /// Gets the mod ID that this method guards access to.
+    /// </summary>
+    public string ModId { get; }
+
+    /// <param name="modId">The mod identifier this method guards.</param>
+    public ModLoadedGuardAttribute(string modId)
+    {
+        ModId = modId ?? throw new ArgumentNullException(nameof(modId));
+    }
+}

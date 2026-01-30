@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using Semver;
 using Sparkitect.Sdk.TaskImpl.Utils;
 
@@ -20,31 +20,23 @@ public record ModManifestModel(
     bool IsRootMod = false);
 
 /// <summary>
-/// Represents a relationship between mods (dependency, incompatibility, etc.)
+/// Represents a relationship between mods.
 /// </summary>
+/// <remarks>
+/// Relationship semantics based on boolean properties:
+/// <list type="bullet">
+///   <item><description>Default (IsOptional=false, IsIncompatible=false) = Required dependency.</description></item>
+///   <item><description>IsOptional=true = Optional dependency.</description></item>
+///   <item><description>IsIncompatible=true = Incompatibility marker.</description></item>
+/// </list>
+/// </remarks>
+/// <param name="Id">Target mod identifier.</param>
+/// <param name="VersionRange">Acceptable version range using semantic versioning.</param>
+/// <param name="IsOptional">Whether this dependency is optional. Default is false (required).</param>
+/// <param name="IsIncompatible">Whether this marks an incompatibility. Default is false.</param>
 public record struct ModRelationshipModel(
     string Id,
     [property: JsonConverter(typeof(SemVersionRangeJsonConverter))]
     SemVersionRange VersionRange,
-    ModRelationshipType RelationshipType);
-
-/// <summary>
-/// Defines the type of relationship between mods
-/// </summary>
-public enum ModRelationshipType
-{
-    /// <summary>
-    /// The mod requires this dependency to function
-    /// </summary>
-    Dependency,
-    
-    /// <summary>
-    /// The mod can use this dependency if available, but it's not required
-    /// </summary>
-    OptionalDependency,
-    
-    /// <summary>
-    /// The mod is incompatible with this other mod
-    /// </summary>
-    Incompatible
-}
+    bool IsOptional = false,
+    bool IsIncompatible = false);

@@ -5,3 +5,5 @@
 - name: Core Systems
   href: core/toc.yml
   topicHref: core/index.md
+- name: Optional Dependencies
+  href: optional-dependencies.md

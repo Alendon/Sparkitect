@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using Semver;
 using Sparkitect.Utils;
 
@@ -31,34 +31,23 @@ public record ModManifest(
     bool IsRootMod = false);
 
 /// <summary>
-/// Defines a relationship between mods (dependency, optional dependency, or incompatibility).
+/// Defines a relationship between mods.
 /// </summary>
+/// <remarks>
+/// Relationship semantics based on boolean properties:
+/// <list type="bullet">
+///   <item><description>Default (IsOptional=false, IsIncompatible=false) = Required dependency - mod cannot load without it.</description></item>
+///   <item><description>IsOptional=true = Optional dependency - mod can load without it but will use it if present.</description></item>
+///   <item><description>IsIncompatible=true = Incompatibility marker - mod cannot load if this mod is present.</description></item>
+/// </list>
+/// </remarks>
 /// <param name="Id">Target mod identifier.</param>
 /// <param name="VersionRange">Acceptable version range using semantic versioning.</param>
-/// <param name="RelationshipType">Type of relationship.</param>
+/// <param name="IsOptional">Whether this dependency is optional. Default is false (required).</param>
+/// <param name="IsIncompatible">Whether this marks an incompatibility. Default is false.</param>
 public record struct ModRelationship(
     string Id,
     [property: JsonConverter(typeof(SemVersionRangeJsonConverter))]
     SemVersionRange VersionRange,
-    ModRelationshipType RelationshipType);
-
-/// <summary>
-/// Type of relationship between mods.
-/// </summary>
-public enum ModRelationshipType
-{
-    /// <summary>
-    /// Required dependency - mod cannot load without it.
-    /// </summary>
-    Dependency,
-
-    /// <summary>
-    /// Optional dependency - mod can load without it but will use it if present.
-    /// </summary>
-    OptionalDependency,
-
-    /// <summary>
-    /// Incompatibility - mod cannot load if this mod is present.
-    /// </summary>
-    Incompatible
-}
+    bool IsOptional = false,
+    bool IsIncompatible = false);

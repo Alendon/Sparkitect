@@ -23,6 +23,13 @@ public interface IGameStateManager
     IEnumerable<string> LoadedMods { get; }
 
     /// <summary>
+    /// Checks if a mod with the given ID is currently loaded.
+    /// </summary>
+    /// <param name="modId">The mod identifier to check.</param>
+    /// <returns>True if the mod is loaded, false otherwise.</returns>
+    bool IsModLoaded(string modId);
+
+    /// <summary>
     /// Requests a state transition to an immediate parent or child state.
     /// Transition executes between frames.
     /// </summary>

@@ -164,8 +164,7 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
                     continue;
                 }
 
-                var relationshipType = optional ? ModRelationshipType.OptionalDependency : ModRelationshipType.Dependency;
-                relationships.Add(new ModRelationshipModel(referencedModId, SemVersionRange.All, relationshipType));
+                relationships.Add(new ModRelationshipModel(referencedModId, SemVersionRange.All, IsOptional: optional));
 
                 Log.LogMessage(MessageImportance.Normal, $"Resolved ModProjectDependency '{projectPath}' to mod '{referencedModId}'");
             }
