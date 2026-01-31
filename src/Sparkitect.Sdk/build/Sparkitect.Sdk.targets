@@ -10,72 +10,71 @@
         <SparkitectAutoDetectDependencies Condition="'$(SparkitectAutoDetectDependencies)' == ''">true</SparkitectAutoDetectDependencies>
         <SparkitectResourceDirectory Condition="'$(SparkitectResourceDirectory)' == ''">$(MSBuildProjectDirectory)/Resources</SparkitectResourceDirectory>
     </PropertyGroup>
-    
-    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.GenerateModManifest" AssemblyFile="$(SparkitectSdkTaskDll)" />
-    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.CreateModArchive" AssemblyFile="$(SparkitectSdkTaskDll)" />
-    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.ParseDependencyFile" AssemblyFile="$(SparkitectSdkTaskDll)" />
 
-    <!-- Convert ModProjectDependency items to ProjectReference for compile-time resolution -->
-    <!-- This runs during evaluation phase so references are available for restore/compile -->
+    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.GenerateModManifest" AssemblyFile="$(SparkitectSdkTaskDll)"/>
+    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.CreateModArchive" AssemblyFile="$(SparkitectSdkTaskDll)"/>
+    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.ParseDependencyFile" AssemblyFile="$(SparkitectSdkTaskDll)"/>
+
     <ItemGroup>
-        <ProjectReference Include="@(ModProjectDependency)" />
+        <ProjectReference Include="@(ModProjectDependency)"/>
     </ItemGroup>
+
 
     <!-- Detect dependencies from deps.json file -->
     <Target Name="DetectSparkitectDependencies"
             BeforeTargets="GenerateModManifest"
             Condition="'$(SparkitectAutoDetectDependencies)' == 'true'">
-        
-        <ParseDependencyFile 
-            DependencyFilePath="$(OutputPath)$(TargetName).deps.json"
-            TargetFramework="$(TargetFramework)"
-            AssemblyVersion="$(Version)"
-            AssemblyName="$(AssemblyName)"
-            OutputDirectory="$(OutputPath)">
-            <Output TaskParameter="DirectDependencies" PropertyName="SparkitectDetectedDependencies" />
+
+        <ParseDependencyFile
+                DependencyFilePath="$(OutputPath)$(TargetName).deps.json"
+                TargetFramework="$(TargetFramework)"
+                AssemblyVersion="$(Version)"
+                AssemblyName="$(AssemblyName)"
+                OutputDirectory="$(OutputPath)">
+            <Output TaskParameter="DirectDependencies" PropertyName="SparkitectDetectedDependencies"/>
         </ParseDependencyFile>
-        
-        
+
+
         <!-- Combine manually specified and auto-detected dependencies -->
         <PropertyGroup>
             <SparkitectRequiredAssemblies Condition="'$(SparkitectRequiredAssemblies)' != ''">$(SparkitectRequiredAssemblies);$(SparkitectDetectedDependencies)</SparkitectRequiredAssemblies>
             <SparkitectRequiredAssemblies Condition="'$(SparkitectRequiredAssemblies)' == ''">$(SparkitectDetectedDependencies)</SparkitectRequiredAssemblies>
         </PropertyGroup>
     </Target>
-    
+
     <!-- Generate mod manifest -->
-    <Target Name="GenerateModManifest" 
-            AfterTargets="Build" 
+    <Target Name="GenerateModManifest"
+            AfterTargets="Build"
             DependsOnTargets="DetectSparkitectDependencies"
             Condition="'$(SparkitectModPackageEnabled)' == 'true'">
         <GenerateModManifest
-            ModIdentifier="$(ModIdentifier)"
-            ModName="$(ModName)"
-            ModDescription="$(ModDescription)"
-            ModVersion="$(ModVersion)"
-            ModAuthor="$(ModAuthor)"
-            AssemblyPath="$(TargetPath)"
-            RequiredAssemblies="$(SparkitectRequiredAssemblies)"
-            ModProjectDependencies="@(ModProjectDependency)"
-            IsRootMod="$(IsRootMod)"
-            Configuration="$(Configuration)"
-            TargetFramework="$(TargetFramework)"
-            ProjectDirectory="$(MSBuildProjectDirectory)"
-            OutputPath="$(SparkitectModManifestIntermediatePath)" />
+                ModIdentifier="$(ModIdentifier)"
+                ModName="$(ModName)"
+                ModDescription="$(ModDescription)"
+                ModVersion="$(ModVersion)"
+                ModAuthor="$(ModAuthor)"
+                AssemblyPath="$(TargetPath)"
+                RequiredAssemblies="$(SparkitectRequiredAssemblies)"
+                ModProjectDependencies="@(ModProjectDependency)"
+                IsRootMod="$(IsRootMod)"
+                Configuration="$(Configuration)"
+                TargetFramework="$(TargetFramework)"
+                ProjectDirectory="$(MSBuildProjectDirectory)"
+                OutputPath="$(SparkitectModManifestIntermediatePath)"/>
     </Target>
-    
+
     <!-- Create mod archive -->
     <Target Name="CreateModArchive"
             AfterTargets="GenerateModManifest"
             DependsOnTargets="GenerateModManifest"
             Condition="'$(SparkitectModPackageEnabled)' == 'true'">
         <CreateModArchive
-            OutputArchivePath="$(SparkitectModArchiveOutputPath)"
-            ManifestPath="$(SparkitectModManifestIntermediatePath)"
-            AssemblyPath="$(TargetPath)"
-            RequiredAssemblies="$(SparkitectRequiredAssemblies)"
-            ResourceDirectory="$(SparkitectResourceDirectory)" />
+                OutputArchivePath="$(SparkitectModArchiveOutputPath)"
+                ManifestPath="$(SparkitectModManifestIntermediatePath)"
+                AssemblyPath="$(TargetPath)"
+                RequiredAssemblies="$(SparkitectRequiredAssemblies)"
+                ResourceDirectory="$(SparkitectResourceDirectory)"/>
 
-        <Message Text="Mod archive created at: $(SparkitectModArchiveOutputPath)" Importance="high" />
+        <Message Text="Mod archive created at: $(SparkitectModArchiveOutputPath)" Importance="high"/>
     </Target>
 </Project>

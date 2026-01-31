@@ -37,7 +37,7 @@
         </ModDependency>
         <!-- ModProjectDependency: Project-style reference by path (like ProjectReference)
              Fully implemented in this phase -->
-        <ModProjectDependency>
+        <ModProjectDependency Visible="false">
             <Optional>false</Optional>
         </ModProjectDependency>
     </ItemDefinitionGroup>

@@ -20,11 +20,6 @@
         <AdditionalFiles Include="**/*.sparkres.yaml" />
     </ItemGroup>
     
-    <!-- Properties for mod packaging -->
-    <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
-    <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.Shader.targets"/>
-    <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.targets"/>
-    
     <!-- Validate mod properties -->
     <Target Name="ValidateModProperties" BeforeTargets="Build">
         <Error Text="ModName must be set" Condition="'$(ModName)' == ''"/>
@@ -80,4 +75,9 @@
             <Compile Include="$(DevLauncherFile)" />
         </ItemGroup>
     </Target>
+
+    <!-- Properties for mod packaging -->
+    <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.Shader.targets"/>
+    <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.targets"/>
+    <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
 </Project>
