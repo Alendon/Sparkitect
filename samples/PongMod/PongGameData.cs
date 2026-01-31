@@ -23,6 +23,11 @@ public struct PongGameData
     public Vector2 BallVelocity;
     public float BallRadius;
 
+    /// <summary>
+    /// Background clear color RGB. Values in [0,1] range.
+    /// </summary>
+    public Vector3 BackgroundColor;
+
     // Scores
     public int LeftScore;
     public int RightScore;
@@ -40,6 +45,7 @@ public struct PongGameData
         BallPosition = new Vector2(0.5f, 0.5f),
         BallVelocity = new Vector2(0.3f, 0.2f),
         BallRadius = 0.015f,
+        BackgroundColor = new Vector3(0.1f, 0.1f, 0.15f),
         LeftScore = 0,
         RightScore = 0,
         ScreenWidth = 800,

@@ -1,0 +1,36 @@
+<Project>
+    <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.props"/>
+
+    <PropertyGroup>
+        <ModName>Background Color</ModName>
+        <ModIdentifier>background_color_mod</ModIdentifier>
+        <ModVersion>1.0.0</ModVersion>
+        <ModAuthor>Sparkitect</ModAuthor>
+        <ModDescription>Modifies Pong background color, with optional cycling from ColorProviderMod</ModDescription>
+        <ModType>Root</ModType>
+        <IsRootMod>false</IsRootMod>
+        <LangVersion>preview</LangVersion>
+
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDependencyFile>true</GenerateDependencyFile>
+        <RootNamespace>BackgroundColorMod</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj"
+                          ReferenceOutputAssembly="false" OutputItemType="Analyzer"/>
+    </ItemGroup>
+
+    <!-- Mod dependencies -->
+    <ItemGroup>
+        <ModProjectDependency Include="..\..\src\Sparkitect\Sparkitect.csproj" />
+        <!-- Required dependency: PongMod -->
+        <ModProjectDependency Include="..\PongMod\PongMod.csproj" />
+        <!-- Optional dependency: ColorProviderMod -->
+        <ModProjectDependency Include="..\ColorProviderMod\ColorProviderMod.csproj" IsOptional="true" />
+    </ItemGroup>
+
+    <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.targets"/>
+</Project>

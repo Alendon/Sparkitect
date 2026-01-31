@@ -17,6 +17,7 @@ namespace PongMod;
 internal class PongRuntimeService : IPongRuntimeService, IPongRuntimeServiceStateFacade
 {
     private PongGameData _gameData;
+    private Vector3 _backgroundColor = new(0.1f, 0.1f, 0.15f);
     private readonly Stopwatch _frameTimer = new();
     private float _lastFrameTime;
 
@@ -49,6 +50,12 @@ internal class PongRuntimeService : IPongRuntimeService, IPongRuntimeServiceStat
 
     public ref PongGameData GameData => ref _gameData;
     public float DeltaTime { get; private set; }
+
+    public Vector3 BackgroundColor
+    {
+        get => _backgroundColor;
+        set => _backgroundColor = value;
+    }
 
     public unsafe void Initialize()
     {
@@ -353,9 +360,10 @@ internal class PongRuntimeService : IPongRuntimeService, IPongRuntimeServiceStat
         var descriptorSet = _descriptorSet!.Handle;
         vk.CmdBindDescriptorSets(cmd, PipelineBindPoint.Compute, _pipelineLayout!.Handle, 0, 1, &descriptorSet, 0, null);
 
-        // Update screen dimensions and push constants
+        // Update screen dimensions, background color, and push constants
         _gameData.ScreenWidth = swapchain.Extent.Width;
         _gameData.ScreenHeight = swapchain.Extent.Height;
+        _gameData.BackgroundColor = _backgroundColor;
         fixed (PongGameData* gameDataPtr = &_gameData)
         {
             vk.CmdPushConstants(cmd, _pipelineLayout.Handle, ShaderStageFlags.ComputeBit, 0, (uint)sizeof(PongGameData), gameDataPtr);

@@ -10,6 +10,7 @@ struct PongGameData
     float2 ballPosition;
     float2 ballVelocity;
     float ballRadius;
+    float3 backgroundColor;
     int leftScore;
     int rightScore;
     uint screenWidth;
@@ -34,8 +35,8 @@ void computeMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     // Normalized coordinates [0,1]
     float2 uv = float2(pixelCoord) / float2(gameData.screenWidth, gameData.screenHeight);
 
-    // Background color (dark)
-    float3 color = float3(0.1, 0.1, 0.15);
+    // Background color (from push constants)
+    float3 color = gameData.backgroundColor;
 
     // Center line (dashed)
     if (abs(uv.x - 0.5) < 0.002)
