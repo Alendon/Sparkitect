@@ -1,5 +1,5 @@
-﻿using System.Net;
 using System.Text.Json;
+using System.Xml.Linq;
 using Microsoft.Build.Framework;
 
 namespace Sparkitect.Sdk.TaskImpl;
@@ -31,6 +31,17 @@ public class ParseDependencyFile : Microsoft.Build.Utilities.Task
     public string OutputDirectory { get; set; } = string.Empty;
 
     [Required] public string AssemblyVersion { get; set; } = string.Empty;
+
+    /// <summary>
+    /// ModProjectDependency items from the project file.
+    /// Used to determine which dependencies are mods (should not pack their DLLs).
+    /// </summary>
+    public ITaskItem[] ModProjectDependencies { get; set; } = Array.Empty<ITaskItem>();
+
+    /// <summary>
+    /// The project directory for resolving relative paths in ModProjectDependency items.
+    /// </summary>
+    public string ProjectDirectory { get; set; } = "";
 
     /// <summary>
     /// Semicolon separated list of detected direct dependencies
@@ -70,14 +81,63 @@ public class ParseDependencyFile : Microsoft.Build.Utilities.Task
             }
 
 
+            // Build sets of mod identifiers from ModProjectDependency items
+            // These are mods, so we skip packing their DLLs (the mod brings its own)
+            var modIdentifiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var optionalMods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in ModProjectDependencies)
+            {
+                var projectPath = item.ItemSpec;
+                var absoluteProjectPath = Path.IsPathRooted(projectPath)
+                    ? projectPath
+                    : Path.GetFullPath(Path.Combine(ProjectDirectory, projectPath));
+
+                if (!File.Exists(absoluteProjectPath))
+                {
+                    Log.LogWarning($"ModProjectDependency '{projectPath}' not found at '{absoluteProjectPath}', skipping");
+                    continue;
+                }
+
+                try
+                {
+                    var csprojDoc = XDocument.Load(absoluteProjectPath);
+                    // Try ModId first, fall back to ModIdentifier for compatibility
+                    var modId = csprojDoc.Descendants("ModId").FirstOrDefault()?.Value
+                             ?? csprojDoc.Descendants("ModIdentifier").FirstOrDefault()?.Value;
+                    if (!string.IsNullOrEmpty(modId))
+                    {
+                        modIdentifiers.Add(modId);
+                        Log.LogMessage(MessageImportance.Normal, $"Detected mod dependency: {modId}");
+
+                        // Track if this mod dependency is optional
+                        if (string.Equals(item.GetMetadata("IsOptional"), "true", StringComparison.OrdinalIgnoreCase))
+                        {
+                            optionalMods.Add(modId);
+                            Log.LogMessage(MessageImportance.Normal, $"  Mod '{modId}' is optional - will include its transitive deps");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.LogWarning($"Failed to read ModProjectDependency '{projectPath}': {ex.Message}");
+                }
+            }
+
             List<(string name, string version, bool packRecursive)> directDependencies = [];
 
             foreach (var (name, version) in ParseDependencies(projectDependencies))
             {
-                //TODO robust approach including mod relationships 
-                var pack = name != "Sparkitect";
+                // Skip packing if this is a mod dependency (mod brings its own DLLs)
+                var isMod = modIdentifiers.Contains(name);
+                var isOptionalMod = isMod && optionalMods.Contains(name);
 
-                directDependencies.Add((name, version, pack));
+                // For required mods: skip their transitive deps (they bring their own)
+                // For optional mods: include their transitive deps (optional mod might not load)
+                // For non-mod dependencies (packages): pack their transitive deps as normal
+                var packRecursive = !isMod || isOptionalMod;
+
+                directDependencies.Add((name, version, packRecursive));
             }
 
             HashSet<(string name, string version)> visited =

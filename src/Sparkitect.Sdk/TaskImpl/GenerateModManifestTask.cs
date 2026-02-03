@@ -15,7 +15,7 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
     /// The unique identifier for the mod
     /// </summary>
     [Required]
-    public string ModIdentifier { get; set; } = string.Empty;
+    public string ModId { get; set; } = string.Empty;
 
     /// <summary>
     /// The display name of the mod
@@ -124,7 +124,7 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
             foreach (var item in ModProjectDependencies)
             {
                 var projectPath = item.ItemSpec;
-                var optional = string.Equals(item.GetMetadata("Optional"), "true", StringComparison.OrdinalIgnoreCase);
+                var isOptional = string.Equals(item.GetMetadata("IsOptional"), "true", StringComparison.OrdinalIgnoreCase);
 
                 // Resolve the path relative to ProjectDirectory
                 var absoluteProjectPath = Path.IsPathRooted(projectPath)
@@ -139,10 +139,15 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
 
                 // Read mod metadata directly from the .csproj file
                 string? referencedModId;
+                string? referencedModVersion;
+                XDocument csprojDoc;
                 try
                 {
-                    var csprojDoc = XDocument.Load(absoluteProjectPath);
-                    referencedModId = csprojDoc.Descendants("ModIdentifier").FirstOrDefault()?.Value;
+                    csprojDoc = XDocument.Load(absoluteProjectPath);
+                    // Try ModId first, fall back to ModIdentifier for compatibility
+                    referencedModId = csprojDoc.Descendants("ModId").FirstOrDefault()?.Value
+                                   ?? csprojDoc.Descendants("ModIdentifier").FirstOrDefault()?.Value;
+                    referencedModVersion = csprojDoc.Descendants("ModVersion").FirstOrDefault()?.Value;
                 }
                 catch (Exception ex)
                 {
@@ -152,26 +157,54 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
 
                 if (string.IsNullOrEmpty(referencedModId))
                 {
-                    Log.LogError($"ModProjectDependency '{projectPath}' does not have a ModIdentifier property. " +
+                    Log.LogError($"ModProjectDependency '{projectPath}' does not have a ModId property. " +
                                  "Ensure the referenced project is configured as a mod project.");
                     continue;
                 }
 
                 // Validate no self-reference
-                if (string.Equals(referencedModId, ModIdentifier, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(referencedModId, ModId, StringComparison.OrdinalIgnoreCase))
                 {
-                    Log.LogError($"Mod '{ModIdentifier}' cannot depend on itself via ModProjectDependency");
+                    Log.LogError($"Mod '{ModId}' cannot depend on itself via ModProjectDependency");
                     continue;
                 }
 
-                relationships.Add(new ModRelationshipModel(referencedModId, SemVersionRange.All, IsOptional: optional));
+                // Determine version range: explicit VersionRange wins, else infer from ModVersion, else *
+                var versionRangeStr = item.GetMetadata("VersionRange");
+                SemVersionRange versionRange;
+                if (!string.IsNullOrEmpty(versionRangeStr))
+                {
+                    // Explicit VersionRange wins
+                    if (!SemVersionRange.TryParse(versionRangeStr, out versionRange!))
+                    {
+                        Log.LogError($"Invalid VersionRange '{versionRangeStr}' for ModProjectDependency '{projectPath}'");
+                        continue;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(referencedModVersion) &&
+                         SemVersion.TryParse(referencedModVersion, SemVersionStyles.Any, out var refVersion))
+                {
+                    // Infer ^x.y.z from referenced ModVersion
+                    versionRange = SemVersionRange.Parse($"^{refVersion}");
+                    Log.LogMessage(MessageImportance.Normal,
+                        $"Inferred VersionRange '^{refVersion}' from ModProjectDependency '{projectPath}'");
+                }
+                else
+                {
+                    // Fall back to *
+                    versionRange = SemVersionRange.All;
+                    Log.LogMessage(MessageImportance.Low,
+                        $"Using VersionRange '*' for ModProjectDependency '{projectPath}' (no ModVersion found)");
+                }
+
+                relationships.Add(new ModRelationshipModel(referencedModId, versionRange, IsOptional: isOptional));
 
                 Log.LogMessage(MessageImportance.Normal, $"Resolved ModProjectDependency '{projectPath}' to mod '{referencedModId}'");
             }
 
             // Create the manifest model
             var manifest = new ModManifestModel(
-                ModIdentifier,
+                ModId,
                 ModName,
                 ModDescription,
                 semVersion,
