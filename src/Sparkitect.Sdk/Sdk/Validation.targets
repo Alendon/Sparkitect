@@ -1,0 +1,14 @@
+<Project>
+    <!-- Validate mod properties -->
+    <Target Name="ValidateModProperties" BeforeTargets="Build">
+        <Error Text="ModId must be set" Condition="'$(ModId)' == ''"/>
+        <Error Text="ModName must be set" Condition="'$(ModName)' == ''"/>
+        <Error Text="ModVersion must be set" Condition="'$(ModVersion)' == ''"/>
+        <Error Text="ModAuthor must be set" Condition="'$(ModAuthor)' == ''"/>
+    </Target>
+
+    <!-- Output mod information -->
+    <Target Name="OutputModInfo" AfterTargets="Build">
+        <Message Text="Built mod: $(ModName) ($(ModId)) v$(ModVersion) by $(ModAuthor)" Importance="high"/>
+    </Target>
+</Project>

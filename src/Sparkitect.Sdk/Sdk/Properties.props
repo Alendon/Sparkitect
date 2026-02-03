@@ -1,0 +1,45 @@
+<Project>
+    <!-- Mod specific properties -->
+    <PropertyGroup>
+        <ModId></ModId>
+        <ModName></ModName>
+        <ModVersion></ModVersion>
+        <ModAuthor></ModAuthor>
+        <ModDescription></ModDescription>
+        <OutputType>Exe</OutputType>
+
+        <!-- Enable dependency file generation -->
+        <GenerateDependencyFile>true</GenerateDependencyFile>
+        <SparkitectAutoDetectDependencies Condition="'$(SparkitectAutoDetectDependencies)' == ''">true</SparkitectAutoDetectDependencies>
+        <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
+
+        <!-- Enable interceptors for CallerContext generator -->
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);$(RootNamespace).CallerContext</InterceptorsNamespaces>
+    </PropertyGroup>
+
+    <!-- Root mod configuration -->
+    <PropertyGroup>
+        <!-- Set to true to mark this mod as a root mod (can be loaded directly by bootstrapper) -->
+        <IsRootMod></IsRootMod>
+    </PropertyGroup>
+
+    <!-- Mod dependency item definitions with sensible defaults -->
+    <ItemDefinitionGroup>
+        <!-- ModDependency: Package-style reference by mod ID (like PackageReference)
+             NOTE: Processing deferred to future phase - only item type defined here -->
+        <ModDependency>
+            <VersionRange>*</VersionRange>
+            <IsOptional>false</IsOptional>
+        </ModDependency>
+        <!-- ModProjectDependency: Project-style reference by path (like ProjectReference)
+             Fully implemented in this phase -->
+        <ModProjectDependency Visible="false">
+            <IsOptional>false</IsOptional>
+        </ModProjectDependency>
+    </ItemDefinitionGroup>
+
+    <!-- Expose MSBuild properties to Roslyn analyzers -->
+    <ItemGroup>
+        <CompilerVisibleProperty Include="ModId" />
+    </ItemGroup>
+</Project>
