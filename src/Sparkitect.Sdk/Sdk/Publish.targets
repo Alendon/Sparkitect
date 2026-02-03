@@ -1,0 +1,20 @@
+<Project>
+    <!-- Publish integration - copies .sparkmod to publish folder -->
+    <Target Name="PublishModArchive"
+            AfterTargets="Publish"
+            DependsOnTargets="_CalculateModPaths"
+            Condition="'$(ModPackageEnabled)' == 'true'">
+
+        <PropertyGroup>
+            <ModPublishPath>$(PublishDir)$(ModArchiveName)</ModPublishPath>
+        </PropertyGroup>
+
+        <Copy SourceFiles="$(ModArchivePath)"
+              DestinationFiles="$(ModPublishPath)"
+              Condition="Exists('$(ModArchivePath)')"/>
+
+        <Message Text="[SDK] Mod archive published to: $(ModPublishPath)"
+                 Importance="high"
+                 Condition="Exists('$(ModArchivePath)')"/>
+    </Target>
+</Project>

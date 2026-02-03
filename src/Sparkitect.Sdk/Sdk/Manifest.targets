@@ -1,0 +1,71 @@
+<Project>
+    <!-- Static properties that don't depend on late-evaluated paths -->
+    <PropertyGroup>
+        <ModPackageEnabled Condition="'$(ModPackageEnabled)' == ''">true</ModPackageEnabled>
+        <ModAutoDetectDependencies Condition="'$(ModAutoDetectDependencies)' == ''">true</ModAutoDetectDependencies>
+    </PropertyGroup>
+
+    <!-- UsingTask declarations -->
+    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.GenerateModManifest"
+               AssemblyFile="$(MSBuildThisFileDirectory)../tasks/net10.0/Sparkitect.Sdk.dll"/>
+    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.ParseDependencyFile"
+               AssemblyFile="$(MSBuildThisFileDirectory)../tasks/net10.0/Sparkitect.Sdk.dll"/>
+
+    <!-- CRITICAL: Calculate paths at execution time, not evaluation time -->
+    <Target Name="_CalculateModPaths" BeforeTargets="GenerateModManifest;CreateModArchive">
+        <PropertyGroup>
+            <!-- These properties MUST be inside a target to get correct values -->
+            <ModManifestPath>$(IntermediateOutputPath)manifest.json</ModManifestPath>
+            <ModArchiveName>$(ModId)-$(ModVersion).sparkmod</ModArchiveName>
+            <ModArchivePath>$(OutputPath)$(ModArchiveName)</ModArchivePath>
+        </PropertyGroup>
+        <Message Text="[SDK] Manifest path: $(ModManifestPath)" Importance="normal"/>
+        <Message Text="[SDK] Archive path: $(ModArchivePath)" Importance="normal"/>
+    </Target>
+
+    <!-- Convert ModProjectDependency items to ProjectReference -->
+    <ItemGroup>
+        <ProjectReference Include="@(ModProjectDependency)"/>
+    </ItemGroup>
+
+    <!-- Detect dependencies from deps.json file -->
+    <Target Name="DetectModDependencies"
+            BeforeTargets="GenerateModManifest"
+            Condition="'$(ModAutoDetectDependencies)' == 'true'">
+        <ParseDependencyFile
+            DependencyFilePath="$(OutputPath)$(TargetName).deps.json"
+            TargetFramework="$(TargetFramework)"
+            AssemblyVersion="$(Version)"
+            AssemblyName="$(AssemblyName)"
+            OutputDirectory="$(OutputPath)"
+            ModProjectDependencies="@(ModProjectDependency)">
+            <Output TaskParameter="DirectDependencies" PropertyName="ModDetectedDependencies"/>
+        </ParseDependencyFile>
+
+        <PropertyGroup>
+            <ModRequiredAssemblies Condition="'$(ModRequiredAssemblies)' != ''">$(ModRequiredAssemblies);$(ModDetectedDependencies)</ModRequiredAssemblies>
+            <ModRequiredAssemblies Condition="'$(ModRequiredAssemblies)' == ''">$(ModDetectedDependencies)</ModRequiredAssemblies>
+        </PropertyGroup>
+    </Target>
+
+    <!-- Generate mod manifest -->
+    <Target Name="GenerateModManifest"
+            AfterTargets="Build"
+            DependsOnTargets="_CalculateModPaths;DetectModDependencies"
+            Condition="'$(ModPackageEnabled)' == 'true'">
+        <GenerateModManifest
+            ModId="$(ModId)"
+            ModName="$(ModName)"
+            ModDescription="$(ModDescription)"
+            ModVersion="$(ModVersion)"
+            ModAuthor="$(ModAuthor)"
+            AssemblyPath="$(TargetPath)"
+            RequiredAssemblies="$(ModRequiredAssemblies)"
+            ModProjectDependencies="@(ModProjectDependency)"
+            IsRootMod="$(IsRootMod)"
+            Configuration="$(Configuration)"
+            TargetFramework="$(TargetFramework)"
+            ProjectDirectory="$(MSBuildProjectDirectory)"
+            OutputPath="$(ModManifestPath)"/>
+    </Target>
+</Project>

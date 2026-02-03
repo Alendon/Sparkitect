@@ -1,0 +1,23 @@
+<Project>
+    <PropertyGroup>
+        <ModResourceDirectory Condition="'$(ModResourceDirectory)' == ''">$(MSBuildProjectDirectory)/Resources</ModResourceDirectory>
+    </PropertyGroup>
+
+    <UsingTask TaskName="Sparkitect.Sdk.TaskImpl.CreateModArchive"
+               AssemblyFile="$(MSBuildThisFileDirectory)../tasks/net10.0/Sparkitect.Sdk.dll"/>
+
+    <!-- Create mod archive (.sparkmod) -->
+    <Target Name="CreateModArchive"
+            AfterTargets="GenerateModManifest"
+            DependsOnTargets="_CalculateModPaths;GenerateModManifest"
+            Condition="'$(ModPackageEnabled)' == 'true'">
+        <CreateModArchive
+            OutputArchivePath="$(ModArchivePath)"
+            ManifestPath="$(ModManifestPath)"
+            AssemblyPath="$(TargetPath)"
+            RequiredAssemblies="$(ModRequiredAssemblies)"
+            ResourceDirectory="$(ModResourceDirectory)"/>
+
+        <Message Text="[SDK] Mod archive created: $(ModArchivePath)" Importance="high"/>
+    </Target>
+</Project>

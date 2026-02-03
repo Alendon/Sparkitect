@@ -62,6 +62,8 @@
     <!-- Import concern-specific targets -->
     <Import Project="Validation.targets"/>
     <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.Shader.targets"/>
-    <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.targets"/>
+    <Import Project="Manifest.targets"/>
+    <Import Project="Archive.targets"/>
+    <Import Project="Publish.targets"/>
     <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk"/>
 </Project>
