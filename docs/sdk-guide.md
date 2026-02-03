@@ -114,19 +114,25 @@ Create `Properties/launchSettings.json`:
 {
   "profiles": {
     "Run My Mod": {
-      "commandName": "Project",
-      "commandLineArgs": "-addModDirs bin/Debug/net10.0"
+      "commandName": "Executable",
+      "executablePath": "$(SolutionDir)/src/Sparkitect/bin/$(Configuration)/net10.0/Sparkitect",
+      "commandLineArgs": "-addModDirs=$(ProjectDir)/bin/$(Configuration)/net10.0",
+      "workingDirectory": "$(ProjectDir)/.run"
     }
   }
 }
 ```
 
+This launches the Sparkitect engine with your mod loaded. The `$(Configuration)` variable automatically switches between Debug/Release builds.
+
 In Rider/VS, select the profile and run.
 
 ### From Command Line
 
+Build and run the Sparkitect engine with your mod:
+
 ```bash
-dotnet run -- -addModDirs bin/Debug/net10.0
+dotnet run --project path/to/Sparkitect.csproj -- -addModDirs path/to/your/mod/bin/Debug/net10.0
 ```
 
 ### Multiple Mod Directories

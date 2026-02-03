@@ -7,7 +7,7 @@
         <ModVersion>1.0.0</ModVersion>
         <ModAuthor>Alendon</ModAuthor>
         <ModDescription>Modifies Pong background color, with optional cycling from ColorProviderMod</ModDescription>
-        <IsRootMod>false</IsRootMod>
+        <IsRootMod>true</IsRootMod>
         <LangVersion>preview</LangVersion>
 
         <TargetFramework>net10.0</TargetFramework>

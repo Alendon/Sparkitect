@@ -261,7 +261,7 @@ internal class ModManager : IModManager
         (
             Id: Constants.VirtualSparkitectModId,  // "sparkitect" - matches ModIdentifier in csproj
             Name: "Sparkitect",                     // Matches ModName in csproj
-            Version: SemVersion.Parse("1.0.0"),     // Matches ModVersion in csproj
+            Version: SemVersion.Parse(Constants.VirtualSparkitectVersion),     // Matches ModVersion in csproj
             Description: "Core engine functionality",
             ModAssembly: "Sparkitect",
             ModPath: null!, // No physical path for virtual mod

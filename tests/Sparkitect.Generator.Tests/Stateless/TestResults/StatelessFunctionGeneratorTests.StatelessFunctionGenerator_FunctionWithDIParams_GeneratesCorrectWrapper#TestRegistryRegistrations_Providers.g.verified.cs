@@ -19,7 +19,7 @@ public static global::Sparkitect.Modding.Identification Process { get; private s
     public override void ProcessRegistrations(global::StatelessTest.TestRegistry registry)
     {
 {
-            Process = IdentificationManager.RegisterObject("", "test", "process");
+            Process = IdentificationManager.RegisterObject("test_mod", "test", "process");
 registry.Register<global::TestMod.TestModule.ProcessFunc>(Process);
         }
 } 

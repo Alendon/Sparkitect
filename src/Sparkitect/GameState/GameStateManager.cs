@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Semver;
 using Serilog;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.DI.Container;
@@ -55,6 +56,15 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         // Select and load root mods using config file or fallback logic
         var rootMods = SelectRootMods();
+        if (rootMods.All(x => x.Id != Constants.VirtualSparkitectModId))
+        {
+            rootMods =
+            [
+                new ModFileIdentifier(Constants.VirtualSparkitectModId,
+                    SemVersion.Parse(Constants.VirtualSparkitectVersion)),
+                ..rootMods
+            ];
+        }
 
         Log.Information("Loading {ModCount} root mods", rootMods.Length);
         ModManager.LoadMods(rootMods);

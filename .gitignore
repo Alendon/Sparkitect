@@ -11,3 +11,4 @@ riderModule.iml
 docs/export.txt
 **/.claude**
 .envrc
+.run/

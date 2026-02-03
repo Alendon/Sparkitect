@@ -18,7 +18,7 @@ struct PongGameData
 };
 
 [[vk::push_constant]]
-ConstantBuffer<PongGameData> gameData;
+ConstantBuffer<PongGameData, ScalarDataLayout> gameData;
 
 [[vk::binding(0, 0)]]
 RWTexture2D<float4> outputImage;

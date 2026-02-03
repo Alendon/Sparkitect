@@ -1,8 +1,10 @@
 {
   "profiles": {
     "Run Minimal Sample": {
-      "commandName": "Project",
-      "commandLineArgs": "-addModDirs bin/Debug/net10.0"
+      "commandName": "Executable",
+      "executablePath": "$(SolutionDir)/src/Sparkitect/bin/$(Configuration)/net10.0/Sparkitect",
+      "commandLineArgs": "-addModDirs=$(ProjectDir)/bin/$(Configuration)/net10.0",
+      "workingDirectory": "$(ProjectDir)/.run"
     }
   }
 }

@@ -6,7 +6,7 @@
         <ModVersion></ModVersion>
         <ModAuthor></ModAuthor>
         <ModDescription></ModDescription>
-        <OutputType>Exe</OutputType>
+        <OutputType>Library</OutputType>
 
         <!-- Enable dependency file generation -->
         <GenerateDependencyFile>true</GenerateDependencyFile>

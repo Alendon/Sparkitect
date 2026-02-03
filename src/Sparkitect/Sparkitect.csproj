@@ -17,6 +17,7 @@
         <SgOutputNamespace>Sparkitect.CompilerGenerated</SgOutputNamespace>
 
         <DefineConstants>$(DefineConstants);JETBRAINS_ANNOTATIONS</DefineConstants>
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     </PropertyGroup>
 
     <PropertyGroup>

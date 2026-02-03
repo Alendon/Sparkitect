@@ -20,11 +20,11 @@ public static global::Sparkitect.Modding.Identification Update { get; private se
     public override void ProcessRegistrations(global::StatelessTest.TestRegistry registry)
     {
 {
-            Init = IdentificationManager.RegisterObject("", "test", "init");
+            Init = IdentificationManager.RegisterObject("test_mod", "test", "init");
 registry.Register<global::TestMod.TestModule.InitFunc>(Init);
         }
 {
-            Update = IdentificationManager.RegisterObject("", "test", "update");
+            Update = IdentificationManager.RegisterObject("test_mod", "test", "update");
 registry.Register<global::TestMod.TestModule.UpdateFunc>(Update);
         }
 } 

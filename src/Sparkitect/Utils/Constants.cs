@@ -1,6 +1,7 @@
 namespace Sparkitect.Utils;
 
-public static class Constants
+internal static class Constants
 {
     public const string VirtualSparkitectModId = "sparkitect";
+    public const string VirtualSparkitectVersion = "1.0.0";
 }
