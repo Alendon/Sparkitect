@@ -4,11 +4,10 @@
 
     <PropertyGroup>
         <ModName>Minimal Sample Mod</ModName>
-        <ModIdentifier>minimal_sample_mod</ModIdentifier>
+        <ModId>minimal_sample_mod</ModId>
         <ModVersion>1.0.0</ModVersion>
         <ModAuthor>Alendon</ModAuthor>
         <ModDescription>Minimal sample mod for Sparkitect</ModDescription>
-        <ModType>Game</ModType>
         <IsRootMod>true</IsRootMod>
         <LangVersion>preview</LangVersion>
 
@@ -18,14 +17,6 @@
         <GenerateDependencyFile>true</GenerateDependencyFile>
         <RootNamespace>MinimalSampleMod</RootNamespace>
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    </PropertyGroup>
-
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-        <OutputPath>bin\Debug\</OutputPath>
-    </PropertyGroup>
-
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-        <OutputPath>bin\Release\</OutputPath>
     </PropertyGroup>
 
     <ItemGroup>

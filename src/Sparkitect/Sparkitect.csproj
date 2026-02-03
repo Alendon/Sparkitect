@@ -21,7 +21,7 @@
 
     <PropertyGroup>
         <ModName>Sparkitect</ModName>
-        <ModIdentifier>sparkitect</ModIdentifier>
+        <ModId>sparkitect</ModId>
         <ModVersion>1.0.0</ModVersion>
         <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
 
@@ -30,7 +30,7 @@
 
     <ItemGroup>
         <CompilerVisibleProperty Include="ModName" />
-        <CompilerVisibleProperty Include="ModIdentifier" />
+        <CompilerVisibleProperty Include="ModId" />
         <CompilerVisibleProperty Include="DisableLogEnrichmentGenerator" />
         <CompilerVisibleProperty Include="SgOutputNamespace" />
     </ItemGroup>

@@ -19,46 +19,6 @@
         <AdditionalFiles Include="**/*.sparkres.yaml" />
     </ItemGroup>
 
-    <PropertyGroup>
-        <DevLauncherTemplate>$(MSBuildThisFileDirectory)../Templates/DevLauncher.cst</DevLauncherTemplate>
-    </PropertyGroup>
-
-    <!-- Generate Program.cs unless packing (to be removed in plan 18.1-04) -->
-    <Target Name="GenerateDevLauncher"
-            BeforeTargets="CoreCompile">
-
-        <PropertyGroup>
-            <DevLauncherFile>$(IntermediateOutputPath)Generated.DevLauncher.g.cs</DevLauncherFile>
-        </PropertyGroup>
-
-        <!-- Ensure directory exists -->
-        <MakeDir Directories="$(IntermediateOutputPath)"/>
-
-        <!-- Read template -->
-        <ReadLinesFromFile File="$(DevLauncherTemplate)">
-            <Output TaskParameter="Lines" ItemName="LauncherTemplate"/>
-        </ReadLinesFromFile>
-
-        <!-- Replace template variables -->
-        <PropertyGroup>
-            <LauncherContent>$([System.IO.File]::ReadAllText('$(DevLauncherTemplate)'))</LauncherContent>
-            <LauncherContent>$(LauncherContent.Replace('${RootNamespace}', '$(RootNamespace)'))</LauncherContent>
-            <LauncherContent>$(LauncherContent.Replace('${DirPlaceholder}', '$([System.IO.Path]::GetFullPath('$(SparkitectModArchiveOutputPath)'))'))</LauncherContent>
-        </PropertyGroup>
-
-        <!-- Write the content -->
-        <WriteLinesToFile
-                File="$(DevLauncherFile)"
-                Lines="$(LauncherContent)"
-                Overwrite="true"
-                WriteOnlyWhenDifferent="true" />
-
-        <!-- Add to compilation -->
-        <ItemGroup>
-            <Compile Include="$(DevLauncherFile)" />
-        </ItemGroup>
-    </Target>
-
     <!-- Import concern-specific targets -->
     <Import Project="Validation.targets"/>
     <Import Project="$(MSBuildThisFileDirectory)../build/Sparkitect.Sdk.Shader.targets"/>

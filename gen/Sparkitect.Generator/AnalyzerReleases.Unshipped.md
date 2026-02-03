@@ -64,7 +64,7 @@
 
 <!-- Category 05: Naming Diagnostics -->
 
-| SPARK0501 | Sparkitect | Error    | ModIdentifier must be snake_case                                      |
+| SPARK0501 | Sparkitect | Error    | ModId must be snake_case                                              |
 | SPARK0502 | Sparkitect | Error    | Identifier must be snake_case                                         |
 
 ### Removed Rules

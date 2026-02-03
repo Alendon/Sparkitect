@@ -3,11 +3,10 @@
 
     <PropertyGroup>
         <ModName>Pong Sample</ModName>
-        <ModIdentifier>pong_mod</ModIdentifier>
+        <ModId>pong_mod</ModId>
         <ModVersion>1.0.0</ModVersion>
         <ModAuthor>Sparkitect</ModAuthor>
         <ModDescription>Minimal Pong game sample for Sparkitect</ModDescription>
-        <ModType>Game</ModType>
         <IsRootMod>true</IsRootMod>
         <LangVersion>preview</LangVersion>
 
@@ -18,14 +17,6 @@
         <RootNamespace>PongMod</RootNamespace>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    </PropertyGroup>
-
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-        <OutputPath>bin\Debug\</OutputPath>
-    </PropertyGroup>
-
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-        <OutputPath>bin\Release\</OutputPath>
     </PropertyGroup>
 
     <ItemGroup>

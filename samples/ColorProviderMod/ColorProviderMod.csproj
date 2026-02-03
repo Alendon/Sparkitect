@@ -3,11 +3,10 @@
 
     <PropertyGroup>
         <ModName>Color Provider</ModName>
-        <ModIdentifier>color_provider_mod</ModIdentifier>
+        <ModId>color_provider_mod</ModId>
         <ModVersion>1.0.0</ModVersion>
         <ModAuthor>Alendon</ModAuthor>
         <ModDescription>Provides color cycling utilities for other mods</ModDescription>
-        <ModType>Root</ModType>
         <IsRootMod>false</IsRootMod>
         <LangVersion>preview</LangVersion>
 
@@ -16,14 +15,6 @@
         <Nullable>enable</Nullable>
         <GenerateDependencyFile>true</GenerateDependencyFile>
         <RootNamespace>ColorProviderMod</RootNamespace>
-    </PropertyGroup>
-
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-        <OutputPath>bin\Debug\</OutputPath>
-    </PropertyGroup>
-
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-        <OutputPath>bin\Release\</OutputPath>
     </PropertyGroup>
 
     <ItemGroup>

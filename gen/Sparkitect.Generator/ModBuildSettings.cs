@@ -21,7 +21,7 @@ public static class GlobalOptionsExtensions
             var logEnricherActive = options.TryGetValue("build_property.DisableLogEnrichmentGenerator", out var value) &&
                                     value.ToLowerInvariant() != "true";
             var modName = options.TryGetValue("build_property.ModName", out var modNameValue) ? modNameValue : string.Empty;
-            var modId = options.TryGetValue("build_property.ModIdentifier", out var modIdValue) ? modIdValue : string.Empty;
+            var modId = options.TryGetValue("build_property.ModId", out var modIdValue) ? modIdValue : string.Empty;
             var rootNamespace = options.TryGetValue("build_property.RootNamespace", out var rootNamespaceValue)
                 ? rootNamespaceValue
                 : string.Empty;

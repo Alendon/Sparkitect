@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Run Minimal Sample": {
+      "commandName": "Project",
+      "commandLineArgs": "-addModDirs bin/Debug/net10.0"
+    }
+  }
+}

@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 namespace Sparkitect.Generator.Naming;
 
 // Category 05: Naming Diagnostics (SPARK05XX)
-// - ModIdentifier validation (01-09)
+// - ModId validation (01-09)
 // - Parameter attribute validation (10-19)
 
 /// <summary>
@@ -13,9 +13,9 @@ public static class NamingDiagnostics
 {
     private const string Category = "Sparkitect";
 
-    // SPARK0501: ModIdentifier in csproj must be snake_case
-    public static readonly DiagnosticDescriptor ModIdentifierNotSnakeCase =
-        new("SPARK0501", "ModIdentifier must be snake_case",
+    // SPARK0501: ModId in csproj must be snake_case
+    public static readonly DiagnosticDescriptor ModIdNotSnakeCase =
+        new("SPARK0501", "ModId must be snake_case",
             "Invalid identifier '{0}' - must be snake_case",
             Category, DiagnosticSeverity.Error, true,
             customTags: WellKnownDiagnosticTags.CompilationEnd);

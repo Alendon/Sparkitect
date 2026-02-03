@@ -9,7 +9,7 @@ namespace Sparkitect.Generator.Naming;
 
 /// <summary>
 /// Analyzer that validates snake_case naming for:
-/// 1. ModIdentifier MSBuild property (via CompilerVisibleProperty)
+/// 1. ModId MSBuild property (via CompilerVisibleProperty)
 /// 2. String arguments to parameters marked with [SnakeCase] attribute
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -19,7 +19,7 @@ public sealed class NamingValidationAnalyzer : DiagnosticAnalyzer
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
     [
-        NamingDiagnostics.ModIdentifierNotSnakeCase,
+        NamingDiagnostics.ModIdNotSnakeCase,
         NamingDiagnostics.IdentifierNotSnakeCase
     ];
 
@@ -28,19 +28,19 @@ public sealed class NamingValidationAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
 
-        // MSBuild property validation (ModIdentifier)
-        context.RegisterCompilationAction(ValidateModIdentifier);
+        // MSBuild property validation (ModId)
+        context.RegisterCompilationAction(ValidateModId);
 
         // Code argument validation ([SnakeCase] parameters)
         context.RegisterOperationAction(ValidateInvocationArguments,
             OperationKind.Invocation, OperationKind.ObjectCreation);
     }
 
-    private static void ValidateModIdentifier(CompilationAnalysisContext ctx)
+    private static void ValidateModId(CompilationAnalysisContext ctx)
     {
-        // Access ModIdentifier via CompilerVisibleProperty
+        // Access ModId via CompilerVisibleProperty
         if (!ctx.Options.AnalyzerConfigOptionsProvider.GlobalOptions
-                .TryGetValue("build_property.ModIdentifier", out var modId))
+                .TryGetValue("build_property.ModId", out var modId))
             return;
 
         if (string.IsNullOrWhiteSpace(modId))
@@ -51,7 +51,7 @@ public sealed class NamingValidationAnalyzer : DiagnosticAnalyzer
 
         // Report diagnostic (no specific location for csproj property)
         ctx.ReportDiagnostic(Diagnostic.Create(
-            NamingDiagnostics.ModIdentifierNotSnakeCase,
+            NamingDiagnostics.ModIdNotSnakeCase,
             Location.None,
             modId));
     }

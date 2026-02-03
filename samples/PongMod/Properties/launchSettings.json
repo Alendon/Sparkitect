@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "Run Pong": {
+      "commandName": "Project",
+      "commandLineArgs": "-addModDirs bin/Debug/net10.0"
+    },
+    "Run Pong + BackgroundColor": {
+      "commandName": "Project",
+      "commandLineArgs": "-addModDirs bin/Debug/net10.0 ../BackgroundColorMod/bin/Debug/net10.0"
+    },
+    "Run Pong + All Color Mods": {
+      "commandName": "Project",
+      "commandLineArgs": "-addModDirs bin/Debug/net10.0 ../BackgroundColorMod/bin/Debug/net10.0 ../ColorProviderMod/bin/Debug/net10.0"
+    }
+  }
+}
