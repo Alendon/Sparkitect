@@ -515,7 +515,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
 
         var facadeMap = LoadFacadeMap(additionalMods);
-        var allMods = LoadedMods.Concat(additionalMods);
+        var allMods = LoadedMods.Concat(additionalMods).ToArray();
 
         // Build state stack: existing frames + new state
         var stateStack = _stateStack
@@ -548,7 +548,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return new ActiveStateFrame(
             stateId,
             container,
-            [],
+            additionalMods,
             transitionEnterMethods,
             transitionExitMethods,
             perFrameMethods);
