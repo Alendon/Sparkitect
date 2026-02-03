@@ -48,6 +48,20 @@
         </PropertyGroup>
     </Target>
 
+    <!-- Calculate optional mod assembly names for analyzer -->
+    <Target Name="_CalculateOptionalModAssemblies"
+            BeforeTargets="CoreCompile"
+            DependsOnTargets="ResolveProjectReferences">
+        <PropertyGroup>
+            <!-- Extract assembly names from optional ModProjectDependency items -->
+            <!-- Uses %(Filename) which gets assembly name from project path -->
+            <OptionalModAssemblies>@(ModProjectDependency->WithMetadataValue('IsOptional', 'true')->'%(Filename)', ';')</OptionalModAssemblies>
+        </PropertyGroup>
+        <Message Text="[SDK] Optional mod assemblies: $(OptionalModAssemblies)"
+                 Importance="normal"
+                 Condition="'$(OptionalModAssemblies)' != ''"/>
+    </Target>
+
     <!-- Generate mod manifest -->
     <Target Name="GenerateModManifest"
             AfterTargets="Build"

@@ -26,14 +26,7 @@ public partial class BackgroundColorState
         IPongRuntimeService pongRuntime,
         IGameStateManager gsm)
     {
-        if (gsm.IsModLoaded("color_provider_mod"))
-        {
-            ApplyCyclingColor(pongRuntime);
-        }
-        else
-        {
-            pongRuntime.BackgroundColor = FallbackColor;
-        }
+        ApplyCyclingColor(pongRuntime, gsm);
     }
 
     /// <summary>
@@ -41,9 +34,16 @@ public partial class BackgroundColorState
     /// Only called after IsModLoaded check passes.
     /// </summary>
     [ModLoadedGuard("color_provider_mod")]
-    private static void ApplyCyclingColor(IPongRuntimeService pongRuntime)
+    private static void ApplyCyclingColor(IPongRuntimeService pongRuntime, IGameStateManager gsm)
     {
-        var integration = new ColorProviderIntegration();
-        pongRuntime.BackgroundColor = integration.GetColor();
+        if (gsm.IsModLoaded("color_provider_mod"))
+        {
+            var integration = new ColorProviderIntegration();
+            pongRuntime.BackgroundColor = integration.GetColor();
+        }
+        else
+        {
+            pongRuntime.BackgroundColor = FallbackColor;
+        }
     }
 }
