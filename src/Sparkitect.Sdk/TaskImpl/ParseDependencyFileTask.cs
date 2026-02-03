@@ -81,10 +81,11 @@ public class ParseDependencyFile : Microsoft.Build.Utilities.Task
             }
 
 
-            // Build sets of mod identifiers from ModProjectDependency items
+            // Build sets of mod assembly names from ModProjectDependency items
             // These are mods, so we skip packing their DLLs (the mod brings its own)
-            var modIdentifiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var optionalMods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // We use assembly names (not ModId) because deps.json uses assembly names
+            var modAssemblyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var optionalModAssemblyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var item in ModProjectDependencies)
             {
@@ -102,18 +103,24 @@ public class ParseDependencyFile : Microsoft.Build.Utilities.Task
                 try
                 {
                     var csprojDoc = XDocument.Load(absoluteProjectPath);
-                    // Try ModId first, fall back to ModIdentifier for compatibility
+
+                    // Extract assembly name - use explicit AssemblyName or derive from project file name
+                    var assemblyName = csprojDoc.Descendants("AssemblyName").FirstOrDefault()?.Value
+                                    ?? Path.GetFileNameWithoutExtension(absoluteProjectPath);
+
+                    // Also get ModId for logging
                     var modId = csprojDoc.Descendants("ModId").FirstOrDefault()?.Value
                              ?? csprojDoc.Descendants("ModIdentifier").FirstOrDefault()?.Value;
-                    if (!string.IsNullOrEmpty(modId))
+
+                    if (!string.IsNullOrEmpty(assemblyName))
                     {
-                        modIdentifiers.Add(modId);
-                        Log.LogMessage(MessageImportance.Normal, $"Detected mod dependency: {modId}");
+                        modAssemblyNames.Add(assemblyName);
+                        Log.LogMessage(MessageImportance.Normal, $"Detected mod dependency: {modId} (assembly: {assemblyName})");
 
                         // Track if this mod dependency is optional
                         if (string.Equals(item.GetMetadata("IsOptional"), "true", StringComparison.OrdinalIgnoreCase))
                         {
-                            optionalMods.Add(modId);
+                            optionalModAssemblyNames.Add(assemblyName);
                             Log.LogMessage(MessageImportance.Normal, $"  Mod '{modId}' is optional - will include its transitive deps");
                         }
                     }
@@ -124,20 +131,32 @@ public class ParseDependencyFile : Microsoft.Build.Utilities.Task
                 }
             }
 
-            List<(string name, string version, bool packRecursive)> directDependencies = [];
+            List<(string name, string version, bool excludeFromArchive, bool traverseChildren)> directDependencies = [];
 
             foreach (var (name, version) in ParseDependencies(projectDependencies))
             {
-                // Skip packing if this is a mod dependency (mod brings its own DLLs)
-                var isMod = modIdentifiers.Contains(name);
-                var isOptionalMod = isMod && optionalMods.Contains(name);
+                // Matching by assembly name since deps.json uses assembly names
+                var isMod = modAssemblyNames.Contains(name);
+                var isOptionalMod = isMod && optionalModAssemblyNames.Contains(name);
 
-                // For required mods: skip their transitive deps (they bring their own)
-                // For optional mods: include their transitive deps (optional mod might not load)
-                // For non-mod dependencies (packages): pack their transitive deps as normal
-                var packRecursive = !isMod || isOptionalMod;
+                // ALL mod DLLs are excluded from the archive (mods bring their own)
+                var excludeFromArchive = isMod;
 
-                directDependencies.Add((name, version, packRecursive));
+                // For required mods: don't traverse children (mod brings everything)
+                // For optional mods: DO traverse children (mod might not load, need fallback deps)
+                // For non-mods: DO traverse children (pack all transitive deps)
+                var traverseChildren = !isMod || isOptionalMod;
+
+                if (isMod)
+                {
+                    Log.LogMessage(MessageImportance.Normal, $"Mod '{name}' will be excluded from archive");
+                    if (isOptionalMod)
+                        Log.LogMessage(MessageImportance.Normal, $"  (optional - will include its non-mod transitive deps)");
+                    else
+                        Log.LogMessage(MessageImportance.Normal, $"  (required - will also exclude its transitive deps)");
+                }
+
+                directDependencies.Add((name, version, excludeFromArchive, traverseChildren));
             }
 
             HashSet<(string name, string version)> visited =
@@ -145,20 +164,24 @@ public class ParseDependencyFile : Microsoft.Build.Utilities.Task
             HashSet<(string name, string version)> toInclude = [];
             HashSet<(string name, string version)> assumeIncluded = [];
 
-            Queue<(string name, string version, bool packRecursive)> toProcess = new(directDependencies);
+            Queue<(string name, string version, bool excludeFromArchive, bool traverseChildren)> toProcess = new(directDependencies);
 
             while (toProcess.TryDequeue(out var dependency))
             {
-                switch (dependency.packRecursive)
+                // Handle the current dependency's inclusion/exclusion
+                if (dependency.excludeFromArchive)
                 {
-                    case false:
-                        assumeIncluded.Add((dependency.name, dependency.version));
-                        toInclude.Remove((dependency.name, dependency.version));
-                        break;
-                    case true when !assumeIncluded.Contains((dependency.name, dependency.version)):
-                        toInclude.Add((dependency.name, dependency.version));
-                        break;
+                    assumeIncluded.Add((dependency.name, dependency.version));
+                    toInclude.Remove((dependency.name, dependency.version));
                 }
+                else if (!assumeIncluded.Contains((dependency.name, dependency.version)))
+                {
+                    toInclude.Add((dependency.name, dependency.version));
+                }
+
+                // Only traverse children if flagged to do so
+                if (!dependency.traverseChildren)
+                    continue;
 
                 if (!frameworkTargets.TryGetProperty($"{dependency.name}/{dependency.version}", out projectInfo))
                 {
@@ -177,7 +200,17 @@ public class ParseDependencyFile : Microsoft.Build.Utilities.Task
                 {
                     if (!visited.Add((name, version))) continue;
 
-                    directDependencies.Add((name, version, dependency.packRecursive));
+                    // Key insight: When traversing from optional mod, children that are ALSO mods
+                    // must be excluded, but we continue traversing their children too
+                    var childIsMod = modAssemblyNames.Contains(name);
+                    var childIsOptionalMod = childIsMod && optionalModAssemblyNames.Contains(name);
+
+                    // Child mod DLLs are always excluded
+                    var childExcludeFromArchive = childIsMod;
+                    // Continue traversing if: not a required mod
+                    var childTraverseChildren = !childIsMod || childIsOptionalMod;
+
+                    toProcess.Enqueue((name, version, childExcludeFromArchive, childTraverseChildren));
                 }
             }
 
