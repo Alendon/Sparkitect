@@ -15,6 +15,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
     private const string StatelessFunctionAttributeBase = "Sparkitect.Stateless.StatelessFunctionAttribute";
     private const string SchedulingAttributeBase = "Sparkitect.Stateless.SchedulingAttribute";
     private const string IHasIdentificationInterface = "Sparkitect.Modding.IHasIdentification";
+    private const string ParentIdAttributeBase = "Sparkitect.Stateless.ParentIdAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -103,14 +104,34 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         if (schedulingAttr is null || schedulingType is null)
             return null;
 
-        // Get containing type (must implement IHasIdentification)
+        // Get containing type
         var containingType = methodSymbol.ContainingType;
         if (containingType is null)
             return null;
 
-        if (!containingType.AllInterfaces.Any(i =>
-            i.ToDisplayString(DisplayFormats.NamespaceAndType) == IHasIdentificationInterface))
+        // Find ParentIdAttribute<T> if present - this overrides the parent identification
+        INamedTypeSymbol? parentIdType = null;
+        foreach (var attr in methodSymbol.GetAttributes())
+        {
+            if (InheritsFrom(attr.AttributeClass, ParentIdAttributeBase) &&
+                attr.AttributeClass is { IsGenericType: true, TypeArguments.Length: 1 })
+            {
+                parentIdType = attr.AttributeClass.TypeArguments[0] as INamedTypeSymbol;
+                break;
+            }
+        }
+
+        // Check IHasIdentification on containing type
+        var hasIHasIdentification = containingType.AllInterfaces.Any(i =>
+            i.ToDisplayString(DisplayFormats.NamespaceAndType) == IHasIdentificationInterface);
+
+        // Either containing type implements IHasIdentification OR method has ParentIdAttribute
+        if (!hasIHasIdentification && parentIdType is null)
             return null;
+
+        // Determine the parent identification type (use ParentIdAttribute type if present, else containingType)
+        var parentIdentificationType = parentIdType ?? containingType;
+        var parentIdentificationTypeName = parentIdentificationType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
         // Extract method parameters
         var parameters = methodSymbol.Parameters
@@ -139,6 +160,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             registryKey,
             contextType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             parentFullName,
+            parentIdentificationTypeName,
             parameters,
             schedulingParams);
     }
@@ -453,7 +475,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
 
     internal static bool RenderWrapper(StatelessFunctionModel func, ModBuildSettings settings, out string code, out string fileName)
     {
-        // Extract parent short name from full type
+        // Extract parent short name from full type (for nesting the wrapper class)
         var parentFull = func.ParentTypeName;
         var lastDot = parentFull.LastIndexOf('.');
         var parentShort = lastDot >= 0 ? parentFull.Substring(lastDot + 1) : parentFull;
@@ -473,6 +495,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             Namespace = parentNs,
             RootNamespace = settings.SgOutputNamespace,
             ParentTypeName = parentShort,
+            ParentIdentificationTypeName = func.ParentIdentificationTypeName, // Use fully qualified name for cross-namespace references
             MethodName = func.MethodName,
             Identifier = func.Identifier,
             WrapperClassName = func.WrapperClassName,
@@ -524,6 +547,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
                 f.SchedulingTypeName,
                 f.WrapperFullTypeName,
                 f.ParentTypeName,
+                f.ParentIdentificationTypeName,
                 SchedulingParams = f.SchedulingParams.Select(p => new
                 {
                     p.AttributeTypeName,

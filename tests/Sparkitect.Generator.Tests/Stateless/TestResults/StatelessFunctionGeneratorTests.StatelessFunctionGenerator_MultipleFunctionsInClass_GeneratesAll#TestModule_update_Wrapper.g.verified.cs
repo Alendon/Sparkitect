@@ -13,7 +13,7 @@ public partial class TestModule
         public global::Sparkitect.Modding.Identification Identification => global::Sparkitect.Modding.IdentificationHelper.Read<UpdateFunc>();
         static global::Sparkitect.Modding.Identification global::Sparkitect.Modding.IHasIdentification.Identification => global::Sparkitect.Modding.IDs.TestID.TestMod.Update;
 
-        public global::Sparkitect.Modding.Identification ParentIdentification => global::Sparkitect.Modding.IdentificationHelper.Read<TestModule>();
+        public global::Sparkitect.Modding.Identification ParentIdentification => global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule>();
 
 
 

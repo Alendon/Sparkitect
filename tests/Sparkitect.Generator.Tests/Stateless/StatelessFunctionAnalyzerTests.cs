@@ -285,6 +285,35 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         await AssertNoDiagnostics(diagnostics);
     }
 
+    [Test]
+    public async Task TypeWithoutIHasIdentification_WithParentIdAttribute_NoDiagnostic()
+    {
+        var code = """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class ParentOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+            }
+
+            public class TestOwner  // Does NOT implement IHasIdentification
+            {
+                [TestFunction("my_func")]
+                [TestScheduling]
+                [ParentId<ParentOwner>]
+                public static void MyMethod() { }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertNoDiagnostics(diagnostics);
+    }
+
     #endregion
 
     #region SPARK0405 - Orphan ordering attributes

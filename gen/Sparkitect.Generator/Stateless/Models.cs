@@ -12,7 +12,8 @@ namespace Sparkitect.Generator.Stateless;
 /// <param name="RegistryTypeName">Full type name of the associated registry</param>
 /// <param name="RegistryKey">The registry category key (e.g., "transition_function")</param>
 /// <param name="ContextTypeName">Full type name of the context type</param>
-/// <param name="ParentTypeName">Full type name of the parent (implements IHasIdentification)</param>
+/// <param name="ParentTypeName">Full type name of the containing class (where wrapper is nested)</param>
+/// <param name="ParentIdentificationTypeName">Full type name of the parent for identification (from ParentIdAttribute or containing class)</param>
 /// <param name="Parameters">Parameters to inject via DI</param>
 /// <param name="SchedulingParams">Constructor parameters for the scheduling type, with matched attributes</param>
 public record StatelessFunctionModel(
@@ -26,6 +27,7 @@ public record StatelessFunctionModel(
     string RegistryKey,
     string ContextTypeName,
     string ParentTypeName,
+    string ParentIdentificationTypeName,
     ImmutableValueArray<StatelessParameterModel> Parameters,
     ImmutableValueArray<SchedulingConstructorParam> SchedulingParams);
 

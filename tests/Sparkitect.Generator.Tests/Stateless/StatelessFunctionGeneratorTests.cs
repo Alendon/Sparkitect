@@ -373,4 +373,88 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
         // that the analyzer will flag
         await Assert.That(driverRunResult.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)).IsEmpty();
     }
+
+    [Test]
+    public async Task StatelessFunctionGenerator_WithParentIdAttribute_UsesOverriddenParent(CancellationToken token)
+    {
+        TestSources.Add(("TestModule.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace TestMod;
+
+            // Parent type that function will be associated with
+            public class ParentModule : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(2, 2, 2);
+            }
+
+            // Container class - does NOT implement IHasIdentification
+            public partial class FunctionContainer
+            {
+                [TestFunction("extended_func")]
+                [TestScheduling]
+                [ParentId<ParentModule>]
+                public static void ExtendedFunction() { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        // Should generate wrapper
+        var wrapperTree = driverRunResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("Wrapper"));
+        await Assert.That(wrapperTree).IsNotNull();
+
+        var wrapperCode = wrapperTree!.GetText().ToString();
+
+        // Wrapper should be nested in FunctionContainer (where declared)
+        await Assert.That(wrapperCode).Contains("public partial class FunctionContainer");
+
+        // ParentIdentification should point to ParentModule (overridden by attribute, fully qualified)
+        await Assert.That(wrapperCode).Contains("IdentificationHelper.Read<global::TestMod.ParentModule>");
+    }
+
+    [Test]
+    public async Task StatelessFunctionGenerator_WithParentIdAttributeAndIHasIdentification_UsesOverriddenParent(CancellationToken token)
+    {
+        TestSources.Add(("TestModule.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace TestMod;
+
+            public class ParentModule : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(2, 2, 2);
+            }
+
+            // Container implements IHasIdentification but function overrides with ParentIdAttribute
+            public partial class TestModule : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+
+                [TestFunction("override_parent")]
+                [TestScheduling]
+                [ParentId<ParentModule>]
+                public static void OverrideParentFunction() { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var wrapperTree = driverRunResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("Wrapper"));
+        await Assert.That(wrapperTree).IsNotNull();
+
+        var wrapperCode = wrapperTree!.GetText().ToString();
+
+        // Wrapper nested in TestModule
+        await Assert.That(wrapperCode).Contains("public partial class TestModule");
+
+        // ParentIdentification should point to ParentModule (overridden, fully qualified)
+        await Assert.That(wrapperCode).Contains("IdentificationHelper.Read<global::TestMod.ParentModule>");
+    }
 }

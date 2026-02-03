@@ -95,6 +95,21 @@ public static partial class TestData
             }
 
             /// <summary>
+            /// Explicitly specifies the parent (owner) of a stateless function.
+            /// Takes priority over containing class's IHasIdentification.
+            /// </summary>
+            [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+            public abstract class ParentIdAttribute : Attribute;
+
+            /// <summary>
+            /// Explicitly specifies the parent (owner) of a stateless function.
+            /// Takes priority over containing class's IHasIdentification.
+            /// </summary>
+            [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+            public sealed class ParentIdAttribute<TOwner> : ParentIdAttribute
+                where TOwner : IHasIdentification;
+
+            /// <summary>
             /// Defines a scheduling implementation for stateless functions.
             /// </summary>
             public interface IScheduling<TStatelessFunction, TContext, TRegistry>
