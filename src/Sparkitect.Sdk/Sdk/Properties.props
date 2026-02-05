@@ -41,6 +41,7 @@
     <!-- Expose MSBuild properties to Roslyn analyzers -->
     <ItemGroup>
         <CompilerVisibleProperty Include="ModId" />
+        <CompilerVisibleProperty Include="OptionalModIds" />
         <CompilerVisibleProperty Include="OptionalModAssemblies" />
     </ItemGroup>
 </Project>

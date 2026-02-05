@@ -48,15 +48,37 @@
         </PropertyGroup>
     </Target>
 
-    <!-- Calculate optional mod assembly names for analyzer -->
+    <!-- Hook into PrepareForBuild so properties are set before GenerateMSBuildEditorConfigFile -->
+    <PropertyGroup>
+        <PrepareForBuildDependsOn>$(PrepareForBuildDependsOn);_CalculateOptionalModAssemblies</PrepareForBuildDependsOn>
+    </PropertyGroup>
+
+    <!-- Calculate optional mod IDs and assembly names for analyzer -->
     <Target Name="_CalculateOptionalModAssemblies"
-            BeforeTargets="CoreCompile"
             DependsOnTargets="ResolveProjectReferences">
+
+        <!-- Collect optional mod project paths -->
+        <ItemGroup>
+            <_OptionalModProjects Include="@(ModProjectDependency->WithMetadataValue('IsOptional', 'true'))"/>
+        </ItemGroup>
+
+        <!-- Read ModId from each optional mod project file using XmlPeek -->
+        <XmlPeek XmlInputPath="%(_OptionalModProjects.Identity)"
+                 Query="/Project/PropertyGroup/ModId/text()"
+                 Condition="'@(_OptionalModProjects)' != ''">
+            <Output TaskParameter="Result" ItemName="_OptionalModIds"/>
+        </XmlPeek>
+
         <PropertyGroup>
-            <!-- Extract assembly names from optional ModProjectDependency items -->
-            <!-- Uses %(Filename) which gets assembly name from project path -->
-            <OptionalModAssemblies>@(ModProjectDependency->WithMetadataValue('IsOptional', 'true')->'%(Filename)', ';')</OptionalModAssemblies>
+            <!-- Mod IDs from project files (e.g., "color_provider_mod") - used for attribute validation -->
+            <OptionalModIds>@(_OptionalModIds, ';')</OptionalModIds>
+            <!-- Assembly names from filenames (e.g., "ColorProviderMod") - used for type checking -->
+            <OptionalModAssemblies>@(_OptionalModProjects->'%(Filename)', ';')</OptionalModAssemblies>
         </PropertyGroup>
+
+        <Message Text="[SDK] Optional mod IDs: $(OptionalModIds)"
+                 Importance="normal"
+                 Condition="'$(OptionalModIds)' != ''"/>
         <Message Text="[SDK] Optional mod assemblies: $(OptionalModAssemblies)"
                  Importance="normal"
                  Condition="'$(OptionalModAssemblies)' != ''"/>

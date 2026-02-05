@@ -77,6 +77,12 @@ public abstract class AnalyzerTestBase<TAnalyzer>
     public List<MetadataReference> AdditionalReferences { get; } = new();
 
     /// <summary>
+    /// Global analyzer options (simulates CompilerVisibleProperty values).
+    /// Keys should be "build_property.PropertyName" format.
+    /// </summary>
+    public Dictionary<string, string> GlobalOptions { get; } = new();
+
+    /// <summary>
     /// Runs the analyzer on the test sources and returns the diagnostics.
     /// </summary>
     public async Task<ImmutableArray<Diagnostic>> RunAnalyzerAsync(CancellationToken cancellationToken = default)
@@ -89,7 +95,11 @@ public abstract class AnalyzerTestBase<TAnalyzer>
             .Cast<AdditionalText>()
             .ToImmutableArray();
 
-        var options = new AnalyzerOptions(additional);
+        // Create options with GlobalOptions support
+        var configProvider = new TestAnalyzerConfigOptionsProvider(
+            GlobalOptions.ToImmutableDictionary());
+
+        var options = new AnalyzerOptions(additional, configProvider);
 
         var compilationWithAnalyzers = compilation.WithAnalyzers(
             ImmutableArray.Create<DiagnosticAnalyzer>(analyzer),
@@ -227,5 +237,46 @@ public abstract class AnalyzerTestBase<TAnalyzer>
 
         public override string Path => _path;
         public override SourceText? GetText(CancellationToken cancellationToken = default) => _text;
+    }
+
+    /// <summary>
+    /// Custom AnalyzerConfigOptionsProvider that supports GlobalOptions for testing CompilerVisibleProperty values.
+    /// </summary>
+    private sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+    {
+        private readonly ImmutableDictionary<string, string> _globalOptions;
+
+        public TestAnalyzerConfigOptionsProvider(ImmutableDictionary<string, string> globalOptions)
+        {
+            _globalOptions = globalOptions;
+        }
+
+        public override AnalyzerConfigOptions GlobalOptions =>
+            new TestAnalyzerConfigOptions(_globalOptions);
+
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) =>
+            TestAnalyzerConfigOptions.Empty;
+
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) =>
+            TestAnalyzerConfigOptions.Empty;
+    }
+
+    /// <summary>
+    /// Custom AnalyzerConfigOptions that wraps a dictionary.
+    /// </summary>
+    private sealed class TestAnalyzerConfigOptions : AnalyzerConfigOptions
+    {
+        public static readonly TestAnalyzerConfigOptions Empty =
+            new(ImmutableDictionary<string, string>.Empty);
+
+        private readonly ImmutableDictionary<string, string> _options;
+
+        public TestAnalyzerConfigOptions(ImmutableDictionary<string, string> options)
+        {
+            _options = options;
+        }
+
+        public override bool TryGetValue(string key, out string? value) =>
+            _options.TryGetValue(key, out value);
     }
 }
