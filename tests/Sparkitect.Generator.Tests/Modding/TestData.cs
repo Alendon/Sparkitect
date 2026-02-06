@@ -6,21 +6,20 @@ public static partial class TestData
     public static (string, object) ModdingCode => ("Modding.cs",
         """
         using Sparkitect.DI.GeneratorAttributes;
-        
+
         namespace Sparkitect.Modding;
-        
-        [FactoryGenerationType(FactoryGenerationType.Factory)]
-        public class RegistryAttribute : Attribute, IFactoryMarker<IRegistry>
+
+        public class RegistryAttribute : Attribute
         {
-            [Key] public required string Identifier { get; set; }
+            public required string Identifier { get; set; }
         }
-        
+
         [AttributeUsage(AttributeTargets.Assembly)]
         public class RegistryMetadataAttribute<TMetadata> : Attribute where TMetadata : class;
-        
+
         [AttributeUsage(AttributeTargets.Method)]
         public class RegistryMethodAttribute : Attribute;
-        
+
         [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
         public class UseResourceFileAttribute : Attribute
         {

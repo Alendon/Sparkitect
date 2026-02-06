@@ -3,10 +3,13 @@
 
 namespace {{ ImplementationNamespace }};
 
+{% for modId in OptionalModIds -%}
+[global::Sparkitect.Modding.OptionalModDependent("{{ modId }}")]
+{% endfor -%}
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 internal class {{ ImplementationTypeName }}_Factory : Sparkitect.DI.IServiceFactory
 {
-    public Type ServiceType => typeof({{ ServiceType }});
+    public Type ServiceType => typeof({{ BaseType }});
     public Type ImplementationType => typeof({{ ImplementationTypeName }});
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [

@@ -1,5 +1,4 @@
 ﻿using JetBrains.Annotations;
-using Sparkitect.DI.Container;
 using Sparkitect.Modding;
 
 namespace Sparkitect.DI;
@@ -9,15 +8,11 @@ namespace Sparkitect.DI;
 /// Implementations are typically source-generated (marked [CompilerGenerated]) when registry classes
 /// are annotated with [Registry] attribute. Manual implementations are possible but rare.
 /// </summary>
-public interface IRegistryConfigurator : IConfigurationEntrypoint<RegistryConfiguratorAttribute>
-{
-    /// <summary>
-    /// Configures registry factories to be available for resolution.
-    /// Called during engine initialization after mods are loaded.
-    /// </summary>
-    /// <param name="registryBuilder">The factory container builder for registering registry types.</param>
-    void ConfigureRegistries(IFactoryContainerBuilder<IRegistryBase> registryBuilder);
-}
+/// <remarks>
+/// The <see cref="IFactoryConfigurator{TBase, TDiscoveryAttribute}.Configure"/> method inherited from
+/// <see cref="IFactoryConfigurator{TBase, TDiscoveryAttribute}"/> registers keyed registry factories.
+/// </remarks>
+public interface IRegistryConfigurator : IFactoryConfigurator<IRegistryBase, RegistryConfiguratorAttribute>;
 
 /// <summary>
 /// Marks a class as a registry configurator entrypoint. Automatically applied by source generators

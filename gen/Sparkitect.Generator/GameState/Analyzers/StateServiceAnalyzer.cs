@@ -11,6 +11,7 @@ namespace Sparkitect.Generator.GameState.Analyzers;
 public class StateServiceAnalyzer : DiagnosticAnalyzer
 {
     private const string StateServiceAttributeMetadataName = "Sparkitect.GameState.StateServiceAttribute";
+    private const string CoreModuleTypeName = "Sparkitect.GameState.CoreModule";
 
     private static Location? GetAttributeLocation(AttributeData attr)
     {
@@ -51,9 +52,14 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
 
     private void ValidateSingleStateService(SymbolAnalysisContext context, INamedTypeSymbol implementationType, AttributeData attribute)
     {
-        // Extract the interface type from StateService<TInterface>
+        // Extract the interface type from StateService<TInterface, TModule>
         if (attribute.AttributeClass?.TypeArguments.FirstOrDefault() is not INamedTypeSymbol interfaceType)
             return;
+
+        // Extract the module type (second type argument)
+        var moduleType = attribute.AttributeClass?.TypeArguments.Length >= 2
+            ? attribute.AttributeClass.TypeArguments[1]
+            : null;
 
         // Get attribute location for reporting attribute-related errors
         var attrLocation = GetAttributeLocation(attribute);
@@ -68,6 +74,11 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
                 interfaceType.Name));
             return; // No point checking facades if interface isn't implemented
         }
+
+        // Skip facade validation for CoreModule services — they are global engine services
+        // that don't participate in the module-scoped facade pattern
+        if (moduleType?.ToDisplayString(DisplayFormats.NamespaceAndType) == CoreModuleTypeName)
+            return;
 
         // Get all StateFacade attributes from the interface
         var facadeAttributes = interfaceType.GetAttributes()

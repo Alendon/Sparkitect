@@ -1,6 +1,15 @@
 ﻿using System;
+using Sparkitect.Generator.DI.Pipeline;
 
 namespace Sparkitect.Generator.Modding;
+
+/// <summary>
+/// Wrapper record that pairs a RegistryModel with its DI pipeline factory data.
+/// Keeps RegistryModel clean of DI pipeline types while carrying factory data alongside.
+/// </summary>
+internal record RegistryWithFactory(
+    RegistryModel Registry,
+    FactoryWithRegistration FactoryData);
 
 public record RegistryModel(
     string TypeName,

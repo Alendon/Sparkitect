@@ -6,7 +6,6 @@ using Semver;
 using Serilog;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.DI.Container;
-using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.Modding;
 using Sparkitect.DI;
 using Sparkitect.Modding.IDs;
@@ -18,7 +17,7 @@ namespace Sparkitect.GameState;
 /// <summary>
 /// Manages game state transitions, module lifecycle, and main loop execution
 /// </summary>
-[CreateServiceFactory<IGameStateManager>]
+[StateService<IGameStateManager, CoreModule>]
 internal sealed class GameStateManager : IGameStateManager, IGameStateManagerRegistryFacade, IGameStateManagerStateFacade
 {
     private const string DefaultRootModConfigPath = "mods/roots.json";
@@ -479,13 +478,17 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             moduleTypes.Add(moduleMeta.ModuleType);
         }
 
-        // Register services for new modules
-        using var configuratorContainer = ModDIService.CreateEntrypointContainer<IStateModuleServiceConfigurator>(LoadedMods.Concat(additionalMods));
+        // Build loadedMods set from current state stack and additional mods
+        var loadedMods = new HashSet<string>(LoadedMods.Concat(additionalMods));
+
+        // Register services for new modules (skip CoreModule — its services are in the root container)
+        using var configuratorContainer = ModDIService.CreateEntrypointContainer<IStateModuleServiceConfigurator>(loadedMods);
         configuratorContainer.ProcessMany(configurator =>
         {
+            if (configurator.ModuleType == typeof(CoreModule)) return;
             if (!moduleTypes.Contains(configurator.ModuleType)) return;
 
-            configurator.ConfigureServices(builder);
+            configurator.Configure(builder, loadedMods);
             Log.Debug("Registered services for module {ModuleType} in state {StateId}",
                 configurator.ModuleType.Name, stateId);
         });

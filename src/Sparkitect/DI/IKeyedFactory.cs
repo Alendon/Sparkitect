@@ -1,6 +1,4 @@
-using OneOf;
 using Sparkitect.DI.Container;
-using Sparkitect.Modding;
 
 namespace Sparkitect.DI;
 
@@ -11,9 +9,9 @@ namespace Sparkitect.DI;
 public interface IKeyedFactory<TBase> : IFactoryBase where TBase : class
 {
     /// <summary>
-    /// The key used to identify this factory
+    /// The string key used to identify this factory
     /// </summary>
-    OneOf<Identification, string> Key { get; }
+    string Key { get; }
     
     /// <summary>
     /// Attempts to prepare the factory by resolving and caching all dependencies

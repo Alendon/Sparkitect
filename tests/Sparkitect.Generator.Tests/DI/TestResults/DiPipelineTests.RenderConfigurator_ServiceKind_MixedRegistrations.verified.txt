@@ -1,0 +1,24 @@
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace TestNamespace;
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.GameState.StateModuleServiceConfiguratorEntrypointAttribute]
+internal class MixedConfigurator : global::Sparkitect.GameState.IStateModuleServiceConfigurator
+{
+public void Configure(global::Sparkitect.DI.Container.ICoreContainerBuilder builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {
+builder.Register<global::TestNamespace.ServiceA_Factory>();
+builder.Register<global::TestNamespace.ServiceB_Factory>();
+
+        if (loadedMods.Contains("color_mod"))
+            Register_TestNamespace_OptService_Factory(builder);
+}
+
+[global::Sparkitect.Modding.ModLoadedGuard("color_mod")]
+private void Register_TestNamespace_OptService_Factory(global::Sparkitect.DI.Container.ICoreContainerBuilder builder)
+    {
+        builder.Register<global::TestNamespace.OptService_Factory>();
+    }
+}

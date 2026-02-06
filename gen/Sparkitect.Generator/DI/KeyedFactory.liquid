@@ -3,6 +3,9 @@
 
 namespace {{ ImplementationNamespace }};
 
+{% for modId in OptionalModIds -%}
+[global::Sparkitect.Modding.OptionalModDependent("{{ modId }}")]
+{% endfor -%}
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<{{ BaseType }}>
 {
@@ -16,14 +19,8 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
 
     public Type ImplementationType => typeof({{ ImplementationTypeName }});
 
-    {% if KeyInfo %}
-    {% if KeyInfo.KeyValue %}
-    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => "{{ KeyInfo.KeyValue }}";
-    {% elsif KeyInfo.PropertyName %}
-    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => {{ ImplementationTypeName }}.{{ KeyInfo.PropertyName }};
-    {% endif %}
-    {% else %}
-    #error "KeyedFactory generated without key information - this should have been caught by the analyzer (SPARK0106)"
+    {% if Intent.Key -%}
+    public string Key => "{{ Intent.Key }}";
     {% endif %}
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [

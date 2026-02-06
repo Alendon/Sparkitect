@@ -1,0 +1,39 @@
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace {{ Namespace }};
+
+{% unless IsPartial -%}
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::{{ EntrypointAttribute }}]
+internal class {{ ClassName }} : global::{{ BaseType }}
+{
+{% if ModuleTypeFullName -%}
+    public global::System.Type ModuleType => typeof({{ ModuleTypeFullName }});
+
+{% endif -%}
+{% endunless -%}
+{% if IsPartial -%}
+partial class {{ ClassName }}
+{
+{% endif -%}
+    {{ MethodVisibility }} void {{ MethodName }}({{ BuilderType }} builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {
+{% for reg in UnconditionalRegistrations -%}
+        {{ reg.RegistrationCode }}
+{% endfor -%}
+{% for guard in ConditionalRegistrations %}
+        if ({{ guard.Condition }})
+            {{ guard.GuardMethodName }}(builder);
+{% endfor -%}
+    }
+{% for guard in ConditionalRegistrations %}
+{% for modId in guard.ModIds -%}
+    [global::Sparkitect.Modding.ModLoadedGuard("{{ modId }}")]
+{% endfor -%}
+    private void {{ guard.GuardMethodName }}({{ BuilderType }} builder)
+    {
+        {{ guard.RegistrationCode }}
+    }
+{% endfor -%}
+}

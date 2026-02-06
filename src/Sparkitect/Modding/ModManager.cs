@@ -9,14 +9,14 @@ using OneOf;
 using Semver;
 using Serilog;
 using Sparkitect.DI.Container;
-using Sparkitect.DI.GeneratorAttributes;
+using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
 
 /// <summary>
 /// Implementation of the IModManager interface for managing mods
 /// </summary>
-[CreateServiceFactory<IModManager>]
+[StateService<IModManager, CoreModule>]
 internal class ModManager : IModManager
 {
     private readonly Dictionary<string, LoadedMod> _loadedMods = [];

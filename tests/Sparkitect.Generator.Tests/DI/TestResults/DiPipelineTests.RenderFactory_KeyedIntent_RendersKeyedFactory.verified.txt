@@ -1,28 +1,25 @@
 ﻿#pragma warning disable CS9113
 #pragma warning disable CS1591
 
-namespace DiTest;
+namespace TestNamespace;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<global::DiTest.IProcessor>
+internal class TestRegistry_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<Sparkitect.Modding.IRegistryBase>
 {
     // Cached dependencies
     
-    private global::DiTest.ILogger _arg_1;
+    private TestNamespace.ILogger _arg_1;
     
     
 
-    public Type ImplementationType => typeof(XmlProcessor);
+    public Type ImplementationType => typeof(TestRegistry);
 
-    
-    
-    public global::OneOf.OneOf<global::Sparkitect.Modding.Identification, string> Key => XmlProcessor.ProcessorKey;
-    
+    public string Key => "test_key";
     
 
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
     
-        (typeof(global::DiTest.ILogger), false) 
+        (typeof(TestNamespace.ILogger), false) 
     ];
 
     public (Type Type, bool IsOptional)[] GetPropertyDependencies() => [
@@ -34,7 +31,7 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
         bool allResolved = true;
 
         
-            if(!container.TryResolveMapped<global::DiTest.ILogger>(out _arg_1, facadeMap))
+            if(!container.TryResolveMapped<TestNamespace.ILogger>(out _arg_1, facadeMap))
             {
             
                 allResolved = false;
@@ -59,13 +56,13 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
 
     public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container) => TryPrepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
 
-    public global::DiTest.IProcessor CreateInstance()
+    public Sparkitect.Modding.IRegistryBase CreateInstance()
     {
         // Validate that all required dependencies are prepared
     
         
         if (_arg_1 is null)
-            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<XmlProcessor, global::DiTest.ILogger>("");
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<TestRegistry, TestNamespace.ILogger>("");
         
     
     
@@ -81,9 +78,9 @@ internal class XmlProcessor_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<g
         return instance;
 
         [global::System.Runtime.CompilerServices.UnsafeAccessor(global::System.Runtime.CompilerServices.UnsafeAccessorKind.Constructor)]
-        static extern XmlProcessor Constructor(
+        static extern TestRegistry Constructor(
 
-    global::DiTest.ILogger arg_1  
+    TestNamespace.ILogger arg_1  
 );
 
     

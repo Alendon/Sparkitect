@@ -1,0 +1,20 @@
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace TestNamespace;
+
+partial class KeyedPartialCondConfigurator
+{
+private void Configure(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {
+
+        if (loadedMods.Contains("ext_mod"))
+            Register_TestNamespace_OptRegistry_KeyedFactory(builder);
+}
+
+[global::Sparkitect.Modding.ModLoadedGuard("ext_mod")]
+private void Register_TestNamespace_OptRegistry_KeyedFactory(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder)
+    {
+        builder.Register(new global::TestNamespace.OptRegistry_KeyedFactory());
+    }
+}

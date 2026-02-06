@@ -1,0 +1,23 @@
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace TestNamespace;
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.GameState.StateModuleServiceConfiguratorEntrypointAttribute]
+internal class MultiCondConfigurator : global::Sparkitect.GameState.IStateModuleServiceConfigurator
+{
+public void Configure(global::Sparkitect.DI.Container.ICoreContainerBuilder builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {
+
+        if (loadedMods.Contains("mod_a") && loadedMods.Contains("mod_b"))
+            Register_TestNamespace_MultiCondService_Factory(builder);
+}
+
+[global::Sparkitect.Modding.ModLoadedGuard("mod_a")]
+[global::Sparkitect.Modding.ModLoadedGuard("mod_b")]
+private void Register_TestNamespace_MultiCondService_Factory(global::Sparkitect.DI.Container.ICoreContainerBuilder builder)
+    {
+        builder.Register<global::TestNamespace.MultiCondService_Factory>();
+    }
+}

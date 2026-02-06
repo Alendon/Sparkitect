@@ -1,0 +1,12 @@
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace TestNamespace;
+
+partial class CustomMethodConfigurator
+{
+private void ConfigureRegistries(global::Sparkitect.DI.Container.ICoreContainerBuilder builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {
+builder.Register<global::TestNamespace.MyService_Factory>();
+}
+}

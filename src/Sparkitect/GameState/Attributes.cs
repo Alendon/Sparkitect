@@ -26,8 +26,7 @@ public sealed class StateFacadeAttribute : Attribute;
 /// <typeparam name="TInterface">The interface type this service implements.</typeparam>
 /// <typeparam name="TModule">The module this service belongs to.</typeparam>
 [PublicAPI]
-[FactoryGenerationType(FactoryGenerationType.Service)]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-public sealed class StateServiceAttribute<TInterface, TModule> : Attribute, IFactoryMarker<TInterface>
+public sealed class StateServiceAttribute<TInterface, TModule> : Attribute
     where TInterface : class
     where TModule : IStateModule;

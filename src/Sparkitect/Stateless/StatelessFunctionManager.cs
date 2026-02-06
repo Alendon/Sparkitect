@@ -1,12 +1,11 @@
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
-using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
-[CreateServiceFactory<IStatelessFunctionManager>]
+[StateService<IStatelessFunctionManager, CoreModule>]
 internal sealed class StatelessFunctionManager : IStatelessFunctionManager
 {
     private readonly Dictionary<Identification, Type> _wrapperTypes = new();

@@ -1,4 +1,4 @@
-﻿namespace Sparkitect.Generator.Tests;
+namespace Sparkitect.Generator.Tests;
 
 public static partial class TestData
 {
@@ -6,54 +6,46 @@ public static partial class TestData
         """
         // ReSharper disable once CheckNamespace
         namespace Sparkitect.DI.GeneratorAttributes;
-        
-        public enum FactoryGenerationType
-        {
-            Service,
-            Factory
-        }
-        
-        [AttributeUsage(AttributeTargets.Class)]
-        public class FactoryGenerationTypeAttribute(FactoryGenerationType generationType) : Attribute;
-        
-        /// <summary>
-        /// Marker interface for factory attributes that generate service factories
-        /// </summary>
-        public interface IFactoryMarker<TExposedType> where TExposedType : class;
 
         /// <summary>
         /// Base marker attribute for facade types
         /// </summary>
         public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;
+        """);
 
-        /// <summary>
-        /// Marks a property parameter (/named argument) as the key for a KeyedFactory.
-        /// The parameter must be of type string
-        /// </summary>
-        [AttributeUsage(AttributeTargets.Property)]
-        public class KeyAttribute : Attribute;
-        
-        /// <summary>
-        /// Marks a property parameter (/named argument) as containing the name of a static property that provides the key for a KeyedFactory.
-        /// The static property must return string, Identification, or OneOf&lt;Identification, string&gt;
-        /// </summary>
-        [AttributeUsage(AttributeTargets.Property)]
-        public class KeyPropertyAttribute : Attribute;
-        
-        [FactoryGenerationType(FactoryGenerationType.Factory)]
-        public class KeyedFactoryAttribute<TBase> : Attribute, IFactoryMarker<TBase> where TBase : class
+    public static (string, object) DiPipelineAttributes => ("DiPipelineAttributes.cs",
+        """
+        namespace Sparkitect.Modding;
+
+        [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+        public sealed class OptionalModDependentAttribute : Attribute
         {
-            [Key]
-            public string? Key { get; set; }
-            
-            [KeyProperty]
-            public string? KeyPropertyName { get; set; }
+            public string ModId { get; }
+            public OptionalModDependentAttribute(string modId) => ModId = modId;
         }
-        
-        [FactoryGenerationType(FactoryGenerationType.Service)]
-        public class CreateServiceFactoryAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
-        
-        [FactoryGenerationType(FactoryGenerationType.Service)]
-        public class SingletonAttribute<TInterface> : Attribute, IFactoryMarker<TInterface> where TInterface : class;
+
+        [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+        public sealed class ModLoadedGuardAttribute : Attribute
+        {
+            public string ModId { get; }
+            public ModLoadedGuardAttribute(string modId) => ModId = modId;
+        }
+        """);
+
+    public static (string, object) DiContainerInterfaces => ("DiContainerInterfaces.cs",
+        """
+        namespace Sparkitect.DI.Container;
+
+        public interface ICoreContainerBuilder
+        {
+            void Register<TFactory>();
+            bool TryResolveInternal<T>(out T result) where T : class;
+            bool TryResolveInternal(Type type, out object result);
+        }
+
+        public interface IFactoryContainerBuilder<TBase>
+        {
+            void Register(object factory);
+        }
         """);
 }

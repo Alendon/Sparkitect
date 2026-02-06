@@ -1,9 +1,9 @@
 using System.IO.Compression;
-using Sparkitect.DI.GeneratorAttributes;
+using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
 
-[CreateServiceFactory<IResourceManager>]
+[StateService<IResourceManager, CoreModule>]
 internal class ResourceManager : IResourceManager
 {
     public required IIdentificationManager IdentificationManager { private get; init; }

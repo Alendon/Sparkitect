@@ -1,17 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
-using OneOf;
-using OneOf.Types;
 using Serilog;
 using Sparkitect.CompilerGenerated;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
-using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
 
-[CreateServiceFactory<IRegistryManager>]
+[StateService<IRegistryManager, CoreModule>]
 internal class RegistryManager : IRegistryManager
 {
     internal required IModManager ModManager { get; init; }
@@ -85,11 +82,10 @@ internal class RegistryManager : IRegistryManager
         // Create factory container builder with facade support
         var builder = new FactoryContainerBuilder<IRegistryBase>(
             effectiveContainer,
-            FactoryKeyType.String,
             facadeMap);
 
         using var configuratorContainer = ModDIService.CreateEntrypointContainer<IRegistryConfigurator>(modIds);
-        configuratorContainer.ProcessMany(x => x.ConfigureRegistries(builder));
+        configuratorContainer.ProcessMany(x => x.Configure(builder, new HashSet<string>(modIds)));
 
         _registryFactory = builder.Build(true);
         _lastCoreContainer = effectiveContainer;

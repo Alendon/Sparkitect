@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Sparkitect.Generator.DI.Pipeline;
 using Sparkitect.Utilities;
 
 namespace Sparkitect.Generator.Modding;
@@ -137,26 +138,64 @@ public partial class RegistryGenerator
         return FluidHelper.TryRenderTemplate("Modding.RegistryMetadata.liquid", metadataModel, out code);
     }
 
-    internal static bool RenderRegistryConfigurator(ImmutableArray<RegistryModel> models, ModBuildSettings settings, out string code, out string fileName)
+    internal static bool RenderRegistryConfigurator(
+        ImmutableArray<RegistryWithFactory> registriesWithFactories,
+        ModBuildSettings settings,
+        out string configuratorCode,
+        out string configuratorFileName,
+        out string shellCode,
+        out string shellFileName)
     {
-        fileName = "RegistryConfigurator.g.cs";
-        
-        if (models.IsEmpty)
+        shellFileName = "RegistryConfigurator_Shell.g.cs";
+        shellCode = string.Empty;
+
+        if (registriesWithFactories.IsEmpty)
         {
-            code = string.Empty;
+            configuratorCode = string.Empty;
+            configuratorFileName = string.Empty;
             return false;
         }
-        
-        var configuratorModel = new
-        {
-            Namespace = settings.SgOutputNamespace,
-            ConfiguratorClassName = "RegistryConfigurator",
-            Registries = models.Select(m => new { 
-                FactoryName = $"global::{m.ContainingNamespace}.{m.TypeName}_KeyedFactory"
-            }).ToArray()
-        };
-        
-        return FluidHelper.TryRenderTemplate("Modding.RegistryConfigurator.liquid", configuratorModel, out code);
+
+        // Extract registrations from RegistryWithFactory wrappers
+        var registrations = registriesWithFactories
+            .Select(r => r.FactoryData.Registration)
+            .ToImmutableValueArray();
+
+        var options = new ConfiguratorOptions(
+            ClassName: "RegistryConfigurator",
+            Namespace: settings.SgOutputNamespace,
+            BaseType: "Sparkitect.DI.IRegistryConfigurator",
+            EntrypointAttribute: "Sparkitect.DI.RegistryConfiguratorAttribute",
+            Kind: new ConfiguratorKind.Keyed("Sparkitect.Modding.IRegistryBase"),
+            IsPartial: true,
+            MethodName: "RegisterRegistries");
+
+        // DI pipeline renders the registration method (partial class)
+        var success = DiPipeline.RenderConfigurator(registrations, options,
+            out configuratorCode, out configuratorFileName);
+
+        // RegistryGenerator renders the partial class shell
+        shellCode = GenerateConfiguratorShell(settings);
+
+        return success;
+    }
+
+    private static string GenerateConfiguratorShell(ModBuildSettings settings)
+    {
+        return $@"#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace {settings.SgOutputNamespace};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.DI.RegistryConfigurator]
+internal partial class RegistryConfigurator : global::Sparkitect.DI.IRegistryConfigurator
+{{
+    public void Configure(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {{
+        RegisterRegistries(builder, loadedMods);
+    }}
+}}";
     }
 
 
@@ -180,13 +219,24 @@ public partial class RegistryGenerator
         }
     }
 
-    internal static void OutputRegistryConfigurator(SourceProductionContext context, (ImmutableArray<RegistryModel> Left, ModBuildSettings Right) arg2)
+    internal static void OutputRegistryFactory(SourceProductionContext context, RegistryWithFactory rwf)
     {
-        var (models, settings) = arg2;
-        
-        if (RenderRegistryConfigurator(models, settings, out var code, out var fileName))
+        if (DiPipeline.RenderFactory(rwf.FactoryData.Factory, out var code, out var fileName))
         {
             context.AddSource(fileName, code);
+        }
+    }
+
+    internal static void OutputRegistryConfigurator(SourceProductionContext context, (ImmutableArray<RegistryWithFactory> Left, ModBuildSettings Right) arg2)
+    {
+        var (registriesWithFactories, settings) = arg2;
+
+        if (RenderRegistryConfigurator(registriesWithFactories, settings,
+                out var configuratorCode, out var configuratorFileName,
+                out var shellCode, out var shellFileName))
+        {
+            context.AddSource(configuratorFileName, configuratorCode);
+            context.AddSource(shellFileName, shellCode);
         }
     }
 

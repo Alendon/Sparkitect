@@ -1,14 +1,15 @@
 using OneOf;
 using OneOf.Types;
 using Serilog;
-using Sparkitect.DI.GeneratorAttributes;
+using Sparkitect.GameState;
 
 namespace Sparkitect.Utils;
 
 /// <summary>
 /// Implementation of the ICliArgumentHandler interface for handling command-line arguments.
 /// </summary>
-[CreateServiceFactory<ICliArgumentHandler>]internal class CliArgumentHandler : ICliArgumentHandler
+[StateService<ICliArgumentHandler, CoreModule>]
+internal class CliArgumentHandler : ICliArgumentHandler
 {
     private readonly Dictionary<string, OneOf<None, string, List<string>>> _arguments = 
         new(StringComparer.OrdinalIgnoreCase);

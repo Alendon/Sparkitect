@@ -1,0 +1,16 @@
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace TestNamespace;
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.GameState.StateModuleServiceConfiguratorEntrypointAttribute]
+internal class ModuleTypeConfigurator : global::Sparkitect.GameState.IStateModuleServiceConfigurator
+{
+public global::System.Type ModuleType => typeof(global::TestNamespace.CoreModule);
+
+public void Configure(global::Sparkitect.DI.Container.ICoreContainerBuilder builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {
+builder.Register<global::TestNamespace.MyService_Factory>();
+}
+}

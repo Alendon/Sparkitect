@@ -1,11 +1,11 @@
 using System.Reflection;
 using Serilog;
 using Sparkitect.DI.Container;
-using Sparkitect.DI.GeneratorAttributes;
+using Sparkitect.GameState;
 
 namespace Sparkitect.DI;
 
-[CreateServiceFactory<IModDIService>]
+[StateService<IModDIService, CoreModule>]
 internal class ModDIService : IModDIService
 {
     private readonly Dictionary<string, Assembly> _modAssemblies = new();

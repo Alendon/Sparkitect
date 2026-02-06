@@ -5,15 +5,15 @@
 namespace Sparkitect.CompilerGenerated.GameState;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-[global::Sparkitect.GameState.StateModuleServiceConfiguratorEntrypoint]
+[global::Sparkitect.GameState.StateModuleServiceConfiguratorEntrypointAttribute]
 internal class CoreModule_ServiceConfigurator : global::Sparkitect.GameState.IStateModuleServiceConfigurator
 {
-    public global::System.Type ModuleType => typeof(global::StateServiceTest.CoreModule);
+public global::System.Type ModuleType => typeof(global::StateServiceTest.CoreModule);
 
-    public void ConfigureServices(global::Sparkitect.DI.Container.ICoreContainerBuilder builder)
+public void Configure(global::Sparkitect.DI.Container.ICoreContainerBuilder builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
     {
-        builder.Register<global::StateServiceTest.ServiceA_Factory>();
-        builder.Register<global::StateServiceTest.ServiceB_Factory>();
-        builder.Register<global::StateServiceTest.ServiceC_Factory>();
-    }
+builder.Register<global::StateServiceTest.ServiceA_Factory>();
+builder.Register<global::StateServiceTest.ServiceB_Factory>();
+builder.Register<global::StateServiceTest.ServiceC_Factory>();
+}
 }

@@ -8,13 +8,12 @@ namespace Sparkitect.Modding;
 /// </summary>
 /// <remarks> Marker attributes inherited by this class will be treated as specialized Registries and not be
 /// processed by the Registry SG beyond their basic one time setup (eg no registry method parsing)</remarks>
-[FactoryGenerationType(FactoryGenerationType.Factory)]
-public class RegistryAttribute : Attribute, IFactoryMarker<IRegistryBase>
+public class RegistryAttribute : Attribute
 {
     /// <summary>
     /// Unique registry category identifier.
     /// </summary>
-    [Key] public required string Identifier { get; set; }
+    public required string Identifier { get; set; }
 
     /// <summary>
     /// When true, the registry is managed by an external source generator.

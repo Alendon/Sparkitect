@@ -128,9 +128,8 @@ public static partial class TestData
         [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
         public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
 
-        [FactoryGenerationType(FactoryGenerationType.Service)]
         [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
-        public sealed class StateServiceAttribute<TInterface, TModule> : Attribute, IFactoryMarker<TInterface>
+        public sealed class StateServiceAttribute<TInterface, TModule> : Attribute
             where TInterface : class
             where TModule : IStateModule;
 

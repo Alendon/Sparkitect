@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Text;
 using Moq;
+using Sparkitect.Generator.DI.Pipeline;
 using Sparkitect.Generator.Modding;
 using VerifyTUnit;
 using static Sparkitect.Generator.Tests.TestData;
@@ -260,43 +261,44 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     [Test]
     public async Task RenderRegistryConfigurator_MultipleRegistries(CancellationToken token)
     {
-        RegistryModel[] models =
+        RegistryWithFactory[] registriesWithFactories =
         [
             new(
-                "TestRegistry1",
-                "test1",
-                "DiTest",
-                false,
-                [],
-                []),
+                new RegistryModel("TestRegistry1", "test1", "DiTest", false, [], []),
+                new FactoryWithRegistration(
+                    new FactoryModel("Sparkitect.Modding.IRegistryBase", "TestRegistry1", "DiTest", [], [],
+                        new FactoryIntent.Keyed("test1"), []),
+                    new RegistrationModel("global::DiTest.TestRegistry1_KeyedFactory", []))),
             new(
-                "TestRegistry2",
-                "test2",
-                "DiTest.Nested",
-                false,
-                [],
-                [])
+                new RegistryModel("TestRegistry2", "test2", "DiTest.Nested", false, [], []),
+                new FactoryWithRegistration(
+                    new FactoryModel("Sparkitect.Modding.IRegistryBase", "TestRegistry2", "DiTest.Nested", [], [],
+                        new FactoryIntent.Keyed("test2"), []),
+                    new RegistrationModel("global::DiTest.Nested.TestRegistry2_KeyedFactory", [])))
         ];
 
         var success =
-            RegistryGenerator.RenderRegistryConfigurator([..models], BuildSettings, out var code, out var fileName);
+            RegistryGenerator.RenderRegistryConfigurator([..registriesWithFactories], BuildSettings,
+                out var configuratorCode, out var configuratorFileName,
+                out var shellCode, out var shellFileName);
 
         await Assert.That(success).IsTrue();
-        await Assert.That(fileName).IsEqualTo("RegistryConfigurator.g.cs");
-        await Verifier.Verify(code, verifySettings);
+        await Assert.That(configuratorFileName).IsEqualTo("RegistryConfigurator.g.cs");
+        await Assert.That(shellFileName).IsEqualTo("RegistryConfigurator_Shell.g.cs");
+        await Verifier.Verify(new { configuratorCode, shellCode }, verifySettings);
     }
 
     [Test]
     public async Task RenderRegistryConfigurator_EmptyRegistries_ReturnsFalse(CancellationToken token)
     {
-        var models = ImmutableArray<RegistryModel>.Empty;
+        var registriesWithFactories = ImmutableArray<RegistryWithFactory>.Empty;
 
         var success =
-            RegistryGenerator.RenderRegistryConfigurator(models, BuildSettings, out var code, out var fileName);
+            RegistryGenerator.RenderRegistryConfigurator(registriesWithFactories, BuildSettings,
+                out var configuratorCode, out var configuratorFileName,
+                out var shellCode, out var shellFileName);
 
         await Assert.That(success).IsFalse();
-        await Assert.That(fileName).IsEqualTo("RegistryConfigurator.g.cs");
-        await Assert.That(code).IsEmpty();
     }
 
     [Test]

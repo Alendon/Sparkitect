@@ -2,19 +2,6 @@
 
 ### New Rules
 
-<!-- Category 01: DI/Factory Diagnostics -->
-
-| Rule ID   | Category   | Severity | Notes                                                                 |
-|-----------|------------|----------|-----------------------------------------------------------------------|
-| SPARK0101 | Sparkitect | Warning  | DI Only abstract/interface dependencies                               |
-| SPARK0102 | Sparkitect | Error    | DI Only one constructor                                               |
-| SPARK0103 | Sparkitect | Warning  | DI Required properties should be init-only                            |
-| SPARK0104 | Sparkitect | Warning  | DI Single generation marker                                           |
-| SPARK0105 | Sparkitect | Error    | DI Conflicting generation markers                                     |
-| SPARK0106 | Sparkitect | Error    | DI KeyedFactory missing key association                               |
-| SPARK0107 | Sparkitect | Error    | DI Invalid key property                                               |
-| SPARK0108 | Sparkitect | Error    | DI Conflicting key associations                                       |
-
 <!-- Category 02: Registry/Modding Diagnostics -->
 
 | SPARK0201 | Sparkitect | Error    | Registry requires IRegistry                                           |
@@ -69,6 +56,14 @@
 
 ### Removed Rules
 
-| Rule ID   | Category   | Severity | Notes                                                                       |
-|-----------|------------|----------|-----------------------------------------------------------------------------|
-| SPARK0231 | Sparkitect | Error    | Replaced by SPARK0502 via [SnakeCase] attribute on generated provider attributes |
+| Rule ID   | Category   | Severity | Notes                                                                            |
+|-----------|------------|----------|----------------------------------------------------------------------------------|
+| SPARK0101 | Sparkitect | Warning  | Removed: DI Only abstract/interface dependencies (DiFactoryAnalyzer deleted)      |
+| SPARK0102 | Sparkitect | Error    | Removed: DI Only one constructor (DiFactoryAnalyzer deleted)                      |
+| SPARK0103 | Sparkitect | Warning  | Removed: DI Required properties init-only (DiFactoryAnalyzer deleted)             |
+| SPARK0104 | Sparkitect | Warning  | Removed: DI Single generation marker (DiFactoryAnalyzer deleted)                  |
+| SPARK0105 | Sparkitect | Error    | Removed: DI Conflicting generation markers (DiFactoryAnalyzer deleted)            |
+| SPARK0106 | Sparkitect | Error    | Removed: DI KeyedFactory missing key (DiFactoryAnalyzer deleted)                  |
+| SPARK0107 | Sparkitect | Error    | Removed: DI Invalid key property (DiFactoryAnalyzer deleted)                      |
+| SPARK0108 | Sparkitect | Error    | Removed: DI Conflicting key associations (DiFactoryAnalyzer deleted)              |
+| SPARK0231 | Sparkitect | Error    | Replaced by SPARK0502 via [SnakeCase] attribute on generated provider attributes  |

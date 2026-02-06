@@ -4,12 +4,10 @@ using Serilog.Configuration;
 using Serilog.Events;
 using Serilog.Exceptions;
 using Serilog.Formatting.Compact;
-using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.Exceptions;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
-using Sparkitect.Stateless;
 using Sparkitect.Utils;
 
 namespace Sparkitect;
@@ -118,15 +116,9 @@ public class EngineBootstrapper
     {
         ICoreContainerBuilder builder = new CoreContainerBuilder(null);
 
-        // Register service factories for base container services
-        builder.Register<CliArgumentHandler_Factory>();
-        builder.Register<IdentificationManager_Factory>();
-        builder.Register<ResourceManager_Factory>();
-        builder.Register<ModManager_Factory>();
-        builder.Register<RegistryManager_Factory>();
-        builder.Register<GameStateManager_Factory>();
-        builder.Register<ModDIService_Factory>();
-        builder.Register<StatelessFunctionManager_Factory>();
+        // Use generated CoreModule_ServiceConfigurator for all core services
+        var configurator = new Sparkitect.CompilerGenerated.GameState.CoreModule_ServiceConfigurator();
+        configurator.Configure(builder, new HashSet<string>());
 
         try
         {

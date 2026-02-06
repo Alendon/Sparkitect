@@ -1,9 +1,9 @@
 ﻿using OneOf;
-using Sparkitect.DI.GeneratorAttributes;
+using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
 
-[CreateServiceFactory<IIdentificationManager>]
+[StateService<IIdentificationManager, CoreModule>]
 internal class IdentificationManager : IIdentificationManager
 {
     private readonly int _mainThreadId = Environment.CurrentManagedThreadId;

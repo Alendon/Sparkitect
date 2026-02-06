@@ -7,6 +7,7 @@ public partial class RegistryGenerator
     private const string UseResourceFileAttribute = "Sparkitect.Modding.UseResourceFileAttribute";
     
     private const string RegistryInterface = "Sparkitect.Modding.IRegistry";
+    private const string RegistryBaseInterface = "Sparkitect.Modding.IRegistryBase";
     private const string RegistryAttributeIdField = "Identifier";
     private const string IdentificationStruct = "Sparkitect.Modding.Identification";
     

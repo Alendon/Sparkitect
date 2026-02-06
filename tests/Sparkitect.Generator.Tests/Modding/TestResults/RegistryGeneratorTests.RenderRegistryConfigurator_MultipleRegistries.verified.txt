@@ -1,15 +1,32 @@
-﻿#pragma warning disable CS9113
+﻿{
+  configuratorCode:
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace SampleTest.Generated;
+
+partial class RegistryConfigurator
+{
+private void RegisterRegistries(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {
+builder.Register(new global::DiTest.TestRegistry1_KeyedFactory());
+builder.Register(new global::DiTest.Nested.TestRegistry2_KeyedFactory());
+}
+}
+,
+  shellCode:
+#pragma warning disable CS9113
 #pragma warning disable CS1591
 
 namespace SampleTest.Generated;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.DI.RegistryConfigurator]
-public class RegistryConfigurator : global::Sparkitect.DI.IRegistryConfigurator
+internal partial class RegistryConfigurator : global::Sparkitect.DI.IRegistryConfigurator
 {
-    public void ConfigureRegistries(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> registryBuilder)
+    public void Configure(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
     {
-        registryBuilder.Register(new global::DiTest.TestRegistry1_KeyedFactory());
-        registryBuilder.Register(new global::DiTest.Nested.TestRegistry2_KeyedFactory());
+        RegisterRegistries(builder, loadedMods);
     }
+}
 }

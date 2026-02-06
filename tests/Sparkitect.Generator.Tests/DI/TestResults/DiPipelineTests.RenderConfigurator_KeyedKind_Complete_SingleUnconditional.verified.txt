@@ -1,0 +1,14 @@
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace TestNamespace;
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::Sparkitect.Modding.RegistryConfiguratorEntrypointAttribute]
+internal class KeyedConfigurator : global::Sparkitect.Modding.IRegistryConfigurator
+{
+public void Configure(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {
+builder.Register(new global::TestNamespace.TestRegistry_KeyedFactory());
+}
+}

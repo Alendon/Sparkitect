@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sparkitect.Generator.DI.Pipeline;
 using Sparkitect.Utilities;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -31,7 +32,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         
         var buildSettings = context.GetModBuildSettings();
 
-        var symbolRegistryModelsProvider = context.SyntaxProvider.ForAttributeWithMetadataName(RegistryMarkerAttribute,
+        var symbolRegistryWithFactoryProvider = context.SyntaxProvider.ForAttributeWithMetadataName(RegistryMarkerAttribute,
             (node, _) => node is ClassDeclarationSyntax, (syntaxContext, _) =>
             {
                 if (syntaxContext.TargetSymbol is not INamedTypeSymbol symbol) return null;
@@ -42,8 +43,25 @@ public partial class RegistryGenerator : IIncrementalGenerator
                     x.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) is RegistryMarkerAttribute);
                 if (registryAttribute is null) return null;
 
-                return ExtractModel(symbol, registryAttribute);
+                var registryModel = ExtractModel(symbol, registryAttribute);
+                if (registryModel is null) return null;
+
+                // Extract factory data at the symbol boundary using DiPipeline
+                var factory = DiPipeline.ExtractFactory(
+                    symbol,
+                    new FactoryIntent.Keyed(registryModel.Key),
+                    RegistryBaseInterface);
+                if (factory is null) return null;
+
+                var registration = DiPipeline.ToRegistration(factory, symbol);
+                var factoryData = new FactoryWithRegistration(factory, registration);
+
+                return new RegistryWithFactory(registryModel, factoryData);
             }).NotNull();
+
+        // Project RegistryModel from RegistryWithFactory for existing consumers
+        var symbolRegistryModelsProvider = symbolRegistryWithFactoryProvider
+            .Select((rwf, _) => rwf.Registry);
 
         var assemblyRegistryModelsProvider =
             context.CompilationProvider.Select((compilation, _) => ExtractModels(compilation));
@@ -52,7 +70,13 @@ public partial class RegistryGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(symbolRegistryModelsProvider, OutputRegistryAttributes);
 
         context.RegisterSourceOutput(symbolRegistryModelsProvider.Combine(buildSettings), OutputRegistryMetadata);
-        context.RegisterSourceOutput(symbolRegistryModelsProvider.Collect().Combine(buildSettings),
+
+        // Generate keyed factory class for each registry via DiPipeline
+        context.RegisterSourceOutput(symbolRegistryWithFactoryProvider, OutputRegistryFactory);
+
+        // Generate configurator via DiPipeline (partial class with registration method)
+        // and shell class with entrypoint attribute and interface implementation
+        context.RegisterSourceOutput(symbolRegistryWithFactoryProvider.Collect().Combine(buildSettings),
             OutputRegistryConfigurator);
 
 

@@ -1,4 +1,6 @@
-﻿namespace Sparkitect.DI;
+﻿using Sparkitect.DI.Container;
+
+namespace Sparkitect.DI;
 
 /// <summary>
 /// Base interface for all configuration entrypoints. Entrypoints are discovered classes that configure
@@ -20,4 +22,40 @@ public interface IBaseConfigurationEntrypoint
 public interface IConfigurationEntrypoint<TDiscoveryAttribute> : IBaseConfigurationEntrypoint where TDiscoveryAttribute : Attribute
 {
     static Type IBaseConfigurationEntrypoint.EntrypointAttributeType => typeof(TDiscoveryAttribute);
+}
+
+/// <summary>
+/// Configuration entrypoint for core service registration. Implementations register services
+/// with an <see cref="ICoreContainerBuilder"/> during initialization.
+/// </summary>
+/// <typeparam name="TDiscoveryAttribute">The attribute type used to discover implementations of this entrypoint.</typeparam>
+public interface ICoreConfigurator<TDiscoveryAttribute>
+    : IConfigurationEntrypoint<TDiscoveryAttribute>
+    where TDiscoveryAttribute : Attribute
+{
+    /// <summary>
+    /// Configures core services with the container builder.
+    /// </summary>
+    /// <param name="builder">The container builder to register services with.</param>
+    /// <param name="loadedMods">The set of currently loaded mod IDs.</param>
+    void Configure(ICoreContainerBuilder builder, IReadOnlySet<string> loadedMods);
+}
+
+/// <summary>
+/// Configuration entrypoint for factory registration. Implementations register keyed factories
+/// with an <see cref="IFactoryContainerBuilder{TBase}"/> during initialization.
+/// </summary>
+/// <typeparam name="TBase">The base type for objects created by the factories.</typeparam>
+/// <typeparam name="TDiscoveryAttribute">The attribute type used to discover implementations of this entrypoint.</typeparam>
+public interface IFactoryConfigurator<TBase, TDiscoveryAttribute>
+    : IConfigurationEntrypoint<TDiscoveryAttribute>
+    where TBase : class
+    where TDiscoveryAttribute : Attribute
+{
+    /// <summary>
+    /// Configures keyed factories with the factory container builder.
+    /// </summary>
+    /// <param name="builder">The factory container builder to register factories with.</param>
+    /// <param name="loadedMods">The set of currently loaded mod IDs.</param>
+    void Configure(IFactoryContainerBuilder<TBase> builder, IReadOnlySet<string> loadedMods);
 }
