@@ -1,5 +1,5 @@
 ---
-uid: articles.core.windowing-input
+uid: sparkitect.windowing.windowing-input
 title: Windowing and Input
 description: Window management, Vulkan surface integration, and keyboard/mouse input handling
 ---
@@ -334,12 +334,12 @@ The window automatically disposes its `VkSurface` and `VkSwapchain` resources.
 
 ## Integration with Other Systems
 
-- **Vulkan Graphics**: Windows provide surfaces and swapchains for rendering ([details](vulkan-graphics.md))
-- **Game State System**: Window services are typically state-scoped ([details](game-state-system.md))
-- **Dependency Injection**: Access `IWindowManager` through DI ([details](dependency-injection.md))
+- **Vulkan Graphics**: Windows provide surfaces and swapchains for rendering ([details](xref:sparkitect.vulkan.vulkan-graphics))
+- **Game State System**: Window services are typically state-scoped ([details](xref:sparkitect.core.game-state-system))
+- **Dependency Injection**: Access `IWindowManager` through DI ([details](xref:sparkitect.core.dependency-injection))
 
 ## Next Steps
 
-- See [Vulkan Graphics](vulkan-graphics.md) for rendering to window surfaces
-- See [Game State System](game-state-system.md) for state function integration
+- See [Vulkan Graphics](xref:sparkitect.vulkan.vulkan-graphics) for rendering to window surfaces
+- See [Game State System](xref:sparkitect.core.game-state-system) for state function integration
 - Review `samples/PongMod/` for complete window and input handling

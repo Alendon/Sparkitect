@@ -1,5 +1,5 @@
 ---
-uid: articles.core.game-state-system
+uid: sparkitect.core.game-state-system
 title: Game State System
 description: Hierarchical state management with module-based composition
 ---
@@ -34,9 +34,9 @@ A **module** is a reusable unit of functionality that can be included in multipl
 
 ### State Functions
 
-**State functions** are static methods that define behavior in modules and states. They use the [Stateless Function](stateless-functions.md) system for attribute-based scheduling, dependency injection, and execution ordering.
+**State functions** are static methods that define behavior in modules and states. They use the [Stateless Function](xref:sparkitect.core.stateless-functions) system for attribute-based scheduling, dependency injection, and execution ordering.
 
-See [Stateless Functions](stateless-functions.md) for the complete attribute reference.
+See [Stateless Functions](xref:sparkitect.core.stateless-functions) for the complete attribute reference.
 
 ## Defining Modules
 
@@ -137,7 +137,7 @@ public partial class GameMenuState : IStateDescriptor
 
 ## State Functions
 
-State functions use the [Stateless Function](stateless-functions.md) system. Each function requires a function attribute and a scheduling attribute.
+State functions use the [Stateless Function](xref:sparkitect.core.stateless-functions) system. Each function requires a function attribute and a scheduling attribute.
 
 ```csharp
 [PerFrameFunction("update_physics")]
@@ -148,7 +148,7 @@ public static void UpdatePhysics(ITimeService time, IPhysicsService physics)
 }
 ```
 
-For details on dependency injection, ordering attributes, and scheduling types, see [Stateless Functions](stateless-functions.md).
+For details on dependency injection, ordering attributes, and scheduling types, see [Stateless Functions](xref:sparkitect.core.stateless-functions).
 
 ### Lifecycle Sequence
 
@@ -189,7 +189,7 @@ These services:
 - Are destroyed when the module is deactivated
 - Are registered automatically via source-generated configurators (marked `[CompilerGenerated]`)
 
-See [Dependency Injection](dependency-injection.md) for more details on service registration.
+See [Dependency Injection](xref:sparkitect.core.dependency-injection) for more details on service registration.
 
 ## State Transitions
 
@@ -272,12 +272,12 @@ Only the **leaf state** (bottom of the stack) has its `[PerFrame]` functions exe
 
 The Game State System integrates with:
 
-- **Dependency Injection**: State containers are children of Root container ([details](dependency-injection.md))
-- **Registry System**: Registries are typically added/processed in `[OnCreate]` functions ([details](registry-system.md))
-- **Modding System**: States and modules are discovered across loaded mods ([details](modding-framework.md))
+- **Dependency Injection**: State containers are children of Root container ([details](xref:sparkitect.core.dependency-injection))
+- **Registry System**: Registries are typically added/processed in `[OnCreate]` functions ([details](xref:sparkitect.core.registry-system))
+- **Modding System**: States and modules are discovered across loaded mods ([details](xref:sparkitect.core.modding-framework))
 
 ## Next Steps
 
 - Review sample implementations in the `samples/` directory
-- See [Dependency Injection](dependency-injection.md) for service patterns
-- See [Registry System](registry-system.md) for object registration patterns
+- See [Dependency Injection](xref:sparkitect.core.dependency-injection) for service patterns
+- See [Registry System](xref:sparkitect.core.registry-system) for object registration patterns

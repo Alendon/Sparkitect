@@ -1,5 +1,7 @@
 ---
-uid: articles.intro
+uid: sparkitect.getting-started.intro
+title: Introduction to Sparkitect
+description: Philosophy, design principles, target use cases, and your first mod
 ---
 
 # Introduction to Sparkitect
@@ -75,7 +77,7 @@ Create a new class library project referencing the Sparkitect SDK:
 </Project>
 ```
 
-See [SDK Project Configuration](core/modding-framework.md#sdk-project-configuration) for all available properties.
+See [SDK Project Configuration](xref:sparkitect.core.modding-framework) for all available properties.
 
 ### 2. Create a Module
 
@@ -119,10 +121,10 @@ Place the archive in the engine's `mods` folder and run the engine. You should s
 
 This minimal example demonstrates the core patterns. For deeper understanding, explore these topics:
 
-- **SDK Configuration**: [Modding Framework](core/modding-framework.md)
-- **Modules and States**: [Game State System](core/game-state-system.md)
-- **State Functions**: [Stateless Functions](core/stateless-functions.md)
-- **Service Registration**: [Dependency Injection](core/dependency-injection.md)
-- **Object Registration**: [Registry System](core/registry-system.md)
+- **SDK Configuration**: [Modding Framework](xref:sparkitect.core.modding-framework)
+- **Modules and States**: [Game State System](xref:sparkitect.core.game-state-system)
+- **State Functions**: [Stateless Functions](xref:sparkitect.core.stateless-functions)
+- **Service Registration**: [Dependency Injection](xref:sparkitect.core.dependency-injection)
+- **Object Registration**: [Registry System](xref:sparkitect.core.registry-system)
 
 For a complete working example with graphics, input, and gameplay, see the `samples/PongMod` directory in the Sparkitect repository.

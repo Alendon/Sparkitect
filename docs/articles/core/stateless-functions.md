@@ -1,5 +1,5 @@
 ---
-uid: articles.core.stateless-functions
+uid: sparkitect.core.stateless-functions
 title: Stateless Functions
 description: Attribute-based static functions with DI and scheduling
 ---
@@ -73,7 +73,7 @@ public static void UpdatePhysics(IPhysicsService physics, ITimeService time)
 Parameters are resolved from the current state's DI container:
 - Use interface types, not concrete implementations
 - Missing dependencies throw at state creation time
-- Services are resolved using facade mapping (see [Dependency Injection](dependency-injection.md))
+- Services are resolved using facade mapping (see [Dependency Injection](xref:sparkitect.core.dependency-injection))
 
 ### With Ordering
 
@@ -353,6 +353,6 @@ Both ordering attributes support `IsOptional` property (default: `false`).
 
 ## See Also
 
-- [Game State System](game-state-system.md) - How modules and states use stateless functions
-- [Dependency Injection](dependency-injection.md) - Service resolution and facade mapping
-- [Registry System](registry-system.md) - How functions are registered and discovered
+- [Game State System](xref:sparkitect.core.game-state-system) - How modules and states use stateless functions
+- [Dependency Injection](xref:sparkitect.core.dependency-injection) - Service resolution and facade mapping
+- [Registry System](xref:sparkitect.core.registry-system) - How functions are registered and discovered

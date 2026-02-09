@@ -25,7 +25,8 @@
         ]
       },
       {
-        "files": ["**.{md,yml}"]
+        "files": ["**.{md,yml}"],
+        "exclude": ["filterConfig.yml"]
       }
     ],
     "resource": [
@@ -38,7 +39,7 @@
     "dest": "_site",
     "globalMetadata": {
       "_appTitle": "Sparkitect Documentation",
-      "_appFooter": "© 2025 Sparkitect Game Engine",
+      "_appFooter": "\u00a9 2026 Sparkitect Game Engine",
       "_enableSearch": true,
       "_enableNewTab": true,
       "_disableContribution": false,
@@ -55,7 +56,7 @@
     "fileMetadataFiles": [],
     "template": [
       "default",
-      "templates/default"
+      "templates/singulinkfx"
     ],
     "postProcessors": [],
     "keepFileLink": false,

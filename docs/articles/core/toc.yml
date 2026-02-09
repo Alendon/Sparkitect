@@ -1,5 +1,13 @@
-- name: Core Systems Overview
+- name: Core Overview
   href: index.md
+- name: Engine Initialization
+  href: engine-initialization.md
+- name: Modding Framework
+  href: modding-framework.md
+- name: Module Dependencies
+  href: mod-dependencies.md
+- name: Optional Dependencies
+  href: optional-dependencies.md
 - name: Dependency Injection
   href: dependency-injection.md
 - name: Game State System
@@ -8,17 +16,3 @@
   href: stateless-functions.md
 - name: Registry System
   href: registry-system.md
-- name: Modding Framework
-  href: modding-framework.md
-- name: Engine Initialization
-  href: engine-initialization.md
-- name: Vulkan Graphics
-  href: vulkan-graphics.md
-- name: Shader Compilation
-  href: shader-compilation.md
-- name: Windowing and Input
-  href: windowing-input.md
-- name: ECS Requirements
-  href: ecs-requirements.md
-- name: Module Dependencies
-  href: mod-dependencies.md

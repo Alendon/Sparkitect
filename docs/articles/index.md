@@ -1,28 +1,46 @@
 ---
-uid: articles.index
-title: Articles
-description: Comprehensive documentation on Sparkitect Engine systems, architecture, and implementation
+uid: sparkitect.articles
+title: Documentation
+description: Sparkitect Engine documentation covering all modules, systems, and tooling
 ---
 
 # Sparkitect Engine Documentation
 
-Sparkitect is a modular 3D game engine built on .NET 10 where **everything is a mod**. This documentation covers the engine's architecture, systems, and patterns.
+Sparkitect is a modular 3D game engine built on .NET 10 where **everything is a mod**.
 
 ## Getting Started
 
-- **[Introduction](intro.md)** - Philosophy, design principles, and use cases
-- **[Engine Overview](overview.md)** - Core architectural patterns and two-phase design
+- [Introduction](xref:sparkitect.getting-started.intro) - Philosophy, design principles, and your first mod
+- [Engine Overview](xref:sparkitect.getting-started.overview) - Core architectural patterns and two-phase design
 
-## Core Systems
+## Modules
 
-The Core Module provides the foundational systems:
+### Core
 
-- **[Dependency Injection](core/dependency-injection.md)** - Custom DI system with source-generated factories
-- **[Game State System](core/game-state-system.md)** - State management and lifecycle
-- **[Registry System](core/registry-system.md)** - Object registration and identification
-- **[Modding Framework](core/modding-framework.md)** - Mod structure and loading
+Foundational systems: dependency injection, game states, registries, modding framework, and stateless functions.
 
-## Additional Resources
+<xref:sparkitect.core>
 
-- For hands-on learning, see the [Tutorials & Samples](~/tutorials/index.md) section
-- For API details, refer to the [API Reference](~/api/index.md) section
+### Vulkan
+
+GPU rendering pipeline: Vulkan graphics abstraction, resource management, and shader compilation.
+
+<xref:sparkitect.vulkan>
+
+### Windowing
+
+Window management and input handling via Silk.NET.
+
+<xref:sparkitect.windowing>
+
+### ECS
+
+Entity Component System (planned).
+
+<xref:sparkitect.ecs>
+
+## Tooling
+
+Developer tools: SDK guide, mod specification, and build infrastructure.
+
+<xref:sparkitect.tooling>

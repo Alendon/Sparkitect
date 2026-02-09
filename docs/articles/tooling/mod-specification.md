@@ -1,3 +1,9 @@
+---
+uid: sparkitect.tooling.mod-specification
+title: Mod Specification
+description: Format specification for Sparkitect mod archives and manifests
+---
+
 # Sparkitect Mod Specification
 
 This document specifies the format for Sparkitect mod archives and manifests.

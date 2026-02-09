@@ -1,5 +1,5 @@
 ---
-uid: articles.core.shader-compilation
+uid: sparkitect.vulkan.shader-compilation
 title: Shader Compilation
 description: Slang shader compilation workflow, YAML resource registration, and runtime shader access
 ---
@@ -263,12 +263,12 @@ Use Vulkan validation layers during development to catch shader issues:
 
 ## Integration with Other Systems
 
-- **Vulkan Graphics**: Shader modules are used in pipeline creation ([details](vulkan-graphics.md))
-- **Registry System**: ShaderModuleRegistry follows the registry pattern ([details](registry-system.md))
-- **Dependency Injection**: Access `IShaderManager` through DI ([details](dependency-injection.md))
+- **Vulkan Graphics**: Shader modules are used in pipeline creation ([details](xref:sparkitect.vulkan.vulkan-graphics))
+- **Registry System**: ShaderModuleRegistry follows the registry pattern ([details](xref:sparkitect.core.registry-system))
+- **Dependency Injection**: Access `IShaderManager` through DI ([details](xref:sparkitect.core.dependency-injection))
 
 ## Next Steps
 
-- See [Vulkan Graphics](vulkan-graphics.md) for pipeline creation with shaders
-- See [Registry System](registry-system.md) for the general registry pattern
+- See [Vulkan Graphics](xref:sparkitect.vulkan.vulkan-graphics) for pipeline creation with shaders
+- See [Registry System](xref:sparkitect.core.registry-system) for the general registry pattern
 - Review `samples/PongMod/` for a complete shader usage example

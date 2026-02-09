@@ -1,5 +1,5 @@
 ---
-uid: articles.overview
+uid: sparkitect.getting-started.overview
 title: Engine Overview
 description: Core architectural principles and patterns in Sparkitect
 ---
@@ -182,8 +182,8 @@ For working examples, refer to the samples directory in the project. Each major 
 
 ## Next Steps
 
-- **[Core Module Documentation](core/index.md)**: Deep dive into foundational systems
-- **[Dependency Injection](core/dependency-injection.md)**: Service registration and resolution
-- **[Game State System](core/game-state-system.md)**: State management and lifecycle
-- **[Registry System](core/registry-system.md)**: Object registration and identification
-- **[Modding Framework](core/modding-framework.md)**: Mod structure and loading
+- **[Core Module Documentation](xref:sparkitect.core)**: Deep dive into foundational systems
+- **[Dependency Injection](xref:sparkitect.core.dependency-injection)**: Service registration and resolution
+- **[Game State System](xref:sparkitect.core.game-state-system)**: State management and lifecycle
+- **[Registry System](xref:sparkitect.core.registry-system)**: Object registration and identification
+- **[Modding Framework](xref:sparkitect.core.modding-framework)**: Mod structure and loading

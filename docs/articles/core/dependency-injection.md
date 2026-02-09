@@ -1,5 +1,7 @@
 ---
-uid: articles.core.dependency-injection
+uid: sparkitect.core.dependency-injection
+title: Dependency Injection System
+description: Custom DI framework with source-generated factories, container hierarchy, and mod integration
 ---
 
 # Dependency Injection System
@@ -233,7 +235,7 @@ public class RegistryConfigurator : IRegistryConfigurator
 
 Adds registries to the registry system using a factory container builder.
 
-**Note**: Registry-specific configurators and registrations are covered in detail in the [Registry System](registry-system.md) documentation.
+**Note**: Registry-specific configurators and registrations are covered in detail in the [Registry System](xref:sparkitect.core.registry-system) documentation.
 
 ## Service Registration
 
@@ -329,7 +331,7 @@ This naming convention:
 - Indicates the type participates in automatic resource tracking
 - Provides consistent discovery (all Vulkan wrappers start with `Vk`)
 
-See [Vulkan Graphics](vulkan-graphics.md) for details on the wrapper system.
+See [Vulkan Graphics](xref:sparkitect.vulkan.vulkan-graphics) for details on the wrapper system.
 
 ## Best Practices
 
@@ -345,7 +347,7 @@ See [Vulkan Graphics](vulkan-graphics.md) for details on the wrapper system.
 
 - Configurators are typically auto-generated - you write service attributes, generators create configurators
 - Manual CoreConfigurator implementations are rare and only needed for special cases outside the state module pattern
-- Use `IRegistryConfigurator` to define new registry categories (see [Registry System](registry-system.md))
+- Use `IRegistryConfigurator` to define new registry categories (see [Registry System](xref:sparkitect.core.registry-system))
 
 ### Container Management
 

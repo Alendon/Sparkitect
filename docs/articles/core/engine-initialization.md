@@ -1,5 +1,7 @@
 ﻿---
-uid: articles.core.engine-initialization
+uid: sparkitect.core.engine-initialization
+title: Engine Initialization
+description: Startup sequence from application launch to first game state
 ---
 
 # Engine Initialization

@@ -1,3 +1,9 @@
+---
+uid: sparkitect.core.optional-dependencies
+title: Optional Dependencies
+description: Safely integrating with mods that may not be present at runtime
+---
+
 # Optional Dependencies
 
 Optional dependencies allow your mod to integrate with other mods when they're present, without requiring them to be installed.

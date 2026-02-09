@@ -1,5 +1,7 @@
 ﻿---
-uid: articles.core.modding-framework
+uid: sparkitect.core.modding-framework
+title: Modding Framework
+description: Mod structure, loading, lifecycle management, and the identification system
 ---
 
 # Modding Framework
@@ -204,7 +206,7 @@ Numeric IDs are compact and efficient for runtime comparisons, while string iden
 | Debug logging of IDs | Use TryResolveIdentification |
 | Custom registration logic | Use RegisterObject directly |
 
-For most mod development, you'll interact with Identification through registry attributes (see [Registry System](registry-system.md)). Direct IIdentificationManager usage is needed for advanced scenarios like dynamic registration or ID lookup.
+For most mod development, you'll interact with Identification through registry attributes (see [Registry System](xref:sparkitect.core.registry-system)). Direct IIdentificationManager usage is needed for advanced scenarios like dynamic registration or ID lookup.
 
 ## Generated Identification Pattern
 
@@ -309,7 +311,7 @@ The Modding Framework is tightly integrated with other core systems:
   }
   ```
 
-  See [Dependency Injection](dependency-injection.md) for details on service registration and the `[StateService]` attribute.
+  See [Dependency Injection](xref:sparkitect.core.dependency-injection) for details on service registration and the `[StateService]` attribute.
 
 - **Registry System**:
   Registrations use generated attributes from `[RegistryMethod]` definitions:
@@ -324,6 +326,6 @@ The Modding Framework is tightly integrated with other core systems:
   };
   ```
 
-  See [Registry System](registry-system.md) for details on defining registries and registration patterns.
+  See [Registry System](xref:sparkitect.core.registry-system) for details on defining registries and registration patterns.
 
 - **Lifecycle Management**: Object lifecycle is directly tied to mod lifecycle

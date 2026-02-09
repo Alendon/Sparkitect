@@ -1,5 +1,7 @@
 ﻿---
-uid: articles.core.registry-system
+uid: sparkitect.core.registry-system
+title: Registry System
+description: Centralized tracking and management of game objects using a three-level identification hierarchy
 ---
 
 # Registry System

@@ -16,7 +16,6 @@ The Sparkitect Engine codebase is organized into the following primary namespace
 
 - **Sparkitect** - Core engine types and entry points
   - [EngineBootstrapper](xref:Sparkitect.EngineBootstrapper) - Main entry point for initializing the engine
-  - [SparkitectConfigurator](xref:Sparkitect.SparkitectConfigurator) - Core configurator for the IoC container
 
 - **Sparkitect.DI** - Dependency injection framework
   - [CoreConfigurator](xref:Sparkitect.DI.CoreConfigurator) - Base class for IoC configuration
@@ -43,8 +42,8 @@ The Sparkitect Engine codebase is organized into the following primary namespace
   - [ModManifest](xref:Sparkitect.Modding.ModManifest) - Mod metadata representation
 
 - **Sparkitect.Utils** - Utility classes and helpers
-  - [IPropertyManager](xref:Sparkitect.Utils.IPropertyManager) - Property management interface
-  - [Serialization](xref:Sparkitect.Utils.Serialization) - Data serialization utilities
+  - [PropertyManager](xref:Sparkitect.Utils.PropertyManager) - Property management
+  - **Sparkitect.Utils.Serialization** - Data serialization utilities
 
 ### Third-Party Libraries
 
@@ -70,4 +69,3 @@ Sparkitect Engine follows semantic versioning principles:
 ## Related Resources
 
 - For conceptual information and guides, see the [Articles](~/articles/index.md) section
-- For practical examples and tutorials, check the [Tutorials & Samples](~/tutorials/index.md) section

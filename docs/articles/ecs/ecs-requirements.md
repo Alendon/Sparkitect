@@ -1,7 +1,7 @@
 ---
-uid: articles.core.ecs-requirements
+uid: sparkitect.ecs.ecs-requirements
 title: ECS Requirements
-description: Requirements for working with the Entity Component System
+description: Requirements for the Entity Component System architecture
 ---
 
 # ECS Requirements

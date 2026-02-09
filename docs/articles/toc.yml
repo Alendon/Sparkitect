@@ -1,9 +1,22 @@
+# Getting Started
 - name: Introduction
   href: intro.md
 - name: Engine Overview
   href: overview.md
-- name: Core Systems
+# Modules
+- name: Core
   href: core/toc.yml
   topicHref: core/index.md
-- name: Optional Dependencies
-  href: optional-dependencies.md
+- name: Vulkan
+  href: vulkan/toc.yml
+  topicHref: vulkan/index.md
+- name: Windowing
+  href: windowing/toc.yml
+  topicHref: windowing/index.md
+- name: ECS
+  href: ecs/toc.yml
+  topicHref: ecs/index.md
+# Tooling
+- name: Tooling
+  href: tooling/toc.yml
+  topicHref: tooling/index.md

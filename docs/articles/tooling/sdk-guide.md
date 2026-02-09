@@ -1,3 +1,9 @@
+---
+uid: sparkitect.tooling.sdk-guide
+title: SDK Guide
+description: How to use the Sparkitect SDK to create mods
+---
+
 # Sparkitect SDK Guide
 
 This guide explains how to use the Sparkitect SDK to create mods.
@@ -167,7 +173,7 @@ public class OptionalModIntegration
 }
 ```
 
-See the [Mod Specification](mod-specification.md) for the manifest format that describes optional relationships.
+See the [Mod Specification](xref:sparkitect.tooling.mod-specification) for the manifest format that describes optional relationships.
 
 ## Troubleshooting
 

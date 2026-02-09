@@ -1,5 +1,5 @@
 ---
-uid: articles.core.vulkan-graphics
+uid: sparkitect.vulkan.vulkan-graphics
 title: Vulkan Graphics System
 description: Wrapper types, result handling, CallerContext tracking, and resource lifecycle management
 ---
@@ -249,12 +249,12 @@ public void Cleanup()
 
 The Vulkan graphics system integrates with:
 
-- **Windowing System**: Windows provide `VkSurface` and `VkSwapchain` ([details](windowing-input.md))
-- **Shader Compilation**: Compiled shaders are loaded as shader modules ([details](shader-compilation.md))
-- **Dependency Injection**: Access `IVulkanContext` through DI ([details](dependency-injection.md))
+- **Windowing System**: Windows provide `VkSurface` and `VkSwapchain` ([details](xref:sparkitect.windowing.windowing-input))
+- **Shader Compilation**: Compiled shaders are loaded as shader modules ([details](xref:sparkitect.vulkan.shader-compilation))
+- **Dependency Injection**: Access `IVulkanContext` through DI ([details](xref:sparkitect.core.dependency-injection))
 
 ## Next Steps
 
-- See [Shader Compilation](shader-compilation.md) for the Slang shader workflow
-- See [Windowing and Input](windowing-input.md) for window and input handling
+- See [Shader Compilation](xref:sparkitect.vulkan.shader-compilation) for the Slang shader workflow
+- See [Windowing and Input](xref:sparkitect.windowing.windowing-input) for window and input handling
 - Review the Pong sample in `samples/PongMod/` for a complete rendering example
