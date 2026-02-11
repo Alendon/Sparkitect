@@ -95,7 +95,7 @@ All containers follow a strict lifecycle that enforces the two-phase design:
 3. **Runtime Phase** (Simulation): Read-only access, resolution only
 
 ```csharp
-// Transition: Build container
+// Internal engine lifecycle — shown for understanding; mod authors don't construct builders directly
 var builder = new CoreContainerBuilder(parentContainer);
 builder.Register<MyService_Factory>();  // Accumulate
 var container = builder.Build();         // Freeze
@@ -178,7 +178,7 @@ As a mod developer, you'll interact with these patterns through:
 
 All infrastructure code is generated with `[CompilerGenerated]` - you write the domain logic, generators handle the wiring.
 
-For working examples, refer to the samples directory in the project. Each major system also has detailed documentation covering specific APIs and usage patterns.
+For working examples, see `samples/MinimalSampleMod/` for a minimal mod and `samples/PongMod/` for a complete game with graphics, input, and gameplay. Each major system also has detailed documentation covering specific APIs and usage patterns.
 
 ## Next Steps
 

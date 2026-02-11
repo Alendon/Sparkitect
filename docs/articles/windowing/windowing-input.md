@@ -34,6 +34,7 @@ public class MyService : IMyService
 ### IWindowManager Interface
 
 ```csharp
+[StateFacade<IWindowManager>]
 public interface IWindowManager
 {
     ISparkitWindow? MainWindow { get; set; }
@@ -46,6 +47,8 @@ public interface IWindowManager
 
 The `MainWindow` property provides quick access to the primary game window.
 
+> **Note**: `IWindowManager` has the `[StateFacade<IWindowManager>]` attribute, meaning it is state-scoped -- a new instance is created for each game state. The window manager and its windows have the same lifecycle as the state they belong to. See [Game State System](xref:sparkitect.core.game-state-system) for details on state lifecycle.
+
 ## ISparkitWindow Interface
 
 Each window provides access to its dimensions, state, input devices, and Vulkan resources:
@@ -53,6 +56,9 @@ Each window provides access to its dimensions, state, input devices, and Vulkan 
 ```csharp
 public interface ISparkitWindow : IDisposable
 {
+    // Underlying Silk.NET window (advanced escape hatch)
+    IWindow SilkWindow { get; }
+
     // Window properties
     int Width { get; }
     int Height { get; }
@@ -79,6 +85,8 @@ public interface ISparkitWindow : IDisposable
     Result Present(uint imageIndex, VkSemaphore waitSemaphore, Queue presentQueue);
 }
 ```
+
+> **Note**: The `SilkWindow` property provides direct access to the underlying Silk.NET `IWindow` for advanced scenarios not covered by the Sparkitect API. Use this as an escape hatch when you need Silk.NET-specific functionality.
 
 ## Input Access Pattern
 
@@ -213,7 +221,7 @@ var imageIndex = ((VkResult<uint>.Success)acquireResult).value;
 // ... render to swapchain image ...
 
 // Present the frame
-swapchain.Present(imageIndex, _renderFinishedSemaphore, _graphicsQueue);
+_window.Present(imageIndex, _renderFinishedSemaphore, _graphicsQueue);
 ```
 
 The `autoRecreate` parameter automatically handles swapchain recreation on window resize.

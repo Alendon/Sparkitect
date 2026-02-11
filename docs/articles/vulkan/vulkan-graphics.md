@@ -34,17 +34,56 @@ public class MyRenderer : IMyRenderer
 
 Key properties and methods:
 
-| Member | Description |
-|--------|-------------|
-| `VkApi` | Raw Silk.NET Vulkan API handle |
-| `VkInstance` | Wrapped Vulkan instance |
-| `VkPhysicalDevice` | Wrapped physical device |
-| `VkDevice` | Wrapped logical device |
-| `ObjectTracker` | Resource lifecycle tracker |
-| `CreateCommandPool()` | Create a command pool |
-| `CreateSemaphore()` | Create a semaphore |
-| `CreateFence()` | Create a fence |
-| `GetQueue()` | Get a specific queue by family and index |
+**Properties:**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `VkApi` | `Vk` | Raw Silk.NET Vulkan API handle |
+| `VkInstance` | `VkInstance` | Wrapped Vulkan instance |
+| `VkPhysicalDevice` | `VkPhysicalDevice` | Wrapped physical device |
+| `VkDevice` | `VkDevice` | Wrapped logical device |
+| `DefaultAllocationCallbacks` | `AllocationCallbacks*` | Default Vulkan allocation callbacks (unsafe) |
+| `ObjectTracker` | `IObjectTracker<VulkanObject>` | Resource lifecycle tracker |
+
+**Object creation methods:**
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `CreateCommandPool()` | `VkResult<VkCommandPool>` | Create a command pool |
+| `CreateSemaphore()` | `VkResult<VkSemaphore>` | Create a semaphore |
+| `CreateFence()` | `VkResult<VkFence>` | Create a fence |
+| `CreateDescriptorPool()` | `VkResult<VkDescriptorPool>` | Create a descriptor pool |
+| `CreateDescriptorSetLayout()` | `VkResult<VkDescriptorSetLayout>` | Create a descriptor set layout |
+| `CreatePipelineLayout()` | `VkResult<VkPipelineLayout>` | Create a pipeline layout |
+| `CreateComputePipeline()` | `VkResult<VkPipeline>` | Create a compute pipeline |
+| `CreateSurface()` | `VkSurface?` | Create a Vulkan surface for a window |
+
+**Query methods:**
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `GetQueue()` | `VulkanQueue?` | Get a specific queue by family and index |
+| `GetQueuesForFamily()` | `IReadOnlyList<VulkanQueue>` | Get all queues belonging to a queue family |
+
+### VulkanQueue Type
+
+`GetQueue()` and `GetQueuesForFamily()` return `VulkanQueue` instances. This type wraps a native Vulkan queue with metadata:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Handle` | `Queue` | The native Vulkan queue handle (for API calls) |
+| `FamilyIndex` | `uint` | The queue family this queue belongs to |
+| `QueueIndex` | `uint` | The index of this queue within its family |
+| `Capabilities` | `QueueFlags` | The capability flags of this queue's family (Graphics, Compute, Transfer, etc.) |
+
+```csharp
+// Get a graphics queue
+var queue = VulkanContext.GetQueue(graphicsQueueFamily, 0);
+if (queue is null) throw new InvalidOperationException("Queue not found");
+
+// Use the native handle for Vulkan API calls
+var presentQueue = queue.Handle;
+```
 
 ## VkResult&lt;T&gt; Discriminated Union
 
@@ -58,6 +97,8 @@ public abstract partial record VkResult<TResultObject>
     public sealed record Error(Result errorResult) : VkResult<TResultObject>;
 }
 ```
+
+> **Note**: The `[DiscriminatedUnion]` attribute comes from the `Sundew.DiscriminatedUnions` package, which generates exhaustiveness enforcement for pattern matching.
 
 ### Pattern Matching Usage
 
@@ -91,13 +132,27 @@ if (fenceResult is VkResult<VkFence>.Error fenceError)
 var inFlightFence = ((VkResult<VkFence>.Success)fenceResult).value;
 ```
 
+Alternatively, you can use a switch expression:
+
+```csharp
+var pool = poolResult switch
+{
+    VkResult<VkCommandPool>.Success s => s.value,
+    VkResult<VkCommandPool>.Error e => throw new InvalidOperationException($"Failed: {e.errorResult}"),
+    _ => throw new InvalidOperationException("Unexpected result type")
+};
+```
+
 ## CallerContext Pattern
 
 Sparkitect tracks where Vulkan objects are created using compile-time location injection. This aids debugging by showing exactly where each object originated.
 
 ### CallerContext Struct
 
+`CallerContext` is defined in the `Sparkitect.Utils` namespace:
+
 ```csharp
+// Sparkitect.Utils namespace
 public readonly record struct CallerContext(string FilePath, int LineNumber)
 {
     public string FileName => Path.GetFileName(FilePath);
@@ -135,12 +190,14 @@ When debugging resource leaks, the object tracker can report exactly where each 
 // Dump all tracked objects with their creation locations
 VulkanContext.ObjectTracker.DumpToLog("Checking for leaks");
 
-// Output example:
-// [ObjectTracker] Checking for leaks - 3 objects tracked:
-//   VkCommandPool created at PongRuntimeService.cs:72
-//   VkSemaphore created at PongRuntimeService.cs:85
-//   VkFence created at PongRuntimeService.cs:95
+// Output example (exact format depends on configured Serilog sink):
+// ObjectTracker[Checking for leaks]: 3 objects tracked
+// ObjectTracker[Checking for leaks]:   VkCommandPool from PongRuntimeService.cs:72
+// ObjectTracker[Checking for leaks]:   VkSemaphore from PongRuntimeService.cs:85
+// ObjectTracker[Checking for leaks]:   VkFence from PongRuntimeService.cs:95
 ```
+
+> **Note**: `DumpToLog` uses Serilog structured logging internally. The exact output format depends on your configured Serilog sink. The example above is illustrative.
 
 ## Wrapper Type Naming Convention
 
@@ -169,7 +226,7 @@ Wrapper types provide:
 
 ## ObjectTracker
 
-The `IObjectTracker<T>` interface tracks Vulkan resource lifetimes to detect leaks and monitor allocations:
+The `IObjectTracker<T>` interface tracks resource lifetimes to detect leaks and monitor allocations. On `IVulkanContext`, the concrete type is `IObjectTracker<VulkanObject>`:
 
 ```csharp
 public interface IObjectTracker<T>

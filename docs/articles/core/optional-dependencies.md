@@ -20,7 +20,7 @@ Optional dependencies let you:
 2. Check at runtime if that mod is loaded
 3. Safely call into the optional mod's code without crashing when it's absent
 
-**Good news:** The optional dependency system is designed to be safe by default. The recommended patterns (DI integration, isolated classes) work without requiring deep knowledge of .NET internals. The Phase 17 analyzer catches most mistakes at compile time.
+**Good news:** The optional dependency system is designed to be safe by default. The recommended patterns (DI integration, isolated classes) work without requiring deep knowledge of .NET internals. The optional dependency analyzer catches most mistakes at compile time.
 
 ## CLR Lazy Loading: Background
 
@@ -89,11 +89,11 @@ Declare optional dependencies in your mod's csproj file:
   <ModProjectDependency Include="..\CoreMod\CoreMod.csproj" />
 
   <!-- Optional dependency - mod will load even if this isn't present -->
-  <ModProjectDependency Include="..\StatsMod\StatsMod.csproj" Optional="true" />
+  <ModProjectDependency Include="..\StatsMod\StatsMod.csproj" IsOptional="true" />
 </ItemGroup>
 ```
 
-The `Optional="true"` attribute tells the mod loader:
+The `IsOptional="true"` metadata tells the mod loader:
 - Don't fail if this mod isn't installed
 - Don't require this mod to be loaded before yours
 
@@ -158,7 +158,7 @@ public class StatsModIntegration
 
 The `[OptionalModDependent("stats_mod")]` attribute:
 - Documents that this class uses optional mod types
-- Enables Phase 17 analyzer to validate correct usage
+- Enables the optional dependency analyzer to validate correct usage
 - Signals to readers that this class requires the mod to be loaded
 
 ### Step 2: Guard All Entry Points
@@ -199,7 +199,7 @@ The DI integration pattern below uses this same drawbridge pattern behind the sc
 
 1. **Clear boundaries**: All optional mod code is in one place
 2. **Easier testing**: Test with/without the optional mod by including/excluding the integration class
-3. **Future-proof**: Phase 17 analyzer will enforce that optional types only appear in marked classes
+3. **Analyzer-enforced**: The optional dependency analyzer enforces that optional types only appear in marked classes
 4. **Self-documenting**: The attribute makes dependencies explicit
 
 ## DI Integration
@@ -252,24 +252,27 @@ public class StatsIntegration : IStatsIntegration
 
 ### Conditional Registration
 
-```csharp
-public class MyModRegistrations : IRegistrations
-{
-    public void Configure(ICoreContainerBuilder builder, IGameStateManager gsm)
-    {
-        if (gsm.IsModLoaded("stats_mod"))
-        {
-            RegisterStatsIntegration(builder);
-        }
-    }
+The key pattern is to check `IsModLoaded` in your configurator entrypoint, then call a `[ModLoadedGuard]` method that contains the actual registration using `Register<TServiceFactory>()`:
 
-    [ModLoadedGuard("stats_mod")]
-    private void RegisterStatsIntegration(ICoreContainerBuilder builder)
-    {
-        builder.AddFactory<IStatsIntegration, StatsIntegration>();
-    }
+```csharp
+// In your configurator entrypoint (pseudo-code showing the pattern):
+// 1. Check if the optional mod is loaded
+if (gsm.IsModLoaded("stats_mod"))
+{
+    RegisterStatsIntegration(builder);
+}
+
+// 2. Guarded method contains the type references
+[ModLoadedGuard("stats_mod")]
+private void RegisterStatsIntegration(ICoreContainerBuilder builder)
+{
+    // Register using the actual builder API
+    builder.Register<StatsIntegrationServiceFactory>();
 }
 ```
+
+> [!NOTE]
+> The exact registration mechanism depends on how your service factory is structured. Sparkitect's DI uses source-generated `[StateService]` configurators for most services. The pattern above illustrates the drawbridge principle -- the guard check and the type-referencing registration must be in separate methods.
 
 Consumer code can then use `TryResolve`:
 
@@ -414,3 +417,8 @@ If you see `TypeLoadException` mentioning the optional mod's assembly, you have 
 | `object?` fields | When you need to store optional mod instances in non-isolated classes |
 
 Remember: the JIT compiler doesn't care about your if-statements. It compiles entire methods. Keep optional type references isolated.
+
+## See Also
+
+- [External Dependencies](xref:sparkitect.core.external-dependencies) - Managing NuGet and third-party dependencies
+- [Modding Framework](xref:sparkitect.core.modding-framework) - Mod structure, loading, and lifecycle

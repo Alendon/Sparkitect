@@ -13,11 +13,10 @@ This guide explains how to use the Sparkitect SDK to create mods.
 ### Creating a New Mod Project
 
 1. Create a new .NET project
-2. Import the Sparkitect SDK:
+2. Reference the Sparkitect SDK:
 
 ```xml
-<Project>
-    <Import Project="path/to/Sparkitect.Sdk/Sdk/Sdk.props"/>
+<Project Sdk="Sparkitect.Sdk/0.1.0">
 
     <PropertyGroup>
         <ModId>your_mod_id</ModId>
@@ -28,6 +27,8 @@ This guide explains how to use the Sparkitect SDK to create mods.
         <IsRootMod>true</IsRootMod>
 
         <TargetFramework>net10.0</TargetFramework>
+        <GenerateDependencyFile>true</GenerateDependencyFile>
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     </PropertyGroup>
 
     <!-- Mod dependencies -->
@@ -35,9 +36,12 @@ This guide explains how to use the Sparkitect SDK to create mods.
         <ModProjectDependency Include="path/to/Sparkitect.csproj" />
     </ItemGroup>
 
-    <Import Project="path/to/Sparkitect.Sdk/Sdk/Sdk.targets"/>
 </Project>
 ```
+
+> [!NOTE]
+> `GenerateDependencyFile` is critical for automatic dependency detection by the SDK.
+> `EmitCompilerGeneratedFiles` is optional but useful for inspecting source-generated code during debugging.
 
 ### Required Properties
 
@@ -46,8 +50,8 @@ This guide explains how to use the Sparkitect SDK to create mods.
 | ModId | Unique identifier (snake_case) | `my_cool_mod` |
 | ModName | Display name | `My Cool Mod` |
 | ModVersion | Semantic version | `1.0.0` |
-| ModAuthor | Author name(s) | `YourName` or `Name1;Name2` |
-| ModDescription | Short description | `Adds cool features` |
+| ModAuthor | Author name(s), separated by `;` or `,` | `YourName` or `Name1;Name2` or `Name1,Name2` |
+| ModDescription | Short description (recommended but not currently enforced by build validation) | `Adds cool features` |
 | IsRootMod | Can be loaded directly | `true` or `false` |
 
 ### Optional Properties
@@ -55,7 +59,7 @@ This guide explains how to use the Sparkitect SDK to create mods.
 | Property | Default | Description |
 |----------|---------|-------------|
 | ModPackageEnabled | true | Enable .sparkmod generation |
-| ModAutoDetectDependencies | true | Auto-detect DLL dependencies |
+| ModAutoDetectDependencies | true | Auto-detect DLL dependencies (canonical property for controlling dependency auto-detection) |
 | ModResourceDirectory | Resources/ | Resource folder path |
 
 ## Mod Dependencies
@@ -85,6 +89,9 @@ To specify an explicit range:
 ```
 
 ### Declaring Incompatibilities
+
+> [!NOTE]
+> The `ModIncompatibility` MSBuild item type is **planned but not yet implemented**. The runtime `ModManager` supports incompatibility validation, but the SDK build pipeline does not yet produce incompatibility entries in the manifest. This section describes the intended usage for a future release.
 
 Use `ModIncompatibility` to declare mods that cannot be loaded together:
 
@@ -131,6 +138,9 @@ Create `Properties/launchSettings.json`:
 
 This launches the Sparkitect engine with your mod loaded. The `$(Configuration)` variable automatically switches between Debug/Release builds.
 
+> [!NOTE]
+> The MSBuild variables (`$(SolutionDir)`, `$(ProjectDir)`, `$(Configuration)`) are expanded by IDEs such as Rider and Visual Studio. They will **not** work when running from the command line directly. For CLI usage, substitute the actual paths.
+
 In Rider/VS, select the profile and run.
 
 ### From Command Line
@@ -138,23 +148,25 @@ In Rider/VS, select the profile and run.
 Build and run the Sparkitect engine with your mod:
 
 ```bash
-dotnet run --project path/to/Sparkitect.csproj -- -addModDirs path/to/your/mod/bin/Debug/net10.0
+dotnet run --project path/to/Sparkitect.csproj -- -addModDirs=path/to/your/mod/bin/Debug/net10.0
 ```
 
 ### Multiple Mod Directories
 
+Separate multiple paths with semicolons using the `key=value` format:
+
 ```bash
--addModDirs path/to/mod1 path/to/mod2 path/to/mod3
+-addModDirs=path/to/mod1;path/to/mod2;path/to/mod3
 ```
 
 ## Optional Dependencies
 
 ### Runtime Checking
 
-Use `IModManager.IsModLoaded()` to check if an optional dependency is present:
+Use `IGameStateManager.IsModLoaded()` to check if an optional dependency is present:
 
 ```csharp
-if (modManager.IsModLoaded("optional_mod_id"))
+if (gameStateManager.IsModLoaded("optional_mod_id"))
 {
     // Use optional mod features
 }
@@ -187,7 +199,4 @@ See the [Mod Specification](xref:sparkitect.tooling.mod-specification) for the m
 
 ### Manifest Issues
 
-If manifest.json appears in wrong location, ensure you're using the latest SDK version (Phase 18.1+).
-
----
-*Last updated: Phase 18.1*
+If manifest.json appears in wrong location, ensure you're using the latest SDK version.

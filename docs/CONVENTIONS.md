@@ -26,6 +26,8 @@ description: One-line description
 
 UID format: `sparkitect.{module}` for index pages, `sparkitect.{module}.{page-name}` for topic pages.
 
+Top-level articles (not inside a module folder) use `sparkitect.getting-started.{page}` as a pseudo-module pattern (e.g., `sparkitect.getting-started.intro`, `sparkitect.getting-started.overview`).
+
 ## Linking
 
 - **Inter-article links**: Always use `<xref:sparkitect.{module}.{page}>` syntax

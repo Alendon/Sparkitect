@@ -34,14 +34,14 @@ Each mod is distributed as a mod archive containing:
 Mod projects reference the Sparkitect SDK and configure mod metadata through MSBuild properties in the `.csproj` file:
 
 ```xml
-<Project Sdk="Sparkitect.Sdk">
+<Project Sdk="Sparkitect.Sdk/0.1.0">
   <PropertyGroup>
     <ModName>My Awesome Mod</ModName>
-    <ModIdentifier>mycompany.mymod</ModIdentifier>
+    <ModId>mycompany.mymod</ModId>
     <ModVersion>1.0.0</ModVersion>
     <ModAuthor>Your Name</ModAuthor>
     <ModDescription>A brief description of the mod</ModDescription>
-    <ModType>Root</ModType>
+    <IsRootMod>true</IsRootMod>
   </PropertyGroup>
 </Project>
 ```
@@ -51,12 +51,12 @@ Mod projects reference the Sparkitect SDK and configure mod metadata through MSB
 | Property | Required | Description |
 |----------|----------|-------------|
 | `ModName` | Yes | Display name shown to users |
-| `ModIdentifier` | Yes | Unique identifier (e.g., `company.modname`) |
+| `ModId` | Yes | Unique identifier (e.g., `company.modname`) |
 | `ModVersion` | Yes | Semantic version (e.g., `1.0.0`) |
 | `ModAuthor` | No | Author or team name |
 | `ModDescription` | No | Short description of the mod |
-| `ModType` | Yes | `Root` or `Game` (see Mod Types above) |
-| `SparkitectAutoDetectDependencies` | No | Auto-include dependencies (default: `true`) |
+| `IsRootMod` | No | Whether this is a root mod (default: `false`) |
+| `ModAutoDetectDependencies` | No | Auto-include external dependencies (default: `true`) |
 | `DisableLogEnrichmentGenerator` | No | Disable Serilog log enrichment (default: `false`) |
 
 The SDK automatically:
@@ -69,7 +69,7 @@ The SDK automatically:
 Mods are discovered through a simple directory structure:
 
 - Mods are placed in a standard `mods` folder
-- The engine searches this folder for mod archives with the appropriate extension
+- The engine searches this folder for mod archives with the `.sparkmod` extension
 
 ## Lifecycle Management
 
@@ -78,23 +78,23 @@ Mods are discovered through a simple directory structure:
 1. Application initializes the core DI container with minimal components
 2. The `EngineBootstrapper` discovers and loads Root Mods:
    - Archives are located and extracted in memory
-   - Mod assemblies are loaded directly from zip streams
-   - Zip streams remain open for the application's lifetime
+   - Mod assemblies are loaded from memory after extraction from zip archives
+   - Zip archives remain open for resource access during the application's lifetime
 
 3. The `ModManager` performs dependency resolution:
    - Checks dependencies defined in manifests
-   - Prepares stub implementations for optional dependencies
+   - Optional dependencies are handled through CLR lazy loading isolation (see [Optional Dependencies](xref:sparkitect.core.optional-dependencies))
    - Determines loading order based on dependencies
 
 4. Configuration entrypoints are discovered and processed:
    - Classes marked with discovery attributes are located
    - These are used to build the root-level IoC container
 
-5. Game-specific mods are loaded when creating/joining a game
+5. *(Planned)* Game-specific mods are loaded when creating/joining a game
    - Similar process to Root Mod loading
    - Game-specific containers are created
 
-6. When exiting a game, Game Mods are unloaded while Root Mods remain active
+6. *(Planned)* When exiting a game, Game Mods are unloaded while Root Mods remain active
 
 ### Mod Dependencies
 
@@ -111,9 +111,9 @@ Dependencies between mods are managed through the mod manifest:
   - Optional version range specifications
 
 - **Optional Dependency Handling**:
-  - Stub implementations provided for optional dependencies
-  - Allows mods to load even when direct code access to optional dependencies would normally cause exceptions
-  - Additional mechanisms streamline working with optional dependencies
+  - Optional dependencies use CLR lazy loading isolation to safely reference types from mods that may not be present
+  - The optional dependency analyzer enforces correct usage patterns at compile time
+  - See [Optional Dependencies](xref:sparkitect.core.optional-dependencies) for patterns and best practices
 
 ### Mod Groups and Loading Order
 
@@ -154,6 +154,9 @@ ushort categoryId = identManager.RegisterCategory("items");
 // Register an object (returns full Identification struct)
 Identification id = identManager.RegisterObject("my_mod", "items", "iron_sword");
 ```
+
+> [!NOTE]
+> The `modId` and `categoryId` parameters accept `OneOf<string, ushort>`, meaning you can pass either string identifiers or numeric IDs. String arguments work through implicit conversion.
 
 **Registration flow:**
 1. Mods are registered automatically during mod loading

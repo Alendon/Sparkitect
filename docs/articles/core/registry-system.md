@@ -38,7 +38,7 @@ Identifiers use a three-level hierarchical structure:
 
 - **ModId**: Identifies the source mod (string mapped to numeric ID)
 - **CategoryId**: Identifies the registry category (string mapped to numeric ID)
-- **ObjectId**: Identifies the specific object within the category (string mapped to numeric ID)
+- **ItemId**: Identifies the specific item within the category (string mapped to numeric ID)
 
 ### Dual Representation
 
@@ -57,6 +57,7 @@ Registries are DI-instantiated partial classes marked with `[Registry]`:
 [Registry(Identifier = "items")]
 public partial class ItemRegistry(IItemManager manager) : IRegistry
 {
+    // Required by IRegistry interface - must match [Registry] attribute value
     public static string Identifier => "items";
 
     // Define registration methods
@@ -85,6 +86,16 @@ public partial class ItemRegistry(IItemManager manager) : IRegistry
 - Must be globally unique across all registries
 - Used to identify the registry category in the identification system
 - Duplicate identifiers cause exceptions during processing
+
+**Resource Folder (Optional):**
+
+Registries can optionally specify a resource folder by overriding the `ResourceFolder` property from `IRegistry`:
+
+```csharp
+public static string? ResourceFolder => "items";
+```
+
+When set, the `RegistryManager` registers the folder for resource file lookups during registry processing.
 
 ### Generated Registration Attributes
 
@@ -221,7 +232,7 @@ public static class MyModule : IStateModule
 **Registry Lifecycle:**
 1. `AddRegistry<T>()`: Makes the registry available
 2. `ProcessAllMissing<T>()`: Discovers and processes registration attributes from all loaded mods
-3. `Unregister AllRemaining<T>()`: Cleans up all registered objects
+3. `UnregisterAllRemaining<T>()`: Cleans up all registered objects
 4. The registry is removed when the module/state is destroyed
 
 ## Integration with Other Systems

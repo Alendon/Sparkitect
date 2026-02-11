@@ -10,7 +10,7 @@ Sparkitect uses [Slang](https://shader-slang.com/) for shader compilation. Slang
 
 ## Workflow Overview
 
-The shader workflow has three stages:
+The shader workflow has four stages:
 
 1. **Authoring**: Write `.slang` shader files
 2. **Compilation**: MSBuild automatically compiles to `.spv` during build
@@ -153,6 +153,8 @@ The registry:
 - Reads shader binaries from `Resources/shaders/`
 - Associates each shader with an `Identification` for runtime lookup
 
+> **Note**: The simplified listing above omits `Unregister(Identification id)` for dynamic shader unloading and the `Identifier` static property (value: `"shader_module"`). Both are available on the full `ShaderModuleRegistry` type.
+
 ## Runtime Shader Access
 
 Access registered shaders through `IShaderManager`:
@@ -186,7 +188,7 @@ public class MyRenderer : IMyRenderer
 
 ### Generated Shader IDs
 
-The YAML registration generates `Identification` constants in extension files. Access them through the generated `ShaderModuleID` class:
+The YAML registration generates `Identification` constants accessible through the `ShaderModuleID` class:
 
 ```csharp
 // Generated from YAML registration
@@ -194,6 +196,8 @@ ShaderModuleID.MyMod.VertexShader
 ShaderModuleID.MyMod.FragmentShader
 ShaderModuleID.MyMod.ComputeShader
 ```
+
+> **Note**: These are implemented internally using C# extension methods on the `ShaderModuleID` static class. The access syntax above is the intended API surface.
 
 ## Complete Example: Pong Shader
 
@@ -204,11 +208,13 @@ Here's the complete workflow from the Pong sample:
 // Compute shader that renders the pong game
 [shader("compute")]
 [numthreads(8, 8, 1)]
-void main(uint3 dispatchThreadID : SV_DispatchThreadID)
+void computeMain(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     // Shader implementation...
 }
 ```
+
+> **Note**: Slang renames entry points to `main` in the compiled SPIR-V output. This is why the runtime uses `"main"u8` as the entry point name even though the source uses `computeMain`. You can name your entry point descriptively in Slang source without affecting runtime behavior.
 
 **2. Project file** (`PongMod.csproj`):
 ```xml

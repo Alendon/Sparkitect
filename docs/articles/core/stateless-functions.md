@@ -33,6 +33,8 @@ The registry association determines:
 - Which collector receives the function during registration
 - What context data is available during scheduling decisions
 
+`PerFrameContext` provides the state stack for module-loaded checks. `TransitionContext` additionally includes `IsEnterTransition`, `DeltaModules` (modules being added or removed), and `TargetStateId`.
+
 ### Function Wrappers
 
 Source generators create wrapper classes for each stateless function. These wrappers:
@@ -57,7 +59,7 @@ Requirements:
 1. Method must be `static`
 2. Must have exactly one function attribute (`[PerFrameFunction]` or `[TransitionFunction]`)
 3. Must have exactly one scheduling attribute matching the function type
-4. Containing type should implement `IHasIdentification` (or use `[ParentId<T>]`)
+4. Containing type **must** implement `IHasIdentification` (or use `[ParentId<T>]`). If neither is provided, the source generator silently skips the function -- no wrapper is generated and no compile-time error is reported
 
 ### With Dependency Injection
 
@@ -120,13 +122,13 @@ This ensures type safety: a scheduling attribute can only be applied to function
 
 ### Scheduling Decision Flow
 
-Each scheduling implementation determines inclusion based on context:
+Each scheduling implementation determines inclusion based on context. In every case, functions owned by the **target state itself** (not just modules) are also included when that state is the active leaf or transition target.
 
-1. **PerFrameScheduling**: Included if owner module is loaded in current state stack
-2. **OnCreateScheduling**: Included if entering transition AND owner is in delta modules (newly added)
-3. **OnDestroyScheduling**: Included if exiting transition AND owner is in delta modules (being removed)
-4. **OnFrameEnterScheduling**: Included if entering transition AND owner is loaded
-5. **OnFrameExitScheduling**: Included if exiting transition AND owner is loaded
+1. **PerFrameScheduling**: Included if owner module is loaded in current state stack, OR owner is the active leaf state
+2. **OnCreateScheduling**: Included if entering transition AND (owner is in delta modules being added, OR owner is the target state)
+3. **OnDestroyScheduling**: Included if exiting transition AND (owner is in delta modules being removed, OR owner is the target state)
+4. **OnFrameEnterScheduling**: Included if entering transition AND (owner module is loaded, OR owner is the target state)
+5. **OnFrameExitScheduling**: Included if exiting transition AND (owner module is loaded, OR owner is the target state)
 
 ## Execution Ordering
 
@@ -174,6 +176,8 @@ public static void Render() { }
 - `IsOptional = false` (default): Throws exception if target function not found during scheduling
 - `IsOptional = true`: Constraint is silently ignored if target not found
 
+**Circular ordering:** Circular ordering constraints (e.g., A orders before B, B orders before A) are detected at state creation time and result in an error.
+
 **Best practice:** Declare explicit module dependencies for functions you order against. Only use `IsOptional = true` when the ordering is truly optional (e.g., "if audio module is loaded, run after audio").
 
 ### Type-Safe References
@@ -211,26 +215,30 @@ public static void Render() { }
 
 For each stateless function, the source generator creates:
 
-1. **Wrapper class** implementing `IStatelessFunction` and `IHasIdentification`
-2. **Identification property** derived from containing type's identification + function key
-3. **Invocation logic** that resolves DI parameters and calls the original method
+1. **Wrapper class** -- implements `IStatelessFunction` and `IHasIdentification`, handles DI resolution and invocation
+2. **Scheduling entrypoint** -- one per parent type per registry, handles scheduling decisions for all functions in that group
+3. **Registry registration** -- registers the wrapper type with the appropriate function registry
+4. **Identification properties** -- identification constants for the function
 
 ### Generated Code Location
 
-Generated code is placed in the `{RootNamespace}.CompilerGenerated` namespace. The actual namespace to use is determined by the mod settings parser in the source generators.
+Wrapper classes are generated as nested types within the containing type (module or state class), in the same namespace. For example, a function in `MyMod.PhysicsModule` generates `MyMod.PhysicsModule.PreparePhysicsFunc`. Other generated artifacts (ID properties, registration entries) use the `{RootNamespace}.CompilerGenerated` namespace.
 
 Example generated wrapper (conceptual):
 
 ```csharp
-// In: MyMod.CompilerGenerated
+// Nested within PhysicsModule, in its own namespace
 public sealed class PreparePhysicsFunc : IStatelessFunction, IHasIdentification
 {
-    public static Identification Identification => ...;
-    // Invocation and scheduling logic
+    public Identification Identification => ...;
+    public Identification ParentIdentification => ...;
+    // DI parameter fields, Initialize(), Execute()
 }
 ```
 
-The wrapper type name follows the pattern: `{MethodName}Func`.
+> **Note:** Scheduling logic is generated in a separate `ApplySchedulingEntrypoint` class, not inside the wrapper.
+
+The wrapper type name follows the pattern: `{IdentifierPascalCase}Func`, where the identifier is the string key from the function attribute, PascalCased. For example, `[PerFrameFunction("prepare_physics")]` generates `PreparePhysicsFunc`. The name is derived from the attribute's identifier string, not the method name.
 
 ## Best Practices
 

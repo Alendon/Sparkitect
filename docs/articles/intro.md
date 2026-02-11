@@ -58,44 +58,51 @@ This section walks you through creating your first Sparkitect mod - a minimal "h
 
 ### Prerequisites
 
-- .NET 8.0 SDK or later
+- The current .NET SDK
 - An IDE (Visual Studio, Rider, or VS Code with C# extension)
 
 ### 1. Create the Project
 
-Create a new class library project referencing the Sparkitect SDK:
+Create a new class library project using the Sparkitect SDK:
 
 ```xml
-<Project Sdk="Sparkitect.Sdk">
+<Project Sdk="Sparkitect.Sdk/0.1.0">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <ModId>hello_world</ModId>
     <ModName>Hello World Mod</ModName>
-    <ModIdentifier>tutorial.helloworld</ModIdentifier>
     <ModVersion>1.0.0</ModVersion>
-    <ModType>Root</ModType>
+    <ModAuthor>YourName</ModAuthor>
+    <ModDescription>A simple hello world mod</ModDescription>
+    <IsRootMod>true</IsRootMod>
   </PropertyGroup>
 </Project>
 ```
 
-See [SDK Project Configuration](xref:sparkitect.core.modding-framework) for all available properties.
+See [SDK Project Configuration](xref:sparkitect.tooling.sdk-guide) for all available properties.
 
 ### 2. Create a Module
 
-Modules contain your mod's logic. Create a minimal module:
+Modules contain your mod's logic. Here is a simplified module based on the `samples/MinimalSampleMod/` pattern:
 
 ```csharp
 using Serilog;
-using Sparkitect.Stateless;
 using Sparkitect.GameState;
+using Sparkitect.Modding;
+using Sparkitect.Modding.IDs;
+using Sparkitect.Stateless;
+
+// Generated ID extension namespace — name derived from your ModId
+using HelloWorld.CompilerGenerated.IdExtensions;
+using Sparkitect.CompilerGenerated.IdExtensions;
 
 namespace HelloWorld;
 
-[ModuleRegistry.RegisterModule("hello_module")]
+[ModuleRegistry.RegisterModule("hello")]
 public partial class HelloModule : IStateModule
 {
-    public static Identification Identification => StateModuleID.Tutorial.HelloModule;
+    public static Identification Identification => StateModuleID.HelloWorld.Hello;
 
-    public static IReadOnlyList<Identification> RequiredModules => [];
+    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
 
     [TransitionFunction("say_hello")]
     [OnCreateScheduling]
@@ -107,24 +114,34 @@ public partial class HelloModule : IStateModule
 ```
 
 This module:
-- Registers itself with the module registry
-- Logs a message when the module is created
-- Uses dependency injection to receive the logger
+- Registers itself with the module registry via the generated `RegisterModule` attribute
+- Defines a transition function that runs when the module is created during a state transition
+- Uses dependency injection to receive the logger through method parameters
+
+> [!NOTE]
+> A complete working mod also requires an `IEntryStateSelector` (to select the initial state) and an `IStateDescriptor` (to define the state and its modules). See `samples/MinimalSampleMod/` for the full implementation with all required pieces.
 
 ### 3. Build and Run
 
-Build your project. The SDK produces a mod archive (`.spark` file) in the output directory.
+Build your project. The SDK produces a `.sparkmod` archive in the output directory (e.g., `bin/Debug/net10.0/hello_world-1.0.0.sparkmod`).
 
-Place the archive in the engine's `mods` folder and run the engine. You should see your log message in the console output.
+To run the engine with your mod, use the `-addModDirs` CLI argument pointing to your build output directory:
+
+```bash
+dotnet run --project path/to/Sparkitect.csproj -- -addModDirs=path/to/your/mod/bin/Debug/net10.0
+```
+
+For IDE-based workflows using `launchSettings.json`, see the [SDK Guide](xref:sparkitect.tooling.sdk-guide).
 
 ### Next Steps
 
 This minimal example demonstrates the core patterns. For deeper understanding, explore these topics:
 
-- **SDK Configuration**: [Modding Framework](xref:sparkitect.core.modding-framework)
+- **SDK & Build**: [SDK Guide](xref:sparkitect.tooling.sdk-guide)
 - **Modules and States**: [Game State System](xref:sparkitect.core.game-state-system)
 - **State Functions**: [Stateless Functions](xref:sparkitect.core.stateless-functions)
 - **Service Registration**: [Dependency Injection](xref:sparkitect.core.dependency-injection)
 - **Object Registration**: [Registry System](xref:sparkitect.core.registry-system)
+- **Mod Structure**: [Modding Framework](xref:sparkitect.core.modding-framework)
 
-For a complete working example with graphics, input, and gameplay, see the `samples/PongMod` directory in the Sparkitect repository.
+For a complete working example, see `samples/MinimalSampleMod/`. For a full game with graphics, input, and gameplay, see `samples/PongMod/`.

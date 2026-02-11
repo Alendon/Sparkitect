@@ -22,12 +22,16 @@ A `.sparkmod` file is a standard ZIP archive containing:
 modname.sparkmod/
   manifest.json      # Mod metadata (required, at root)
   ModName.dll        # Main mod assembly (required, at root)
+  ModName.pdb        # Debug symbols (included automatically)
   lib/               # Dependency DLLs (optional)
     SomeDependency.dll
+    SomeDependency.pdb
   resources/         # Mod resources (optional)
     textures/
     shaders/
 ```
+
+PDB files are included automatically alongside both the main assembly and dependency DLLs for debugging support.
 
 ## Manifest Format
 
@@ -75,16 +79,19 @@ The manifest.json file contains mod metadata in JSON format.
 
 #### Version Range Format
 
-Version ranges follow semantic versioning:
+Version ranges follow semantic versioning. The SDK accepts the following input formats:
 
-| Pattern | Meaning |
-|---------|---------|
+| Input Pattern | Meaning |
+|---------------|---------|
 | `*` | Any version |
 | `1.0.0` | Exactly 1.0.0 |
 | `^1.0.0` | Compatible with 1.0.0 (>=1.0.0 <2.0.0) |
 | `~1.0.0` | Approximately 1.0.0 (>=1.0.0 <1.1.0) |
 | `>=1.0.0` | 1.0.0 or higher |
 | `>=1.0.0 <2.0.0` | Range |
+
+> [!NOTE]
+> The Semver library normalizes range notation during serialization. For example, the input format `^1.0.0` is serialized as `1.*` in the generated manifest. Both representations are semantically equivalent.
 
 ### Example Manifest
 
@@ -98,19 +105,19 @@ Version ranges follow semantic versioning:
   "Relationships": [
     {
       "Id": "sparkitect",
-      "VersionRange": "^1.0.0",
+      "VersionRange": "1.*",
       "IsOptional": false,
       "IsIncompatible": false
     },
     {
       "Id": "pong_mod",
-      "VersionRange": "^1.0.0",
+      "VersionRange": "1.*",
       "IsOptional": false,
       "IsIncompatible": false
     },
     {
       "Id": "color_provider_mod",
-      "VersionRange": "^1.0.0",
+      "VersionRange": "1.*",
       "IsOptional": true,
       "IsIncompatible": false
     }
@@ -129,12 +136,13 @@ The manifest format is considered stable. No version field is included in the ma
 
 The Sparkitect runtime loads mods from directories specified via `-addModDirs` CLI argument. Each directory is scanned for `.sparkmod` files.
 
-Loading order:
+Loading process:
 1. Parse all manifests
 2. Validate dependencies (fail if required deps missing)
 3. Build dependency graph
-4. Load in topological order (dependencies first)
+4. Load in caller-specified order
+
+The `ModManager` validates that all required dependencies are satisfied before loading begins, but does **not** perform topological sorting. Dependency ordering is the responsibility of the upstream bootstrapper/game state manager, which resolves the correct load order before passing it to `ModManager`.
 
 ---
 *Specification version: 1.0*
-*Last updated: Phase 18.1*

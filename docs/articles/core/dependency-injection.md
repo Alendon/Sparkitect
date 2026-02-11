@@ -16,13 +16,11 @@ mods at runtime.
 
 ## Container Types
 
-The DI system currently utilizes 3 different types of containers, specialized for their use cases.
-Changing this later to a more general variation or allowing more customization is intended to be possible but currently not planned.
+The DI system utilizes three types of containers, each specialized for its use case:
 
-Container Types:
-- CoreContainer: Pure singleton container that provides implementations to interfaces.
-- EntrypointContainer: Container holding discovered ConfigurationEntrypoints (e.g., CoreConfigurator, registry configurators, registrations) and allowing sequential processing by the engine.
-- FactoryContainer: An object factory container based on keyed registrations and optional object caching/recycling facility.
+- **CoreContainer**: Pure singleton container that provides implementations to interfaces.
+- **EntrypointContainer**: Container holding discovered configuration entrypoints (e.g., service configurators, registry configurators, registrations) and allowing sequential processing by the engine.
+- **FactoryContainer**: An object factory container based on keyed registrations and optional object caching/recycling facility.
 
 ### Core Container
 
@@ -30,13 +28,11 @@ Singleton Container building a container hierarchy:
 - **Root**: Core container created during engine initialization, containing essential engine services (ModManager, GameStateManager, IdentificationManager, etc.)
 - **State**: Containers created during state transitions, forming a hierarchical stack. Each state container is a child of its parent state's container (or Root for the first state)
 
-Containers are immutable after creation. Services can be overridden within the same container level but not in parent containers. State-level containers can provide their own implementations of services, shadowing those from parent containers.
+Containers are immutable after creation. Child containers add new services only -- parent services are inherited and immutable. Attempting to register a service that already exists in a parent container will throw an `InvalidOperationException`. Within the same container level, services can be overridden using the explicit `Override` method.
 
 The specialized functional containers (entrypoint and factory), can only be created on the current leaf of the container hierarchy,
 already created functional containers when creating a new hierarchy level, are assumed as invalid and must be recreated.
 Same applies when destroying a container.
-
-Once a container is created, it cannot be modified. Similarly, sub-containers cannot modify bindings from parent containers.
 
 ### Choosing the Right Container
 
@@ -45,25 +41,40 @@ Once a container is created, it cannot be modified. Similarly, sub-containers ca
 | Singleton service shared across states | CoreContainer | ILogger, IModManager |
 | Service scoped to a state/module | CoreContainer (state-level) | IPhysicsService |
 | Keyed objects resolved by string/ID | FactoryContainer | IRegistry by category |
-| Discover configurators from mods | EntrypointContainer | CoreConfigurator discovery |
+| Discover configurators from mods | EntrypointContainer | IStateModuleServiceConfigurator discovery |
 
 **Container Hierarchy:**
 
 ```
 Root CoreContainer (engine services)
-  └── State CoreContainer (state services)
-        └── FactoryContainer<IRegistry> (registries)
-        └── EntrypointContainer<...> (configurators)
+  +-- State CoreContainer (state services)
+        +-- FactoryContainer<IRegistryBase> (registries)
+        +-- EntrypointContainer<...> (configurators)
 ```
 
 Each state level can have its own functional containers (Factory, Entrypoint). When a new state is pushed, functional containers from the parent are invalidated and must be recreated.
 
 **Key principle:** CoreContainer for services, FactoryContainer for keyed object factories, EntrypointContainer for mod-discovered configurators.
 
+## Service Lifetimes
+
+All services registered in a `CoreContainer` are **singletons** -- exactly one instance per container. There is no transient or scoped lifetime concept in the DI system.
+
+Key lifetime semantics:
+
+- **CoreContainer services**: One instance per container, created during `Build()`. The instance lives as long as the container exists.
+- **FactoryContainer**: Creates a **new instance** on each `Resolve` call. This is a factory pattern, not a lifetime management strategy -- each resolution produces a fresh object.
+- **Container disposal**: When a state transition destroys a state, its container is disposed. All services created by that container are effectively ended. A new state creates a new container with new service instances.
+- **Parent container services**: Services from parent containers remain available to child containers. They are not re-created -- the same instance is shared through the hierarchy.
+
+This means service lifetimes are tied to the lifecycle of the state that created them. Root container services persist for the application lifetime; state container services live only as long as that state is active.
+
 ### Entrypoint Container
 
-Holds instances of a single ConfigurationEntrypoint base type and allows fetching all discovered implementations.
-The engine uses this to execute configurators and registrations in a deterministic sequence (ordering rules to be added).
+Holds instances of a single `IBaseConfigurationEntrypoint` type and allows fetching all discovered implementations.
+The engine uses this to execute configurators and registrations in a deterministic sequence.
+
+**Entrypoint ordering** is controlled via `[EntrypointOrderAfter<T>]` and `[EntrypointOrderBefore<T>]` attributes. These define explicit ordering constraints between entrypoint classes. The engine resolves these constraints using Kahn's algorithm with lexicographic tiebreaking for deterministic ordering. For cross-mod ordering where the target type is not available at compile time, string-based variants `[EntrypointOrderAfter("FullTypeName")]` and `[EntrypointOrderBefore("FullTypeName")]` are also available. Without explicit ordering constraints, entrypoints are ordered lexicographically by type name.
 
 ### Factory Container
 
@@ -164,35 +175,31 @@ Factory attributes that generate code are:
 
 ConfigurationEntrypoints are not manually written; they're automatically generated (marked `[CompilerGenerated]`) or discovered at runtime via discovery attributes and instantiated via parameterless constructors.
 
-
 ## Entrypoint System
 
 The DI system uses a discoverable entrypoint pattern for modular configuration. This approach combines attribute-based marking with abstract base classes to define configuration and registration points.
 
+### IConfigurationEntrypoint Base Interface
 
-
-
-### ConfigurationEntrypoint Base Class
-
-The `ConfigurationEntrypoint<TAttribute>` pattern underpins configurator discovery. It exposes the discovery attribute type and is implemented by entrypoint base types such as `CoreConfigurator`, `IRegistryConfigurator`, and `Registrations`.
+The `IConfigurationEntrypoint<TDiscoveryAttribute>` pattern underpins configurator discovery. It exposes the discovery attribute type and is implemented by entrypoint types such as `ICoreConfigurator<T>`, `IFactoryConfigurator<TBase, T>`, and their specializations.
 
 ```csharp
-public interface ConfigurationEntrypoint<TDiscoveryAttribute> : BaseConfigurationEntrypoint
-    where TDiscoveryAttribute : Attribute 
+public interface IConfigurationEntrypoint<TDiscoveryAttribute> : IBaseConfigurationEntrypoint
+    where TDiscoveryAttribute : Attribute
 {
-    static Type BaseConfigurationEntrypoint.EntrypointAttributeType => typeof(TDiscoveryAttribute);
+    static Type IBaseConfigurationEntrypoint.EntrypointAttributeType => typeof(TDiscoveryAttribute);
 }
 ```
 
-ConfigurationEntrypoints must have parameterless constructors. DI is provided through method parameters (e.g., `ICoreContainer`), not through constructor injection.
+ConfigurationEntrypoints must have parameterless constructors. DI is provided through method parameters (e.g., `ICoreContainerBuilder`), not through constructor injection.
 
 ### Available Entrypoints
 
 The system provides several specialized entrypoints for different configuration tasks:
 
-#### CoreConfigurator
+#### IStateModuleServiceConfigurator (Generated)
 
-CoreConfigurator implementations are **automatically generated** (marked `[CompilerGenerated]`) by the source generator system. When you mark classes with `[StateService<TInterface, TModule>]` attributes, a CoreConfigurator class is automatically created to register all the service factories for that module.
+`IStateModuleServiceConfigurator` implementations are **automatically generated** (marked `[CompilerGenerated]`) by the source generator system. When you mark classes with `[StateService<TInterface, TModule>]` attributes, a configurator class is automatically created to register all the service factories for that module.
 
 **Automatic Generation Example:**
 ```csharp
@@ -200,40 +207,42 @@ CoreConfigurator implementations are **automatically generated** (marked `[Compi
 [StateService<ITimeManager, CoreModule>]
 public class TimeManager : ITimeManager { }
 
-// Automatically generated CoreConfigurator (marked [CompilerGenerated]):
-[CoreContainerConfiguratorEntrypoint]
+// Automatically generated configurator (marked [CompilerGenerated]):
+[StateModuleServiceConfiguratorEntrypoint]
 [CompilerGenerated]
 internal class CoreModule_ServiceConfigurator : IStateModuleServiceConfigurator
 {
     public Type ModuleType => typeof(CoreModule);
 
-    public void ConfigureServices(ICoreContainerBuilder container)
+    public void Configure(ICoreContainerBuilder builder, IReadOnlySet<string> loadedMods)
     {
-        container.Register<TimeManager_Factory>();
+        builder.Register<TimeManager_Factory>();
     }
 }
 ```
 
 The generated configurator class is internal and marked with `[CompilerGenerated]`. One configurator is generated per module, registering all services for that module.
 
-**Manual Implementation (Rare Cases):**
+**Most mod developers only need `[StateService<TInterface, TModule>]`** and never interact with configurators directly.
 
-Manual CoreConfigurator implementations are supported for special cases where services need to be registered outside the standard state module pattern. However, for typical mod development, use `[StateService<TInterface, TModule>]` and let generators handle the configurators.
+#### CoreConfigurator (Manual, Rare)
+
+The abstract `CoreConfigurator` class is a separate, manually-used entrypoint type that inherits from `IConfigurationEntrypoint<CoreContainerConfiguratorEntrypointAttribute>`. It provides a `ConfigureIoc(ICoreContainerBuilder container)` method for special cases where services need to be registered outside the standard state module pattern. This is rare and not needed for typical mod development.
 
 #### Registry Configurator
 
 ```csharp
-public class RegistryConfigurator : IRegistryConfigurator
+public class MyRegistryConfigurator : IRegistryConfigurator
 {
-    public void ConfigureRegistries(IFactoryContainerBuilder<IRegistry> registryBuilder)
+    public void Configure(IFactoryContainerBuilder<IRegistryBase> builder, IReadOnlySet<string> loadedMods)
     {
         // Add registry factories here
-        // registryBuilder.Register(new MyRegistry_KeyedFactory());
+        // builder.Register(new MyRegistry_KeyedFactory());
     }
 }
 ```
 
-Adds registries to the registry system using a factory container builder.
+Adds registries to the registry system using a factory container builder. The `IRegistryConfigurator` interface inherits from `IFactoryConfigurator<IRegistryBase, RegistryConfiguratorAttribute>`.
 
 **Note**: Registry-specific configurators and registrations are covered in detail in the [Registry System](xref:sparkitect.core.registry-system) documentation.
 
@@ -251,7 +260,7 @@ Components are added to DI containers through source-generated factories:
 
 1. Core containers are built using a builder pattern, with immutability after creation
 2. Base container initialized at application startup by the EngineBootstrapper
-3. Root container created during mod loading based on CoreConfigurator implementations
+3. Root container created during mod loading based on `IStateModuleServiceConfigurator` implementations
 4. Registry containers created during registry processing
 5. Game States are responsible for managing container lifecycles
 
@@ -270,7 +279,7 @@ Services can be accessed through the `ICoreContainer` interface:
 // Required service resolution - throws exception if not found
 var service = container.Resolve<IMyService>();
 
-// Optional service resolution - returns false if not found  
+// Optional service resolution - returns false if not found
 if (container.TryResolve<IMyService>(out var service))
 {
     // Use service here
@@ -311,27 +320,20 @@ The DI system is tightly coupled with the modding framework:
 
 1. Mods register their services with the DI container during loading
 2. The modding system creates appropriate containers for mod loading
-3. Services can be overridden by mods through appropriate registration
+3. Services can be overridden within the same container level through the explicit `Override` method on the container builder
 
 ## Naming Conventions
 
-### Vulkan Wrapper Types
+The DI system follows consistent naming patterns:
 
-Sparkitect wraps Vulkan objects with managed types using a `Vk` prefix:
+| Pattern | Convention | Example |
+|---------|-----------|---------|
+| Service interfaces | `I` prefix | `ITimeManager`, `IModManager` |
+| Service factories | `{ClassName}_Factory` | `TimeManager_Factory` |
+| Configurators | `{ModuleName}_ServiceConfigurator` | `CoreModule_ServiceConfigurator` |
+| Entrypoint attributes | `{Purpose}Attribute` | `StateModuleServiceConfiguratorEntrypointAttribute` |
 
-| Wrapper Type | Wraps | Purpose |
-|--------------|-------|---------|
-| `VkCommandPool` | `CommandPool` | Command buffer allocation |
-| `VkSwapchain` | `SwapchainKHR` | Frame presentation |
-| `VkSurface` | `SurfaceKHR` | Window surface |
-| `VkShaderModule` | `ShaderModule` | Compiled shader |
-
-This naming convention:
-- Distinguishes managed wrappers from raw Silk.NET types
-- Indicates the type participates in automatic resource tracking
-- Provides consistent discovery (all Vulkan wrappers start with `Vk`)
-
-See [Vulkan Graphics](xref:sparkitect.vulkan.vulkan-graphics) for details on the wrapper system.
+For Vulkan wrapper type naming conventions, see [Vulkan Graphics](xref:sparkitect.vulkan.vulkan-graphics).
 
 ## Best Practices
 
@@ -346,7 +348,7 @@ See [Vulkan Graphics](xref:sparkitect.vulkan.vulkan-graphics) for details on the
 ### When to Use Configuration Entrypoints
 
 - Configurators are typically auto-generated - you write service attributes, generators create configurators
-- Manual CoreConfigurator implementations are rare and only needed for special cases outside the state module pattern
+- Manual `CoreConfigurator` implementations are rare and only needed for special cases outside the state module pattern
 - Use `IRegistryConfigurator` to define new registry categories (see [Registry System](xref:sparkitect.core.registry-system))
 
 ### Container Management
@@ -362,10 +364,10 @@ The DI system provides a unified, attribute-driven facade mechanism for subsyste
 
 ### Facade Pattern
 
-Facades enable interface substitution during resolution:
+Facades enable interface substitution during resolution. The pattern uses `FacadeMarkerAttribute<TFacade>` as the base, with two specializations:
 
-- **Public Interface**: What's registered in DI and accessible to most code
-- **Facade Interface**: What specific subsystems (like state functions) see
+- **`StateFacade<TFacade>`**: Used on services that expose a reduced API to state functions
+- **`RegistryFacade<TFacade>`**: Used on services that expose a reduced API during registry processing
 
 ```csharp
 // Public interface with facade declaration
@@ -390,10 +392,10 @@ internal class GameStateManager : IGameStateManager, IGameStateManagerStateFacad
 
 ### How Facades Work
 
-1. **Facade Declaration**: Interfaces marked with `[StateFacade<TFacade>]` declare their facade contract
+1. **Facade Declaration**: Interfaces marked with `[StateFacade<TFacade>]` or `[RegistryFacade<TFacade>]` declare their facade contract
 2. **Implementation**: Services implement both the public interface and the facade interface
-3. **Resolution**: During container build, facade mappings are created
-4. **Mapped Resolution**: State method wrappers use `TryResolveMapped<T>(out result, facadeMap)` to resolve the facade interface when requesting the public interface
+3. **Facade Map**: During container build, facade mappings are created (facade type -> public type)
+4. **Mapped Resolution**: State function wrappers declare facade types as parameters. During resolution, `ResolveMapped`/`TryResolveMapped` checks the facade map: if the requested type exists in the map, the mapped public type is resolved from the container and returned cast as the facade type
 
 This pattern enables:
 - **Separation of Concerns**: State functions see only state-relevant methods

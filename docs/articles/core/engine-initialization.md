@@ -30,14 +30,15 @@ The engine initializes the logging system (Serilog) before any other operations,
 
 ### 2. Root Container Creation
 
-The bootstrapper creates the Root CoreContainer with essential engine services:
+The bootstrapper creates the Root CoreContainer with all eight CoreModule services:
 - **CliArgumentHandler**: Processes command-line arguments
-- **IdentificationManager**: Manages string ↔ numeric ID mappings
+- **IdentificationManager**: Manages string-to-numeric ID mappings
 - **ResourceManager**: Handles resource loading
 - **ModManager**: Coordinates mod discovery and loading
 - **RegistryManager**: Manages registry lifecycle
 - **GameStateManager**: Controls state transitions and main loop
 - **ModDIService**: Provides DI container creation for mods
+- **StatelessFunctionManager**: Manages stateless function discovery, sorting, and wrapper creation
 
 These services are registered via source-generated factories and are available before any mods are loaded.
 
@@ -47,20 +48,27 @@ The CliArgumentHandler processes command-line arguments, allowing runtime config
 
 ### 4. Mod Discovery
 
-The ModManager scans the "mods" folder and reads manifests from discovered archives. At this stage, mods are **discovered but not loaded** - the actual loading happens during root state entry.
+The ModManager scans the "mods" folder and reads manifests from discovered archives. At this stage, mods are **discovered but not loaded** -- the actual loading happens during root state entry.
 
 ### 5. Entering Root State
 
 The GameStateManager's `EnterRootState()` method performs the core initialization:
 
+**Root Mod Selection:**
+
+Root mods are selected using a priority-based approach:
+1. If a `roots.json` configuration file exists, only the specified mods are loaded
+2. If no config exists but mods with `IsRootMod=true` are discovered, those mods are loaded
+3. If neither applies, all discovered mods are loaded as a backward-compatible fallback
+
 **Mod Loading:**
-- Loads all discovered mods via ModManager
-- Assemblies are loaded from zip streams (which remain open)
+- Loads the selected root mods via ModManager
+- Assemblies are loaded from memory after extraction from zip archives
 - Dependencies are resolved and load order determined
 
 **Registry Setup:**
-- Adds StateRegistry and ModuleRegistry to the RegistryManager
-- Processes these registries for all loaded mods
+- Adds four registries to the RegistryManager: **ModuleRegistry**, **StateRegistry**, **PerFrameRegistry**, and **TransitionRegistry**
+- Processes all four registries for the loaded mods
 - Finalizes all pending state and module registrations
 
 **Entry State Selection:**
@@ -69,13 +77,12 @@ The GameStateManager's `EnterRootState()` method performs the core initializatio
 
 **State Activation:**
 - Creates the entry state frame with its DI container (child of Root container)
-- Executes module `[OnCreate]` functions
-- Executes state `[OnFrameEnter]` functions
+- Executes transition enter methods via the [stateless function system](xref:sparkitect.core.stateless-functions) -- these are functions annotated with `TransitionFunctionAttribute` that are resolved and topologically sorted by the `StatelessFunctionManager`
 - Starts the main loop
 
 ### 6. Main Loop
 
-The main loop executes `[PerFrame]` functions from the active state and its modules until a transition or shutdown is requested.
+The main loop executes per-frame functions (annotated with `PerFrameFunctionAttribute`) from the active state and its modules until a transition or shutdown is requested. See [Stateless Functions](xref:sparkitect.core.stateless-functions) for details on function resolution and scheduling.
 
 ### 7. Cleanup
 

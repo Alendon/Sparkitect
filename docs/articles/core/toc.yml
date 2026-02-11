@@ -4,7 +4,7 @@
   href: engine-initialization.md
 - name: Modding Framework
   href: modding-framework.md
-- name: Module Dependencies
+- name: External Dependencies
   href: mod-dependencies.md
 - name: Optional Dependencies
   href: optional-dependencies.md

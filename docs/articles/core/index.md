@@ -24,7 +24,7 @@ The primary mechanism for components to access each other. A custom-built DI fra
 
 ### Registry System
 
-Centralized tracking and management of game objects and resources. Uses a three-level identification hierarchy (ModId, CategoryId, ObjectId) for consistent resource referencing.
+Centralized tracking and management of game objects and resources. Uses a three-level identification hierarchy (ModId, CategoryId, ItemId) for consistent resource referencing.
 
 <xref:sparkitect.core.registry-system>
 
@@ -48,5 +48,5 @@ Hierarchical state machine managing runtime configuration. States compose from m
 
 ## Additional Topics
 
-- [Mod Dependencies](xref:sparkitect.core.mod-dependencies) - Managing external dependencies in mod archives
+- [External Dependencies](xref:sparkitect.core.external-dependencies) - Managing NuGet and third-party dependencies in mod archives
 - [Optional Dependencies](xref:sparkitect.core.optional-dependencies) - Integrating with mods that may not be present
