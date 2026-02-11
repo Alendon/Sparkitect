@@ -6,61 +6,150 @@ description: Requirements for the Entity Component System architecture
 
 # ECS Requirements
 
-List of different requirements for the Entity Component System (ECS) architecture.
+Requirements and design decisions for the Entity Component System (ECS) architecture.
 
-## General Requirements
+## Design Philosophy
 
-- **Performance**: The ECS should be designed for high performance, allowing for efficient processing of large numbers
-  of entities and components.
-- **Flexibility**: The ECS should be flexible enough to accommodate a wide range of game mechanics and systems, allowing
-  for easy addition and removal of components and systems.
-- **Scalability**: The ECS should be able to scale with the complexity of the game, allowing for efficient management of
-  large numbers of entities and components.
+The ECS follows the same design philosophy as the rest of Sparkitect: the core defines minimal
+interaction contracts, and concrete behavior emerges from implementations. Nothing is hardcoded
+that can be extensible.
 
-## System Requirements
+This mirrors how Stateless Functions work: the core provides `IStatelessFunction`, `IScheduling`,
+and `ExecutionGraphBuilder`. Scheduling logic (PerFrame, OnCreate, etc.) is emergent, not baked in.
 
-Systems must be executable in parallel. Based on minimal overhead job/task library.
-Maybe partitioning systems themselves into smaller jobs/tasks.
+## Systems
+
+Systems are Stateless Functions. A system is a static method with DI-injected parameters.
+
+- Consistent with existing Sparkitect patterns
+- Enforces pure systems (no hidden state)
+- Queries and command buffers are DI parameters on the system function
+- System parameters are resolved through the existing DI framework (may require extensions
+  for world-scoped lifetimes)
+
+### System Groups
+
+Systems belong to System Groups. Groups act as the parent/owner for systems (analogous to
+how modules own Stateless Functions).
+
+- Groups determine inclusion/activation of their systems
+- Activation is context-based when (re)building the execution graph
+- Runtime toggling of system groups may be supported (depends on scheduling performance)
+
+### Ordering
+
+System ordering uses Stateless Function scheduling (`OrderAfter`/`OrderBefore`,
+`ExecutionGraphBuilder`). No new ordering mechanism is needed.
+
+### Parallelization
+
+- Systems run in parallel by default where access patterns allow
+- Read/write locks at the storage level enforce safe concurrent access
+- Locking granularity depends on the storage implementation
+- Access metadata (which components are read/written) exists for parallelization, not ordering
+- Unresolved write conflicts produce a runtime warning and default to serialization
+  (build-time errors are impossible due to modding)
+
+## World
+
+The World is independent of GameState. It is standalone infrastructure that can be created,
+ticked, and destroyed by any code.
+
+- `World.Tick()` is triggered by GameState PerFrame Stateless Functions
+- Multiple worlds are possible
+- GameState integration is optional, not structural
+
+## Structural Changes
+
+Structural changes (create/destroy entities, add/remove components) are always deferred
+through command buffers, executed between system executions. No immediate structural changes
+during system execution.
+
+- Command buffers are accessed via DI parameters on system functions
 
 ## Component Queries
 
-Component Queries are the core interface for Systems to access components/entities.
-They can be implemented as multiple different types, for optimization purposes. This is not further specified here.
+Queries are the sole entity/component interaction point for systems.
 
-Features of Component Queries:
+### Core Contract
 
-- Query all entities with specific components
-- Provide selective read/write access to components
-- Support fetching of specific entities by (volatile) ID
+The core query contract is minimal: access metadata only.
 
-## Archetypes / Component Groups / Component Pools
+- Declares which components are accessed and whether read or write
+- Components are identified by Identification (not CLR types)
+- No iteration contract, no execution contract in the core
+- All iteration and access patterns are defined by query implementations
 
-Archetypes group entities by their component types.
+### Query Implementations (Emergent)
 
-Archetypes can be immutable or dynamic.
+Concrete query types are emergent features, not part of the core. Examples:
 
-Immutable archetypes are created at mod loading phase / registry phase.
-They can be further optimized for performance, but are not flexible.
-Especially useful for entity types that exists in high numbers.
+- Archetype iteration (iterate entities by component set)
+- Spatial querying (query entities by position/range)
+- Relationship traversal (query entities by relationships)
+- Any future query pattern
 
-Dynamic archetypes are constructed at runtime, when entities are created.
+Each query type:
 
-Each Archetype has a corresponding Component Pool containing the components of the entities in that archetype.
-For immutable archetypes, the component pool can be optimized for performance, e.g. by using runtime source generation.
-Adding/Removing components from an entity creates a new archetype.
+- Defines its own entity handle type (parallel to how `StatelessFunctionAttribute` defines `TContext`)
+- Entity handles have statically written-out accessor methods (e.g., `GetPosition()`,
+  not `Get<Position>()`)
+- The handle shape and iteration pattern are defined by the query implementation
 
-Add Entity Templates. A Template is basically a kind of archetype that is used to instantiate entities.
-They can also be used for creating immutable archetype variants.
+### Queries are Always Explicit
 
-Open Questions:
+Systems explicitly declare what capabilities they need from their queries. There is no default
+"just works" query. This makes access patterns, locking, and performance characteristics
+visible from the declaration.
 
-- Instead of dynamic/immutable archetypes, we could only have dynamic archetypes. All specialization for static
-  archetypes could be triggered upfront, when the archetype is created or when a threshold of minimum entities in an archetype is reached.
+### Query Lifecycle
 
+Queries are DI parameters, bound to a specific World instance, and cached.
 
+## Storage
 
-## Entities
+### Fully Abstract Storage
 
-Entities are just IDs.
+The core defines no fixed storage approach. Storage backends are emergent implementations,
+following the same pattern as queries, scheduling, and all other extensible systems.
 
-There must be two types of Entity IDs. A stable and a "volatile" ID.
+This enables different storage approaches (archetype-based, sparse sets, spatial-indexed,
+graph-based, GPU-backed, etc.) without core changes.
+
+### One Entity = One Storage
+
+An entity belongs to exactly one storage backend. That storage must support all the entity's
+data. Storage is determined at entity creation time.
+
+### Storage Capabilities
+
+Storages advertise capabilities that describe what they can do (e.g., component iteration,
+relationship traversal, spatial querying). The exact mechanism for defining and discovering
+capabilities is not yet determined.
+
+Queries utilize storage capabilities to access entity/component data. The accessor provided
+by a capability is a concrete type that knows the storage internals, avoiding per-entity
+abstraction overhead in the hot path.
+
+Locking and synchronization are handled by the accessor, not by the core.
+
+### Specialized Pairings
+
+Optimized query + accessor pairings can exist for specific storage types. Source generation
+can produce these for compile-time known combinations. Runtime/mod-defined types use the
+general capability path.
+
+## Component Identity
+
+Components are identified by Sparkitect's Identification system (`mod:category:item`).
+This is consistent with the rest of the engine and naturally supports mod-defined components.
+
+## Not Yet Decided
+
+- Accessor iteration shape (enumerator, callback, span-based batches)
+- Specific storage capability definitions and discovery mechanism
+- Entity creation and storage selection mechanism
+- Component compatibility when adding components to entities in a storage
+- Relationship and spatial query implementation details
+- System Group activation mechanism specifics
+- Entity ID design (stable vs volatile, generational indices)
