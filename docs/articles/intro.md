@@ -66,7 +66,7 @@ This section walks you through creating your first Sparkitect mod - a minimal "h
 Create a new class library project using the Sparkitect SDK:
 
 ```xml
-<Project Sdk="Sparkitect.Sdk/0.1.0">
+<Project Sdk="Sparkitect.Sdk/1.0.0">
   <PropertyGroup>
     <ModId>hello_world</ModId>
     <ModName>Hello World Mod</ModName>
@@ -78,7 +78,7 @@ Create a new class library project using the Sparkitect SDK:
 </Project>
 ```
 
-See [SDK Project Configuration](xref:sparkitect.tooling.sdk-guide) for all available properties.
+See [SDK Project Configuration](xref:sparkitect.tooling.sdk) for all available properties.
 
 ### 2. Create a Module
 
@@ -131,13 +131,13 @@ To run the engine with your mod, use the `-addModDirs` CLI argument pointing to 
 dotnet run --project path/to/Sparkitect.csproj -- -addModDirs=path/to/your/mod/bin/Debug/net10.0
 ```
 
-For IDE-based workflows using `launchSettings.json`, see the [SDK Guide](xref:sparkitect.tooling.sdk-guide).
+For IDE-based workflows using `launchSettings.json`, see the [Project SDK](xref:sparkitect.tooling.sdk).
 
 ### Next Steps
 
 This minimal example demonstrates the core patterns. For deeper understanding, explore these topics:
 
-- **SDK & Build**: [SDK Guide](xref:sparkitect.tooling.sdk-guide)
+- **SDK & Build**: [Project SDK](xref:sparkitect.tooling.sdk)
 - **Modules and States**: [Game State System](xref:sparkitect.core.game-state-system)
 - **State Functions**: [Stateless Functions](xref:sparkitect.core.stateless-functions)
 - **Service Registration**: [Dependency Injection](xref:sparkitect.core.dependency-injection)

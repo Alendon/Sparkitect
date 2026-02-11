@@ -6,231 +6,22 @@ description: Safely integrating with mods that may not be present at runtime
 
 # Optional Dependencies
 
-Optional dependencies allow your mod to integrate with other mods when they're present, without requiring them to be installed.
+Optional dependencies let your mod integrate with other mods when they are present, without requiring them to be installed. If the optional mod is missing, your mod still loads and runs normally.
 
-## Overview
+## DI Integration (Recommended)
 
-When building mods for Sparkitect, you may want to enhance your mod's functionality when certain other mods are available. For example:
-- A HUD mod that shows extra stats when a statistics mod is installed
-- A game mode mod that adds special items when an expansion mod is present
-- A utility mod that provides enhanced debugging when a developer tools mod is available
+The most common use case is a <xref:Sparkitect.GameState.StateServiceAttribute`2> that depends on an optional mod's types. Add [`[OptionalModDependent]`](xref:Sparkitect.Modding.OptionalModDependentAttribute) to the service class and the source generator handles everything else: conditional registration, guard methods, and type isolation.
 
-Optional dependencies let you:
-1. Declare that your mod CAN use another mod (but doesn't require it)
-2. Check at runtime if that mod is loaded
-3. Safely call into the optional mod's code without crashing when it's absent
-
-**Good news:** The optional dependency system is designed to be safe by default. The recommended patterns (DI integration, isolated classes) work without requiring deep knowledge of .NET internals. The optional dependency analyzer catches most mistakes at compile time.
-
-## CLR Lazy Loading: Background
-
-> **Note:** This section explains WHY the system works the way it does. You don't need to memorize this -- just follow the patterns and let the analyzer catch mistakes. This background is useful if you're curious or troubleshooting.
-
-### How the JIT Compiler Works
-
-The .NET JIT (Just-In-Time) compiler compiles methods to native code when they're first called. Here's the critical detail: **the JIT compiles the entire method body at once**, which means it resolves all type references in that method.
-
-```csharp
-// DANGEROUS: This method will crash even if the if-block is never entered
-public void MaybeUseOptionalMod(IGameStateManager gsm)
-{
-    if (gsm.IsModLoaded("stats_mod"))
-    {
-        // When this method is JIT compiled, the runtime IMMEDIATELY tries
-        // to load the StatsModApi type - before any code executes!
-        var api = new StatsModApi();  // TypeLoadException here!
-        api.ShowStats();
-    }
-}
-```
-
-When `MaybeUseOptionalMod` is called:
-1. JIT compiler starts compiling the method
-2. It sees `StatsModApi` type reference
-3. It tries to load the assembly containing `StatsModApi`
-4. If stats_mod isn't installed, **TypeLoadException** - the method never even starts executing
-
-### The Solution: Separate Methods
-
-The fix is simple: put the guard check and the type usage in **separate methods**:
-
-```csharp
-// SAFE: Guard check and type usage are in separate methods
-public void MaybeUseOptionalMod(IGameStateManager gsm)
-{
-    if (gsm.IsModLoaded("stats_mod"))
-    {
-        UseStatsModInternal();  // Only called if mod is loaded
-    }
-}
-
-private void UseStatsModInternal()
-{
-    // This method is only JIT compiled when called
-    // By that point, we've already verified the mod is loaded
-    var api = new StatsModApi();
-    api.ShowStats();
-}
-```
-
-Now when `MaybeUseOptionalMod` is called:
-1. JIT compiles `MaybeUseOptionalMod` - no problem, it only references `UseStatsModInternal`
-2. The IsModLoaded check runs
-3. If false, we return - `UseStatsModInternal` is never called, never JIT compiled
-4. If true, `UseStatsModInternal` is called, JIT compiled, and `StatsModApi` loads successfully
-
-## Manifest Declaration
-
-Declare optional dependencies in your mod's csproj file:
-
-```xml
-<ItemGroup>
-  <!-- Required dependency (default behavior) -->
-  <ModProjectDependency Include="..\CoreMod\CoreMod.csproj" />
-
-  <!-- Optional dependency - mod will load even if this isn't present -->
-  <ModProjectDependency Include="..\StatsMod\StatsMod.csproj" IsOptional="true" />
-</ItemGroup>
-```
-
-The `IsOptional="true"` metadata tells the mod loader:
-- Don't fail if this mod isn't installed
-- Don't require this mod to be loaded before yours
-
-## Runtime API
-
-Check if an optional mod is loaded using `IGameStateManager.IsModLoaded`:
-
-```csharp
-public class MyMod
-{
-    private readonly IGameStateManager _gsm;
-
-    public MyMod(IGameStateManager gsm)
-    {
-        _gsm = gsm;
-    }
-
-    public void Initialize()
-    {
-        // Always safe - just returns true/false
-        if (_gsm.IsModLoaded("stats_mod"))
-        {
-            // Now safe to call code that uses stats_mod types
-            InitializeStatsIntegration();
-        }
-    }
-
-    private void InitializeStatsIntegration()
-    {
-        // Types from stats_mod can be safely used here
-    }
-}
-```
-
-## Isolation Pattern
-
-For larger integrations, use the isolation pattern with dedicated integration classes:
-
-### Step 1: Create an Integration Class
-
-```csharp
-using StatsMod;  // Types from the optional mod
-
-[OptionalModDependent("stats_mod")]
-public class StatsModIntegration
-{
-    private readonly StatsApi _api;
-
-    public StatsModIntegration()
-    {
-        _api = new StatsApi();
-    }
-
-    public void RegisterCustomStats()
-    {
-        _api.RegisterStat("my_mod_score", () => GetCurrentScore());
-    }
-
-    private int GetCurrentScore() => /* ... */;
-}
-```
-
-The `[OptionalModDependent("stats_mod")]` attribute:
-- Documents that this class uses optional mod types
-- Enables the optional dependency analyzer to validate correct usage
-- Signals to readers that this class requires the mod to be loaded
-
-### Step 2: Guard All Entry Points
-
-```csharp
-public class MyMod
-{
-    private readonly IGameStateManager _gsm;
-    private StatsModIntegration? _statsIntegration;
-
-    [ModLoadedGuard("stats_mod")]
-    private void InitializeStatsIntegration()
-    {
-        _statsIntegration = new StatsModIntegration();
-        _statsIntegration.RegisterCustomStats();
-    }
-
-    public void Initialize()
-    {
-        if (_gsm.IsModLoaded("stats_mod"))
-        {
-            InitializeStatsIntegration();
-        }
-    }
-}
-```
-
-The `[ModLoadedGuard("stats_mod")]` attribute:
-- Documents that this method is a **drawbridge** -- only called when the mod is loaded
-- The drawbridge only lowers when there's a target on the other side
-- Inside this method, you're responsible for ensuring code is safe (no analyzer validation inside)
-
-> **The Drawbridge Pattern:** Think of `[ModLoadedGuard]` as a drawbridge. The analyzer puts rails everywhere else -- you can't accidentally reference optional mod types. But the drawbridge is the controlled entry point where you cross into optional mod territory. The guard check (`if (IsModLoaded(...))`) ensures the drawbridge only lowers when the destination exists.
-
-The DI integration pattern below uses this same drawbridge pattern behind the scenes -- conditional registration is just a formalized `[ModLoadedGuard]`.
-
-### Why Use Dedicated Classes?
-
-1. **Clear boundaries**: All optional mod code is in one place
-2. **Easier testing**: Test with/without the optional mod by including/excluding the integration class
-3. **Analyzer-enforced**: The optional dependency analyzer enforces that optional types only appear in marked classes
-4. **Self-documenting**: The attribute makes dependencies explicit
-
-## DI Integration
-
-For dependency injection scenarios, use conditional registration. This is the **recommended approach** -- it's the drawbridge pattern formalized into a clean structure.
-
-> **Under the hood:** DI integration uses the exact same drawbridge pattern:
-> 1. Entry point has the `if (IsModLoaded(...))` check
-> 2. Separate `[ModLoadedGuard]` method contains the registration code (type references)
-> 3. Entry point calls the guarded method
->
-> This separation is required by CLR lazy loading -- the check and the type references must be in different methods.
-
-### Interface (Safe)
-
-```csharp
-// This interface is in YOUR mod - no optional mod types
-public interface IStatsIntegration
-{
-    void RegisterStats();
-    void UpdateStats();
-}
-```
-
-### Implementation (Isolated)
+### Declaring the Service
 
 ```csharp
 using StatsMod;
 
+// The generator produces conditional registration automatically.
+// This service only registers when stats_mod is loaded.
+[StateService<IStatsIntegration, MyModule>]
 [OptionalModDependent("stats_mod")]
-public class StatsIntegration : IStatsIntegration
+internal class StatsIntegration : IStatsIntegration
 {
     private readonly StatsApi _api;
 
@@ -239,42 +30,45 @@ public class StatsIntegration : IStatsIntegration
         _api = api;
     }
 
-    public void RegisterStats()
-    {
-        _api.RegisterStat("score", () => GetScore());
-    }
-
-    public void UpdateStats() => _api.Refresh();
-
-    private int GetScore() => /* ... */;
+    public void ShowStats() => _api.Render();
 }
 ```
 
-### Conditional Registration
-
-The key pattern is to check `IsModLoaded` in your configurator entrypoint, then call a `[ModLoadedGuard]` method that contains the actual registration using `Register<TServiceFactory>()`:
+The interface lives in your mod and contains no optional mod types:
 
 ```csharp
-// In your configurator entrypoint (pseudo-code showing the pattern):
-// 1. Check if the optional mod is loaded
-if (gsm.IsModLoaded("stats_mod"))
+public interface IStatsIntegration
 {
-    RegisterStatsIntegration(builder);
-}
-
-// 2. Guarded method contains the type references
-[ModLoadedGuard("stats_mod")]
-private void RegisterStatsIntegration(ICoreContainerBuilder builder)
-{
-    // Register using the actual builder API
-    builder.Register<StatsIntegrationServiceFactory>();
+    void ShowStats();
 }
 ```
 
-> [!NOTE]
-> The exact registration mechanism depends on how your service factory is structured. Sparkitect's DI uses source-generated `[StateService]` configurators for most services. The pattern above illustrates the drawbridge principle -- the guard check and the type-referencing registration must be in separate methods.
+### What Gets Generated
 
-Consumer code can then use `TryResolve`:
+The source generator produces a configurator that checks `loadedMods` before registering:
+
+```csharp
+// Generated configurator (simplified)
+void ConfigureServices(ICoreContainerBuilder builder, IReadOnlySet<string> loadedMods)
+{
+    // Unconditional services registered here...
+
+    if (loadedMods.Contains("stats_mod"))
+        Register_StatsIntegration_Factory(builder);
+}
+
+[ModLoadedGuard("stats_mod")]
+private void Register_StatsIntegration_Factory(ICoreContainerBuilder builder)
+{
+    builder.Register<StatsIntegration_Factory>();
+}
+```
+
+The guard method and `loadedMods` check are both generated. You do not write this code.
+
+### Consuming the Optional Service
+
+Consumers resolve the interface through `TryResolve`. When the optional mod is absent, the service was never registered and resolution returns null:
 
 ```csharp
 public class MyFeature
@@ -288,137 +82,177 @@ public class MyFeature
 
     public void Update()
     {
-        _stats?.UpdateStats();  // Safe - null-conditional handles missing integration
+        _stats?.ShowStats();
     }
 }
 ```
+
+No [`IsModLoaded`](xref:Sparkitect.GameState.IGameStateManager.IsModLoaded(System.String)) checks needed on the consumer side. The null-conditional pattern handles absence cleanly.
+
+## Manifest Declaration
+
+Declare optional dependencies in your project file with `IsOptional="true"`:
+
+```xml
+<ItemGroup>
+  <ModProjectDependency Include="..\CoreMod\CoreMod.csproj" />
+  <ModProjectDependency Include="..\StatsMod\StatsMod.csproj" IsOptional="true" />
+</ItemGroup>
+```
+
+This tells the engine that your mod can load without `stats_mod` being present. See the [Project SDK](xref:sparkitect.tooling.sdk) guide for the full project file reference.
+
+## Isolation Pattern
+
+For code outside the DI system (manual initialization, event handlers, direct API calls), isolate optional mod types in dedicated classes marked with <xref:Sparkitect.Modding.OptionalModDependentAttribute>.
+
+### Integration Class
+
+```csharp
+using StatsMod;
+
+[OptionalModDependent("stats_mod")]
+internal class StatsModIntegration
+{
+    private readonly StatsApi _api = new();
+
+    public void RegisterCustomStats()
+    {
+        _api.RegisterStat("my_mod_score", () => GetCurrentScore());
+    }
+
+    private int GetCurrentScore() => /* ... */;
+}
+```
+
+The [`[OptionalModDependent]`](xref:Sparkitect.Modding.OptionalModDependentAttribute) attribute marks this class as containing optional mod type references. The optional dependency analyzer validates that these types do not leak into unmarked code.
+
+### Guard Entry Points
+
+Call into the integration class through methods marked with <xref:Sparkitect.Modding.ModLoadedGuardAttribute>. Always check <xref:Sparkitect.GameState.IGameStateManager.IsModLoaded(System.String)> before entering the guard:
+
+```csharp
+public class MyMod
+{
+    private readonly IGameStateManager _gsm;
+
+    public void Initialize()
+    {
+        if (_gsm.IsModLoaded("stats_mod"))
+        {
+            InitializeStatsIntegration();
+        }
+    }
+
+    [ModLoadedGuard("stats_mod")]
+    private void InitializeStatsIntegration()
+    {
+        var integration = new StatsModIntegration();
+        integration.RegisterCustomStats();
+    }
+}
+```
+
+[`[ModLoadedGuard]`](xref:Sparkitect.Modding.ModLoadedGuardAttribute) tells the analyzer that this method is a controlled entry point into optional mod code. The analyzer enforces type isolation everywhere else but allows optional mod types inside guarded methods.
 
 ## Common Mistakes
 
-> **Note:** The analyzer catches most of these at compile time -- there are rails everywhere. These examples show what can go wrong inside the drawbridge (inside `[ModLoadedGuard]` methods), where you're responsible for ensuring safety.
+The optional dependency analyzer catches most type leakage at compile time. The examples below show patterns that would cause `TypeLoadException` at runtime if the analyzer did not flag them.
 
-### Mistake 1: Type Reference in Same Method as Guard
+### Type Reference in Same Method as Guard
 
 ```csharp
-// WRONG - TypeLoadException even though check comes first!
+// WRONG: TypeLoadException even though the check comes first
 public void BadExample(IGameStateManager gsm)
 {
     if (gsm.IsModLoaded("stats_mod"))
     {
-        var api = new StatsModApi();  // Crash happens here
+        var api = new StatsModApi();  // JIT resolves this type when compiling the method
     }
 }
 ```
 
-**Fix:** Separate method for the type usage.
+**Fix:** Move the type reference to a separate [`[ModLoadedGuard]`](xref:Sparkitect.Modding.ModLoadedGuardAttribute) method.
 
-### Mistake 2: Field Type from Optional Mod
+### Field Type from Optional Mod
 
 ```csharp
-// WRONG - Field types are resolved when the class is instantiated
+// WRONG: Field types resolve when the class is instantiated
 public class BadExample
 {
-    private StatsModApi? _api;  // TypeLoadException when BadExample is created!
-
-    public void Initialize(IGameStateManager gsm)
-    {
-        if (gsm.IsModLoaded("stats_mod"))
-        {
-            _api = new StatsModApi();
-        }
-    }
+    private StatsModApi? _api;  // TypeLoadException when BadExample is created
 }
 ```
 
-**Fix:** Use `object?` or keep typed fields in `[OptionalModDependent]` classes only.
+**Fix:** Keep typed fields in [`[OptionalModDependent]`](xref:Sparkitect.Modding.OptionalModDependentAttribute) classes only, or use `object?` in non-isolated classes.
+
+### Generic Type Parameters
 
 ```csharp
-// CORRECT - Object field, cast when needed
-public class GoodExample
-{
-    private object? _api;
-
-    public void Initialize(IGameStateManager gsm)
-    {
-        if (gsm.IsModLoaded("stats_mod"))
-        {
-            InitializeStats();
-        }
-    }
-
-    private void InitializeStats()
-    {
-        _api = new StatsModApi();
-    }
-
-    private void UseStats()
-    {
-        ((StatsModApi)_api!).DoThing();  // Cast inside guarded method
-    }
-}
+// WRONG: Generic constraint references optional type
+public void Process<T>(T item) where T : IStatsProvider { }
 ```
 
-### Mistake 3: Generic Type Parameters
+**Fix:** Move generics to an isolated class, or use a non-generic interface.
+
+### Lambda/Closure Captures
 
 ```csharp
-// WRONG - Generic constraint references optional type
-public class BadExample
+// WRONG: Lambda body references optional type
+if (gsm.IsModLoaded("stats_mod"))
 {
-    public void Process<T>(T item) where T : IStatsProvider  // IStatsProvider from optional mod
-    {
-        // TypeLoadException when this method is called with ANY type
-    }
+    Action action = () => new StatsModApi().DoThing();  // TypeLoadException
 }
 ```
 
-**Fix:** Move generics to isolated class, or use non-generic interface.
+**Fix:** Extract the lambda body to a method in an isolated class.
 
-### Mistake 4: Lambda/Closure Captures
+## Testing
 
-```csharp
-// WRONG - Lambda captures require type resolution
-public void BadExample(IGameStateManager gsm)
-{
-    if (gsm.IsModLoaded("stats_mod"))
-    {
-        Action action = () => new StatsModApi().DoThing();  // Captured in closure
-        action();  // TypeLoadException
-    }
-}
-```
-
-**Fix:** Extract lambda to separate method in isolated class.
-
-## Testing Optional Dependencies
-
-Always test with the optional mod **absent**:
+Always test with the optional mod absent:
 
 1. Build your mod
 2. Remove the optional mod from the mods directory
-3. Run the game
+3. Run the engine
 4. Verify your mod loads and runs without the optional functionality
-
-Common test scenarios:
-- Mod loads without optional mod present
-- Optional features gracefully disabled
-- No TypeLoadException in logs
-- DI resolution returns null for optional interfaces
 
 If you see `TypeLoadException` mentioning the optional mod's assembly, you have a type leakage problem. Check the common mistakes above.
 
-## Summary
+## CLR Lazy Loading: Why This Works
+
+> [!NOTE]
+> This section explains the .NET runtime behavior behind the patterns above. You do not need this information to use optional dependencies; follow the patterns and the analyzer will catch mistakes.
+
+The .NET JIT compiler compiles methods to native code on first invocation. It resolves **all** type references in a method body at compile time, before any code in that method executes.
+
+```csharp
+// The JIT resolves StatsModApi when compiling this method, not when
+// the if-block runs. If the assembly is missing: TypeLoadException.
+public void Example(IGameStateManager gsm)
+{
+    if (gsm.IsModLoaded("stats_mod"))
+    {
+        var api = new StatsModApi();
+    }
+}
+```
+
+The solution is to keep the guard check and the type usage in separate methods. The JIT only compiles a method when it is actually called, so a guarded method that is never invoked is never compiled and its type references are never resolved.
+
+This is why [`[OptionalModDependent]`](xref:Sparkitect.Modding.OptionalModDependentAttribute) classes and [`[ModLoadedGuard]`](xref:Sparkitect.Modding.ModLoadedGuardAttribute) methods exist: they create method boundaries that the JIT respects. The DI integration takes this further by generating these boundaries automatically.
+
+## Quick Reference
 
 | Pattern | When to Use |
 |---------|-------------|
-| Separate methods | Always - guard check and type usage must be in different methods |
-| `[OptionalModDependent]` | Classes that reference optional mod types |
-| `[ModLoadedGuard]` | Methods that are entry points to optional mod code |
-| Conditional DI registration | When integrating via dependency injection |
-| `object?` fields | When you need to store optional mod instances in non-isolated classes |
-
-Remember: the JIT compiler doesn't care about your if-statements. It compiles entire methods. Keep optional type references isolated.
+| [`[StateService]`](xref:Sparkitect.GameState.StateServiceAttribute`2) + [`[OptionalModDependent]`](xref:Sparkitect.Modding.OptionalModDependentAttribute) | DI services that depend on optional mods (most common) |
+| [`[OptionalModDependent]`](xref:Sparkitect.Modding.OptionalModDependentAttribute) class | Non-DI code that references optional mod types |
+| [`[ModLoadedGuard]`](xref:Sparkitect.Modding.ModLoadedGuardAttribute) method | Entry points that cross into optional mod code |
+| `TryResolve` | Consuming optional DI services |
+| [`IsModLoaded`](xref:Sparkitect.GameState.IGameStateManager.IsModLoaded(System.String)) | Manual runtime checks outside DI |
 
 ## See Also
 
-- [External Dependencies](xref:sparkitect.core.external-dependencies) - Managing NuGet and third-party dependencies
-- [Modding Framework](xref:sparkitect.core.modding-framework) - Mod structure, loading, and lifecycle
+- [Dependency Injection](xref:sparkitect.core.dependency-injection) for the DI container hierarchy and service registration
+- [External Dependencies](xref:sparkitect.core.external-dependencies) for NuGet and third-party library dependencies
+- [Source Generation](xref:sparkitect.tooling.source-generation) for how the generator produces conditional registrations

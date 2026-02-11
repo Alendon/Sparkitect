@@ -1,70 +1,30 @@
 ---
 uid: sparkitect.tooling.source-generation
 title: Source Generation
-description: How Sparkitect uses Roslyn source generators to automate boilerplate and enable engine features
+description: Fundamental source generation patterns and infrastructure used across all Sparkitect engine components
 ---
 
 # Source Generation
 
-Sparkitect uses [Roslyn source generators](https://learn.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/source-generators-overview) to shift boilerplate work from runtime to compile time. If you are familiar with C++ `constexpr` evaluation or Rust procedural macros, the concept is the same: the compiler runs additional code during the build that emits new C# source files into your project. The engine uses this to generate DI service factories, registry infrastructure, stateless function wrappers, and more.
+Sparkitect uses [Roslyn source generators](https://learn.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/source-generators-overview) to shift boilerplate from runtime to compile time. If you are familiar with C++ `constexpr` evaluation or Rust procedural macros, the concept is the same: the compiler runs additional code during the build that emits new C# source files into your project. Nearly every engine subsystem (DI, registries, stateless functions, game state) relies on source generation to wire things up automatically.
 
-This article covers the general source generation capability. Module-specific generator details live in their respective articles:
+This article covers the **fundamental structures and patterns** that Sparkitect's generators share. For how source generation applies to a specific subsystem, see the relevant module article:
 
-- [Dependency Injection](xref:sparkitect.core.dependency-injection) for `[StateService]` and generated service factories
-- [Registry System](xref:sparkitect.core.registry-system) for `[Registry]` and generated registry infrastructure
-- [Stateless Functions](xref:sparkitect.core.stateless-functions) for `[PerFrameFunction]`/`[TransitionFunction]` and generated wrappers
+- [Dependency Injection](xref:sparkitect.core.dependency-injection): [`[StateService]`](xref:Sparkitect.GameState.StateServiceAttribute`2) and generated service factories
+- [Registry System](xref:sparkitect.core.registry-system): [`[Registry]`](xref:Sparkitect.Modding.RegistryAttribute) and generated registry infrastructure
+- [Stateless Functions](xref:sparkitect.core.stateless-functions): [`[PerFrameFunction]`](xref:Sparkitect.Stateless.PerFrameFunctionAttribute)/[`[TransitionFunction]`](xref:Sparkitect.Stateless.TransitionFunctionAttribute) and generated wrappers
 
-## What Gets Generated
+## What This Means For You
 
-When you build a mod project, the Sparkitect source generators analyze your attributed types and methods, then emit additional C# files into your compilation. Here is what each generator produces.
+As a mod author, source generation mostly works through **attributes**. You annotate your types and methods, and the engine generates the necessary wiring code at compile time. You never write factory classes, registration methods, or configurator boilerplate by hand. Some generators, like log enrichment, work implicitly on all matching call sites without requiring any annotation.
 
-### StateModuleServiceGenerator
+For example, annotating a class with [`[StateService<IMyService, MyModule>]`](xref:Sparkitect.GameState.StateServiceAttribute`2) causes the engine to generate a factory that constructs it with all dependencies resolved, plus a configurator that registers it into the correct DI container. You write the service class; the generator handles the rest.
 
-**Trigger:** Classes annotated with `[StateService<TBase, TModule>]`
+### Viewing Generated Output
 
-**Emits:**
-- A **service factory** class (`{TypeName}_Factory.g.cs`) that constructs the service with its constructor arguments and required properties resolved from the DI container
-- A **configurator** class (`{ModuleName}_ServiceConfigurator.g.cs`) that registers all service factories for the module, including conditional registration guards for services marked with `[OptionalModDependent]`
+Most IDEs (Rider, Visual Studio) provide an integrated view of Roslyn source generator output under the project's analyzer dependencies. This is the easiest way to inspect what gets generated.
 
-These generated classes wire your service into the engine's DI container hierarchy without you writing any registration code. See [Dependency Injection](xref:sparkitect.core.dependency-injection) for how services participate in the container lifecycle.
-
-### RegistryGenerator
-
-**Trigger:** Classes annotated with `[Registry(Identifier = "...")]` that implement `IRegistry`
-
-**Emits:**
-- Nested **provider attributes** (one per register method) for declarative item registration
-- **Registry metadata** as assembly-level attributes, enabling cross-assembly registry discovery
-- A **keyed factory** class for the registry itself, resolving it through the DI pipeline
-- A **configurator** (partial class with registration method and shell class with entrypoint)
-- **ID framework** classes: a static ID container with strongly-typed properties for each registered item
-- **Registration classes** for provider-attributed and YAML-defined entries
-
-The RegistryGenerator is the most complex generator in the engine. It handles both source-defined registrations (via provider attributes) and file-defined registrations (via `.registration.yaml` files). See [Registry System](xref:sparkitect.core.registry-system) for the full registration and identification model.
-
-### StatelessFunctionGenerator
-
-**Trigger:** Static methods annotated with a `StatelessFunctionAttribute` derivative (e.g., `[PerFrameFunction("identifier")]`, `[TransitionFunction("identifier")]`) and a scheduling attribute
-
-**Emits:**
-- A **wrapper class** (`{IdentifierPascalCase}Func`) nested inside the containing type, implementing `IStatelessFunction` with parameter resolution from the DI container
-- **Registration code** that registers the wrapper into the appropriate function registry
-- **Scheduling entrypoint code** that applies the scheduling attributes to control when the function executes during state transitions or per-frame updates
-- **ID properties** for strongly-typed function identification
-
-See [Stateless Functions](xref:sparkitect.core.stateless-functions) for the attribute API, scheduling model, and ordering system.
-
-### Other Generators
-
-The engine includes additional specialized generators:
-
-- **FacadeMappingGenerator** -- generates facade-to-implementation type mappings for state-scoped service resolution
-- **CallerContextGenerator** -- injects call-site tracking into Vulkan API wrappers for debugging
-- **LogEnricherGenerator** -- generates Serilog log enricher classes
-
-### Inspecting Generated Code
-
-To see what the generators produce, enable the `EmitCompilerGeneratedFiles` MSBuild property in your project:
+If you prefer file-system access, enable the `EmitCompilerGeneratedFiles` MSBuild property:
 
 ```xml
 <PropertyGroup>
@@ -72,113 +32,246 @@ To see what the generators produce, enable the `EmitCompilerGeneratedFiles` MSBu
 </PropertyGroup>
 ```
 
-Generated files appear under `obj/{Configuration}/{TFM}/generated/Sparkitect.Generator/`. This is useful for debugging registration issues or understanding what the engine generates from your attributes.
+Generated files then appear under `obj/{Configuration}/{TFM}/generated/Sparkitect.Generator/`.
 
-## How It Works
+### Fail-Fast Generators and Companion Analyzers
 
-### Roslyn Incremental Generators
+The generators themselves are written as **fail-fast**. They do not try to recover from misconfigured input or assume corrections. If a type does not meet the requirements (missing constructor, wrong attribute arguments, unsupported shape), the generator silently ignores it and produces no output for that type.
 
-All Sparkitect generators implement `IIncrementalGenerator`, Roslyn's incremental source generation API. Each generator:
+To compensate, the engine includes Roslyn **analyzers** alongside its generators. These validate source generator inputs at edit time. If an attribute is misconfigured or a required pattern is missing, you get a build error or IDE warning immediately rather than silently missing output. The analyzers are the error reporting layer; the generators are the code emission layer.
 
-1. **Registers syntax providers** that filter the compilation for relevant attributed types or methods
-2. **Transforms** matched syntax nodes into model objects, extracting all necessary symbol data at the pipeline boundary
-3. **Renders** C# source from models using the Fluid template engine (Liquid templates)
+## Fundamental Patterns
+
+The following patterns appear across all Sparkitect generators. Understanding them helps when reading generated code, building new generators, or contributing to the engine.
+
+### Incremental Pipeline
+
+All generators implement `IIncrementalGenerator` and follow the same three-stage pipeline:
+
+1. **Filter**: `ForAttributeWithMetadataName` selects syntax nodes that carry the trigger attribute
+2. **Transform**: A lambda extracts all necessary data from Roslyn symbols into a plain model record
+3. **Output**: `RegisterSourceOutput` receives the model and renders source code
+
+```
+ForAttributeWithMetadataName("Attribute")
+    |-- predicate: node is ClassDeclarationSyntax
+    +-- transform: (syntaxContext) => extract model from INamedTypeSymbol
+            |
+            v
+    IncrementalValuesProvider<TModel>
+            |
+            |-- RegisterSourceOutput (per item)
+            |       +-- render individual file (e.g. factory)
+            |
+            +-- .Collect() -> RegisterSourceOutput (grouped)
+                    +-- group by key, render aggregate file (e.g. configurator)
+```
 
 The incremental pipeline ensures generators only re-run when their specific inputs change, keeping build times proportional to the size of your changes rather than the size of your project.
 
-### The DiPipeline Toolbox
+### Symbol Boundary Crossing
 
-Multiple generators need to produce DI-related code (factories, configurators, registrations). Rather than duplicating this logic, the engine provides `DiPipeline` -- a public static toolbox class in the `Sparkitect.Generator.DI.Pipeline` namespace.
+A strict rule across all generators: **extract everything from Roslyn symbols early, then work only with plain model records downstream.**
 
-`DiPipeline` provides four core operations:
+In the transform step, the generator reads all needed data from `INamedTypeSymbol` (type names, constructor parameters, attributes, namespace) and packs it into a record. Nothing after the transform ever touches Roslyn's `ISymbol` types.
 
-| Method | Purpose |
-|--------|---------|
-| `ExtractFactory` | Extracts a `FactoryModel` from an attributed type symbol, capturing constructor arguments, required properties, and optional mod IDs |
-| `RenderFactory` | Renders a service or keyed factory class from a `FactoryModel` using Liquid templates (`ServiceFactory.liquid` or `KeyedFactory.liquid`) |
-| `ToRegistration` | Converts a `FactoryModel` into a `RegistrationModel` for configurator generation |
-| `RenderConfigurator` | Renders a configurator class from an array of `RegistrationModel` entries, handling both unconditional and conditional (mod-dependent) registrations |
+This matters because Roslyn's incremental pipeline caches transform results between compilations. If a model held a reference to a Roslyn symbol, the cache would retain stale compiler state. Plain records with value equality are cache-safe.
 
-The pipeline flow for a typical generator:
+### Model Records With Value Equality
+
+Generator models are C# records, which gives them structural equality out of the box. Two models with the same data are considered equal. This is what makes incremental caching work: if the model didn't change between builds, the output step is skipped entirely.
+
+For collection properties, Sparkitect uses `ImmutableValueArray<T>` instead of `ImmutableArray<T>`. The standard `ImmutableArray<T>` uses reference equality, which would defeat incremental caching. `ImmutableValueArray<T>` provides ordered sequence equality:
+
+```csharp
+// Two arrays with the same elements are equal
+var a = new[] { "x", "y" }.ToImmutableValueArray();
+var b = new[] { "x", "y" }.ToImmutableValueArray();
+a.Equals(b); // true, element-by-element comparison
+```
+
+It implements `IReadOnlyCollection<T>`, `IEquatable<T>`, and `IStructuralEquatable`, and has a `Builder` class for incremental construction. Every model that holds a list of items uses this type.
+
+### Template-Driven Code Emission
+
+All generators emit code through Liquid templates (via the [Fluid](https://github.com/sebastienros/fluid) engine) rather than string concatenation. Templates are embedded as assembly resources and rendered through `FluidHelper`:
+
+```csharp
+FluidHelper.TryRenderTemplate("DI.ServiceFactory.liquid", model, out var code);
+```
+
+Templates receive the model record as their context and produce complete, compilable C# files. This keeps rendering logic readable and separate from extraction logic.
+
+The templates are organized by domain alongside their generator code:
+
+| Domain | Templates |
+|--------|-----------|
+| DI | `ServiceFactory.liquid`, `KeyedFactory.liquid`, `Configurator.liquid` |
+| Stateless | `StatelessFunctionWrapper.liquid`, `StatelessFunctionScheduling.liquid` |
+| Registry | `RegistryAttributes.liquid`, `RegistryRegistrations.Unit.liquid`, `RegistryIdContainer.Framework.liquid`, and others |
+| Infrastructure | `CallerContextInjector.liquid`, `LogEnricher.liquid` |
+
+### Render Pattern
+
+Generator output methods follow a consistent signature:
+
+```csharp
+public static bool RenderSomething(TModel model, out string code, out string fileName)
+```
+
+The `bool` return indicates whether rendering succeeded. Callers use it as a guard:
+
+```csharp
+if (DiPipeline.RenderFactory(model, out var code, out var fileName))
+    ctx.AddSource(fileName, code);
+```
+
+This pattern avoids exceptions in the generator pipeline. A failed render is silently skipped rather than crashing the build.
+
+### Null Filtering
+
+The transform step returns `null` when a syntax node doesn't match requirements (wrong type, missing data). A shared extension filters these out:
+
+```csharp
+public static IncrementalValuesProvider<T> NotNull<T>(
+    this IncrementalValuesProvider<T?> provider) where T : class
+```
+
+Every generator chains `.NotNull()` after its transform to produce a clean `IncrementalValuesProvider<TModel>` with no nulls.
+
+### Display Formats
+
+When converting Roslyn symbols to string type names for models, generators use `DisplayFormats.NamespaceAndType`. This is a predefined `SymbolDisplayFormat` that produces a fully-qualified name without the `global::` prefix and without nullable annotations. It ensures consistent type name representation across all extracted models.
+
+For code emission (in templates and rendering methods), the `global::` prefix is inserted again to produce unambiguous type references in generated C# files.
+
+## The DiPipeline Toolbox
+
+Multiple generators need to produce DI-related code: factories, configurators, registrations. Rather than each generator implementing this independently, the engine provides [`DiPipeline`](xref:Sparkitect.DI.Pipeline.DiPipeline), a public static toolbox in `Sparkitect.Generator.DI.Pipeline`.
+
+### Design
+
+[`DiPipeline`](xref:Sparkitect.DI.Pipeline.DiPipeline) is a **static toolbox**: no instance state, no fields, all public static methods. Call any method independently without setup. This makes it composable. Generators pick the methods they need and combine them freely.
+
+### Core Operations
+
+| Method | Input | Output | Purpose |
+|--------|-------|--------|---------|
+| `ExtractFactory` | `INamedTypeSymbol`, `FactoryIntent`, base type | `FactoryModel?` | Crosses the symbol boundary: extracts constructor args, required properties, optional mod IDs into a plain model |
+| `RenderFactory` | `FactoryModel` | `bool` + code + fileName | Renders a factory class via Liquid template (dispatches to `ServiceFactory.liquid` or `KeyedFactory.liquid` based on intent) |
+| `ToRegistration` | `FactoryModel`, `INamedTypeSymbol` | `RegistrationModel` | Converts a factory into a registration entry for configurator generation |
+| `RenderConfigurator` | `ImmutableValueArray<RegistrationModel>`, `ConfiguratorOptions` | `bool` + code + fileName | Renders a configurator class with unconditional and conditional (mod-dependent) registrations |
+
+The typical flow through the pipeline:
 
 ```
-[Attributed Type] --> ExtractFactory --> FactoryModel
-                                            |
-                          RenderFactory ----+----- ToRegistration
-                              |                        |
-                     Factory .g.cs              RegistrationModel
+[Attributed Type] -> ExtractFactory -> FactoryModel
+                                           |
+                         RenderFactory ----+---- ToRegistration
+                             |                        |
+                      Factory .g.cs            RegistrationModel
                                                        |
                                               RenderConfigurator
                                                        |
                                               Configurator .g.cs
 ```
 
-### Supporting Models
-
-The pipeline uses these model types (all in `Sparkitect.Generator.DI.Pipeline`):
-
-- **`FactoryModel`** -- captures the base type, implementation type, constructor arguments, required properties, factory intent (Service or Keyed), and optional mod IDs
-- **`RegistrationModel`** -- captures the factory type name and conditional mod IDs for registration guards
-- **`ConfiguratorOptions`** -- controls the output class name, namespace, base type, entrypoint attribute, configurator kind, and partial class behavior
-- **`FactoryIntent`** -- discriminated union: `Service` (singleton in core container) or `Keyed` (string-keyed in factory container)
-- **`ConfiguratorKind`** -- discriminated union: `Service` (core container builder) or `Keyed` (factory container builder with base type)
-
-### Liquid Templates
-
-Code generation uses the [Fluid](https://github.com/sebastienros/fluid) template engine with Liquid syntax. Templates live alongside their generator code:
-
-- `DI/ServiceFactory.liquid` -- service factory class
-- `DI/KeyedFactory.liquid` -- keyed factory class (for registries)
-- `DI/Configurator.liquid` -- configurator class with optional conditional guards
-- `Stateless/StatelessFunctionWrapper.liquid` -- stateless function wrapper
-- `Stateless/StatelessFunctionScheduling.liquid` -- scheduling entrypoint
-- `Modding/RegistryAttributes.liquid` -- provider attributes
-- `Modding/RegistryRegistrations.Unit.liquid` -- registration methods
-
-Templates receive strongly-typed model objects and produce complete, compilable C# source files.
-
-## DiPipeline as a Public Tool
-
-The `DiPipeline` class is explicitly designed as a **public, endorsed tool** for advanced mod developers and engine contributors who want to build new generator pipelines.
-
-Key design characteristics:
-
-- **Static toolbox pattern** -- no instance state, no fields, all public static methods. Call any method independently without setup.
-- **Symbol boundary extraction** -- `ExtractFactory` extracts all necessary data from Roslyn symbols into plain model objects. Downstream methods work with models only, never with Roslyn types.
-- **Composable** -- each method does one thing. Generators combine them as needed: `StateModuleServiceGenerator` uses `ExtractFactory` + `RenderFactory` + `ToRegistration` + `RenderConfigurator`; `RegistryGenerator` uses the same pipeline but with `FactoryIntent.Keyed` instead of `FactoryIntent.Service`.
-
-The `RegistryWithFactory` wrapper type keeps `RegistryModel` (the registry's domain model) clean of DI pipeline types by holding the `FactoryWithRegistration` separately. This separation means registry-specific code never depends on DI pipeline internals.
-
-### Method Signatures
+### Models
 
 ```csharp
-public static FactoryModel? ExtractFactory(
-    INamedTypeSymbol symbol, FactoryIntent intent, string baseType)
+// What kind of factory to generate
+public abstract record FactoryIntent
+{
+    public sealed record Service : FactoryIntent;
+    public sealed record Keyed(string Key) : FactoryIntent;
+}
 
-public static bool RenderFactory(
-    FactoryModel model, out string code, out string fileName)
+// What kind of DI container the configurator targets
+public abstract record ConfiguratorKind
+{
+    public sealed record Service : ConfiguratorKind;
+    public sealed record Keyed(string BaseType) : ConfiguratorKind;
+}
 
-public static RegistrationModel ToRegistration(
-    FactoryModel factory, INamedTypeSymbol symbol)
+// Extracted factory data: all strings, no Roslyn types
+public record FactoryModel(
+    string BaseType,
+    string ImplementationTypeName,
+    string ImplementationNamespace,
+    ImmutableValueArray<ConstructorArgument> ConstructorArguments,
+    ImmutableValueArray<RequiredProperty> RequiredProperties,
+    FactoryIntent Intent,
+    ImmutableValueArray<string> OptionalModIds);
 
-public static bool RenderConfigurator(
-    ImmutableValueArray<RegistrationModel> registrations,
-    ConfiguratorOptions options,
-    out string code, out string fileName)
+// Registration entry for a configurator
+public record RegistrationModel(
+    string FactoryTypeName,
+    ImmutableValueArray<string> ConditionalModIds);
+
+// Configurator rendering options
+public record ConfiguratorOptions(
+    string ClassName, string Namespace, string BaseType,
+    string EntrypointAttribute, ConfiguratorKind Kind,
+    bool IsPartial = false, string? MethodName = null,
+    string? ModuleTypeFullName = null);
 ```
+
+`FactoryIntent` and `ConfiguratorKind` are discriminated unions (sealed record hierarchy with private constructor). This pattern appears throughout the generator codebase for type-safe branching without raw enums.
+
+### Using DiPipeline in a Generator
+
+Here is the complete pattern, using the state module service generator as an example of how the pieces compose:
+
+```csharp
+// 1. Filter: find classes with the trigger attribute
+var provider = context.SyntaxProvider.ForAttributeWithMetadataName(
+    "Sparkitect.GameState.StateServiceAttribute`2",
+    (node, _) => node is ClassDeclarationSyntax,
+    (syntaxContext, _) =>
+    {
+        var classSymbol = syntaxContext.TargetSymbol as INamedTypeSymbol;
+        // 2. Transform: extract model at symbol boundary
+        var factory = DiPipeline.ExtractFactory(
+            classSymbol, new FactoryIntent.Service(), baseType);
+        var registration = DiPipeline.ToRegistration(factory, classSymbol);
+        return new MyData(new FactoryWithRegistration(factory, registration), ...);
+    }).NotNull();
+
+// 3a. Output individual factories
+context.RegisterSourceOutput(provider, (ctx, data) =>
+{
+    if (DiPipeline.RenderFactory(data.Factory, out var code, out var fileName))
+        ctx.AddSource(fileName, code);
+});
+
+// 3b. Output grouped configurators
+context.RegisterSourceOutput(provider.Collect(), (ctx, all) =>
+{
+    foreach (var group in all.GroupBy(x => x.GroupKey))
+    {
+        var registrations = group.Select(x => x.Registration)
+            .ToImmutableValueArray();
+        if (DiPipeline.RenderConfigurator(registrations, options,
+            out var code, out var fileName))
+            ctx.AddSource(fileName, code);
+    }
+});
+```
+
+This same composition is used by the registry generator (with `FactoryIntent.Keyed`), the stateless function generator, and the facade mapping generator. The [`DiPipeline`](xref:Sparkitect.DI.Pipeline.DiPipeline) is explicitly designed as a **public, endorsed tool**. Advanced mod developers and engine contributors can use it to build new generator pipelines.
 
 ## Design Decisions
 
 ### Why Source Generation Over Runtime Reflection
 
-Source generation provides three advantages over runtime reflection or IL emission:
+1. **Compile-time safety**: registration errors surface as build errors, not runtime exceptions
+2. **Zero runtime cost**: no reflection, no `Activator.CreateInstance`, no expression tree compilation at startup
+3. **IDE integration**: generated types are visible to IntelliSense, analyzers, and refactoring tools
 
-1. **Compile-time safety** -- registration errors surface as build errors, not runtime exceptions
-2. **Zero runtime cost** -- all factory and registration code is generated ahead of time; no reflection, no `Activator.CreateInstance`, no expression tree compilation at startup
-3. **IDE support** -- generated types are visible to IntelliSense, analyzers, and refactoring tools
+### Why Liquid Templates Over String Builders
 
-### Trade-offs
+Templates keep rendering logic readable and maintainable. A factory template reads like the C# file it produces, with Liquid `{% for %}` loops and `{{ variable }}` interpolation. The alternative (nested `StringBuilder.AppendLine` chains) becomes unreadable quickly and is error-prone for complex output like configurators with conditional registration guards.
 
-Some generators intentionally deviate from Roslyn source generator best practices to provide their functionality. For example, the `RegistryGenerator` uses patterns that go beyond typical incremental generator recommendations to support cross-assembly registry discovery and provider attribute generation. These trade-offs are documented in the [Registry System](xref:sparkitect.core.registry-system) article where the specifics are relevant.
+### Why ImmutableValueArray Over ImmutableArray
 
-The engine also includes companion Roslyn analyzers that validate source generator inputs at edit time, providing immediate feedback when attributes are misconfigured or required patterns are missing.
+Roslyn's incremental pipeline compares transform outputs between compilations to decide whether to re-run the output step. `ImmutableArray<T>` uses reference equality, so two arrays with identical contents are considered "changed". `ImmutableValueArray<T>` compares element-by-element, so unchanged data correctly skips regeneration.

@@ -1,66 +1,58 @@
 ---
-uid: sparkitect.tooling.sdk-guide
-title: SDK Guide
+uid: sparkitect.tooling.sdk
+title: Project SDK
 description: How to use the Sparkitect SDK to create mods
 ---
 
-# Sparkitect SDK Guide
+# Project SDK
 
-This guide explains how to use the Sparkitect SDK to create mods.
+The Sparkitect SDK is an MSBuild SDK that handles the mod development workflow: project configuration, manifest generation, dependency resolution, and archive packaging.
 
 ## Project Setup
 
-### Creating a New Mod Project
-
-1. Create a new .NET project
-2. Reference the Sparkitect SDK:
+Create a `.csproj` file that references the SDK:
 
 ```xml
-<Project Sdk="Sparkitect.Sdk/0.1.0">
+<Project Sdk="Sparkitect.Sdk/1.0.0">
 
     <PropertyGroup>
-        <ModId>your_mod_id</ModId>
-        <ModName>Your Mod Name</ModName>
-        <ModVersion>1.0.0</ModVersion>
-        <ModAuthor>Your Name</ModAuthor>
-        <ModDescription>What your mod does</ModDescription>
-        <IsRootMod>true</IsRootMod>
-
         <TargetFramework>net10.0</TargetFramework>
-        <GenerateDependencyFile>true</GenerateDependencyFile>
-        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+        <ModId>my_first_mod</ModId>
+        <ModName>My First Mod</ModName>
+        <ModVersion>1.0.0</ModVersion>
+        <ModAuthor>YourName</ModAuthor>
     </PropertyGroup>
 
-    <!-- Mod dependencies -->
     <ItemGroup>
-        <ModProjectDependency Include="path/to/Sparkitect.csproj" />
+        <ModProjectDependency Include="../../src/Sparkitect/Sparkitect.csproj" />
     </ItemGroup>
 
 </Project>
 ```
 
-> [!NOTE]
-> `GenerateDependencyFile` is critical for automatic dependency detection by the SDK.
-> `EmitCompilerGeneratedFiles` is optional but useful for inspecting source-generated code during debugging.
+The `ModProjectDependency` to the engine project is required for compilation and appears in the generated manifest as a dependency. Other mod dependencies are declared the same way (see [Mod Dependencies](#mod-dependencies)).
 
 ### Required Properties
 
 | Property | Description | Example |
 |----------|-------------|---------|
-| ModId | Unique identifier (snake_case) | `my_cool_mod` |
+| ModId | Unique identifier (strict snake_case) | `my_cool_mod` |
 | ModName | Display name | `My Cool Mod` |
 | ModVersion | Semantic version | `1.0.0` |
-| ModAuthor | Author name(s), separated by `;` or `,` | `YourName` or `Name1;Name2` or `Name1,Name2` |
-| ModDescription | Short description (recommended but not currently enforced by build validation) | `Adds cool features` |
-| IsRootMod | Can be loaded directly | `true` or `false` |
+| ModAuthor | Author name(s), separated by `;` or `,` | `YourName` or `Name1;Name2` |
 
 ### Optional Properties
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| ModPackageEnabled | true | Enable .sparkmod generation |
-| ModAutoDetectDependencies | true | Auto-detect DLL dependencies (canonical property for controlling dependency auto-detection) |
-| ModResourceDirectory | Resources/ | Resource folder path |
+| ModDescription | (empty) | Short description of the mod |
+| IsRootMod | false | Whether the mod can be loaded directly as an entry point |
+| ModPackageEnabled | true | Enable `.sparkmod` archive generation |
+| ModAutoDetectDependencies | true | Detect non-mod DLL dependencies from the build output |
+| ModResourceDirectory | Resources/ | Resource folder included in the archive |
+
+> [!TIP]
+> Set `<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>` to inspect source-generated code in the `obj/` directory during development.
 
 ## Mod Dependencies
 
@@ -78,11 +70,11 @@ Use `ModProjectDependency` for in-solution mod references:
 </ItemGroup>
 ```
 
+Optional dependencies are fully supported by the DI system. Services annotated with [`[OptionalModDependent("mod_id")]`](xref:Sparkitect.Modding.OptionalModDependentAttribute) are only registered when the dependency is loaded. See <xref:sparkitect.core.optional-dependencies> for details.
+
 ### Version Ranges
 
-By default, the SDK infers a compatible version range (`^x.y.z`) from the referenced project's ModVersion.
-
-To specify an explicit range:
+By default, the SDK infers a compatible version range (`^x.y.z`) from the referenced project's `ModVersion`. To specify an explicit range:
 
 ```xml
 <ModProjectDependency Include="../OtherMod/OtherMod.csproj" VersionRange=">=1.0.0 <2.0.0" />
@@ -91,9 +83,7 @@ To specify an explicit range:
 ### Declaring Incompatibilities
 
 > [!NOTE]
-> The `ModIncompatibility` MSBuild item type is **planned but not yet implemented**. The runtime `ModManager` supports incompatibility validation, but the SDK build pipeline does not yet produce incompatibility entries in the manifest. This section describes the intended usage for a future release.
-
-Use `ModIncompatibility` to declare mods that cannot be loaded together:
+> `ModIncompatibility` is **planned but not yet implemented** in the SDK build pipeline. The runtime supports incompatibility validation, but the SDK does not yet produce incompatibility entries in the manifest.
 
 ```xml
 <ItemGroup>
@@ -103,25 +93,20 @@ Use `ModIncompatibility` to declare mods that cannot be loaded together:
 
 ## Build Output
 
-When you build your mod project, the SDK:
-
-1. Validates required properties
-2. Detects DLL dependencies
-3. Generates `manifest.json` in `obj/` directory
-4. Creates `.sparkmod` archive in `bin/` directory
-
-### Output Locations
+Building the project validates properties, detects DLL dependencies, generates a `manifest.json`, and creates a `.sparkmod` archive.
 
 | Artifact | Location |
 |----------|----------|
-| manifest.json | `obj/Debug/net10.0/manifest.json` |
-| .sparkmod | `bin/Debug/net10.0/your_mod_id-1.0.0.sparkmod` |
+| manifest.json | `obj/<Configuration>/<TargetFramework>/manifest.json` |
+| .sparkmod | `bin/<Configuration>/<TargetFramework>/<ModId>-<ModVersion>.sparkmod` |
+
+See <xref:sparkitect.tooling.mod-specification> for the archive format and manifest schema.
 
 ## Running Mods
 
 ### Using launchSettings.json (Recommended)
 
-Create `Properties/launchSettings.json`:
+Create `Properties/launchSettings.json` to run the engine with your mod from the IDE:
 
 ```json
 {
@@ -136,56 +121,24 @@ Create `Properties/launchSettings.json`:
 }
 ```
 
-This launches the Sparkitect engine with your mod loaded. The `$(Configuration)` variable automatically switches between Debug/Release builds.
+In Rider or Visual Studio, select the profile and run. The `$(Configuration)` variable switches between Debug and Release automatically.
 
 > [!NOTE]
-> The MSBuild variables (`$(SolutionDir)`, `$(ProjectDir)`, `$(Configuration)`) are expanded by IDEs such as Rider and Visual Studio. They will **not** work when running from the command line directly. For CLI usage, substitute the actual paths.
-
-In Rider/VS, select the profile and run.
+> The MSBuild variables (`$(SolutionDir)`, `$(ProjectDir)`, `$(Configuration)`) are expanded by IDEs. They do not work from the command line. For CLI usage, substitute the actual paths.
 
 ### From Command Line
-
-Build and run the Sparkitect engine with your mod:
 
 ```bash
 dotnet run --project path/to/Sparkitect.csproj -- -addModDirs=path/to/your/mod/bin/Debug/net10.0
 ```
 
-### Multiple Mod Directories
+### General Deployment
 
-Separate multiple paths with semicolons using the `key=value` format:
+Place `.sparkmod` archives in the engine's `mods/` directory. The engine discovers and loads mods from this directory at startup. Additional directories can be added with `-addModDirs`:
 
 ```bash
--addModDirs=path/to/mod1;path/to/mod2;path/to/mod3
+-addModDirs=path/to/mod1;path/to/mod2
 ```
-
-## Optional Dependencies
-
-### Runtime Checking
-
-Use `IGameStateManager.IsModLoaded()` to check if an optional dependency is present:
-
-```csharp
-if (gameStateManager.IsModLoaded("optional_mod_id"))
-{
-    // Use optional mod features
-}
-```
-
-### Isolated Integration Pattern
-
-Create a separate class for optional mod integration:
-
-```csharp
-// Only instantiate if optional mod is loaded
-[OptionalModDependent("optional_mod_id")]
-public class OptionalModIntegration
-{
-    // This class can safely reference types from optional_mod_id
-}
-```
-
-See the [Mod Specification](xref:sparkitect.tooling.mod-specification) for the manifest format that describes optional relationships.
 
 ## Troubleshooting
 
@@ -195,8 +148,4 @@ See the [Mod Specification](xref:sparkitect.tooling.mod-specification) for the m
 |-------|-------|----------|
 | "ModId must be set" | Missing ModId property | Add `<ModId>` to PropertyGroup |
 | "Could not find ModProjectDependency" | Wrong path | Check relative path to .csproj |
-| "does not have a ModId property" | Referenced project not a mod | Ensure referenced project uses SDK |
-
-### Manifest Issues
-
-If manifest.json appears in wrong location, ensure you're using the latest SDK version.
+| "does not have a ModId property" | Referenced project is not a mod | Ensure referenced project uses the SDK |

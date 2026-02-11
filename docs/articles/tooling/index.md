@@ -12,9 +12,10 @@ The Sparkitect SDK provides MSBuild-based tooling for the complete mod developme
 
 Mod projects use the `<Project Sdk="Sparkitect.Sdk/x.y.z">` syntax to import the SDK, which provides MSBuild properties, targets, and build tasks for compiling mods into distributable `.sparkmod` archives.
 
-The SDK guide covers project setup, dependency declaration, build output, and running mods. The mod specification defines the `.sparkmod` archive format and `manifest.json` schema used by the runtime mod loader.
+The SDK covers project setup, dependency declaration, build output, and running mods. The mod specification defines the `.sparkmod` archive format and `manifest.json` schema used by the runtime mod loader.
 
 ## Topics
 
-- **<xref:sparkitect.tooling.sdk-guide>** - How to use the Sparkitect SDK to create mods
+- **<xref:sparkitect.tooling.sdk>** - Project configuration and build pipeline for mod development
 - **<xref:sparkitect.tooling.mod-specification>** - Mod archive format and manifest specification
+- **<xref:sparkitect.tooling.source-generation>** - How Sparkitect source generators work and how to use them

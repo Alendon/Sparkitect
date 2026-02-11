@@ -19,10 +19,10 @@ Mod archives use the `.sparkmod` extension.
 A `.sparkmod` file is a standard ZIP archive containing:
 
 ```
-modname.sparkmod/
+my_mod-1.0.0.sparkmod/
   manifest.json      # Mod metadata (required, at root)
-  ModName.dll        # Main mod assembly (required, at root)
-  ModName.pdb        # Debug symbols (included automatically)
+  MyMod.dll          # Main mod assembly (required, at root)
+  MyMod.pdb          # Debug symbols (included automatically)
   lib/               # Dependency DLLs (optional)
     SomeDependency.dll
     SomeDependency.pdb
@@ -30,6 +30,8 @@ modname.sparkmod/
     textures/
     shaders/
 ```
+
+Archive filenames follow the pattern `{ModId}-{Version}.sparkmod`.
 
 PDB files are included automatically alongside both the main assembly and dependency DLLs for debugging support.
 
@@ -48,10 +50,10 @@ The manifest.json file contains mod metadata in JSON format.
 | Description | string | Yes | Mod description |
 | Version | string | Yes | Semantic version (e.g., "1.0.0") |
 | Authors | string[] | Yes | List of author names |
-| Relationships | Relationship[] | No | Mod dependencies and incompatibilities |
+| Relationships | Relationship[] | Yes | Mod dependencies and incompatibilities (may be empty) |
 | ModAssembly | string | Yes | Main assembly filename |
-| RequiredAssemblies | string[] | No | List of dependency DLL filenames |
-| IsRootMod | boolean | No | Whether this mod can be loaded directly |
+| RequiredAssemblies | string[] | Yes | List of dependency DLL filenames (may be empty) |
+| IsRootMod | boolean | No | Whether the bootstrapper auto-selects this mod as a root |
 
 #### Relationship Object
 
@@ -71,7 +73,7 @@ The manifest.json file contains mod metadata in JSON format.
 - **Optional dependency**: `IsOptional=true, IsIncompatible=false`
   - The target mod MAY be present
   - Mod loads successfully even if dependency is missing
-  - Use `IsModLoaded()` API to check at runtime
+  - Use <xref:Sparkitect.GameState.IGameStateManager.IsModLoaded*> to check at runtime
 
 - **Incompatibility**: `IsIncompatible=true`
   - The target mod MUST NOT be present
@@ -134,15 +136,15 @@ The manifest format is considered stable. No version field is included in the ma
 
 ## Runtime Loading
 
-The Sparkitect runtime loads mods from directories specified via `-addModDirs` CLI argument. Each directory is scanned for `.sparkmod` files.
+The Sparkitect runtime discovers mods from a default `mods/` directory and any additional directories specified via the `-addModDirs` CLI argument. Each directory is scanned for `.sparkmod` files.
 
 Loading process:
-1. Parse all manifests
-2. Validate dependencies (fail if required deps missing)
-3. Build dependency graph
-4. Load in caller-specified order
+1. Discover and parse all manifests
+2. Validate required dependencies are present and version-compatible
+3. Validate no incompatible mods are present
+4. Load assemblies
 
-The `ModManager` validates that all required dependencies are satisfied before loading begins, but does **not** perform topological sorting. Dependency ordering is the responsibility of the upstream bootstrapper/game state manager, which resolves the correct load order before passing it to `ModManager`.
+Mod loading has no side effects and no deterministic ordering. The `ModManager` validates that all dependency constraints are satisfied before loading begins but does not impose or require any particular load sequence.
 
 ---
 *Specification version: 1.0*

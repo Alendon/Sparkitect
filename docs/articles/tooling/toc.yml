@@ -1,6 +1,6 @@
 - name: Tooling Overview
   href: index.md
-- name: SDK Guide
+- name: SDK
   href: sdk-guide.md
 - name: Mod Specification
   href: mod-specification.md
