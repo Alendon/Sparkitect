@@ -1,0 +1,24 @@
+/* Collapse inherited members by default */
+
+.inheritedMembers > div {
+    display: none;
+}
+
+.inheritedMembers.expanded > div {
+    display: block;
+}
+
+.inheritedMembers > h5 {
+    cursor: pointer;
+    user-select: none;
+}
+
+.inheritedMembers > h5::before {
+    content: "\25B6\00a0";
+    font-size: 0.7em;
+    vertical-align: middle;
+}
+
+.inheritedMembers.expanded > h5::before {
+    content: "\25BC\00a0";
+}
