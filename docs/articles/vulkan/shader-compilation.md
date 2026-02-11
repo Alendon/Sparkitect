@@ -15,7 +15,7 @@ The shader workflow has four stages:
 1. **Authoring**: Write `.slang` shader files
 2. **Compilation**: MSBuild automatically compiles to `.spv` during build
 3. **Registration**: YAML resource files register shaders with the engine
-4. **Runtime**: Access compiled shaders through `IShaderManager`
+4. **Runtime**: Access compiled shaders through [`IShaderManager`](xref:Sparkitect.Graphics.Vulkan.IShaderManager)
 
 ```
 .slang source  -->  Build  -->  .spv binary  -->  YAML registration  -->  Runtime access
@@ -126,12 +126,12 @@ Sparkitect.Graphics.Vulkan.ShaderModuleRegistry.RegisterShaderModule:
 
 1. The engine discovers `.sparkres.yaml` files in loaded mods
 2. Each entry calls the specified registry method
-3. The key becomes the shader's `Identification` (combined with mod ID)
+3. The key becomes the shader's [`Identification`](xref:Sparkitect.Modding.Identification) (combined with mod ID)
 4. The resource file path is relative to `Resources/shaders/`
 
 ## ShaderModuleRegistry
 
-The `ShaderModuleRegistry` manages shader module registration:
+[`ShaderModuleRegistry`](xref:Sparkitect.Graphics.Vulkan.ShaderModuleRegistry) manages shader module registration:
 
 ```csharp
 [Registry(Identifier = "shader_module")]
@@ -157,7 +157,7 @@ The registry:
 
 ## Runtime Shader Access
 
-Access registered shaders through `IShaderManager`:
+Access registered shaders through [`IShaderManager`](xref:Sparkitect.Graphics.Vulkan.IShaderManager):
 
 ```csharp
 [StateService<IMyRenderer, MyRenderModule>]
@@ -267,14 +267,9 @@ Use Vulkan validation layers during development to catch shader issues:
 - Enable validation in Vulkan instance creation
 - Check debug output for SPIR-V validation messages
 
-## Integration with Other Systems
+## See Also
 
-- **Vulkan Graphics**: Shader modules are used in pipeline creation ([details](xref:sparkitect.vulkan.vulkan-graphics))
-- **Registry System**: ShaderModuleRegistry follows the registry pattern ([details](xref:sparkitect.core.registry-system))
-- **Dependency Injection**: Access `IShaderManager` through DI ([details](xref:sparkitect.core.dependency-injection))
-
-## Next Steps
-
-- See [Vulkan Graphics](xref:sparkitect.vulkan.vulkan-graphics) for pipeline creation with shaders
-- See [Registry System](xref:sparkitect.core.registry-system) for the general registry pattern
-- Review `samples/PongMod/` for a complete shader usage example
+- <xref:sparkitect.vulkan.vulkan-graphics> for pipeline creation with shaders
+- <xref:sparkitect.core.registry-system> for the general registry pattern
+- <xref:sparkitect.core.dependency-injection> for accessing `IShaderManager` through DI
+- `samples/PongMod/` for a complete shader usage example

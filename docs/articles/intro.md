@@ -1,64 +1,35 @@
 ---
 uid: sparkitect.getting-started.intro
 title: Introduction to Sparkitect
-description: Philosophy, design principles, target use cases, and your first mod
+description: Philosophy, design principles, and your first mod
 ---
 
 # Introduction to Sparkitect
 
-Sparkitect is a modular 3D game engine built on .NET, designed with modding as its foundational concept. Unlike traditional game engines where the core executable provides a complete environment, Sparkitect's base is intentionally minimal - the actual games and functionality are implemented through mods.
+Sparkitect is a modular 3D game engine built on .NET 10. The engine itself is a minimal executable that loads mods; games are implemented as collections of mods that use the same interfaces and mechanisms as the engine's own code.
 
 ## Philosophy
 
-The engine is built around several core principles:
-
-### Modding-Centric Architecture
-
-The entire engine is designed around the concept of modding. The core executable is essentially a framework that loads and manages mods, with games themselves implemented as collections of mods. This approach creates a unified system where there's minimal distinction between "engine code" and "mod code" - they operate through the same interfaces and mechanisms.
-
-### Integration Over Duplication
-
-When adding new functionality, Sparkitect prioritizes integrating with existing systems rather than creating parallel implementations. For example, if an inventory system is being added and an Entity Component System is already in place, the inventory should be built atop the ECS rather than as a separate system.
-
-### Modularity
-
-Components are designed to be as modular and separated as possible to facilitate development and maintenance. This principle sometimes requires careful balancing against the "integration over duplication" principle.
-
-### Registry-Based Resource Management
-
-All game "objects" - from component types to textures to key bindings - are managed through a central Registry System. This provides a consistent way to reference any resource by ID throughout the engine and mods.
+- **Everything is a mod.** There is no separate "engine API" vs "mod API". The engine's built-in functionality ships as mods that use the same attributes, registries, and DI system available to your code.
+- **Integration over duplication.** New functionality builds on existing systems rather than creating parallel implementations. If an ECS is in place, an inventory system should be built on top of it.
+- **Modularity.** Components are separated to facilitate independent development and maintenance.
+- **Registry-based resources.** All game objects (component types, textures, key bindings) are managed through a central [Registry System](xref:sparkitect.core.registry-system), providing consistent ID-based access throughout the engine and mods.
 
 ## Technical Foundation
 
-Sparkitect is built using:
+- **.NET 10** for performance and modern language features
+- **[Project SDK](xref:sparkitect.tooling.sdk)** that handles mod manifest generation, archive packaging, and dependency resolution
+- **Source-generated DI** with zero-reflection resolution and immutable containers (see [Dependency Injection](xref:sparkitect.core.dependency-injection))
 
-- **Full .NET**: Utilizing the latest version of .NET for performance and modern language features
-- **Custom ProjectSDK**: For optimized build support
-- **Custom Dependency Injection**: Source-generated, zero-reflection DI system with immutable containers
-
-## Target Use Cases
-
-Sparkitect is particularly well-suited for:
-
-- Games that benefit from extensive modding capabilities
-- Projects where modularity is a priority
-- 3D games across various genres
-
-It's designed for PC platforms, aiming to support Windows, Linux, and macOS.
-
-## Development Approach
-
-Sparkitect is designed as a framework rather than a full-featured editor-centric engine. Unlike engines that focus on visual editors and built-in world creation tools, Sparkitect emphasizes programmatic control and mod-based extensibility.
-
-This makes it especially suitable for games that have minimal requirements for visual editing tools and instead focus on runtime behavior and systems.
+Sparkitect is a framework, not an editor-centric engine. It emphasizes programmatic control and mod-based extensibility over visual editing tools. It targets PC platforms (Windows, Linux, macOS).
 
 ## Getting Started
 
-This section walks you through creating your first Sparkitect mod - a minimal "hello world" that loads and logs output.
+This walks you through creating a minimal mod that loads and logs output.
 
 ### Prerequisites
 
-- The current .NET SDK
+- The .NET 10 SDK
 - An IDE (Visual Studio, Rider, or VS Code with C# extension)
 
 ### 1. Create the Project
@@ -78,11 +49,11 @@ Create a new class library project using the Sparkitect SDK:
 </Project>
 ```
 
-See [SDK Project Configuration](xref:sparkitect.tooling.sdk) for all available properties.
+See [Project SDK](xref:sparkitect.tooling.sdk) for all available properties.
 
 ### 2. Create a Module
 
-Modules contain your mod's logic. Here is a simplified module based on the `samples/MinimalSampleMod/` pattern:
+Modules contain your mod's logic. Here is a minimal module:
 
 ```csharp
 using Serilog;
@@ -91,7 +62,7 @@ using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
 
-// Generated ID extension namespace — name derived from your ModId
+// Generated ID namespace — derived from your project's RootNamespace
 using HelloWorld.CompilerGenerated.IdExtensions;
 using Sparkitect.CompilerGenerated.IdExtensions;
 
@@ -106,9 +77,9 @@ public partial class HelloModule : IStateModule
 
     [TransitionFunction("say_hello")]
     [OnCreateScheduling]
-    private static void SayHello(ILogger logger)
+    private static void SayHello()
     {
-        logger.Information("Hello from my first mod!");
+        Log.Information("Hello from my first mod!");
     }
 }
 ```
@@ -116,32 +87,54 @@ public partial class HelloModule : IStateModule
 This module:
 - Registers itself with the module registry via the generated `RegisterModule` attribute
 - Defines a transition function that runs when the module is created during a state transition
-- Uses dependency injection to receive the logger through method parameters
+- Uses the static `Serilog.Log` logger for output
 
 > [!NOTE]
-> A complete working mod also requires an `IEntryStateSelector` (to select the initial state) and an `IStateDescriptor` (to define the state and its modules). See `samples/MinimalSampleMod/` for the full implementation with all required pieces.
+> A complete working mod also requires an [`IEntryStateSelector`](xref:Sparkitect.GameState.IEntryStateSelector) (so the engine knows which state to start) and an [`IStateDescriptor`](xref:Sparkitect.GameState.IStateDescriptor) (to define the state and its modules). See `samples/MinimalSampleMod/` for a full implementation with all required pieces.
+
+> [!TIP]
+> The generated ID extensions namespace (`HelloWorld.CompilerGenerated.IdExtensions`) is derived from your project's `RootNamespace`. If your project uses a different root namespace, the generated namespace changes accordingly.
 
 ### 3. Build and Run
 
 Build your project. The SDK produces a `.sparkmod` archive in the output directory (e.g., `bin/Debug/net10.0/hello_world-1.0.0.sparkmod`).
 
-To run the engine with your mod, use the `-addModDirs` CLI argument pointing to your build output directory:
+**Using launchSettings (recommended for IDE workflows):**
 
-```bash
-dotnet run --project path/to/Sparkitect.csproj -- -addModDirs=path/to/your/mod/bin/Debug/net10.0
+Add a `Properties/launchSettings.json` to your mod project:
+
+```json
+{
+  "profiles": {
+    "Sparkitect": {
+      "commandName": "Executable",
+      "executablePath": "path/to/Sparkitect",
+      "commandLineArgs": "-addModDirs=$(ProjectDir)bin/$(Configuration)/net10.0",
+      "workingDirectory": "$(ProjectDir).run"
+    }
+  }
+}
 ```
 
-For IDE-based workflows using `launchSettings.json`, see the [Project SDK](xref:sparkitect.tooling.sdk).
+This lets you press F5 in your IDE to build and run with the engine. The `workingDirectory` isolates runtime files in a `.run` folder.
+
+**From the command line:**
+
+```bash
+Sparkitect -addModDirs=path/to/your/mod/bin/Debug/net10.0
+```
+
+You can also place `.sparkmod` archives directly in the engine's `mods/` directory.
+
+See [Project SDK](xref:sparkitect.tooling.sdk) for more on launch configuration.
 
 ### Next Steps
 
-This minimal example demonstrates the core patterns. For deeper understanding, explore these topics:
-
-- **SDK & Build**: [Project SDK](xref:sparkitect.tooling.sdk)
-- **Modules and States**: [Game State System](xref:sparkitect.core.game-state-system)
-- **State Functions**: [Stateless Functions](xref:sparkitect.core.stateless-functions)
-- **Service Registration**: [Dependency Injection](xref:sparkitect.core.dependency-injection)
-- **Object Registration**: [Registry System](xref:sparkitect.core.registry-system)
-- **Mod Structure**: [Modding Framework](xref:sparkitect.core.modding-framework)
+- [Engine Overview](xref:sparkitect.getting-started.overview) for the recurring patterns and lifecycle
+- [Game State System](xref:sparkitect.core.game-state-system) for modules, states, and transitions
+- [Stateless Functions](xref:sparkitect.core.stateless-functions) for transition and per-frame logic
+- [Dependency Injection](xref:sparkitect.core.dependency-injection) for service registration
+- [Registry System](xref:sparkitect.core.registry-system) for object registration
+- [Modding Framework](xref:sparkitect.core.modding-framework) for mod structure and loading
 
 For a complete working example, see `samples/MinimalSampleMod/`. For a full game with graphics, input, and gameplay, see `samples/PongMod/`.

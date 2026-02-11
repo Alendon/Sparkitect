@@ -1,189 +1,95 @@
 ---
 uid: sparkitect.getting-started.overview
 title: Engine Overview
-description: Core architectural principles and patterns in Sparkitect
+description: Architectural patterns and lifecycle in Sparkitect
 ---
 
 # Engine Overview
 
-Sparkitect is a modular 3D game engine built on .NET 10 where **everything is a mod**. This document introduces the fundamental architectural principles and patterns that apply across all engine systems.
+This page covers the recurring patterns and lifecycle you will encounter when working with Sparkitect. For philosophy, target use cases, and a getting-started tutorial, see the [Introduction](xref:sparkitect.getting-started.intro).
 
-## Core Philosophy: Integration Over Duplication
+## Everything is a Mod
 
-The engine is designed around **integration over duplication** - systems compose together through shared mechanisms rather than running in parallel. This means:
+Mods use the same patterns and mechanisms as the engine itself. There is no separate "engine API" vs "mod API": both register services through the same attributes, define logic through the same function types, and populate registries through the same generated infrastructure. The engine's own [`CoreModule`](xref:Sparkitect.GameState.CoreModule) services are registered the same way a mod registers its services.
 
-- **Unified discovery**: All systems use the same attribute-driven discovery pattern
-- **Shared containers**: Dependency injection, registries, and state management all use the builder pattern with immutable containers
-- **Mod-first design**: Mods extend systems using the exact same patterns the engine uses internally
+This means anything the engine does, a mod can extend or replace.
 
-There is no distinction between "engine code" and "mod code" at the architectural level. Both follow the same patterns, use the same discovery mechanisms, and compose through the same container hierarchies.
+## Attribute-Driven Discovery
 
-This approach provides:
-- **Consistency**: Same patterns everywhere reduces cognitive load
-- **Extensibility**: New systems integrate through existing mechanisms
-- **Composition**: Systems naturally compose through shared patterns
-- **Mod-friendly**: Mods are first-class citizens, not an afterthought
-
-## Two-Phase Design: Transition and Simulation
-
-The engine operates in two distinct phases with fundamentally different characteristics:
-
-### Transition Phase
-
-During transitions, the engine is **reconfiguring its runtime state**:
-
-- **Configuration is mutable**: Services can be registered, containers built, registries populated
-- **Heavy initialization happens**: Dependency resolution, module activation, state frame creation
-- **No simulation runs**: Game logic is paused
-
-This is when state changes occur: entering a new state, loading modules, switching game sessions.
-
-### Simulation Phase
-
-During simulation, the engine is **actively running game logic**:
-
-- **Everything is immutable**: All configuration is frozen, no container mutations
-- **Performance-critical**: No allocations, deterministic execution, lock-free access
-- **Concurrent access is safe**: Immutability enables thread-safe reads without locks
-
-This is the main frame loop where per-frame functions execute.
-
-### Why This Design?
-
-This separation provides critical benefits:
-
-**Performance**: By freezing configuration during simulation, the engine avoids locks and enables cache-friendly access patterns. Heavy work is confined to transitions where frame timing isn't critical.
-
-**Safety**: Immutability during simulation prevents entire classes of bugs. No race conditions on shared state, no accidental configuration mutations mid-frame.
-
-**Predictability**: You know exactly when configuration can change (transitions only) versus when it's guaranteed stable (simulation). This makes reasoning about system behavior much simpler.
-
-**Debuggability**: When everything is immutable during frames, debugging is straightforward - no spooky action at a distance where one system modifies another's configuration.
-
-## Foundational Patterns
-
-Sparkitect uses several recurring patterns across all systems. Understanding these patterns helps you work with any part of the engine.
-
-### Attribute-Driven Discovery
-
-The engine discovers mod-provided implementations through **paired attributes and base classes**:
+The engine discovers your code through attributes paired with base classes or interfaces:
 
 ```csharp
-[DiscoveryAttribute]
-public class MyImplementation : BaseClass
-{
-    // Your code here
-}
-```
-
-The attribute marks your class for discovery. The base class (or interface) declares what the implementation does. The engine finds all marked classes across loaded mods and processes them deterministically.
-
-**Key insight**: You only write the attribute and implementation. Source generators create all the infrastructure code (marked with `[CompilerGenerated]`) to wire everything together.
-
-This pattern appears everywhere:
-- State modules and functions
-- Service registration
-- Registry definitions
-- Facade mappings
-
-### Builder Pattern for Containers
-
-All containers follow a strict lifecycle that enforces the two-phase design:
-
-1. **Builder Phase** (Transition): Accumulate registrations, validate dependencies
-2. **Build**: Transition from builder to container (immutability barrier)
-3. **Runtime Phase** (Simulation): Read-only access, resolution only
-
-```csharp
-// Internal engine lifecycle — shown for understanding; mod authors don't construct builders directly
-var builder = new CoreContainerBuilder(parentContainer);
-builder.Register<MyService_Factory>();  // Accumulate
-var container = builder.Build();         // Freeze
-
-// Simulation: Use container
-var service = container.Resolve<IMyService>();  // Read-only
-```
-
-Builders are used during transitions. Containers are used during simulation. This separation is enforced at the type level - you can't mutate a container.
-
-### Source Generation
-
-Sparkitect uses extensive source generation to achieve **zero reflection at runtime** in performance-critical paths.
-
-**The mental model is simple**: You write attributes on your code, generators create all the infrastructure.
-
-```csharp
-// You write this:
-[SomeAttribute<IMyInterface, MyModule>]
-public class MyClass : IMyInterface
+[StateService<IMyService, MyModule>]
+public class MyService : IMyService
 {
     // Your implementation
 }
-
-// Generators create (marked [CompilerGenerated]):
-// - Factory classes
-// - Registration configurators
-// - Wiring code
 ```
 
-**Why source generation?**
+The attribute marks the class for discovery. The base class or interface declares what it provides. The engine collects all marked types across loaded mods and processes them during state transitions.
 
-- **Zero reflection**: Direct method calls instead of runtime lookups. Critical for frame-loop performance.
-- **Compile-time validation**: Invalid configurations are compiler errors, not runtime crashes. Analyzers enforce patterns at build time.
-- **Type safety**: All relationships are checked by the C# compiler.
-- **Determinism**: Generated code has predictable, inspectable output.
+You will see this pattern throughout the engine:
 
-You don't need to understand generator implementation to use the engine. Write your attributes and implementations, generators handle the rest. Generated code is marked with `[CompilerGenerated]` - if you see that attribute, you're looking at infrastructure, not something you need to write.
+| Pattern | Attribute | Details |
+|---------|-----------|---------|
+| Service registration | [`[StateService<TInterface, TModule>]`](xref:Sparkitect.GameState.StateServiceAttribute`2) | [Dependency Injection](xref:sparkitect.core.dependency-injection) |
+| Module registration | `[ModuleRegistry.RegisterModule("key")]` | [Game State System](xref:sparkitect.core.game-state-system) |
+| Transition logic | [`[TransitionFunction]`](xref:Sparkitect.Stateless.TransitionFunctionAttribute) | [Stateless Functions](xref:sparkitect.core.stateless-functions) |
+| Per-frame logic | [`[PerFrameFunction]`](xref:Sparkitect.Stateless.PerFrameFunctionAttribute) | [Stateless Functions](xref:sparkitect.core.stateless-functions) |
 
-## Core Patterns in Practice
+You write the attribute and implementation. Source generators handle the rest.
 
-When working with the engine, you'll use these patterns through attributes and base classes. The specifics of each system are documented in their respective articles.
+## Source Generation
 
-### Service Definition Pattern
+Sparkitect uses Roslyn source generators to create infrastructure code at compile time. The frame loop executes with zero reflection: generated wrapper classes hold pre-resolved dependencies and call your methods directly.
 
-Services use attributes to declare their interface and scope. Source generators create factories and registration infrastructure.
+```csharp
+// You write:
+[TransitionFunction("process")]
+[OnCreateScheduling]
+private static void Process(IMyService service)
+{
+    // Your logic
+}
 
-### State Logic Pattern
+// A generator creates a wrapper (marked [CompilerGenerated]) that:
+// - Resolves IMyService from the container at construction
+// - Calls Process() with the cached reference during execution
+```
 
-Static methods with scheduling attributes define when logic executes. Dependency injection happens through method parameters, resolved by generated wrappers.
+State transitions still use reflection for type discovery, but this happens outside the frame loop where performance is not critical.
 
-### Registry Pattern
+Invalid configurations are caught at build time through analyzers rather than at runtime. Generated code is always marked with `[CompilerGenerated]`. If you see that attribute on a type, it is infrastructure you do not need to write or modify.
 
-Registries are DI-instantiated classes with methods that handle registration. Generators create attributes that mods use to register objects declaratively.
+## Two-Phase Lifecycle
 
-## How Systems Integrate
+The engine alternates between two phases:
 
-Systems compose through the patterns above:
+**Transition**: The engine is reconfiguring. Services are registered, containers are built, modules are activated. Game logic is not running.
 
-1. **State transitions** trigger the builder phase (transition)
-2. **Builders** collect registered services, modules, and registries
-3. **Build** creates immutable containers
-4. **Main loop** executes frame functions (simulation)
+**Simulation**: The main frame loop is running. All containers and configuration are frozen (immutable). Per-frame functions execute against read-only containers.
 
-Each system integrates via discoverable entrypoints:
-- Want to add services? Mark classes with service attributes
-- Want to add state logic? Create state modules with function attributes
-- Want to register objects? Implement registry methods and use generated attributes
+Immutability during simulation means container reads require no locks. This does not eliminate concurrency concerns in your own code, but it guarantees that the engine's configuration cannot change underneath you mid-frame.
 
-New systems integrate through existing mechanisms, not by inventing new ones. This is the "integration over duplication" philosophy in practice.
+## Builder Pattern
 
-## Working with the Engine
+Containers follow a builder-to-container lifecycle that enforces the two-phase separation:
 
-As a mod developer, you'll interact with these patterns through:
+```csharp
+// Internal engine lifecycle (mod authors do not construct builders directly)
+var builder = new CoreContainerBuilder(parentContainer);
+builder.Register<MyService_Factory>();  // Accumulate during transition
+var container = builder.Build();         // Freeze
 
-1. **Marking classes with attributes**: Service attributes, registry attributes, etc.
-2. **Implementing base classes**: State modules, state descriptors, etc.
-3. **Writing static methods**: State functions with scheduling attributes
-4. **Using generated attributes**: Registry registration attributes
+// Simulation: read-only access
+var service = container.Resolve<IMyService>();
+```
 
-All infrastructure code is generated with `[CompilerGenerated]` - you write the domain logic, generators handle the wiring.
+Builders are available during transitions. Once `Build()` is called, the resulting container has no mutation methods. This separation is enforced at the type level.
 
-For working examples, see `samples/MinimalSampleMod/` for a minimal mod and `samples/PongMod/` for a complete game with graphics, input, and gameplay. Each major system also has detailed documentation covering specific APIs and usage patterns.
+## See Also
 
-## Next Steps
-
-- **[Core Module Documentation](xref:sparkitect.core)**: Deep dive into foundational systems
-- **[Dependency Injection](xref:sparkitect.core.dependency-injection)**: Service registration and resolution
-- **[Game State System](xref:sparkitect.core.game-state-system)**: State management and lifecycle
-- **[Registry System](xref:sparkitect.core.registry-system)**: Object registration and identification
-- **[Modding Framework](xref:sparkitect.core.modding-framework)**: Mod structure and loading
+- [Core Systems](xref:sparkitect.core) for the foundational engine modules
+- [Dependency Injection](xref:sparkitect.core.dependency-injection) for service registration and resolution
+- [Game State System](xref:sparkitect.core.game-state-system) for state management and lifecycle
+- [Modding Framework](xref:sparkitect.core.modding-framework) for mod structure and loading

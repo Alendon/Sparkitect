@@ -6,11 +6,11 @@ description: Wrapper types, result handling, CallerContext tracking, and resourc
 
 # Vulkan Graphics System
 
-Sparkitect wraps Vulkan with ergonomic C# patterns that provide type safety, automatic resource tracking, and improved debugging capabilities while maintaining full access to Vulkan's power.
+Sparkitect wraps Vulkan with C# types that provide type safety, automatic resource tracking, and debugging capabilities while maintaining full access to the Vulkan API.
 
 ## IVulkanContext Interface
 
-`IVulkanContext` is the primary entry point for Vulkan operations. Access it through dependency injection:
+[`IVulkanContext`](xref:Sparkitect.Graphics.Vulkan.IVulkanContext) is the primary entry point for Vulkan operations. Access it through dependency injection:
 
 ```csharp
 [StateService<IMyRenderer, MyRenderModule>]
@@ -67,7 +67,7 @@ Key properties and methods:
 
 ### VulkanQueue Type
 
-`GetQueue()` and `GetQueuesForFamily()` return `VulkanQueue` instances. This type wraps a native Vulkan queue with metadata:
+`GetQueue()` and `GetQueuesForFamily()` return [`VulkanQueue`](xref:Sparkitect.Graphics.Vulkan.VulkanObjects.VulkanQueue) instances. This type wraps a native Vulkan queue with metadata:
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -87,7 +87,7 @@ var presentQueue = queue.Handle;
 
 ## VkResult&lt;T&gt; Discriminated Union
 
-Vulkan operations return `VkResult<T>`, a discriminated union that forces explicit error handling:
+Vulkan operations return [`VkResult<T>`](xref:Sparkitect.Graphics.Vulkan.VkResult`1), a discriminated union that forces explicit error handling:
 
 ```csharp
 [DiscriminatedUnion]
@@ -145,11 +145,11 @@ var pool = poolResult switch
 
 ## CallerContext Pattern
 
-Sparkitect tracks where Vulkan objects are created using compile-time location injection. This aids debugging by showing exactly where each object originated.
+Sparkitect tracks where Vulkan objects are created using compile-time location injection, showing exactly where each object originated.
 
 ### CallerContext Struct
 
-`CallerContext` is defined in the `Sparkitect.Utils` namespace:
+[`CallerContext`](xref:Sparkitect.Utils.CallerContext) is defined in the `Sparkitect.Utils` namespace:
 
 ```csharp
 // Sparkitect.Utils namespace
@@ -162,7 +162,7 @@ public readonly record struct CallerContext(string FilePath, int LineNumber)
 
 ### InjectCallerContext Attribute
 
-Methods that accept `CallerContext` parameters use the `[InjectCallerContext]` attribute:
+Methods that accept `CallerContext` parameters use the [`[InjectCallerContext]`](xref:Sparkitect.Utils.InjectCallerContextAttribute) attribute:
 
 ```csharp
 VkResult<VkCommandPool> CreateCommandPool(
@@ -226,7 +226,7 @@ Wrapper types provide:
 
 ## ObjectTracker
 
-The `IObjectTracker<T>` interface tracks resource lifetimes to detect leaks and monitor allocations. On `IVulkanContext`, the concrete type is `IObjectTracker<VulkanObject>`:
+The [`IObjectTracker<T>`](xref:Sparkitect.Utils.IObjectTracker`1) interface tracks resource lifetimes to detect leaks and monitor allocations. On `IVulkanContext`, the concrete type is `IObjectTracker<VulkanObject>`:
 
 ```csharp
 public interface IObjectTracker<T>
@@ -302,16 +302,9 @@ public void Cleanup()
 - Null-check with `?.Dispose()` pattern for optional resources
 - Command pools automatically free their allocated command buffers on disposal
 
-## Integration with Other Systems
+## See Also
 
-The Vulkan graphics system integrates with:
-
-- **Windowing System**: Windows provide `VkSurface` and `VkSwapchain` ([details](xref:sparkitect.windowing.windowing-input))
-- **Shader Compilation**: Compiled shaders are loaded as shader modules ([details](xref:sparkitect.vulkan.shader-compilation))
-- **Dependency Injection**: Access `IVulkanContext` through DI ([details](xref:sparkitect.core.dependency-injection))
-
-## Next Steps
-
-- See [Shader Compilation](xref:sparkitect.vulkan.shader-compilation) for the Slang shader workflow
-- See [Windowing and Input](xref:sparkitect.windowing.windowing-input) for window and input handling
-- Review the Pong sample in `samples/PongMod/` for a complete rendering example
+- <xref:sparkitect.vulkan.shader-compilation> for the Slang shader workflow and pipeline creation
+- <xref:sparkitect.windowing.windowing-input> for window surfaces and input handling
+- <xref:sparkitect.core.dependency-injection> for accessing `IVulkanContext` through DI
+- `samples/PongMod/` for a complete rendering example

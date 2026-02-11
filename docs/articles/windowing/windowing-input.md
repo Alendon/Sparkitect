@@ -6,7 +6,7 @@ description: Window management, Vulkan surface integration, and keyboard/mouse i
 
 # Windowing and Input
 
-Sparkitect provides window management through `IWindowManager` and `ISparkitWindow`. Unlike many game engines, **input is accessed directly through the window object** rather than through a global input service.
+Sparkitect provides window management through [`IWindowManager`](xref:Sparkitect.Windowing.IWindowManager) and [`ISparkitWindow`](xref:Sparkitect.Windowing.ISparkitWindow). Unlike many game engines, **input is accessed directly through the window object** rather than through a global input service.
 
 > **Important**: There is no global `IInputService`. Keyboard and mouse state are accessed through `window.Keyboard` and `window.Mouse` properties.
 
@@ -47,7 +47,7 @@ public interface IWindowManager
 
 The `MainWindow` property provides quick access to the primary game window.
 
-> **Note**: `IWindowManager` has the `[StateFacade<IWindowManager>]` attribute, meaning it is state-scoped -- a new instance is created for each game state. The window manager and its windows have the same lifecycle as the state they belong to. See [Game State System](xref:sparkitect.core.game-state-system) for details on state lifecycle.
+> **Note**: `IWindowManager` has the `[StateFacade<IWindowManager>]` attribute, meaning it is state-scoped. A new instance is created for each game state. The window manager and its windows have the same lifecycle as the state they belong to. See [Game State System](xref:sparkitect.core.game-state-system) for details on state lifecycle.
 
 ## ISparkitWindow Interface
 
@@ -120,7 +120,7 @@ if (keyboard.IsKeyDown(Key.D))
     MoveRight(speed * deltaTime);
 ```
 
-The `IKeyboard` interface:
+The [`IKeyboard`](xref:Sparkitect.Windowing.Input.IKeyboard) interface:
 
 ```csharp
 public interface IKeyboard
@@ -151,7 +151,7 @@ if (mouse.IsButtonDown(MouseButton.Left))
 }
 ```
 
-The `IMouseInput` interface:
+The [`IMouseInput`](xref:Sparkitect.Windowing.Input.IMouseInput) interface:
 
 ```csharp
 public interface IMouseInput
@@ -340,14 +340,9 @@ The window automatically disposes its `VkSurface` and `VkSwapchain` resources.
 4. **Dispose properly**: Always dispose windows in your cleanup function
 5. **No global input**: Remember that input is per-window, not global
 
-## Integration with Other Systems
+## See Also
 
-- **Vulkan Graphics**: Windows provide surfaces and swapchains for rendering ([details](xref:sparkitect.vulkan.vulkan-graphics))
-- **Game State System**: Window services are typically state-scoped ([details](xref:sparkitect.core.game-state-system))
-- **Dependency Injection**: Access `IWindowManager` through DI ([details](xref:sparkitect.core.dependency-injection))
-
-## Next Steps
-
-- See [Vulkan Graphics](xref:sparkitect.vulkan.vulkan-graphics) for rendering to window surfaces
-- See [Game State System](xref:sparkitect.core.game-state-system) for state function integration
-- Review `samples/PongMod/` for complete window and input handling
+- <xref:sparkitect.vulkan.vulkan-graphics> for rendering to window surfaces
+- <xref:sparkitect.core.game-state-system> for state lifecycle and state-scoped services
+- <xref:sparkitect.core.dependency-injection> for accessing `IWindowManager` through DI
+- `samples/PongMod/` for complete window and input handling

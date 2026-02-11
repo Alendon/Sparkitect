@@ -11,7 +11,7 @@ Sparkitect is a modular 3D game engine built on .NET 10 where **everything is a 
 ## Getting Started
 
 - [Introduction](xref:sparkitect.getting-started.intro) - Philosophy, design principles, and your first mod
-- [Engine Overview](xref:sparkitect.getting-started.overview) - Core architectural patterns and two-phase design
+- [Engine Overview](xref:sparkitect.getting-started.overview) - Architectural patterns and runtime lifecycle
 
 ## Modules
 
