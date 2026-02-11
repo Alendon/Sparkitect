@@ -27,6 +27,7 @@
         trashy
         stdenv.cc.cc.lib  # libstdc++ for native NuGet libraries
         nodejs_24
+	docfx
       ];
 
       runtimeLibPath = pkgs.lib.makeLibraryPath runtimeLibs;
