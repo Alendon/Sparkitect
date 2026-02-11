@@ -4,3 +4,5 @@
   href: sdk-guide.md
 - name: Mod Specification
   href: mod-specification.md
+- name: Source Generation
+  href: source-generation.md
