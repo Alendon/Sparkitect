@@ -1,188 +1,92 @@
 ---
 uid: sparkitect.core.stateless-functions
 title: Stateless Functions
-description: Attribute-based static functions with DI and scheduling
+description: Generic infrastructure for attribute-driven static functions with DI and scheduling
 ---
 
 # Stateless Functions
 
-Stateless Functions are attribute-marked static methods that define behavior in Sparkitect. They form the foundation for module and state logic, using dependency injection for parameters and scheduling attributes to control when they execute.
+Stateless functions are static methods whose only interaction with the outside world is through DI-injected parameters. By requiring all dependencies to be explicit method parameters, no function can carry hidden state that would prevent mods from replacing or extending behavior. This makes stateless functions the primary building block for moddable execution logic.
 
-## Core Concepts
+The stateless function infrastructure is a generic module. Consumers define their own function types, scheduling policies, and registries on top of it. The [Game State System](xref:sparkitect.core.game-state-system) is the current consumer, providing per-frame and transition function types, but the infrastructure is designed for any system to add new categories.
 
-### What is a Stateless Function?
+## Defining a Function
 
-A stateless function is a static method marked with a function attribute (e.g., `[PerFrameFunction]` or `[TransitionFunction]`) and a scheduling attribute that determines when it executes. The function receives dependencies through method parameters, which are resolved from the DI container at execution time.
-
-Key characteristics:
-- **Static methods only** - no instance state
-- **Attribute-driven** - function type and scheduling declared via attributes
-- **DI-injected parameters** - dependencies resolved automatically
-- **Source-generated wrappers** - execution infrastructure generated at compile time
-
-### Registry Association
-
-Each function attribute associates the function with a specific registry through its generic type parameters:
-
-| Function Attribute | Registry | Context |
-|-------------------|----------|---------|
-| `PerFrameFunctionAttribute` | `PerFrameRegistry` | `PerFrameContext` |
-| `TransitionFunctionAttribute` | `TransitionRegistry` | `TransitionContext` |
-
-The registry association determines:
-- Which collector receives the function during registration
-- What context data is available during scheduling decisions
-
-`PerFrameContext` provides the state stack for module-loaded checks. `TransitionContext` additionally includes `IsEnterTransition`, `DeltaModules` (modules being added or removed), and `TargetStateId`.
-
-### Function Wrappers
-
-Source generators create wrapper classes for each stateless function. These wrappers:
-- Implement `IStatelessFunction` and `IHasIdentification`
-- Provide the `Identification` for ordering references
-- Handle DI resolution and invocation
-
-## Defining Stateless Functions
-
-### Basic Example
+A stateless function is a static method with three attributes: a function type, a scheduling policy, and (implicitly) an owning type with identification.
 
 ```csharp
-[PerFrameFunction("process_input")]
-[PerFrameScheduling]
-public static void ProcessInput()
+public partial class PhysicsModule : IStateModule
 {
-    // Executes every frame
+    [PerFrameFunction("run_physics")]
+    [PerFrameScheduling]
+    public static void RunPhysics(IPhysicsService physics, ITimeService time)
+    {
+        physics.Step(time.DeltaTime);
+    }
 }
 ```
+
+[`[PerFrameFunction]`](xref:Sparkitect.Stateless.PerFrameFunctionAttribute) is a function type attribute provided by the Game State System. [`[PerFrameScheduling]`](xref:Sparkitect.GameState.PerFrameSchedulingAttribute) determines when the function runs. Method parameters are resolved from the current DI container using [facade mapping](xref:sparkitect.core.dependency-injection#facade-integration).
 
 Requirements:
+
 1. Method must be `static`
-2. Must have exactly one function attribute (`[PerFrameFunction]` or `[TransitionFunction]`)
-3. Must have exactly one scheduling attribute matching the function type
-4. Containing type **must** implement `IHasIdentification` (or use `[ParentId<T>]`). If neither is provided, the source generator silently skips the function -- no wrapper is generated and no compile-time error is reported
+2. Exactly one function type attribute
+3. Exactly one scheduling attribute matching that function type
+4. Containing type must implement [`IHasIdentification`](xref:Sparkitect.Modding.IHasIdentification), or the method must use [`[ParentId<T>]`](xref:Sparkitect.Stateless.ParentIdAttribute`1). If neither is provided, the source generator skips the function and analyzer SPARK0404 reports an error.
 
-### With Dependency Injection
+### Parent ID Override
+
+When a function lives in a type that is not its logical owner, use `[ParentId<T>]` to specify who owns it:
 
 ```csharp
-[PerFrameFunction("update_physics")]
-[PerFrameScheduling]
-public static void UpdatePhysics(IPhysicsService physics, ITimeService time)
+public partial class BackgroundColorState
 {
-    physics.Step(time.DeltaTime);
+    [PerFrameFunction("background_color_update")]
+    [PerFrameScheduling]
+    [ParentId<PongModule>]
+    public static void UpdateBackgroundColor(IBackgroundColorService bg)
+    {
+        bg.Update();
+    }
 }
 ```
 
-Parameters are resolved from the current state's DI container:
-- Use interface types, not concrete implementations
-- Missing dependencies throw at state creation time
-- Services are resolved using facade mapping (see [Dependency Injection](xref:sparkitect.core.dependency-injection))
+The generated wrapper uses `PongModule`'s identification as the parent, not `BackgroundColorState`.
 
-### With Ordering
+## Built-in Function Types
+
+The Game State System provides two function types:
+
+| Function Attribute | Scheduling Options | Used For |
+|---|---|---|
+| [`[PerFrameFunction]`](xref:Sparkitect.Stateless.PerFrameFunctionAttribute) | [`[PerFrameScheduling]`](xref:Sparkitect.GameState.PerFrameSchedulingAttribute) | Logic that runs every frame |
+| [`[TransitionFunction]`](xref:Sparkitect.Stateless.TransitionFunctionAttribute) | [`[OnCreateScheduling]`](xref:Sparkitect.GameState.OnCreateSchedulingAttribute), [`[OnDestroyScheduling]`](xref:Sparkitect.GameState.OnDestroySchedulingAttribute), [`[OnFrameEnterScheduling]`](xref:Sparkitect.GameState.OnFrameEnterSchedulingAttribute), [`[OnFrameExitScheduling]`](xref:Sparkitect.GameState.OnFrameExitSchedulingAttribute) | Logic that runs during state transitions |
+
+Each scheduling attribute controls when the function is included in execution. The GSM evaluates scheduling based on which modules are loaded and what transition is occurring. See [Game State System](xref:sparkitect.core.game-state-system) for the specific inclusion rules.
 
 ```csharp
-[PerFrameFunction("render_scene")]
-[PerFrameScheduling]
-[OrderAfter<RenderModule.BeginFrameFunc>]
-public static void RenderScene(IRenderService renderer)
+public partial class AudioModule : IStateModule
 {
-    renderer.Draw();
+    [TransitionFunction("init_audio")]
+    [OnCreateScheduling]
+    public static void InitAudio(IAudioService audio)
+    {
+        audio.Initialize();
+    }
+
+    [TransitionFunction("cleanup_audio")]
+    [OnDestroyScheduling]
+    public static void CleanupAudio(IAudioService audio)
+    {
+        audio.Shutdown();
+    }
 }
 ```
-
-Ordering attributes reference the generated wrapper type to establish execution order.
-
-## Scheduling
-
-### Scheduling Attribute Pattern
-
-Scheduling attributes inherit from a generic base that encodes the relationship between scheduling implementation, function type, context, and registry:
-
-```
-SchedulingAttribute<TScheduling, TStatelessFunction, TContext, TRegistry>
-```
-
-This ensures type safety: a scheduling attribute can only be applied to functions with matching context and registry types.
-
-### Built-in Scheduling Types
-
-**Per-Frame Functions** (`PerFrameFunctionAttribute`):
-
-| Scheduling Attribute | When It Executes |
-|---------------------|------------------|
-| `[PerFrameScheduling]` | Every frame while owner module is loaded |
-
-**Transition Functions** (`TransitionFunctionAttribute`):
-
-| Scheduling Attribute | When It Executes |
-|---------------------|------------------|
-| `[OnCreateScheduling]` | Once when module/state is created |
-| `[OnDestroyScheduling]` | Once when module/state is destroyed |
-| `[OnFrameEnterScheduling]` | When state becomes the active leaf |
-| `[OnFrameExitScheduling]` | When state stops being the active leaf |
-
-### Scheduling Decision Flow
-
-Each scheduling implementation determines inclusion based on context. In every case, functions owned by the **target state itself** (not just modules) are also included when that state is the active leaf or transition target.
-
-1. **PerFrameScheduling**: Included if owner module is loaded in current state stack, OR owner is the active leaf state
-2. **OnCreateScheduling**: Included if entering transition AND (owner is in delta modules being added, OR owner is the target state)
-3. **OnDestroyScheduling**: Included if exiting transition AND (owner is in delta modules being removed, OR owner is the target state)
-4. **OnFrameEnterScheduling**: Included if entering transition AND (owner module is loaded, OR owner is the target state)
-5. **OnFrameExitScheduling**: Included if exiting transition AND (owner module is loaded, OR owner is the target state)
 
 ## Execution Ordering
 
-### Ordering Attributes
-
-Control execution order between functions using ordering attributes:
-
-| Attribute | Purpose |
-|-----------|---------|
-| `[OrderBefore<T>]` | Execute before function T |
-| `[OrderAfter<T>]` | Execute after function T |
-
-Both attributes accept an optional `IsOptional` property:
-- `IsOptional = false` (default): Constraint required; error if target not present
-- `IsOptional = true`: Constraint ignored if target not present
-
-### Cross-Module Ordering and IsOptional
-
-When ordering against functions in other modules, the target module may not be loaded. Use `IsOptional` to handle this:
-
-```csharp
-// Required ordering (default) - ERROR if PhysicsModule not loaded
-[PerFrameFunction("render")]
-[PerFrameScheduling]
-[OrderAfter<PhysicsModule.RunPhysicsFunc>]
-public static void Render() { }
-
-// Optional ordering - silently ignored if PhysicsModule not loaded
-[PerFrameFunction("render")]
-[PerFrameScheduling]
-[OrderAfter<PhysicsModule.RunPhysicsFunc>(IsOptional = true)]
-public static void Render() { }
-```
-
-**When to use IsOptional:**
-
-| Scenario | IsOptional | Reason |
-|----------|------------|--------|
-| Same-module ordering | `false` | Always present |
-| Required module dependency | `false` | Module guaranteed loaded |
-| Optional module integration | `true` | Module may not be loaded |
-| Engine-provided function | `false` | Engine modules always present |
-
-**Error behavior:**
-- `IsOptional = false` (default): Throws exception if target function not found during scheduling
-- `IsOptional = true`: Constraint is silently ignored if target not found
-
-**Circular ordering:** Circular ordering constraints (e.g., A orders before B, B orders before A) are detected at state creation time and result in an error.
-
-**Best practice:** Declare explicit module dependencies for functions you order against. Only use `IsOptional = true` when the ordering is truly optional (e.g., "if audio module is loaded, run after audio").
-
-### Type-Safe References
-
-Ordering attributes use the generated wrapper type for type-safe cross-references:
+Control execution order between functions with [`[OrderBefore<T>]`](xref:Sparkitect.Stateless.OrderBeforeAttribute`1) and [`[OrderAfter<T>]`](xref:Sparkitect.Stateless.OrderAfterAttribute`1):
 
 ```csharp
 public partial class PhysicsModule : IStateModule
@@ -193,42 +97,31 @@ public partial class PhysicsModule : IStateModule
 
     [PerFrameFunction("run_physics")]
     [PerFrameScheduling]
-    [OrderAfter<PreparePhysicsFunc>]  // References generated wrapper
-    public static void RunPhysics() { }
+    [OrderAfter<PreparePhysicsFunc>]
+    public static void RunPhysics(IPhysicsService physics) { }
 }
 ```
 
-For cross-module ordering:
+The `<T>` parameter references the generated wrapper type (see [Source Generation](#source-generation)). For cross-module references, use the fully qualified wrapper: `[OrderAfter<PhysicsModule.RunPhysicsFunc>]`.
 
-```csharp
-[PerFrameFunction("render")]
-[PerFrameScheduling]
-[OrderAfter<PhysicsModule.RunPhysicsFunc>]  // Cross-module reference
-public static void Render() { }
-```
+Both attributes accept an `IsOptional` property (default: `false`):
 
-> **Note:** Cross-module ordering requires consideration of module availability. If the referenced module isn't active, optional constraints (`IsOptional = true`) are silently ignored, while required constraints cause a scheduling error. See [Cross-Module Ordering and IsOptional](#cross-module-ordering-and-isoptional) above for detailed guidance.
+- `IsOptional = false`: throws `InvalidOperationException` if the target function is not present during scheduling
+- `IsOptional = true`: constraint is silently ignored if the target is not present
+
+Use `IsOptional = true` when ordering against functions from optional module dependencies. For required dependencies or same-module ordering, the default is correct since the target is guaranteed to be present.
+
+Circular ordering constraints are detected at resolution time and result in an error. Only add ordering when execution order actually matters; independent functions can run in any order.
 
 ## Source Generation
 
-### What Gets Generated
+For each stateless function, the source generator creates a wrapper class as a nested type within the containing type. The wrapper implements [`IStatelessFunction`](xref:Sparkitect.Stateless.IStatelessFunction) and `IHasIdentification`, handling DI resolution and invocation.
 
-For each stateless function, the source generator creates:
-
-1. **Wrapper class** -- implements `IStatelessFunction` and `IHasIdentification`, handles DI resolution and invocation
-2. **Scheduling entrypoint** -- one per parent type per registry, handles scheduling decisions for all functions in that group
-3. **Registry registration** -- registers the wrapper type with the appropriate function registry
-4. **Identification properties** -- identification constants for the function
-
-### Generated Code Location
-
-Wrapper classes are generated as nested types within the containing type (module or state class), in the same namespace. For example, a function in `MyMod.PhysicsModule` generates `MyMod.PhysicsModule.PreparePhysicsFunc`. Other generated artifacts (ID properties, registration entries) use the `{RootNamespace}.CompilerGenerated` namespace.
-
-Example generated wrapper (conceptual):
+The wrapper type name follows the pattern `{IdentifierPascalCase}Func`, derived from the attribute's identifier string (not the method name). For example, `[PerFrameFunction("prepare_physics")]` generates `PreparePhysicsFunc`.
 
 ```csharp
-// Nested within PhysicsModule, in its own namespace
-public sealed class PreparePhysicsFunc : IStatelessFunction, IHasIdentification
+// Generated as MyMod.PhysicsModule.PreparePhysicsFunc
+public class PreparePhysicsFunc : IStatelessFunction, IHasIdentification
 {
     public Identification Identification => ...;
     public Identification ParentIdentification => ...;
@@ -236,131 +129,149 @@ public sealed class PreparePhysicsFunc : IStatelessFunction, IHasIdentification
 }
 ```
 
-> **Note:** Scheduling logic is generated in a separate `ApplySchedulingEntrypoint` class, not inside the wrapper.
+The generator works generically: it discovers function attributes by checking inheritance from [`StatelessFunctionAttribute`](xref:Sparkitect.Stateless.StatelessFunctionAttribute), not by looking for specific types. New function categories are automatically supported without generator changes.
 
-The wrapper type name follows the pattern: `{IdentifierPascalCase}Func`, where the identifier is the string key from the function attribute, PascalCased. For example, `[PerFrameFunction("prepare_physics")]` generates `PreparePhysicsFunc`. The name is derived from the attribute's identifier string, not the method name.
+Beyond the wrapper, the generator also produces registry registration entries, identification property constants, and a scheduling entrypoint class. The scheduling entrypoint is described in the next section.
 
-## Best Practices
+## How Function Types Are Built
 
-### Keep Functions Small and Focused
+This section walks through how the GSM's function types are constructed on top of the generic infrastructure. The same pattern applies to any new function category.
 
-Each function should do one thing. Prefer multiple small functions over one large function:
+### Function Attribute and Registry
+
+A function category starts with two things: a function attribute and a registry.
+
+The function attribute extends [`StatelessFunctionAttribute<TContext, TRegistry>`](xref:Sparkitect.Stateless.StatelessFunctionAttribute`2), which binds the function to a specific context type and registry:
 
 ```csharp
-// Good: focused functions
-[PerFrameFunction("update_time")]
-[PerFrameScheduling]
-public static void UpdateTime(ITimeService time) { ... }
-
-[PerFrameFunction("process_commands")]
-[PerFrameScheduling]
-[OrderAfter<UpdateTimeFunc>]
-public static void ProcessCommands(ICommandService commands) { ... }
-
-// Avoid: monolithic functions
-[PerFrameFunction("do_everything")]
-[PerFrameScheduling]
-public static void DoEverything(ITimeService time, ICommandService commands, ...) { ... }
+// Concrete function type: binds to PerFrameContext and PerFrameRegistry
+public sealed class PerFrameFunctionAttribute(string identifier)
+    : StatelessFunctionAttribute<PerFrameContext, PerFrameRegistry>(identifier);
 ```
 
-### Use DI for Dependencies
-
-Access services through method parameters, not static state:
+The registry extends [`StatelessFunctionRegistryBase`](xref:Sparkitect.Stateless.StatelessFunctionRegistryBase) and implements `IRegistry`. It is a thin wrapper that provides the registry identifier and inherits `Register<T>`/`Unregister` from the base:
 
 ```csharp
-// Good: dependencies injected
-[PerFrameFunction("update")]
-[PerFrameScheduling]
-public static void Update(ITimeService time, IPhysicsService physics)
+[Registry(Identifier = "perframe_function", External = true)]
+public sealed partial class PerFrameRegistry : StatelessFunctionRegistryBase, IRegistry
 {
-    physics.Step(time.DeltaTime);
-}
-
-// Avoid: static service locator
-[PerFrameFunction("update")]
-[PerFrameScheduling]
-public static void Update()
-{
-    var time = ServiceLocator.Get<ITimeService>();  // Don't do this
+    public static string Identifier => "perframe_function";
 }
 ```
 
-### Static Methods Only
+The `External = true` flag means the registry is not backed by a data collection but serves as a typed entry point for the stateless function registration pipeline.
 
-Stateless functions must be static. They cannot access instance state:
+The source generator reads `TRegistry` from the function attribute to determine which registry receives the `Register<WrapperType>(id)` call.
+
+### Scheduling
+
+Scheduling is split into two halves: an attribute (compile-time marker) and an implementation (runtime decision logic).
+
+The scheduling attribute extends [`SchedulingAttribute<TScheduling, TFunc, TContext, TRegistry>`](xref:Sparkitect.Stateless.SchedulingAttribute`4). The four type parameters enforce at compile time that the scheduling can only be applied to a compatible function type:
 
 ```csharp
-public partial class MyModule : IStateModule
-{
-    private int _counter;  // Instance field - NOT accessible from stateless functions
+// Attribute: marks a method as using PerFrameScheduling
+public sealed class PerFrameSchedulingAttribute
+    : SchedulingAttribute<PerFrameScheduling, PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry>;
+```
 
-    [PerFrameFunction("tick")]
-    [PerFrameScheduling]
-    public static void Tick()
+The scheduling implementation implements [`IScheduling<TFunc, TContext, TRegistry>`](xref:Sparkitect.Stateless.IScheduling`3). Its constructor receives the ordering attributes (`OrderAfterAttribute[]`, `OrderBeforeAttribute[]`) that were declared on the method. Its `BuildGraph` method decides whether to include the function and, if so, adds the node and ordering edges to the execution graph:
+
+```csharp
+public sealed class PerFrameScheduling
+    : IScheduling<PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry>
+{
+    private readonly OrderAfterAttribute[] _orderAfter;
+    private readonly OrderBeforeAttribute[] _orderBefore;
+
+    public PerFrameScheduling(OrderAfterAttribute[] orderAfter, OrderBeforeAttribute[] orderBefore)
     {
-        // Cannot access _counter here - method is static
+        _orderAfter = orderAfter;
+        _orderBefore = orderBefore;
+    }
+
+    public void BuildGraph(
+        IExecutionGraphBuilder builder, PerFrameContext context,
+        Identification functionId, Identification ownerId)
+    {
+        // Inclusion check: is the owner module loaded, or is the owner the active leaf state?
+        if (!context.IsModuleLoaded(ownerId) && context.StateStack[^1].StateId != ownerId)
+            return;
+
+        builder.AddNode(functionId);
+
+        foreach (var after in _orderAfter)
+            after.Apply(builder, functionId);
+        foreach (var before in _orderBefore)
+            before.Apply(builder, functionId);
     }
 }
 ```
 
-Use services registered in the DI container for any state that needs to persist across function calls.
-
-### Ordering Sparingly
-
-Use ordering constraints only when execution order matters. Independent functions can execute in any order:
+The same pattern produces different behavior by varying the inclusion check. For example, `OnCreateScheduling` checks that the transition is an enter transition and that the owner is among the modules being added:
 
 ```csharp
-// These are independent - no ordering needed
-[PerFrameFunction("update_audio")]
-[PerFrameScheduling]
-public static void UpdateAudio(IAudioService audio) { ... }
+public void BuildGraph(
+    IExecutionGraphBuilder builder, TransitionContext context,
+    Identification functionId, Identification ownerId)
+{
+    if (!context.IsEnterTransition) return;
+    if (!context.DeltaModules.Contains(ownerId) && context.StateStack[^1].StateId != ownerId)
+        return;
 
-[PerFrameFunction("update_particles")]
-[PerFrameScheduling]
-public static void UpdateParticles(IParticleService particles) { ... }
-
-// These have a dependency - ordering required
-[PerFrameFunction("gather_render_commands")]
-[PerFrameScheduling]
-public static void GatherRenderCommands(IRenderService render) { ... }
-
-[PerFrameFunction("execute_render")]
-[PerFrameScheduling]
-[OrderAfter<GatherRenderCommandsFunc>]
-public static void ExecuteRender(IRenderService render) { ... }
+    builder.AddNode(functionId);
+    // ... apply ordering
+}
 ```
 
-## Attribute Reference
+`OnDestroyScheduling` inverts the direction (`if (context.IsEnterTransition) return`). `OnFrameEnterScheduling` checks `IsEnterTransition` but uses `IsModuleLoaded` instead of `DeltaModules`. Each scheduling type emerges from the same `IScheduling` contract with different logic in `BuildGraph`.
 
-### Function Attributes
+### Generated Scheduling Entrypoint
 
-| Attribute | Target | Purpose |
-|-----------|--------|---------|
-| `[PerFrameFunction("key")]` | Method | Marks function for per-frame execution |
-| `[TransitionFunction("key")]` | Method | Marks function for transition execution |
-| `[ParentId<TOwner>]` | Method | Overrides owner identification |
+The source generator produces one scheduling entrypoint class per parent type per registry. This class extends `ApplySchedulingEntrypoint<TFunc, TContext>` and its `BuildGraph` method instantiates the scheduling objects with ordering attributes, then calls each one:
 
-### Scheduling Attributes
+```csharp
+// Generated: one per parent type per registry
+[ApplySchedulingEntrypointAttribute<PerFrameFunctionAttribute>]
+internal class PhysicsModule_PerFrame_SchedulingEntrypoint
+    : ApplySchedulingEntrypoint<PerFrameFunctionAttribute, PerFrameContext>
+{
+    public override void BuildGraph(IExecutionGraphBuilder builder, PerFrameContext context)
+    {
+        // For each function in this parent type:
+        {
+            // Ordering attributes collected from the method declaration
+            OrderAfterAttribute[] param_0 = [
+                new OrderAfterAttribute<PreparePhysicsFunc>()
+            ];
+            OrderBeforeAttribute[] param_1 = [];
 
-| Attribute | Function Type | Purpose |
-|-----------|--------------|---------|
-| `[PerFrameScheduling]` | PerFrameFunction | Execute every frame |
-| `[OnCreateScheduling]` | TransitionFunction | Execute on module/state creation |
-| `[OnDestroyScheduling]` | TransitionFunction | Execute on module/state destruction |
-| `[OnFrameEnterScheduling]` | TransitionFunction | Execute when state becomes active |
-| `[OnFrameExitScheduling]` | TransitionFunction | Execute when state becomes inactive |
+            // Scheduling impl constructed with ordering params
+            var scheduling = new PerFrameScheduling(param_0, param_1);
+            scheduling.BuildGraph(builder, context,
+                IdentificationHelper.Read<RunPhysicsFunc>(),
+                IdentificationHelper.Read<PhysicsModule>());
+        }
+    }
+}
+```
 
-### Ordering Attributes
+This is how ordering attributes flow from method declarations to the scheduling implementation. The generator reads `[OrderAfter<T>]` and `[OrderBefore<T>]` attributes from each method, constructs their instances as arrays, and passes them to the scheduling constructor. The scheduling implementation then calls `Apply` on each ordering attribute during `BuildGraph`, which adds edges to the execution graph.
 
-| Attribute | Target | Purpose |
-|-----------|--------|---------|
-| `[OrderBefore<T>]` | Method | Execute before function T |
-| `[OrderAfter<T>]` | Method | Execute after function T |
+### The Execution Pipeline
 
-Both ordering attributes support `IsOptional` property (default: `false`).
+When a consumer calls [`IStatelessFunctionManager.GetSorted<TFunc, TContext, TRegistry>(...)`](xref:Sparkitect.Stateless.IStatelessFunctionManager), the following happens:
+
+1. **Discover entrypoints**: All `ApplySchedulingEntrypoint<TFunc, TContext>` implementations are discovered from loaded mods via the entrypoint container
+2. **Build the graph**: Each entrypoint's `BuildGraph` is called, which instantiates scheduling objects per function and conditionally adds nodes and ordering edges to the `IExecutionGraphBuilder`
+3. **Resolve ordering**: The builder resolves the graph via topological sort. Required ordering constraints with missing targets throw `InvalidOperationException`. Optional constraints with missing targets are silently dropped. Cycles are detected and reported as errors.
+4. **Instantiate wrappers**: For each function ID in sorted order, the wrapper type is instantiated and `Initialize()` is called with the DI container and facade map, resolving all method parameters
+5. **Return**: The sorted list of initialized `IStatelessFunction` wrappers is returned, ready for the consumer to call `Execute()` on each
+
+The consumer controls what `TContext` to pass and when to call `GetSorted`, making the entire scheduling and resolution pipeline generic. The GSM calls it during state frame creation; a networking system could call it when a connection event occurs.
 
 ## See Also
 
-- [Game State System](xref:sparkitect.core.game-state-system) - How modules and states use stateless functions
-- [Dependency Injection](xref:sparkitect.core.dependency-injection) - Service resolution and facade mapping
-- [Registry System](xref:sparkitect.core.registry-system) - How functions are registered and discovered
+- [Game State System](xref:sparkitect.core.game-state-system) for how the GSM uses stateless functions for per-frame and transition logic
+- [Dependency Injection](xref:sparkitect.core.dependency-injection) for service resolution and facade mapping
+- [Registry System](xref:sparkitect.core.registry-system) for how function registries work

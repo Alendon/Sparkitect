@@ -6,55 +6,22 @@ description: Hierarchical state management with module-based composition
 
 # Game State System
 
-The Game State System manages the engine's runtime configuration through a hierarchical state machine. States are composed from modules, and both states and modules define behavior through static functions.
-
-## Core Concepts
-
-### States
-
-A **state** represents a specific runtime configuration of the engine. States form a parent-child hierarchy (tree structure) where each state inherits the modules and configuration of its parent.
-
-States don't contain logic directly - they declare which modules they include and optionally define transition-specific functions.
-
-**Key characteristics:**
-- Parent-child hierarchy (each state has exactly one parent, except Root)
-- Composed from modules
-- Transitions happen only between parent and immediate child
-- Each active state has its own DI container (child of parent's container)
-
-### Modules
-
-A **module** is a reusable unit of functionality that can be included in multiple states. Modules contain the actual logic - state functions, service definitions, and dependencies on other modules.
-
-**Key characteristics:**
-- Declare dependencies on other modules
-- Define state functions (lifecycle hooks and frame logic)
-- Can define services scoped to that module
-- Activated when included in the current state path
-
-### State Functions
-
-**State functions** are static methods that define behavior in modules and states. They use the [Stateless Function](xref:sparkitect.core.stateless-functions) system for attribute-based scheduling, dependency injection, and execution ordering.
-
-See [Stateless Functions](xref:sparkitect.core.stateless-functions) for the complete attribute reference.
+The Game State System manages the engine's runtime configuration through a hierarchical state machine. States are composed from modules, and both states and modules define behavior through [stateless functions](xref:sparkitect.core.stateless-functions).
 
 ## Defining Modules
 
-Modules implement `IStateModule` and are marked with a registration attribute:
+Modules are reusable units of functionality. A module declares its dependencies, defines services, and contains the stateless functions that implement behavior. Modules implement [`IStateModule`](xref:Sparkitect.GameState.IStateModule) and are registered through [`ModuleRegistry`](xref:Sparkitect.GameState.ModuleRegistry):
 
 ```csharp
 [ModuleRegistry.RegisterModule("my_module")]
 public sealed partial class MyGameModule : IStateModule
 {
-    // Module identification
     public static Identification Identification => StateModuleID.MyMod.MyModule;
 
-    // Dependencies on other modules
     public static IReadOnlyList<Identification> RequiredModules => [
         StateModuleID.Sparkitect.Core
     ];
 
-    // Stateless functions defined below
     [TransitionFunction("initialize")]
     [OnCreateScheduling]
     private static void Initialize(IMyService service)
@@ -78,38 +45,28 @@ public sealed partial class MyGameModule : IStateModule
 }
 ```
 
-**Module Registration:**
-- `[ModuleRegistry.RegisterModule("key")]` marks the module for registration
-- The string key is used to generate the module's `Identification`
-- The class must be `partial` when defining state functions, as source generators extend the class with method wrappers. Modules are typically `sealed partial`
-- `Identification` is typically defined in generated ID extension files
+The `[ModuleRegistry.RegisterModule("key")]` attribute marks the module for registration. The string key generates the module's [`Identification`](xref:Sparkitect.Modding.Identification). The class must be `partial` when defining stateless functions, since source generators extend it with method wrappers.
 
-**Module Dependencies:**
-- `RequiredModules` lists other modules this module depends on
-- The system validates that all dependencies are present when the module is activated
-- Dependencies are checked at finalization time after module registration
+`RequiredModules` lists other modules this module depends on. The system validates that all dependencies are present at finalization time, after module registration.
 
 ## Defining States
 
-States implement `IStateDescriptor` and are marked with a registration attribute:
+A state represents a specific runtime configuration. States form a parent-child hierarchy where each state inherits modules from its parent chain. States implement [`IStateDescriptor`](xref:Sparkitect.GameState.IStateDescriptor) and are registered through [`StateRegistry`](xref:Sparkitect.GameState.StateRegistry):
 
 ```csharp
 [StateRegistry.RegisterState("game_menu")]
 public partial class GameMenuState : IStateDescriptor
 {
-    // State identification
     public static Identification Identification => StateID.MyMod.GameMenu;
-
-    // Parent state
     public static Identification ParentId => StateID.Sparkitect.Root;
 
-    // Modules included in this state
+    // Only list modules this state adds (not inherited ones)
     public static IReadOnlyList<Identification> Modules => [
         StateModuleID.MyMod.MenuModule,
         StateModuleID.MyMod.UiModule
     ];
 
-    // Optional: state-specific functions
+    // States can optionally define their own functions
     [TransitionFunction("enter_menu")]
     [OnFrameEnterScheduling]
     public static void EnterMenu(IMenuService menu)
@@ -119,25 +76,32 @@ public partial class GameMenuState : IStateDescriptor
 }
 ```
 
-**State Hierarchy:**
-- Every state has exactly one parent (except Root)
-- `ParentId` defines the parent-child relationship
-- States can only transition to their immediate parent or immediate children
-- The Root state (`StateID.Sparkitect.Root`) is the hierarchy root and is never an active frame. It provides the `CoreModule`, which is inherited by all states in the hierarchy
+Every state has exactly one parent (except Root). `Modules` lists only the modules this state introduces as a delta from its parent; inherited modules are included automatically.
 
-**Module Composition:**
-- `Modules` lists the modules this state introduces (delta from parent)
-- States automatically inherit all modules from their parent chain
-- You only list the new modules this state adds, not inherited ones
+The Root state (`StateID.Sparkitect.Root`) sits at the top of the hierarchy but is never an active frame. It provides the `CoreModule`, which all states inherit. Transitions to Root are forbidden.
 
-**State-Specific Functions:**
-- States can optionally define their own state functions
-- These are typically used for transition-specific logic
-- Most logic should be in modules for reusability
+States can define their own stateless functions, typically for transition-specific logic. Most behavior should live in modules for reusability.
 
-### Entry State Selection
+## Module Services
 
-After engine initialization, the system needs to know which state to enter first. Mods provide this through `IEntryStateSelector`:
+Modules define scoped services using [`[StateService]`](xref:Sparkitect.GameState.StateServiceAttribute`2):
+
+```csharp
+[StateService<IPhysicsService, PhysicsModule>]
+public class PhysicsService : IPhysicsService
+{
+    public PhysicsService(ILogger logger)
+    {
+        // Constructor dependencies injected
+    }
+}
+```
+
+These services are created when the module is activated, available to stateless functions in that module, and destroyed when the module is deactivated. Registration is automatic through source-generated configurators. See [Dependency Injection](xref:sparkitect.core.dependency-injection) for service lifetime details.
+
+## Entry State Selection
+
+After engine initialization, the system needs to know which state to enter first. One mod in the active root mod set provides this through [`IEntryStateSelector`](xref:Sparkitect.GameState.IEntryStateSelector). Most mods never need to implement this; it is analogous to the "game project" in a classic engine that decides what launches on startup.
 
 ```csharp
 [EntryStateSelectorEntrypoint]
@@ -150,154 +114,69 @@ public class EntryStateSelector : IEntryStateSelector
 }
 ```
 
-The `[EntryStateSelectorEntrypoint]` attribute marks the class for automatic discovery. The `SelectEntryState` method receives the root DI container and returns the identification of the first state to activate. The returned state cannot be Root.
-
-## State Functions
-
-State functions use the [Stateless Function](xref:sparkitect.core.stateless-functions) system. Each function requires a function attribute and a scheduling attribute.
-
-```csharp
-[PerFrameFunction("update_physics")]
-[PerFrameScheduling]
-public static void UpdatePhysics(ITimeService time, IPhysicsService physics)
-{
-    physics.Step(time.DeltaTime);
-}
-```
-
-For details on dependency injection, ordering attributes, and scheduling types, see [Stateless Functions](xref:sparkitect.core.stateless-functions).
-
-### Lifecycle and Transition Execution
-
-When transitioning between states, all eligible transition functions are resolved into a **single topologically-sorted execution graph**. The scheduling attribute determines which functions are *eligible* (included in the graph), not their execution order. Execution order is controlled entirely by `[OrderBefore<T>]` and `[OrderAfter<T>]` constraints.
-
-**Transition to Parent** (popping child state):
-- `[OnFrameExitScheduling]` functions: included if the owner module is loaded in the current state stack, or the owner is the target state
-- `[OnDestroyScheduling]` functions: included if the owner module is in the delta modules being removed, or the owner is the target state
-
-All eligible functions are combined into one graph, sorted, and executed.
-
-**Transition to Child** (pushing child state):
-- `[OnCreateScheduling]` functions: included if the owner module is in the delta modules being added, or the owner is the target state
-- `[OnFrameEnterScheduling]` functions: included if the owner module is loaded in the current state stack, or the owner is the target state
-
-All eligible functions are combined into one graph, sorted, and executed.
-
-The scheduling type controls eligibility only. For example, an `[OnCreateScheduling]` function can be ordered after an `[OnFrameEnterScheduling]` function if both are eligible -- they coexist in the same execution graph.
-
-## Module Services
-
-Modules can define services scoped to that module using the `[StateService]` attribute:
-
-```csharp
-[StateService<IPhysicsService, PhysicsModule>]
-public class PhysicsService : IPhysicsService
-{
-    public PhysicsService(ILogger logger)
-    {
-        // Constructor dependencies injected
-    }
-
-    // Service implementation
-}
-```
-
-These services:
-- Are created when the module is activated
-- Are available to state functions in that module
-- Are destroyed when the module is deactivated
-- Are registered automatically via source-generated configurators (marked `[CompilerGenerated]`)
-
-See [Dependency Injection](xref:sparkitect.core.dependency-injection) for more details on service registration.
+The [`[EntryStateSelectorEntrypoint]`](xref:Sparkitect.GameState.EntryStateSelectorEntrypointAttribute) attribute marks the class for automatic discovery. `SelectEntryState` receives the root DI container and returns the first state to activate. The returned state cannot be Root.
 
 ## State Transitions
 
-States transition through the `IGameStateManager` service:
+States transition through [`IGameStateManager`](xref:Sparkitect.GameState.IGameStateManager):
 
 ```csharp
 [PerFrameFunction("check_menu_request")]
 [PerFrameScheduling]
-public static void CheckMenuRequest(IMenuService menu, IGameStateManager stateManager) // IMenuService is an example mod-provided service
+public static void CheckMenuRequest(IMenuService menu, IGameStateManager stateManager)
 {
     if (menu.IsMenuRequested())
     {
-        // Request transition to menu state (must be parent or child)
         stateManager.Request(StateID.MyMod.MenuState);
     }
 }
 ```
 
-**Transition Rules:**
-- Can only transition to immediate parent or immediate child
-- Transitions are queued and execute between frames (not during frame execution)
-- Cannot transition to Root state (Root is never active)
-- Attempting invalid transitions throws an exception
+`Request` queues a transition that executes between frames. Only immediate parent or child transitions are valid; attempting anything else throws an exception. Root cannot be a transition target.
 
-**Transition with Mod Loading:**
+### Transition with Mod Loading
 
-For transitions that require loading additional mods:
+[`RequestWithModChange`](xref:Sparkitect.GameState.IGameStateManager.RequestWithModChange(System.Func{Sparkitect.Modding.Identification},System.Collections.Generic.IReadOnlyList{Sparkitect.Modding.ModFileIdentifier},System.Object)) loads additional mods and then transitions to a child state. Unlike `Request`, this executes synchronously (the transition completes before the call returns):
 
 ```csharp
 stateManager.RequestWithModChange(
-    () => StateID.MyMod.MultiplayerState,  // Target state (called after mods load)
+    () => StateID.MyMod.MultiplayerState,  // Called after mods load
     [new ModFileIdentifier("multiplayer_content_mod", SemVersion.Parse("1.0.0"))],
     payloadData                             // Optional payload
 );
 ```
 
-The second parameter is `IReadOnlyList<ModFileIdentifier>`. Each `ModFileIdentifier` is a struct containing an `Id` (string) and `Version` (`SemVersion`), ensuring unambiguous mod selection when multiple versions may exist. This loads the specified mods, processes their registrations, then transitions to the child state.
+The first parameter is a `Func<Identification>` because the target state may come from a mod that hasn't loaded yet. Each [`ModFileIdentifier`](xref:Sparkitect.Modding.ModFileIdentifier) contains an `Id` (string) and `Version` (`SemVersion`) for unambiguous mod selection.
+
+### Lifecycle and Transition Execution
+
+When transitioning between states, all eligible transition functions are resolved into a single topologically-sorted execution graph. The scheduling attribute determines which functions are eligible (included in the graph). Execution order is controlled by [`[OrderBefore<T>]`](xref:Sparkitect.Stateless.OrderBeforeAttribute`1) and [`[OrderAfter<T>]`](xref:Sparkitect.Stateless.OrderAfterAttribute`1) constraints.
+
+**Transition to child** (pushing):
+
+- [`[OnCreateScheduling]`](xref:Sparkitect.GameState.OnCreateSchedulingAttribute): included if the owner module is in the delta modules being added, or the owner is the target state
+- [`[OnFrameEnterScheduling]`](xref:Sparkitect.GameState.OnFrameEnterSchedulingAttribute): included if the owner module is loaded in the current state stack, or the owner is the target state
+
+**Transition to parent** (popping):
+
+- [`[OnFrameExitScheduling]`](xref:Sparkitect.GameState.OnFrameExitSchedulingAttribute): included if the owner module is loaded in the current state stack, or the owner is the target state
+- [`[OnDestroyScheduling]`](xref:Sparkitect.GameState.OnDestroySchedulingAttribute): included if the owner module is in the delta modules being removed, or the owner is the target state
+
+All eligible functions from both scheduling types are combined into one graph, sorted, and executed together. An `[OnCreateScheduling]` function can be ordered after an `[OnFrameEnterScheduling]` function when both are eligible; they coexist in the same execution graph.
 
 ## Main Loop
 
-The main loop executes while a state is active:
+The main loop runs while a state is active:
 
-1. Check for pending transitions → execute if present
-2. Execute all `[PerFrameScheduling]` functions from the current state and its modules
-3. Check for pending transitions → execute if present
+1. Check for pending transitions, execute if present
+2. Execute all [`[PerFrameScheduling]`](xref:Sparkitect.GameState.PerFrameSchedulingAttribute) functions
+3. Check for pending transitions, execute if present
 4. Repeat until shutdown
 
-Only the **leaf state** (bottom of the stack) has its `[PerFrameScheduling]` functions executed. Parent states remain on the stack but don't execute per-frame logic.
+Only the leaf state (bottom of the stack) has its per-frame functions executed. Parent states remain on the stack but do not run per-frame logic.
 
-## Best Practices
+## See Also
 
-### Module Design
-
-- Keep modules focused on a single domain (physics, rendering, UI, etc.)
-- Declare explicit dependencies between modules
-- Put reusable logic in modules, transition logic in states
-- Use services for shared state, state functions for behavior
-
-### State Function Design
-
-- Keep functions small and focused
-- Use ordering only when necessary (prefer independent functions)
-- State functions receive dependencies through method parameters (not constructor or property injection)
-- For service classes, prefer constructor injection
-- State functions are static - no instance state allowed
-
-### State Hierarchy Design
-
-- Shallow hierarchies are easier to reason about
-- Group related states under common parents
-- Use parent states for shared module sets
-- Remember: you can only transition to immediate relatives
-
-### Error Handling
-
-- Missing module dependencies are caught at state registration time, not during execution
-- Invalid transitions throw exceptions immediately
-- Cyclic state hierarchies are detected at finalization
-
-## Integration with Other Systems
-
-The Game State System integrates with:
-
-- **Dependency Injection**: State containers are children of Root container ([details](xref:sparkitect.core.dependency-injection))
-- **Registry System**: Registries are typically added/processed in `[OnCreateScheduling]` functions ([details](xref:sparkitect.core.registry-system))
-- **Modding System**: States and modules are discovered across loaded mods ([details](xref:sparkitect.core.modding-framework))
-
-## Next Steps
-
-- Review sample implementations in the `samples/` directory
-- See [Dependency Injection](xref:sparkitect.core.dependency-injection) for service patterns
-- See [Registry System](xref:sparkitect.core.registry-system) for object registration patterns
+- [Stateless Functions](xref:sparkitect.core.stateless-functions) for the generic function infrastructure, ordering attributes, and scheduling details
+- [Dependency Injection](xref:sparkitect.core.dependency-injection) for service registration and container hierarchy
+- [Registry System](xref:sparkitect.core.registry-system) for object registration patterns

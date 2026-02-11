@@ -1,4 +1,4 @@
-﻿---
+---
 uid: sparkitect.core.engine-initialization
 title: Engine Initialization
 description: Startup sequence from application launch to first game state
@@ -6,104 +6,100 @@ description: Startup sequence from application launch to first game state
 
 # Engine Initialization
 
-This document describes the initialization process of the Sparkitect engine, from application startup to the transition to the first game state.
+When the engine starts, it goes through a fixed sequence before any mod code runs. Understanding this sequence helps when debugging startup issues or when your mod needs to interact with early-stage services.
 
 ## Overview
 
-The engine initialization process follows these key steps:
+The startup sequence:
 
-1. Core IoC container creation
-2. CLI argument processing
-3. Root mod discovery and loading
-4. Registry processing
-5. Transition to the first game state
+1. Logger setup
+2. Root container creation (core services)
+3. CLI argument processing
+4. Mod discovery
+5. Root state entry (mod loading, registry processing, state activation)
+6. Main loop
+7. Cleanup on shutdown
 
-The `EngineBootstrapper` class manages this sequence, serving as the central coordination point for engine startup and shutdown.
+The [`EngineBootstrapper`](xref:Sparkitect.EngineBootstrapper) class drives this sequence.
 
 ## Initialization Sequence
 
-The `EngineBootstrapper` manages the initialization process through these steps:
-
 ### 1. Logger Initialization
 
-The engine initializes the logging system (Serilog) before any other operations, configuring log output to both files and console.
+Serilog is configured first, with output to both files and console. This ensures all subsequent steps can log.
 
 ### 2. Root Container Creation
 
-The bootstrapper creates the Root CoreContainer with all eight CoreModule services:
-- **CliArgumentHandler**: Processes command-line arguments
-- **IdentificationManager**: Manages string-to-numeric ID mappings
-- **ResourceManager**: Handles resource loading
-- **ModManager**: Coordinates mod discovery and loading
-- **RegistryManager**: Manages registry lifecycle
-- **GameStateManager**: Controls state transitions and main loop
-- **ModDIService**: Provides DI container creation for mods
-- **StatelessFunctionManager**: Manages stateless function discovery, sorting, and wrapper creation
+The bootstrapper creates the Root container with the eight [`CoreModule`](xref:Sparkitect.GameState.CoreModule) services. These are registered via source-generated factories and are available before any mods load:
 
-These services are registered via source-generated factories and are available before any mods are loaded.
+| Service | Role |
+|---------|------|
+| [`ICliArgumentHandler`](xref:Sparkitect.Utils.ICliArgumentHandler) | Processes command-line arguments |
+| [`IIdentificationManager`](xref:Sparkitect.Modding.IIdentificationManager) | String-to-numeric ID mappings |
+| [`IResourceManager`](xref:Sparkitect.Modding.IResourceManager) | Resource loading |
+| [`IModManager`](xref:Sparkitect.Modding.IModManager) | Mod discovery and loading |
+| [`IRegistryManager`](xref:Sparkitect.Modding.IRegistryManager) | Registry lifecycle |
+| [`IGameStateManager`](xref:Sparkitect.GameState.IGameStateManager) | State transitions and main loop |
+| [`IModDIService`](xref:Sparkitect.DI.IModDIService) | DI container creation for mods |
+| [`IStatelessFunctionManager`](xref:Sparkitect.Stateless.IStatelessFunctionManager) | Function discovery, sorting, and wrapper creation |
 
 ### 3. CLI Argument Processing
 
-The CliArgumentHandler processes command-line arguments, allowing runtime configuration before mods are loaded.
+Command-line arguments are processed, allowing runtime configuration before mods are loaded.
 
 ### 4. Mod Discovery
 
-The ModManager scans the "mods" folder and reads manifests from discovered archives. At this stage, mods are **discovered but not loaded** -- the actual loading happens during root state entry.
+`IModManager` scans the mods directory and reads manifests from discovered archives. At this stage, mods are **discovered but not loaded**. The actual loading happens during root state entry.
 
 ### 5. Entering Root State
 
-The GameStateManager's `EnterRootState()` method performs the core initialization:
+`IGameStateManager.EnterRootState()` performs the core initialization:
 
 **Root Mod Selection:**
 
-Root mods are selected using a priority-based approach:
 1. If a `roots.json` configuration file exists, only the specified mods are loaded
-2. If no config exists but mods with `IsRootMod=true` are discovered, those mods are loaded
-3. If neither applies, all discovered mods are loaded as a backward-compatible fallback
+2. Otherwise, all discovered mods are loaded
 
 **Mod Loading:**
-- Loads the selected root mods via ModManager
-- Assemblies are loaded from memory after extraction from zip archives
-- Dependencies are resolved and load order determined
+
+The selected root mods are loaded via `IModManager`. Assemblies are extracted from zip archives and loaded from memory. Dependencies are validated (missing or incompatible dependencies cause errors), but loading itself has no deterministic order and no side effects.
 
 **Registry Setup:**
-- Adds four registries to the RegistryManager: **ModuleRegistry**, **StateRegistry**, **PerFrameRegistry**, and **TransitionRegistry**
-- Processes all four registries for the loaded mods
-- Finalizes all pending state and module registrations
+
+Four registries are added to `IRegistryManager` and processed for the loaded mods:
+
+- [`ModuleRegistry`](xref:Sparkitect.GameState.ModuleRegistry)
+- [`StateRegistry`](xref:Sparkitect.GameState.StateRegistry)
+- [`PerFrameRegistry`](xref:Sparkitect.GameState.PerFrameRegistry)
+- [`TransitionRegistry`](xref:Sparkitect.GameState.TransitionRegistry)
+
+After processing, all pending state and module registrations are finalized.
 
 **Entry State Selection:**
-- Queries discovered `IEntryStateSelector` implementations
-- Selects the initial active state (not Root - Root is semantic anchor only)
+
+One mod in the root mod set must provide an [`IEntryStateSelector`](xref:Sparkitect.GameState.IEntryStateSelector) implementation. This tells the engine which state to enter first. Most mods never need to implement this; it is the equivalent of a "game project" entry point in a classic engine. If no implementation is found, startup fails.
 
 **State Activation:**
-- Creates the entry state frame with its DI container (child of Root container)
-- Executes transition enter methods via the [stateless function system](xref:sparkitect.core.stateless-functions) -- these are functions annotated with `TransitionFunctionAttribute` that are resolved and topologically sorted by the `StatelessFunctionManager`
-- Starts the main loop
+
+The engine creates the entry state frame with its own DI container (child of the Root container), executes transition enter methods via the [stateless function system](xref:sparkitect.core.stateless-functions), and starts the main loop.
+
+Transition enter methods are functions annotated with [`TransitionFunctionAttribute`](xref:Sparkitect.Stateless.TransitionFunctionAttribute) that are resolved and topologically sorted by `IStatelessFunctionManager`.
 
 ### 6. Main Loop
 
-The main loop executes per-frame functions (annotated with `PerFrameFunctionAttribute`) from the active state and its modules until a transition or shutdown is requested. See [Stateless Functions](xref:sparkitect.core.stateless-functions) for details on function resolution and scheduling.
+The main loop runs [`PerFrameFunctionAttribute`](xref:Sparkitect.Stateless.PerFrameFunctionAttribute)-annotated functions from the active state and its modules on each iteration. Between frames, the loop checks for pending state transitions and executes them inline. The loop continues until shutdown is requested.
+
+See [Stateless Functions](xref:sparkitect.core.stateless-functions) for details on function resolution and scheduling.
 
 ### 7. Cleanup
 
-On shutdown, the bootstrapper disposes the Root container and flushes remaining logs.
+On shutdown, the bootstrapper disposes the Root container (which cascades to all child state containers) and flushes remaining logs.
 
 ## Container Hierarchy
 
 The engine uses a hierarchy of containers:
 
-1. **Root Container**: Created during bootstrapping with essential engine services (see step 2 above)
-2. **State Containers**: Created during state transitions, forming a hierarchical stack where each state container is a child of its parent state's container (or Root for the entry state)
+1. **Root Container**: Created during bootstrapping with the eight core services (see step 2). Persists for the application lifetime.
+2. **State Containers**: Created during state transitions. Each state container is a child of its parent state's container (or Root for the entry state). Destroyed when the state is popped.
 
-The Root container persists for the application lifetime, while state containers are created and destroyed during state transitions. All containers are immutable once created - subsequent operations create new child containers rather than modifying existing ones.
-
-## Clean-Up Process
-
-The engine performs clean-up operations when shutting down:
-
-1. Game states are properly terminated
-2. Mod resources are released
-3. Zip streams are closed
-4. Other system resources are freed
-
-The `CleanUp` method in the `EngineBootstrapper` class handles these operations.
+All containers are immutable once created. New states produce new child containers rather than modifying existing ones.

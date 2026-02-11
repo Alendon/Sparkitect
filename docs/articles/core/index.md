@@ -1,52 +1,57 @@
 ---
 uid: sparkitect.core
 title: Core Systems
-description: Foundational systems that form the backbone of Sparkitect Engine
+description: Mod loading, dependency injection, registries, state machines, and function scheduling in Sparkitect Engine
 ---
 
 # Core Systems
 
-The Core Systems form the foundation of Sparkitect, establishing the architectural patterns and infrastructure that all other systems build upon.
-
-## Primary Systems
+Everything in Sparkitect runs as a mod. These systems handle how mods are discovered and loaded, how services are wired together, how game objects are registered, and how runtime behavior is structured.
 
 ### Modding Framework
 
-The engine's cornerstone. Defines how mods are structured, loaded, and interact with each other. The framework handles mod discovery, loading, and lifecycle management.
+Defines how mods are structured, packaged, and loaded into the engine. The framework handles mod discovery and the loading process; the [Game State System](xref:sparkitect.core.game-state-system) controls when mods are loaded based on active states.
 
 <xref:sparkitect.core.modding-framework>
 
 ### Dependency Injection
 
-The primary mechanism for components to access each other. A custom-built DI framework designed for modding and container chaining, with source-generated factories and configurators.
+Inject services into your code using attributes and let the engine wire everything at runtime. Built for mod loading and unloading, with source-generated factories and container chaining across mod boundaries.
 
 <xref:sparkitect.core.dependency-injection>
 
 ### Registry System
 
-Centralized tracking and management of game objects and resources. Uses a three-level identification hierarchy (ModId, CategoryId, ItemId) for consistent resource referencing.
+Register game objects like items, resources, and states by annotating your code. A three-level ID system (ModId, CategoryId, ItemId) gives every registered object a unique, type-safe reference.
 
 <xref:sparkitect.core.registry-system>
 
-### Engine Initialization
-
-The startup sequence from application launch to the first game state. The `EngineBootstrapper` coordinates core container creation, mod loading, and state activation.
-
-<xref:sparkitect.core.engine-initialization>
-
-### Stateless Functions
-
-Attribute-based static methods that define behavior in modules and states. Uses DI for parameters, scheduling attributes for execution timing, and source-generated wrappers.
-
-<xref:sparkitect.core.stateless-functions>
-
 ### Game State System
 
-Hierarchical state machine managing runtime configuration. States compose from modules, and both define behavior through stateless functions.
+Structure your game as a hierarchy of states and modules. States compose from modules, both define behavior through stateless functions, and the GSM owns mod lifecycles within its state hierarchy.
 
 <xref:sparkitect.core.game-state-system>
 
-## Additional Topics
+### Stateless Functions
 
-- [External Dependencies](xref:sparkitect.core.external-dependencies) - Managing NuGet and third-party dependencies in mod archives
-- [Optional Dependencies](xref:sparkitect.core.optional-dependencies) - Integrating with mods that may not be present
+Define per-frame logic, transitions, and lifecycle hooks as static methods with scheduling attributes. The engine resolves parameters through DI and builds execution graphs from ordering constraints.
+
+<xref:sparkitect.core.stateless-functions>
+
+### Engine Initialization
+
+Reference for the startup sequence from application launch to the first game state. Covers [`EngineBootstrapper`](xref:Sparkitect.EngineBootstrapper), core container creation, mod discovery, and state activation.
+
+<xref:sparkitect.core.engine-initialization>
+
+### External Dependencies
+
+Managing NuGet and third-party assembly dependencies in mod archives.
+
+<xref:sparkitect.core.external-dependencies>
+
+### Optional Dependencies
+
+Integrating with mods that may not be present at runtime, with full DI support for conditional service registration.
+
+<xref:sparkitect.core.optional-dependencies>

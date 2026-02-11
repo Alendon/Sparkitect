@@ -1,334 +1,126 @@
-﻿---
+---
 uid: sparkitect.core.modding-framework
 title: Modding Framework
-description: Mod structure, loading, lifecycle management, and the identification system
+description: Mod discovery, loading, and the role of mods in the engine architecture
 ---
 
 # Modding Framework
 
-The Modding Framework is the cornerstone of Sparkitect's architecture. Unlike traditional game engines where modding is an afterthought, Sparkitect builds its entire structure around the concept of mods.
+Sparkitect is built around mods. The engine itself is a virtual mod, and all game functionality is delivered through the same mod system that third-party mods use. There is no separation between "engine code" and "mod code" at the architectural level.
 
-## Core Concepts
+## Creating a Mod
 
-### Mod Types
-
-Sparkitect's design envisions two primary types of mods:
-
-- **Root Mods**: Intended to be loaded at application startup, capable of directly influencing the engine. The engine itself functions as a "virtual root mod," creating a unified system where engine and mods are treated equally.
-
-- **Game Mods**: Planned to be loaded when joining or creating a game session and unloaded when the game ends, for game-specific functionality.
-
-**Current Status:** The distinction between Root and Game mods is conceptual and planned for future implementation. Currently, all mods are treated uniformly. The ModManifest structure does not yet differentiate mod types.
-
-### Mod Structure
-
-Each mod is distributed as a mod archive containing:
-
-- Mod DLL(s)
-- Metadata manifest
-- Dependency definitions
-- Additional resources
-
-## SDK Project Configuration
-
-Mod projects reference the Sparkitect SDK and configure mod metadata through MSBuild properties in the `.csproj` file:
+A mod is an SDK project that produces a `.sparkmod` archive. The minimal project file:
 
 ```xml
-<Project Sdk="Sparkitect.Sdk/0.1.0">
-  <PropertyGroup>
-    <ModName>My Awesome Mod</ModName>
-    <ModId>mycompany.mymod</ModId>
-    <ModVersion>1.0.0</ModVersion>
-    <ModAuthor>Your Name</ModAuthor>
-    <ModDescription>A brief description of the mod</ModDescription>
-    <IsRootMod>true</IsRootMod>
-  </PropertyGroup>
+<Project Sdk="Sparkitect.Sdk/1.0.0">
+    <PropertyGroup>
+        <ModId>my_mod</ModId>
+        <ModName>My Mod</ModName>
+        <ModVersion>1.0.0</ModVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ModProjectDependency Include="../../src/Sparkitect/Sparkitect.csproj" />
+    </ItemGroup>
 </Project>
 ```
 
-### SDK Properties Reference
+The SDK handles manifest generation, dependency detection, and archive packaging. See the [Project SDK](xref:sparkitect.tooling.sdk) guide for the full property reference and build details.
 
-| Property | Required | Description |
-|----------|----------|-------------|
-| `ModName` | Yes | Display name shown to users |
-| `ModId` | Yes | Unique identifier (e.g., `company.modname`) |
-| `ModVersion` | Yes | Semantic version (e.g., `1.0.0`) |
-| `ModAuthor` | No | Author or team name |
-| `ModDescription` | No | Short description of the mod |
-| `IsRootMod` | No | Whether this is a root mod (default: `false`) |
-| `ModAutoDetectDependencies` | No | Auto-include external dependencies (default: `true`) |
-| `DisableLogEnrichmentGenerator` | No | Disable Serilog log enrichment (default: `false`) |
+### Root Mods
 
-The SDK automatically:
-- Builds mod archives with the correct structure
-- Includes the mod manifest with metadata
-- Runs source generators for DI, registries, and state functions
+A mod marked with `<IsRootMod>true</IsRootMod>` can be selected as part of the root mod set during engine startup. One root mod must provide an [`IEntryStateSelector`](xref:Sparkitect.GameState.IEntryStateSelector) implementation so the engine knows which state to start. Most mods are not root mods and do not need to think about this.
 
-### Mod Discovery
+## Mod Discovery
 
-Mods are discovered through a simple directory structure:
+The engine discovers mods automatically on startup:
 
-- Mods are placed in a standard `mods` folder
-- The engine searches this folder for mod archives with the `.sparkmod` extension
+1. Scans the `mods/` directory (relative to the engine executable) for `.sparkmod` archives
+2. Reads each archive's manifest to populate the list of available mods
+3. Additional directories can be specified via the `addModDirs` CLI argument
 
-## Lifecycle Management
+Discovery only reads manifests. No assemblies are loaded and no code runs during this step.
 
-### Loading Process
+```
+myproject/
+  mods/
+    my_mod-1.0.0.sparkmod
+    other_mod-2.1.0.sparkmod
+```
 
-1. Application initializes the core DI container with minimal components
-2. The `EngineBootstrapper` discovers and loads Root Mods:
-   - Archives are located and extracted in memory
-   - Mod assemblies are loaded from memory after extraction from zip archives
-   - Zip archives remain open for resource access during the application's lifetime
+## Mod Loading
 
-3. The `ModManager` performs dependency resolution:
-   - Checks dependencies defined in manifests
-   - Optional dependencies are handled through CLR lazy loading isolation (see [Optional Dependencies](xref:sparkitect.core.optional-dependencies))
-   - Determines loading order based on dependencies
+After discovery, the [Game State System](xref:sparkitect.core.game-state-system) determines which mods to load. Currently, this happens at engine startup when the root state is entered. The [`IGameStateManager`](xref:Sparkitect.GameState.IGameStateManager) owns loaded mods and their lifecycle.
 
-4. Configuration entrypoints are discovered and processed:
-   - Classes marked with discovery attributes are located
-   - These are used to build the root-level IoC container
+Loading a set of mods:
 
-5. *(Planned)* Game-specific mods are loaded when creating/joining a game
-   - Similar process to Root Mod loading
-   - Game-specific containers are created
+1. Validates that all required dependencies are present (see [External Dependencies](xref:sparkitect.core.external-dependencies))
+2. Loads mod assemblies into an isolated `AssemblyLoadContext`
+3. Registers each mod with the [`IIdentificationManager`](xref:Sparkitect.Modding.IIdentificationManager) for numeric ID assignment
+4. Notifies the resource manager so mod assets become available
 
-6. *(Planned)* When exiting a game, Game Mods are unloaded while Root Mods remain active
+Mods within a load call are not loaded in any guaranteed order. The loading process validates dependencies but does not attempt to sequence mods based on them.
 
-### Mod Dependencies
+### Root Mod Selection
 
-Dependencies between mods are managed through the mod manifest:
+On startup, the engine selects root mods using `mods/roots.json`:
 
-- **Relationship Types**:
-  - Required dependencies: Mod will not load without these dependencies
-  - Optional dependencies: Mod can function without these but will use them if present
-  - Incompatible mods: Mod will not load if these are present
+```json
+[
+    { "Id": "my_game" },
+    { "Id": "my_framework", "Version": "1.0.0" }
+]
+```
 
-- **Version Requirements**:
-  - Semantic versioning support for dependencies
-  - Specify minimum, maximum, or exact versions
-  - Optional version range specifications
+If `roots.json` does not exist, the engine falls back to all discovered mods that have `IsRootMod` set to `true`. If no mods declare themselves as root mods, all discovered mods are loaded as a final fallback.
 
-- **Optional Dependency Handling**:
-  - Optional dependencies use CLR lazy loading isolation to safely reference types from mods that may not be present
-  - The optional dependency analyzer enforces correct usage patterns at compile time
-  - See [Optional Dependencies](xref:sparkitect.core.optional-dependencies) for patterns and best practices
+## Dependencies
 
-### Mod Groups and Loading Order
+Each mod declares relationships with other mods through its manifest (generated from MSBuild properties by the SDK). Three relationship types exist:
 
-Mods can be organized into logical groups for more controlled loading:
+| Type | Behavior |
+|------|----------|
+| Required | Mod fails to load if the dependency is missing or the version is outside range |
+| Optional | Mod loads regardless; optional types are isolated through CLR lazy loading |
+| Incompatible | Mod fails to load if the incompatible mod is present |
 
-- Groups define logical collections of mods
-- Each group can have its own loading sequence
-- The ModManager provides `LoadedModsPerGroup` to track the loading hierarchy
-- Components can use this group-based order for their own processing requirements
+Dependencies are validated before any assemblies are loaded. Version constraints use semantic versioning ranges.
 
-## Identification System
+See [External Dependencies](xref:sparkitect.core.external-dependencies) and [Optional Dependencies](xref:sparkitect.core.optional-dependencies) for declaration syntax and usage patterns.
 
-The modding framework includes a hierarchical identification system for tracking objects across mods.
+## Registration and Configuration
 
-### IIdentificationManager Interface
+Mod loading and mod processing are separate steps, which is why load order does not matter. When the [Game State System](xref:sparkitect.core.game-state-system) builds a new state frame, the sequence is:
 
-The `IIdentificationManager` service provides registration and lookup of identifications:
+1. **Load mods** (physical assembly loading)
+2. **Process GSM registries** for the newly loaded mods: modules, states, per-frame functions, and transitions. These are the registries the GSM needs to construct the frame, so they are processed before it is entered.
+3. **Build and enter the new frame.** Module transition functions run here, and any other registries (current or future) that are not GSM-correlated are processed by their respective modules during this step.
+
+New mods fully contribute to the frame from the start. Individual systems apply their own ordering during processing where needed. Because all of this happens in a controlled construction and transition sequence, the order in which mods were physically loaded is irrelevant.
+
+The same sequence applies to the initial root state at engine startup and to child states that add mods via [`RequestWithModChange`](xref:Sparkitect.GameState.IGameStateManager.RequestWithModChange*).
+
+Most of this is automatic. Annotating a class with [`[StateService]`](xref:Sparkitect.GameState.StateServiceAttribute`2) causes the source generator to produce a configurator that the engine discovers and invokes during frame construction. Registry entries work the same way through generated attributes. You do not call registration APIs directly unless you are building engine-level infrastructure.
 
 ```csharp
-// Inject via DI
-public MyService(IIdentificationManager identManager)
-{
-    _identManager = identManager;
-}
+// This is all you need. The generator handles registration.
+[StateService<IMyService, MyModule>]
+public class MyService : IMyService { }
 ```
 
-### Registration
+See [Dependency Injection](xref:sparkitect.core.dependency-injection) for service registration and [Registry System](xref:sparkitect.core.registry-system) for object registries.
 
-Register mods, categories, and objects to obtain numeric IDs:
+## Mod Archives
 
-```csharp
-// Register a mod (returns numeric mod ID)
-ushort modId = identManager.RegisterMod("my_mod");
+A `.sparkmod` archive is a zip file containing:
 
-// Register a category (returns numeric category ID)
-ushort categoryId = identManager.RegisterCategory("items");
+| Entry | Description |
+|-------|-------------|
+| `manifest.json` | Mod metadata, dependencies, assembly references |
+| `{ModId}.dll` | Primary mod assembly |
+| `*.dll` | Additional required assemblies (non-mod dependencies) |
+| `*.sparkres.yaml` | Declarative resource registrations (see [Registry System](xref:sparkitect.core.registry-system)) |
+| Other files | Assets, data files accessible through the resource manager |
 
-// Register an object (returns full Identification struct)
-Identification id = identManager.RegisterObject("my_mod", "items", "iron_sword");
-```
-
-> [!NOTE]
-> The `modId` and `categoryId` parameters accept `OneOf<string, ushort>`, meaning you can pass either string identifiers or numeric IDs. String arguments work through implicit conversion.
-
-**Registration flow:**
-1. Mods are registered automatically during mod loading
-2. Categories are registered when registries are added
-3. Objects are registered during registry processing
-
-### Lookup
-
-Resolve string identifiers to IDs and vice versa:
-
-```csharp
-// String to Identification
-if (identManager.TryGetObjectId("my_mod", "items", "iron_sword", out Identification id))
-{
-    // Use id...
-}
-
-// Identification to strings
-if (identManager.TryResolveIdentification(id, out string? mod, out string? category, out string? objectKey))
-{
-    Console.WriteLine($"{mod}:{category}:{objectKey}");  // my_mod:items:iron_sword
-}
-
-// Check if mod/category exists
-bool modExists = identManager.TryGetModId("my_mod", out ushort modId);
-bool catExists = identManager.TryGetCategoryId("items", out ushort catId);
-```
-
-### Identification Struct
-
-The `Identification` struct contains the numeric IDs (8 bytes total):
-
-```csharp
-public readonly struct Identification
-{
-    public readonly ushort ModId;      // Numeric identifier for the source mod
-    public readonly ushort CategoryId; // Numeric identifier for the registry category
-    public readonly uint ItemId;       // Numeric identifier for the specific object
-}
-```
-
-Numeric IDs are compact and efficient for runtime comparisons, while string identifiers remain available for debugging and serialization.
-
-### When to Use IIdentificationManager
-
-| Scenario | Approach |
-|----------|----------|
-| Registering objects via [RegistryMethod] | Automatic - ID passed to your method |
-| Looking up objects by string ID | Use TryGetObjectId |
-| Debug logging of IDs | Use TryResolveIdentification |
-| Custom registration logic | Use RegisterObject directly |
-
-For most mod development, you'll interact with Identification through registry attributes (see [Registry System](xref:sparkitect.core.registry-system)). Direct IIdentificationManager usage is needed for advanced scenarios like dynamic registration or ID lookup.
-
-## Generated Identification Pattern
-
-The SDK generates strongly-typed identification classes for compile-time safety. Instead of using string literals, reference generated static properties:
-
-### Pattern: `{Category}ID.{ModName}.{Object}`
-
-```csharp
-// Generated by SDK based on registrations
-public static class StateModuleID
-{
-    public static class MyMod
-    {
-        public static Identification CoreModule => ...;
-        public static Identification PhysicsModule => ...;
-    }
-}
-
-public static class StateID
-{
-    public static class MyMod
-    {
-        public static Identification MainMenu => ...;
-        public static Identification Gameplay => ...;
-    }
-}
-```
-
-### Usage
-
-```csharp
-// Type-safe module references
-public static IReadOnlyList<Identification> RequiredModules => [
-    StateModuleID.Sparkitect.Core,
-    StateModuleID.MyMod.PhysicsModule
-];
-
-// Type-safe state transitions
-stateManager.Request(StateID.MyMod.Gameplay);
-```
-
-### Benefits
-
-- Compile-time validation (no typos in string IDs)
-- IntelliSense discovery of available IDs
-- Refactoring support (rename updates all references)
-- Clear mod ownership (IDs namespaced by mod)
-
-## YAML Resource Files
-
-Mods can register resources using `.sparkres.yaml` files for declarative registration without code:
-
-### File Format
-
-```yaml
-# {modname}.sparkres.yaml
-# Format: RegistryClass.RegistryMethod:
-#   - key: "resource_path"
-
-Sparkitect.Graphics.Vulkan.ShaderModuleRegistry.RegisterShaderModule:
-  - pong: "pong.spv"
-  - ui: "ui.spv"
-
-MyMod.ItemRegistry.RegisterItem:
-  - iron_sword: "items/iron_sword.json"
-```
-
-### How It Works
-
-1. Place `.sparkres.yaml` files in your mod project
-2. SDK includes them in the mod archive
-3. At runtime, the registry system discovers and processes them
-4. Each entry calls the corresponding registry method with the key and resource path
-
-### When to Use
-
-| Scenario | Use YAML | Use Code |
-|----------|----------|----------|
-| Simple resource registration | Yes | - |
-| Registration needs computed data | - | Yes |
-| Batch registration of assets | Yes | - |
-| Registration with complex logic | - | Yes |
-
-YAML registration is ideal for assets (shaders, textures, data files) where the registration is purely declarative.
-
-## Integration with Core Systems
-
-The Modding Framework is tightly integrated with other core systems:
-
-- **Dependency Injection**:
-  Services are registered using the `[StateService]` attribute. Configurators are auto-generated (marked `[CompilerGenerated]`).
-
-  ```csharp
-  // Services are registered using the StateService attribute
-  [StateService<IMyService, MyModule>]
-  public class MyService : IMyService
-  {
-      public MyService(ILogger logger)
-      {
-          // Constructor dependencies are automatically detected
-      }
-  }
-  ```
-
-  See [Dependency Injection](xref:sparkitect.core.dependency-injection) for details on service registration and the `[StateService]` attribute.
-
-- **Registry System**:
-  Registrations use generated attributes from `[RegistryMethod]` definitions:
-
-  ```csharp
-  // Use generated registration attributes from [RegistryMethod] definitions
-  [MyRegistry.RegisterSomething("my_object")]
-  public static MyObjectData MyObject => new MyObjectData
-  {
-      Name = "My Object",
-      SomeProperty = "value"
-  };
-  ```
-
-  See [Registry System](xref:sparkitect.core.registry-system) for details on defining registries and registration patterns.
-
-- **Lifecycle Management**: Object lifecycle is directly tied to mod lifecycle
+The SDK produces this archive automatically on build. Archives remain open at runtime so mods can access embedded resources.

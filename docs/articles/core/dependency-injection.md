@@ -57,6 +57,8 @@ The container resolves dependencies in two phases:
 
 This allows both services to exist before either property is assigned. Prefer constructor injection when there is no circular dependency.
 
+<a id="facade-integration"></a>
+
 ## Facade Integration
 
 Facades enable interface substitution during resolution. A service can expose a reduced API to specific consumers (e.g., state functions) while keeping its full interface available elsewhere.
