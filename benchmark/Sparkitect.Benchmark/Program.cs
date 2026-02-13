@@ -1,12 +1,11 @@
-﻿using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
 
 namespace Sparkitect.Benchmark;
 
 public static class Program
 {
-    static void Main()
+    static void Main(string[] args)
     {
-        BenchmarkRunner.Run<RandomMaskComp>();
+        BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
     }
 }
