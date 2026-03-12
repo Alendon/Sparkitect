@@ -22,6 +22,13 @@ internal class World : IWorld
     private int _highWaterMark;
     private bool _disposed;
 
+    // Entity ID pool — parallel arrays indexed by entity slot
+    private uint[] _entityGenerations;
+    private StorageHandle[] _entityStorage;
+    private EntityState[] _entityStates;
+    private readonly Stack<uint> _entityFreeSlots = new();
+    private int _entityHighWaterMark;
+
     // Filter registry
     private readonly List<FilterEntry> _filters = new();
 
@@ -33,6 +40,10 @@ internal class World : IWorld
         _storages = new IStorage?[InitialCapacity];
         _capabilities = new List<CapabilityRegistration>?[InitialCapacity];
         _generations = new uint[InitialCapacity];
+
+        _entityGenerations = new uint[InitialCapacity];
+        _entityStorage = new StorageHandle[InitialCapacity];
+        _entityStates = new EntityState[InitialCapacity];
     }
 
     /// <summary>
@@ -264,6 +275,171 @@ internal class World : IWorld
             var matches = EvaluateFilter(entry.Filter);
             entry.Callback(matches);
         }
+    }
+
+    // --- Entity ID pool ---
+
+    /// <summary>
+    /// Allocates a new entity ID. Reuses a free slot if available, otherwise grows the pool.
+    /// The returned EntityId has generation >= 1.
+    /// </summary>
+    public EntityId AllocateEntityId()
+    {
+        ThrowIfDisposed();
+
+        uint index;
+        if (_entityFreeSlots.Count > 0)
+        {
+            index = _entityFreeSlots.Pop();
+        }
+        else
+        {
+            if (_entityHighWaterMark >= _entityGenerations.Length)
+            {
+                GrowEntityArrays();
+            }
+            index = (uint)_entityHighWaterMark;
+            _entityHighWaterMark++;
+        }
+
+        _entityGenerations[index]++;
+        _entityStates[index] = EntityState.Empty;
+        _entityStorage[index] = default;
+
+        return new EntityId(index, _entityGenerations[index]);
+    }
+
+    /// <summary>
+    /// Hard reclaim: unconditionally invalidates the entity and recycles its slot.
+    /// </summary>
+    public bool ReclaimEntityId(EntityId id)
+    {
+        ThrowIfDisposed();
+
+        if (!IsValidInternal(id))
+            return false;
+
+        ReclaimSlot(id.Index);
+        return true;
+    }
+
+    /// <summary>
+    /// Soft reclaim: reclaims only if the entity's storage binding matches the expected handle.
+    /// </summary>
+    public bool TryReclaimEntityId(EntityId id, StorageHandle storageHandle)
+    {
+        ThrowIfDisposed();
+
+        if (!IsValidInternal(id))
+            return false;
+
+        if (_entityStorage[id.Index] != storageHandle)
+            return false;
+
+        ReclaimSlot(id.Index);
+        return true;
+    }
+
+    /// <summary>
+    /// Returns whether the entity ID is currently valid.
+    /// </summary>
+    public bool IsValid(EntityId id)
+    {
+        ThrowIfDisposed();
+        return IsValidInternal(id);
+    }
+
+    /// <summary>
+    /// Transitions an entity from Empty to Bound, storing the storage binding.
+    /// </summary>
+    public void BindEntity(EntityId id, StorageHandle storageHandle)
+    {
+        ThrowIfDisposed();
+
+        if (!IsValidInternal(id))
+        {
+            throw new InvalidOperationException(
+                $"Entity {id} is not valid.");
+        }
+
+        if (_entityStates[id.Index] != EntityState.Empty)
+        {
+            throw new InvalidOperationException(
+                $"Entity {id} is in state {_entityStates[id.Index]}, expected Empty.");
+        }
+
+        _entityStorage[id.Index] = storageHandle;
+        _entityStates[id.Index] = EntityState.Bound;
+    }
+
+    /// <summary>
+    /// Returns the lifecycle state of the entity.
+    /// </summary>
+    public EntityState GetEntityState(EntityId id)
+    {
+        ThrowIfDisposed();
+
+        if (id.Index >= (uint)_entityHighWaterMark)
+            return EntityState.Null;
+
+        if (_entityGenerations[id.Index] != id.Generation)
+            return EntityState.Null;
+
+        return _entityStates[id.Index];
+    }
+
+    /// <summary>
+    /// Returns the storage handle bound to a valid, Bound entity.
+    /// </summary>
+    public StorageHandle GetStorageHandle(EntityId id)
+    {
+        ThrowIfDisposed();
+
+        if (!IsValidInternal(id))
+        {
+            throw new InvalidOperationException(
+                $"Entity {id} is not valid.");
+        }
+
+        if (_entityStates[id.Index] != EntityState.Bound)
+        {
+            throw new InvalidOperationException(
+                $"Entity {id} is in state {_entityStates[id.Index]}, expected Bound.");
+        }
+
+        return _entityStorage[id.Index];
+    }
+
+    /// <summary>
+    /// Convenience: resolves the entity's storage binding and returns an accessor.
+    /// </summary>
+    public StorageAccessor GetStorage(EntityId id)
+    {
+        ThrowIfDisposed();
+        return GetStorage(GetStorageHandle(id));
+    }
+
+    private bool IsValidInternal(EntityId id)
+    {
+        return id.Index < (uint)_entityHighWaterMark
+            && _entityGenerations[id.Index] == id.Generation
+            && _entityStates[id.Index] != EntityState.Null;
+    }
+
+    private void ReclaimSlot(uint index)
+    {
+        _entityStates[index] = EntityState.Null;
+        _entityGenerations[index]++;
+        _entityStorage[index] = default;
+        _entityFreeSlots.Push(index);
+    }
+
+    private void GrowEntityArrays()
+    {
+        var newCapacity = _entityGenerations.Length * 2;
+        Array.Resize(ref _entityGenerations, newCapacity);
+        Array.Resize(ref _entityStorage, newCapacity);
+        Array.Resize(ref _entityStates, newCapacity);
     }
 
     private void GrowArrays()

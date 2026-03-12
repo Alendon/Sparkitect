@@ -58,6 +58,67 @@ public interface IWorld : IDisposable
     void UnregisterFilter(FilterHandle handle);
 
     /// <summary>
+    /// Allocates a new entity ID with an incremented generation. The entity starts in <see cref="EntityState.Empty"/>.
+    /// </summary>
+    /// <returns>A valid <see cref="EntityId"/> with generation >= 1.</returns>
+    EntityId AllocateEntityId();
+
+    /// <summary>
+    /// Hard reclaim: unconditionally reclaims the entity ID, invalidating it and recycling the slot.
+    /// </summary>
+    /// <param name="id">The entity to reclaim.</param>
+    /// <returns>True if the entity was valid and reclaimed; false if already dead.</returns>
+    bool ReclaimEntityId(EntityId id);
+
+    /// <summary>
+    /// Soft reclaim: reclaims only if the entity's current storage binding matches the given handle.
+    /// Prevents accidental reclaim by a system that no longer owns the entity.
+    /// </summary>
+    /// <param name="id">The entity to reclaim.</param>
+    /// <param name="storageHandle">The expected storage binding.</param>
+    /// <returns>True if the entity was valid, binding matched, and was reclaimed; false otherwise.</returns>
+    bool TryReclaimEntityId(EntityId id, StorageHandle storageHandle);
+
+    /// <summary>
+    /// Returns whether the entity ID is currently valid (allocated, not reclaimed, correct generation).
+    /// </summary>
+    /// <param name="id">The entity ID to validate.</param>
+    /// <returns>True if the entity is alive.</returns>
+    bool IsValid(EntityId id);
+
+    /// <summary>
+    /// Transitions an entity from <see cref="EntityState.Empty"/> to <see cref="EntityState.Bound"/>,
+    /// associating it with a storage.
+    /// </summary>
+    /// <param name="id">The entity to bind.</param>
+    /// <param name="storageHandle">The storage to bind the entity to.</param>
+    /// <exception cref="InvalidOperationException">The entity is not in Empty state.</exception>
+    void BindEntity(EntityId id, StorageHandle storageHandle);
+
+    /// <summary>
+    /// Returns the current lifecycle state of the entity.
+    /// </summary>
+    /// <param name="id">The entity ID to query.</param>
+    /// <returns>The entity's current state.</returns>
+    EntityState GetEntityState(EntityId id);
+
+    /// <summary>
+    /// Returns the storage handle bound to the entity.
+    /// </summary>
+    /// <param name="id">The entity ID to query.</param>
+    /// <returns>The storage handle the entity is bound to.</returns>
+    /// <exception cref="InvalidOperationException">The entity is not in Bound state.</exception>
+    StorageHandle GetStorageHandle(EntityId id);
+
+    /// <summary>
+    /// Convenience method: resolves the entity's storage binding and returns an accessor.
+    /// Equivalent to <c>GetStorage(GetStorageHandle(id))</c>.
+    /// </summary>
+    /// <param name="id">The entity ID to query.</param>
+    /// <returns>A <see cref="StorageAccessor"/> for the entity's bound storage.</returns>
+    StorageAccessor GetStorage(EntityId id);
+
+    /// <summary>
     /// Creates a new World instance.
     /// </summary>
     /// <returns>A fresh <see cref="IWorld"/> implementation.</returns>

@@ -29,14 +29,14 @@ public class ModFileIdentifierTests
         var version = SemVersion.Parse("1.0.0", SemVersionStyles.Any);
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new ModFileIdentifier(null!, version));
+        Assert.Throws<ArgumentNullException>(() => _ = new ModFileIdentifier(null!, version));
     }
 
     [Test]
     public void Constructor_NullVersion_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new ModFileIdentifier("test_mod", null!));
+        Assert.Throws<ArgumentNullException>(() => _ = new ModFileIdentifier("test_mod", null!));
     }
 
     #endregion
@@ -140,7 +140,7 @@ public class ModFileIdentifierTests
     public async Task TryParse_EmptyString_ReturnsFalse()
     {
         // Act
-        var success = ModFileIdentifier.TryParse("", out var result);
+        var success = ModFileIdentifier.TryParse("", out _);
 
         // Assert
         await Assert.That(success).IsFalse();
@@ -150,7 +150,7 @@ public class ModFileIdentifierTests
     public async Task TryParse_InvalidFormat_ReturnsFalse()
     {
         // Act
-        var success = ModFileIdentifier.TryParse("invalid", out var result);
+        var success = ModFileIdentifier.TryParse("invalid", out _);
 
         // Assert
         await Assert.That(success).IsFalse();
@@ -160,7 +160,7 @@ public class ModFileIdentifierTests
     public async Task TryParse_InvalidVersion_ReturnsFalse()
     {
         // Act
-        var success = ModFileIdentifier.TryParse("test_mod@notaversion", out var result);
+        var success = ModFileIdentifier.TryParse("test_mod@notaversion", out _);
 
         // Assert
         await Assert.That(success).IsFalse();

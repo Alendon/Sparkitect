@@ -10,14 +10,14 @@ public class SoAStorageTests
     private static readonly Identification PositionId = TestPosition.Identification;
     private static readonly Identification VelocityId = TestVelocity.Identification;
 
-    private static SoAStorage CreateTestStorage(FakeObjectTracker tracker, int initialCapacity = 64)
+    private static SoAStorage CreateTestStorage(FakeObjectTracker tracker, IWorld? world = null, int initialCapacity = 64)
     {
         var componentMeta = new (Identification Id, int Size, int Alignment)[]
         {
             (PositionId, sizeof(float) * 2, sizeof(float)),
             (VelocityId, sizeof(float) * 2, sizeof(float))
         };
-        return new SoAStorage(componentMeta, tracker, initialCapacity);
+        return new SoAStorage(componentMeta, tracker, world ?? IWorld.Create(), initialCapacity);
     }
 
     [Test]
@@ -178,19 +178,19 @@ public class SoAStorageTests
     {
         var tracker = new FakeObjectTracker();
         using var world = IWorld.Create();
-        using var storage = CreateTestStorage(tracker);
+        using var storage = CreateTestStorage(tracker, world);
 
         // Allocate entity and set component data
         var slot = storage.AllocateEntity();
         storage.Set(PositionId, slot, new TestPosition { X = 42f, Y = 99f });
         storage.Set(VelocityId, slot, new TestVelocity { Dx = 1f, Dy = -1f });
 
-        // Register with World using capability registrations
-        var componentIds = new HashSet<Identification> { PositionId, VelocityId };
-        var capabilities = SoAStorage.CreateCapabilityRegistrations(componentIds);
+        // Register with World using instance capability registrations
+        var capabilities = storage.CreateCapabilityRegistrations();
         var handle = world.AddStorage(storage, capabilities);
 
         // Resolve via IChunkedIteration requirement
+        var componentIds = new HashSet<Identification> { PositionId, VelocityId };
         var requirement = new ChunkedIterationRequirement(componentIds);
         var results = world.Resolve(new ICapabilityRequirement[] { requirement });
 
@@ -216,6 +216,172 @@ public class SoAStorageTests
         var pos = componentAccess!.Get<TestPosition>(PositionId, 0);
         await Assert.That(pos.X).IsEqualTo(42f);
         await Assert.That(pos.Y).IsEqualTo(99f);
+    }
+
+    [Test]
+    public async Task Identity_AssignAndTryResolve_RoundTrip()
+    {
+        var tracker = new FakeObjectTracker();
+        using var world = IWorld.Create();
+        using var storage = CreateTestStorage(tracker, world);
+
+        var capabilities = storage.CreateCapabilityRegistrations();
+        var storageHandle = world.AddStorage(storage, capabilities);
+        storage.SetHandle(storageHandle);
+
+        var entityId = world.AllocateEntityId();
+        var slot = storage.AllocateEntity();
+
+        storage.Assign(entityId, slot);
+
+        var found = storage.TryResolve(entityId, out int resolvedSlot);
+        await Assert.That(found).IsTrue();
+        await Assert.That(resolvedSlot).IsEqualTo(slot);
+
+        var resolvedId = storage.GetEntityId(slot);
+        await Assert.That(resolvedId).IsEqualTo(entityId);
+    }
+
+    [Test]
+    public async Task Identity_Assign_ThrowsIfSetHandleNotCalled()
+    {
+        var tracker = new FakeObjectTracker();
+        using var world = IWorld.Create();
+        using var storage = CreateTestStorage(tracker, world);
+
+        var entityId = world.AllocateEntityId();
+
+        await Assert.That(() =>
+        {
+            storage.Assign(entityId, 0);
+        }).Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task Identity_Assign_CallsWorldBindEntity()
+    {
+        var tracker = new FakeObjectTracker();
+        using var world = IWorld.Create();
+        using var storage = CreateTestStorage(tracker, world);
+
+        var capabilities = storage.CreateCapabilityRegistrations();
+        var storageHandle = world.AddStorage(storage, capabilities);
+        storage.SetHandle(storageHandle);
+
+        var entityId = world.AllocateEntityId();
+        var slot = storage.AllocateEntity();
+        storage.Assign(entityId, slot);
+
+        // World should have bound this entity to our storage
+        var state = world.GetEntityState(entityId);
+        await Assert.That(state).IsEqualTo(EntityState.Bound);
+
+        var boundHandle = world.GetStorageHandle(entityId);
+        await Assert.That(boundHandle).IsEqualTo(storageHandle);
+    }
+
+    [Test]
+    public async Task RemoveEntity_SwapAndPop_PreservesIdentityMappings()
+    {
+        var tracker = new FakeObjectTracker();
+        using var world = IWorld.Create();
+        using var storage = CreateTestStorage(tracker, world);
+
+        var capabilities = storage.CreateCapabilityRegistrations();
+        var storageHandle = world.AddStorage(storage, capabilities);
+        storage.SetHandle(storageHandle);
+
+        // Create 3 entities
+        var id0 = world.AllocateEntityId();
+        var id1 = world.AllocateEntityId();
+        var id2 = world.AllocateEntityId();
+
+        var s0 = storage.AllocateEntity();
+        var s1 = storage.AllocateEntity();
+        var s2 = storage.AllocateEntity();
+
+        storage.Assign(id0, s0);
+        storage.Assign(id1, s1);
+        storage.Assign(id2, s2);
+
+        storage.Set(PositionId, s0, new TestPosition { X = 10f, Y = 10f });
+        storage.Set(PositionId, s1, new TestPosition { X = 20f, Y = 20f });
+        storage.Set(PositionId, s2, new TestPosition { X = 30f, Y = 30f });
+
+        // Remove entity at slot 0 -- entity from slot 2 swaps to slot 0
+        storage.Unassign(id0);
+        storage.RemoveEntity(s0);
+
+        // id2 should now resolve to slot 0 (it was at slot 2, swapped to 0)
+        var found2 = storage.TryResolve(id2, out int slot2);
+        await Assert.That(found2).IsTrue();
+        await Assert.That(slot2).IsEqualTo(0);
+
+        // id1 should still resolve to slot 1 (unchanged)
+        var found1 = storage.TryResolve(id1, out int slot1);
+        await Assert.That(found1).IsTrue();
+        await Assert.That(slot1).IsEqualTo(1);
+
+        // Verify component data was swapped correctly too
+        var pos0 = storage.Get<TestPosition>(PositionId, 0);
+        await Assert.That(pos0.X).IsEqualTo(30f);
+    }
+
+    [Test]
+    public async Task Identity_CreateCapabilityRegistrations_IncludesEntityIdentity()
+    {
+        var tracker = new FakeObjectTracker();
+        using var world = IWorld.Create();
+        using var storage = CreateTestStorage(tracker, world);
+
+        var capabilities = storage.CreateCapabilityRegistrations();
+
+        // Should have 4 registrations: IChunkedIteration, IComponentAccess<int>, IEntityMutation<int>, IEntityIdentity<int>
+        await Assert.That(capabilities).HasCount().EqualTo(4);
+    }
+
+    [Test]
+    public async Task EndToEnd_EntityLifecycle_AllocateAssignDestroyRecycle()
+    {
+        var tracker = new FakeObjectTracker();
+        using var world = IWorld.Create();
+        using var storage = CreateTestStorage(tracker, world);
+
+        var capabilities = storage.CreateCapabilityRegistrations();
+        var storageHandle = world.AddStorage(storage, capabilities);
+        storage.SetHandle(storageHandle);
+
+        // Allocate entity ID and slot, assign identity
+        var entityId = world.AllocateEntityId();
+        var slot = storage.AllocateEntity();
+        storage.Set(PositionId, slot, new TestPosition { X = 100f, Y = 200f });
+        storage.Assign(entityId, slot);
+
+        // Verify entity is valid and resolvable
+        await Assert.That(world.IsValid(entityId)).IsTrue();
+        var found = storage.TryResolve(entityId, out int resolvedSlot);
+        await Assert.That(found).IsTrue();
+        await Assert.That(resolvedSlot).IsEqualTo(slot);
+
+        // Destroy: unassign, remove from storage, reclaim ID
+        storage.Unassign(entityId);
+        storage.RemoveEntity(slot);
+        world.ReclaimEntityId(entityId);
+
+        // Old ID should be invalid
+        await Assert.That(world.IsValid(entityId)).IsFalse();
+        var foundAfter = storage.TryResolve(entityId, out _);
+        await Assert.That(foundAfter).IsFalse();
+
+        // Allocate new entity -- should reuse the reclaimed slot
+        var newEntityId = world.AllocateEntityId();
+        var newSlot = storage.AllocateEntity();
+        storage.Assign(newEntityId, newSlot);
+
+        // New entity has bumped generation
+        await Assert.That(world.IsValid(newEntityId)).IsTrue();
+        // Old entity ID remains invalid (generation mismatch)
+        await Assert.That(world.IsValid(entityId)).IsFalse();
     }
 }
 

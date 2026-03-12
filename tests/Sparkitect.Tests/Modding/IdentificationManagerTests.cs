@@ -1,4 +1,3 @@
-using OneOf;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Tests.Modding;

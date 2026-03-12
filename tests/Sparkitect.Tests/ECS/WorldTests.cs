@@ -1,7 +1,6 @@
 using Sparkitect.ECS;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Storage;
-using TUnit.Assertions.Extensions;
 
 namespace Sparkitect.Tests.ECS;
 
