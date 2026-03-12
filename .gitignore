@@ -13,3 +13,4 @@ docs/export.txt
 .envrc
 .run/
 .planning/
+BenchmarkDotNet.Artifacts/

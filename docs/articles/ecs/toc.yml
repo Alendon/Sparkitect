@@ -2,3 +2,5 @@
   href: index.md
 - name: ECS Requirements
   href: ecs-requirements.md
+- name: ECS Design Model
+  href: ecs-design.md
