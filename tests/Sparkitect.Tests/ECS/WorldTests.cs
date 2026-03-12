@@ -9,7 +9,7 @@ public interface ITestCapability : ICapability;
 
 public record TestCapabilityMetadata(string Name) : ICapabilityMetadata;
 
-public class TestCapabilityRequirement : ICapabilityRequirement<TestCapabilityMetadata>
+public class TestCapabilityRequirement : ICapabilityRequirement<ITestCapability, TestCapabilityMetadata>
 {
     private readonly string _name;
 
@@ -187,7 +187,7 @@ public class WorldTests
         var storage = new TestCapabilityStorage();
         var capabilities = new[]
         {
-            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
+            new CapabilityRegistration<ITestCapability, TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         };
         var handle = world.AddStorage(storage, capabilities);
 
@@ -207,7 +207,7 @@ public class WorldTests
         var storage = new TestCapabilityStorage();
         var capabilities = new[]
         {
-            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
+            new CapabilityRegistration<ITestCapability, TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         };
         world.AddStorage(storage, capabilities);
 
@@ -226,7 +226,7 @@ public class WorldTests
         var storage = new TestCapabilityStorage();
         var capabilities = new[]
         {
-            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
+            new CapabilityRegistration<ITestCapability, TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         };
         world.AddStorage(storage, capabilities);
 
@@ -249,11 +249,11 @@ public class WorldTests
 
         world.AddStorage(s1, new[]
         {
-            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
+            new CapabilityRegistration<ITestCapability, TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
         world.AddStorage(s2, new[]
         {
-            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Velocity"))
+            new CapabilityRegistration<ITestCapability, TestCapabilityMetadata>(new TestCapabilityMetadata("Velocity"))
         });
 
         var posResults = world.Resolve(new ICapabilityRequirement[]
@@ -276,7 +276,7 @@ public class WorldTests
         var storage = new TestCapabilityStorage();
         world.AddStorage(storage, new[]
         {
-            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
+            new CapabilityRegistration<ITestCapability, TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
 
         IReadOnlyList<StorageHandle>? received = null;
@@ -311,7 +311,7 @@ public class WorldTests
         var storage = new TestCapabilityStorage();
         world.AddStorage(storage, new[]
         {
-            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
+            new CapabilityRegistration<ITestCapability, TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
 
         await Assert.That(callbackCount).IsEqualTo(2);
@@ -328,7 +328,7 @@ public class WorldTests
         var storage = new TestCapabilityStorage();
         var handle = world.AddStorage(storage, new[]
         {
-            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
+            new CapabilityRegistration<ITestCapability, TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
 
         world.RegisterFilter(
@@ -369,7 +369,7 @@ public class WorldTests
         var storage = new TestCapabilityStorage();
         world.AddStorage(storage, new[]
         {
-            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
+            new CapabilityRegistration<ITestCapability, TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
 
         await Assert.That(callbackCount).IsEqualTo(1);
