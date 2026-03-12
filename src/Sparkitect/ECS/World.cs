@@ -8,7 +8,7 @@ namespace Sparkitect.ECS;
 /// Central ECS coordinator managing storage lifecycle and capability discovery.
 /// Uses generational slot management with parallel arrays for efficient storage access.
 /// </summary>
-public class World : IDisposable
+internal class World : IWorld
 {
     private const int InitialCapacity = 4;
 
@@ -191,8 +191,6 @@ public class World : IDisposable
         }
     }
 
-    #region Private Helpers
-
     private void ValidateHandle(StorageHandle handle)
     {
         if (handle.Index >= (uint)_highWaterMark)
@@ -247,27 +245,10 @@ public class World : IDisposable
         ICapabilityRequirement requirement,
         List<CapabilityRegistration> capabilities)
     {
-        // Find the ICapabilityRequirement<TMeta> interface on the requirement
-        var reqType = requirement.GetType();
-        var reqInterfaces = reqType.GetInterfaces();
-
-        foreach (var iface in reqInterfaces)
+        for (int i = 0; i < capabilities.Count; i++)
         {
-            if (!iface.IsGenericType) continue;
-            if (iface.GetGenericTypeDefinition() != typeof(ICapabilityRequirement<>)) continue;
-
-            // Extract TMeta from ICapabilityRequirement<TMeta>
-            var tMeta = iface.GetGenericArguments()[0];
-            var matchesMethod = iface.GetMethod("Matches")!;
-
-            // Check each capability registration
-            foreach (var cap in capabilities)
-            {
-                if (!tMeta.IsAssignableFrom(cap.Metadata.GetType())) continue;
-
-                var result = (bool)matchesMethod.Invoke(requirement, new object[] { cap.Metadata })!;
-                if (result) return true;
-            }
+            if (capabilities[i].TryMatch(requirement))
+                return true;
         }
 
         return false;
@@ -301,10 +282,6 @@ public class World : IDisposable
         }
     }
 
-    #endregion
-
-    #region Nested Types
-
     private sealed class FilterEntry
     {
         public IReadOnlyList<ICapabilityRequirement> Filter { get; }
@@ -320,6 +297,4 @@ public class World : IDisposable
             Active = true;
         }
     }
-
-    #endregion
 }

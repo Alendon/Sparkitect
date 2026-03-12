@@ -1,18 +1,47 @@
 namespace Sparkitect.ECS.Capabilities;
 
 /// <summary>
-/// Pairs a capability CLR type with its metadata for storage registration.
-/// Passed to <see cref="World"/> when adding a storage to declare which capabilities it provides.
+/// Abstract base for capability registrations. Each registration carries typed metadata
+/// and supports polymorphic matching against <see cref="ICapabilityRequirement"/> instances
+/// without reflection.
 /// </summary>
-public readonly struct CapabilityRegistration
+public abstract class CapabilityRegistration
 {
     /// <summary>
-    /// The closed generic capability interface type (e.g., <c>typeof(IPositionCapability&lt;MyKey&gt;)</c>).
+    /// Attempts to match this registration against the given requirement using CLR pattern matching.
+    /// Returns <c>true</c> if the requirement is a typed <see cref="ICapabilityRequirement{TMeta}"/>
+    /// whose metadata type matches and whose <see cref="ICapabilityRequirement{TMeta}.Matches"/> returns <c>true</c>.
     /// </summary>
-    public required Type CapabilityType { get; init; }
+    /// <param name="requirement">The capability requirement to match against.</param>
+    /// <returns><c>true</c> if this registration satisfies the requirement; otherwise <c>false</c>.</returns>
+    internal abstract bool TryMatch(ICapabilityRequirement requirement);
+}
+
+/// <summary>
+/// Sealed generic subclass carrying typed metadata for a specific <typeparamref name="TMeta"/> type.
+/// The CLR dispatches <see cref="TryMatch"/> via virtual call, avoiding all reflection.
+/// </summary>
+/// <typeparam name="TMeta">The capability metadata type this registration carries.</typeparam>
+public sealed class CapabilityRegistration<TMeta> : CapabilityRegistration
+    where TMeta : ICapabilityMetadata
+{
+    private readonly TMeta _metadata;
 
     /// <summary>
-    /// Metadata describing how this capability is provided by the registering storage.
+    /// Creates a new capability registration with the specified metadata.
     /// </summary>
-    public required ICapabilityMetadata Metadata { get; init; }
+    /// <param name="metadata">The metadata describing how the capability is provided.</param>
+    public CapabilityRegistration(TMeta metadata)
+    {
+        _metadata = metadata;
+    }
+
+    /// <inheritdoc/>
+    internal override bool TryMatch(ICapabilityRequirement requirement)
+    {
+        if (requirement is ICapabilityRequirement<TMeta> typed)
+            return typed.Matches(_metadata);
+
+        return false;
+    }
 }

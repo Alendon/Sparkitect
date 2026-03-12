@@ -5,8 +5,6 @@ using TUnit.Assertions.Extensions;
 
 namespace Sparkitect.Tests.ECS;
 
-#region Test Helpers
-
 public interface ITestCapability : ICapability;
 
 public record TestCapabilityMetadata(string Name) : ICapabilityMetadata;
@@ -65,27 +63,36 @@ public class ThrowingStorage : IStorage<int>
     }
 }
 
-#endregion
-
 public class WorldTests
 {
-    #region AddStorage / GetStorage
-
     [Test]
-    public async Task AddStorage_ReturnsValidHandle()
+    public async Task AddStorage_SlotAllocation_AssignsExpectedHandles()
     {
-        using var world = new World();
-        var storage = new TestStorage();
+        using var world = IWorld.Create();
+        var s1 = new TestStorage();
+        var s2 = new TestStorage();
 
-        var handle = world.AddStorage(storage, Array.Empty<CapabilityRegistration>());
+        var h1 = world.AddStorage(s1, Array.Empty<CapabilityRegistration>());
+        var h2 = world.AddStorage(s2, Array.Empty<CapabilityRegistration>());
+        world.RemoveStorage(h1);
+        var s3 = new TestStorage();
+        var h3 = world.AddStorage(s3, Array.Empty<CapabilityRegistration>());
 
-        await Assert.That(handle.Generation).IsGreaterThanOrEqualTo((uint)0);
+        // First alloc: index 0, generation 0
+        await Assert.That(h1.Index).IsEqualTo((uint)0);
+        await Assert.That(h1.Generation).IsEqualTo((uint)0);
+        // Second alloc: index 1, generation 0
+        await Assert.That(h2.Index).IsEqualTo((uint)1);
+        await Assert.That(h2.Generation).IsEqualTo((uint)0);
+        // Third alloc reuses freed slot 0, generation bumped
+        await Assert.That(h3.Index).IsEqualTo((uint)0);
+        await Assert.That(h3.Generation).IsEqualTo((uint)1);
     }
 
     [Test]
     public async Task AddStorage_MultipleStorages_ReturnsDifferentHandles()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var s1 = new TestStorage();
         var s2 = new TestStorage();
 
@@ -98,7 +105,7 @@ public class WorldTests
     [Test]
     public async Task GetStorage_ValidHandle_ReturnsAccessorWithCorrectHandle()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestStorage();
         var handle = world.AddStorage(storage, Array.Empty<CapabilityRegistration>());
 
@@ -110,7 +117,7 @@ public class WorldTests
     [Test]
     public async Task GetStorage_ValidHandle_AccessorCanCastToStorageType()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestCapabilityStorage();
         var handle = world.AddStorage(storage, Array.Empty<CapabilityRegistration>());
 
@@ -123,7 +130,7 @@ public class WorldTests
     [Test]
     public async Task GetStorage_StaleHandle_ThrowsInvalidOperationException()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestStorage();
         var handle = world.AddStorage(storage, Array.Empty<CapabilityRegistration>());
         world.RemoveStorage(handle);
@@ -134,14 +141,10 @@ public class WorldTests
         }).Throws<InvalidOperationException>();
     }
 
-    #endregion
-
-    #region RemoveStorage
-
     [Test]
     public async Task RemoveStorage_DisposesStorage()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestStorage();
         var handle = world.AddStorage(storage, Array.Empty<CapabilityRegistration>());
 
@@ -153,7 +156,7 @@ public class WorldTests
     [Test]
     public async Task RemoveStorage_InvalidatesHandle()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestStorage();
         var handle = world.AddStorage(storage, Array.Empty<CapabilityRegistration>());
 
@@ -168,7 +171,7 @@ public class WorldTests
     [Test]
     public async Task RemoveStorage_StaleHandle_ThrowsInvalidOperationException()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestStorage();
         var handle = world.AddStorage(storage, Array.Empty<CapabilityRegistration>());
 
@@ -177,22 +180,14 @@ public class WorldTests
         await Assert.That(() => world.RemoveStorage(handle)).Throws<InvalidOperationException>();
     }
 
-    #endregion
-
-    #region Resolve
-
     [Test]
     public async Task Resolve_MatchingFilter_ReturnsMatchingHandles()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestCapabilityStorage();
         var capabilities = new[]
         {
-            new CapabilityRegistration
-            {
-                CapabilityType = typeof(ITestCapability),
-                Metadata = new TestCapabilityMetadata("Position")
-            }
+            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         };
         var handle = world.AddStorage(storage, capabilities);
 
@@ -208,15 +203,11 @@ public class WorldTests
     [Test]
     public async Task Resolve_NonMatchingFilter_ReturnsEmpty()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestCapabilityStorage();
         var capabilities = new[]
         {
-            new CapabilityRegistration
-            {
-                CapabilityType = typeof(ITestCapability),
-                Metadata = new TestCapabilityMetadata("Position")
-            }
+            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         };
         world.AddStorage(storage, capabilities);
 
@@ -231,15 +222,11 @@ public class WorldTests
     [Test]
     public async Task Resolve_MultipleRequirements_AllMustMatch()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestCapabilityStorage();
         var capabilities = new[]
         {
-            new CapabilityRegistration
-            {
-                CapabilityType = typeof(ITestCapability),
-                Metadata = new TestCapabilityMetadata("Position")
-            }
+            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         };
         world.AddStorage(storage, capabilities);
 
@@ -256,25 +243,17 @@ public class WorldTests
     [Test]
     public async Task AddStorage_WithCapabilities_MakesStorageDiscoverableViaResolve()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var s1 = new TestCapabilityStorage();
         var s2 = new TestCapabilityStorage();
 
         world.AddStorage(s1, new[]
         {
-            new CapabilityRegistration
-            {
-                CapabilityType = typeof(ITestCapability),
-                Metadata = new TestCapabilityMetadata("Position")
-            }
+            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
         world.AddStorage(s2, new[]
         {
-            new CapabilityRegistration
-            {
-                CapabilityType = typeof(ITestCapability),
-                Metadata = new TestCapabilityMetadata("Velocity")
-            }
+            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Velocity"))
         });
 
         var posResults = world.Resolve(new ICapabilityRequirement[]
@@ -290,22 +269,14 @@ public class WorldTests
         await Assert.That(velResults).HasCount().EqualTo(1);
     }
 
-    #endregion
-
-    #region RegisterFilter / UnregisterFilter
-
     [Test]
     public async Task RegisterFilter_FiresCallbackImmediatelyWithCurrentMatches()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var storage = new TestCapabilityStorage();
         world.AddStorage(storage, new[]
         {
-            new CapabilityRegistration
-            {
-                CapabilityType = typeof(ITestCapability),
-                Metadata = new TestCapabilityMetadata("Position")
-            }
+            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
 
         IReadOnlyList<StorageHandle>? received = null;
@@ -320,7 +291,7 @@ public class WorldTests
     [Test]
     public async Task RegisterFilter_FiresCallbackWhenNewMatchingStorageAdded()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var callbackCount = 0;
         IReadOnlyList<StorageHandle>? lastReceived = null;
 
@@ -340,11 +311,7 @@ public class WorldTests
         var storage = new TestCapabilityStorage();
         world.AddStorage(storage, new[]
         {
-            new CapabilityRegistration
-            {
-                CapabilityType = typeof(ITestCapability),
-                Metadata = new TestCapabilityMetadata("Position")
-            }
+            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
 
         await Assert.That(callbackCount).IsEqualTo(2);
@@ -354,18 +321,14 @@ public class WorldTests
     [Test]
     public async Task RegisterFilter_FiresCallbackWhenMatchingStorageRemoved()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var callbackCount = 0;
         IReadOnlyList<StorageHandle>? lastReceived = null;
 
         var storage = new TestCapabilityStorage();
         var handle = world.AddStorage(storage, new[]
         {
-            new CapabilityRegistration
-            {
-                CapabilityType = typeof(ITestCapability),
-                Metadata = new TestCapabilityMetadata("Position")
-            }
+            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
 
         world.RegisterFilter(
@@ -390,7 +353,7 @@ public class WorldTests
     [Test]
     public async Task UnregisterFilter_StopsCallbackFromFiring()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var callbackCount = 0;
 
         var filterHandle = world.RegisterFilter(
@@ -406,19 +369,11 @@ public class WorldTests
         var storage = new TestCapabilityStorage();
         world.AddStorage(storage, new[]
         {
-            new CapabilityRegistration
-            {
-                CapabilityType = typeof(ITestCapability),
-                Metadata = new TestCapabilityMetadata("Position")
-            }
+            new CapabilityRegistration<TestCapabilityMetadata>(new TestCapabilityMetadata("Position"))
         });
 
         await Assert.That(callbackCount).IsEqualTo(1);
     }
-
-    #endregion
-
-    #region Dispose
 
     [Test]
     public async Task Dispose_DisposesAllActiveStorages()
@@ -426,7 +381,7 @@ public class WorldTests
         var s1 = new TestStorage();
         var s2 = new TestStorage();
 
-        var world = new World();
+        var world = IWorld.Create();
         world.AddStorage(s1, Array.Empty<CapabilityRegistration>());
         world.AddStorage(s2, Array.Empty<CapabilityRegistration>());
 
@@ -442,7 +397,7 @@ public class WorldTests
         var throwing = new ThrowingStorage();
         var normal = new TestStorage();
 
-        var world = new World();
+        var world = IWorld.Create();
         world.AddStorage(throwing, Array.Empty<CapabilityRegistration>());
         world.AddStorage(normal, Array.Empty<CapabilityRegistration>());
 
@@ -456,7 +411,7 @@ public class WorldTests
     [Test]
     public async Task Dispose_MakesAllHandlesStale()
     {
-        var world = new World();
+        var world = IWorld.Create();
         var storage = new TestStorage();
         var handle = world.AddStorage(storage, Array.Empty<CapabilityRegistration>());
 
@@ -471,7 +426,7 @@ public class WorldTests
     [Test]
     public async Task Dispose_DoubleDispose_IsSafe()
     {
-        var world = new World();
+        var world = IWorld.Create();
         var storage = new TestStorage();
         world.AddStorage(storage, Array.Empty<CapabilityRegistration>());
 
@@ -481,33 +436,10 @@ public class WorldTests
         await Assert.That(storage.IsDisposed).IsTrue();
     }
 
-    #endregion
-
-    #region Slot Recycling
-
-    [Test]
-    public async Task SlotRecycling_FreedSlotIsReused()
-    {
-        using var world = new World();
-        var s1 = new TestStorage();
-        var handle1 = world.AddStorage(s1, Array.Empty<CapabilityRegistration>());
-        var originalIndex = handle1.Index;
-
-        world.RemoveStorage(handle1);
-
-        var s2 = new TestStorage();
-        var handle2 = world.AddStorage(s2, Array.Empty<CapabilityRegistration>());
-
-        // Same slot index reused
-        await Assert.That(handle2.Index).IsEqualTo(originalIndex);
-        // But generation incremented
-        await Assert.That(handle2.Generation).IsGreaterThan(handle1.Generation);
-    }
-
     [Test]
     public async Task SlotRecycling_StaleHandleCannotAccessNewStorage()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var s1 = new TestStorage();
         var staleHandle = world.AddStorage(s1, Array.Empty<CapabilityRegistration>());
 
@@ -523,14 +455,10 @@ public class WorldTests
         }).Throws<InvalidOperationException>();
     }
 
-    #endregion
-
-    #region Array Growth
-
     [Test]
     public async Task ArrayGrowth_MoreThanInitialCapacity_WorksCorrectly()
     {
-        using var world = new World();
+        using var world = IWorld.Create();
         var handles = new List<StorageHandle>();
 
         // Add more than initial capacity (4)
@@ -548,6 +476,4 @@ public class WorldTests
             await Assert.That(accessor.Handle).IsEqualTo(handles[i]);
         }
     }
-
-    #endregion
 }
