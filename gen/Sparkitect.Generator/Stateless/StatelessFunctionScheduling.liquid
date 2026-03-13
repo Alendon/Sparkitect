@@ -6,10 +6,10 @@ namespace {{ Namespace }};
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.GameState.ApplySchedulingEntrypointAttribute<{{ StatelessFunctionAttributeType }}>]
 internal class {{ ClassName }}
-    : global::Sparkitect.GameState.ApplySchedulingEntrypoint<{{ StatelessFunctionAttributeType }}, {{ ContextType }}>
+    : global::Sparkitect.GameState.ApplySchedulingEntrypoint<{{ StatelessFunctionAttributeType }}, {{ ContextType }}, {{ BuilderType }}>
 {
     public override void BuildGraph(
-        global::Sparkitect.Stateless.IExecutionGraphBuilder builder,
+        {{ BuilderType }} builder,
         {{ ContextType }} context)
     {
 {% for func in Functions %}

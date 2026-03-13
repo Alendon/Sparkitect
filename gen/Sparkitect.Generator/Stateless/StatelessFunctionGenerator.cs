@@ -89,19 +89,21 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         // Find SchedulingAttribute (or derived)
         AttributeData? schedulingAttr = null;
         INamedTypeSymbol? schedulingType = null;
+        INamedTypeSymbol? builderType = null;
 
         foreach (var attr in methodSymbol.GetAttributes())
         {
             var baseGeneric = FindGenericBase(attr.AttributeClass, SchedulingAttributeBase);
-            if (baseGeneric is { TypeArguments.Length: 4 })
+            if (baseGeneric is { TypeArguments.Length: 5 })
             {
                 schedulingAttr = attr;
                 schedulingType = baseGeneric.TypeArguments[0] as INamedTypeSymbol;
+                builderType = baseGeneric.TypeArguments[4] as INamedTypeSymbol;
                 break;
             }
         }
 
-        if (schedulingAttr is null || schedulingType is null)
+        if (schedulingAttr is null || schedulingType is null || builderType is null)
             return null;
 
         // Get containing type
@@ -159,6 +161,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             registryType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             registryKey,
             contextType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            builderType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             parentFullName,
             parentIdentificationTypeName,
             parameters,
@@ -542,6 +545,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             ClassName = $"{parent.ParentTypeName}_{registryShort}Scheduling",
             StatelessFunctionAttributeType = funcAttrFullType,
             ContextType = firstFunc.ContextTypeName,
+            BuilderType = firstFunc.BuilderTypeName,
             Functions = functions.Select(f => new
             {
                 f.SchedulingTypeName,

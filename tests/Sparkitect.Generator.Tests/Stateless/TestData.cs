@@ -50,8 +50,8 @@ public static partial class TestData
             /// Base class for scheduling attributes.
             /// </summary>
             [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-            public abstract class SchedulingAttribute<TScheduling, TStatelessFunction, TContext, TRegistry> : Attribute
-                where TScheduling : IScheduling<TStatelessFunction, TContext, TRegistry>
+            public abstract class SchedulingAttribute<TScheduling, TStatelessFunction, TContext, TRegistry, TBuilder> : Attribute
+                where TScheduling : IScheduling<TStatelessFunction, TContext, TRegistry, TBuilder>
                 where TStatelessFunction : StatelessFunctionAttribute<TContext, TRegistry>
                 where TContext : class
                 where TRegistry : IRegistry;
@@ -112,12 +112,12 @@ public static partial class TestData
             /// <summary>
             /// Defines a scheduling implementation for stateless functions.
             /// </summary>
-            public interface IScheduling<TStatelessFunction, TContext, TRegistry>
+            public interface IScheduling<TStatelessFunction, TContext, TRegistry, TBuilder>
                 where TStatelessFunction : StatelessFunctionAttribute<TContext, TRegistry>
                 where TContext : class
                 where TRegistry : IRegistry
             {
-                void BuildGraph(IExecutionGraphBuilder builder, TContext context, Identification functionId, Identification ownerId);
+                void BuildGraph(TBuilder builder, TContext context, Identification functionId, Identification ownerId);
             }
 
             public interface IExecutionGraphBuilder
@@ -172,12 +172,12 @@ public static partial class TestData
             /// </summary>
             [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
             public sealed class TestSchedulingAttribute
-                : SchedulingAttribute<TestScheduling, TestFunctionAttribute, TestContext, TestRegistry>;
+                : SchedulingAttribute<TestScheduling, TestFunctionAttribute, TestContext, TestRegistry, IExecutionGraphBuilder>;
 
             /// <summary>
             /// Test scheduling implementation.
             /// </summary>
-            public sealed class TestScheduling : IScheduling<TestFunctionAttribute, TestContext, TestRegistry>
+            public sealed class TestScheduling : IScheduling<TestFunctionAttribute, TestContext, TestRegistry, IExecutionGraphBuilder>
             {
                 private readonly OrderAfterAttribute[]? _orderAfter;
                 private readonly OrderBeforeAttribute[]? _orderBefore;

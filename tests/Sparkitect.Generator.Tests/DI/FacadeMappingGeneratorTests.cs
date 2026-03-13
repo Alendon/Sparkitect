@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using Sparkitect.Generator.DI;
@@ -15,9 +16,18 @@ public class FacadeMappingGeneratorTests : SourceGeneratorTestBase<FacadeMapping
         TestSources.Add(TestData.DiAttributes);
         TestSources.Add(TestData.GameStateAttributes);
         TestSources.Add(TestData.ModdingCode);
+
+        AnalyzerConfigFiles.Add(("/TestConfig.editorconfig", """
+            is_global = true
+            build_property.ModName = Facade Test Mod
+            build_property.ModId = facade_test
+            build_property.RootNamespace = FacadeTest
+            build_property.SgOutputNamespace = FacadeTest.Generated
+            """));
     }
 
-    public override ModBuildSettings BuildSettings { get; }
+    public override ModBuildSettings BuildSettings => new("Facade Test Mod", "facade_test",
+        "FacadeTest", false, "FacadeTest.Generated");
 
     [Test]
     public async Task FacadeMappingGenerator_SingleFacadeInterface_GeneratesConfigurator(CancellationToken token)
@@ -178,5 +188,37 @@ public class FacadeMappingGeneratorTests : SourceGeneratorTestBase<FacadeMapping
         var mappings = FacadeMappingGenerator.ExtractFacadeMappings(classSymbol!);
 
         await Assert.That(mappings).IsNull();
+    }
+
+    [Test]
+    public async Task RenderFacadeConfigurator_WithSgOutputNamespace_UsesModNamespace()
+    {
+        var mappings = ImmutableArray.Create(
+            new FacadeMapping("global::FacadeTest.ITestFacade", "global::FacadeTest.ITestService",
+                "global::Sparkitect.GameState.StateFacadeAttribute"));
+
+        var settings = new ModBuildSettings("MyMod", "my_mod", "MyMod", false, "MyMod.Generated");
+
+        var result = FacadeMappingGenerator.RenderFacadeConfigurator(
+            mappings, "global::Sparkitect.GameState.StateFacadeAttribute", settings, out var code, out _);
+
+        await Assert.That(result).IsTrue();
+        await Assert.That(code).Contains("namespace MyMod.Generated.CompilerGenerated.DI;");
+    }
+
+    [Test]
+    public async Task RenderFacadeConfigurator_WithEmptySgOutputNamespace_FallsBackToMarkerNamespace()
+    {
+        var mappings = ImmutableArray.Create(
+            new FacadeMapping("global::FacadeTest.ITestFacade", "global::FacadeTest.ITestService",
+                "global::Sparkitect.GameState.StateFacadeAttribute"));
+
+        var settings = new ModBuildSettings("MyMod", "my_mod", "MyMod", false, "");
+
+        var result = FacadeMappingGenerator.RenderFacadeConfigurator(
+            mappings, "global::Sparkitect.GameState.StateFacadeAttribute", settings, out var code, out _);
+
+        await Assert.That(result).IsTrue();
+        await Assert.That(code).Contains("namespace Sparkitect.GameState.CompilerGenerated.DI;");
     }
 }

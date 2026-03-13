@@ -5,7 +5,7 @@ using Sparkitect.Stateless;
 namespace Sparkitect.GameState;
 
 // TODO: Minimize generics - implement "genericless base marker" pattern.
-// SchedulingAttribute currently requires 4 generic params for CLR but SG only needs TStatelessFunction.
+// SchedulingAttribute currently requires 5 generic params for CLR but SG only needs TStatelessFunction.
 // Consider non-generic marker base that SG can detect, with generics only for compile-time safety.
 
 /// <summary>
@@ -22,7 +22,8 @@ public class ApplySchedulingEntrypointAttribute<TStatelessFunction> : Attribute
 /// </summary>
 /// <typeparam name="TStatelessFunction">The stateless function attribute type.</typeparam>
 /// <typeparam name="TContext">The context type.</typeparam>
-public abstract class ApplySchedulingEntrypoint<TStatelessFunction, TContext>
+/// <typeparam name="TBuilder">The graph builder type for constructing execution graphs.</typeparam>
+public abstract class ApplySchedulingEntrypoint<TStatelessFunction, TContext, TBuilder>
     : IConfigurationEntrypoint<ApplySchedulingEntrypointAttribute<TStatelessFunction>>
     where TStatelessFunction : StatelessFunctionAttribute
     where TContext : class
@@ -30,7 +31,7 @@ public abstract class ApplySchedulingEntrypoint<TStatelessFunction, TContext>
     /// <summary>
     /// Builds the execution graph by instantiating scheduling objects and invoking their BuildGraph methods.
     /// </summary>
-    /// <param name="builder">The execution graph builder.</param>
+    /// <param name="builder">The graph builder.</param>
     /// <param name="context">The scheduling context.</param>
-    public abstract void BuildGraph(IExecutionGraphBuilder builder, TContext context);
+    public abstract void BuildGraph(TBuilder builder, TContext context);
 }

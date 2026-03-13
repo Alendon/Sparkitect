@@ -10,7 +10,7 @@ namespace Sparkitect.GameState;
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 public sealed class PerFrameSchedulingAttribute
-    : SchedulingAttribute<PerFrameScheduling, PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry>;
+    : SchedulingAttribute<PerFrameScheduling, PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry, IExecutionGraphBuilder>;
 
 // ===== Scheduling Implementation =====
 
@@ -18,7 +18,7 @@ public sealed class PerFrameSchedulingAttribute
 /// Scheduling implementation for per-frame functions.
 /// Included when owner module is loaded in state stack.
 /// </summary>
-public sealed class PerFrameScheduling : IScheduling<PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry>
+public sealed class PerFrameScheduling : IScheduling<PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry, IExecutionGraphBuilder>
 {
     private readonly OrderAfterAttribute[] _orderAfter;
     private readonly OrderBeforeAttribute[] _orderBefore;

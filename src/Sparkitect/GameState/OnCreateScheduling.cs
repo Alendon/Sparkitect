@@ -10,28 +10,28 @@ namespace Sparkitect.GameState;
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 public sealed class OnCreateSchedulingAttribute
-    : SchedulingAttribute<OnCreateScheduling, TransitionFunctionAttribute, TransitionContext, TransitionRegistry>;
+    : SchedulingAttribute<OnCreateScheduling, TransitionFunctionAttribute, TransitionContext, TransitionRegistry, IExecutionGraphBuilder>;
 
 /// <summary>
 /// Execute once when the module/state is destroyed.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 public sealed class OnDestroySchedulingAttribute
-    : SchedulingAttribute<OnDestroyScheduling, TransitionFunctionAttribute, TransitionContext, TransitionRegistry>;
+    : SchedulingAttribute<OnDestroyScheduling, TransitionFunctionAttribute, TransitionContext, TransitionRegistry, IExecutionGraphBuilder>;
 
 /// <summary>
 /// Execute when the state becomes the active leaf.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 public sealed class OnFrameEnterSchedulingAttribute
-    : SchedulingAttribute<OnFrameEnterScheduling, TransitionFunctionAttribute, TransitionContext, TransitionRegistry>;
+    : SchedulingAttribute<OnFrameEnterScheduling, TransitionFunctionAttribute, TransitionContext, TransitionRegistry, IExecutionGraphBuilder>;
 
 /// <summary>
 /// Execute when the state stops being the active leaf.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 public sealed class OnFrameExitSchedulingAttribute
-    : SchedulingAttribute<OnFrameExitScheduling, TransitionFunctionAttribute, TransitionContext, TransitionRegistry>;
+    : SchedulingAttribute<OnFrameExitScheduling, TransitionFunctionAttribute, TransitionContext, TransitionRegistry, IExecutionGraphBuilder>;
 
 // ===== Scheduling Implementations =====
 
@@ -39,7 +39,7 @@ public sealed class OnFrameExitSchedulingAttribute
 /// Scheduling for functions that execute once when module/state is created.
 /// Included when IsEnterTransition AND owner is in DeltaModules.
 /// </summary>
-public sealed class OnCreateScheduling : IScheduling<TransitionFunctionAttribute, TransitionContext, TransitionRegistry>
+public sealed class OnCreateScheduling : IScheduling<TransitionFunctionAttribute, TransitionContext, TransitionRegistry, IExecutionGraphBuilder>
 {
     private readonly OrderAfterAttribute[] _orderAfter;
     private readonly OrderBeforeAttribute[] _orderBefore;
@@ -69,7 +69,7 @@ public sealed class OnCreateScheduling : IScheduling<TransitionFunctionAttribute
 /// Scheduling for functions that execute once when module/state is destroyed.
 /// Included when !IsEnterTransition AND owner is in DeltaModules.
 /// </summary>
-public sealed class OnDestroyScheduling : IScheduling<TransitionFunctionAttribute, TransitionContext, TransitionRegistry>
+public sealed class OnDestroyScheduling : IScheduling<TransitionFunctionAttribute, TransitionContext, TransitionRegistry, IExecutionGraphBuilder>
 {
     private readonly OrderAfterAttribute[] _orderAfter;
     private readonly OrderBeforeAttribute[] _orderBefore;
@@ -99,7 +99,7 @@ public sealed class OnDestroyScheduling : IScheduling<TransitionFunctionAttribut
 /// Scheduling for functions that execute when state becomes active leaf.
 /// Included when IsEnterTransition AND owner is loaded in state stack.
 /// </summary>
-public sealed class OnFrameEnterScheduling : IScheduling<TransitionFunctionAttribute, TransitionContext, TransitionRegistry>
+public sealed class OnFrameEnterScheduling : IScheduling<TransitionFunctionAttribute, TransitionContext, TransitionRegistry, IExecutionGraphBuilder>
 {
     private readonly OrderAfterAttribute[] _orderAfter;
     private readonly OrderBeforeAttribute[] _orderBefore;
@@ -129,7 +129,7 @@ public sealed class OnFrameEnterScheduling : IScheduling<TransitionFunctionAttri
 /// Scheduling for functions that execute when state stops being active leaf.
 /// Included when !IsEnterTransition AND owner is loaded in state stack.
 /// </summary>
-public sealed class OnFrameExitScheduling : IScheduling<TransitionFunctionAttribute, TransitionContext, TransitionRegistry>
+public sealed class OnFrameExitScheduling : IScheduling<TransitionFunctionAttribute, TransitionContext, TransitionRegistry, IExecutionGraphBuilder>
 {
     private readonly OrderAfterAttribute[] _orderAfter;
     private readonly OrderBeforeAttribute[] _orderBefore;

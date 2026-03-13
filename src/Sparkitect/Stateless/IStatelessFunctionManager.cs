@@ -14,8 +14,22 @@ public interface IStatelessFunctionManager
         where TContext : class
         where TRegistry : IRegistry;
 
+    /// <summary>
+    /// Instantiates stateless function wrappers for the given sorted IDs.
+    /// Each ID must have been previously registered via AddFunction.
+    /// Wrappers are created via Activator.CreateInstance and initialized with the container and facade map.
+    /// </summary>
+    /// <param name="sortedIds">The topologically sorted function IDs.</param>
+    /// <param name="container">The core container for wrapper initialization.</param>
+    /// <param name="facadeMap">The facade type map for wrapper initialization.</param>
+    /// <returns>The instantiated and initialized stateless function wrappers in sorted order.</returns>
+    IReadOnlyList<IStatelessFunction> InstantiateWrappers(
+        IReadOnlyList<Identification> sortedIds,
+        ICoreContainer container,
+        IReadOnlyDictionary<Type, Type> facadeMap);
+
     IExecutionGraphBuilder CreateGraphBuilder();
-    
+
     /// <summary>
     /// Registers a stateless function with its identification.
     /// </summary>

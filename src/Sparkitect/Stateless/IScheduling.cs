@@ -9,7 +9,8 @@ namespace Sparkitect.Stateless;
 /// <typeparam name="TStatelessFunction">The stateless function attribute type this scheduling handles.</typeparam>
 /// <typeparam name="TContext">The contextual data type for filtering/configuration.</typeparam>
 /// <typeparam name="TRegistry">The registry this scheduling belongs to (derived from TStatelessFunction).</typeparam>
-public interface IScheduling<TStatelessFunction, TContext, TRegistry>
+/// <typeparam name="TBuilder">The graph builder type for constructing execution graphs.</typeparam>
+public interface IScheduling<TStatelessFunction, TContext, TRegistry, TBuilder>
     where TStatelessFunction : StatelessFunctionAttribute<TContext, TRegistry>
     where TContext : class
     where TRegistry : IRegistry
@@ -22,5 +23,5 @@ public interface IScheduling<TStatelessFunction, TContext, TRegistry>
     /// <param name="context">Contextual data for filtering/configuration.</param>
     /// <param name="functionId">The function's identification.</param>
     /// <param name="ownerId">The owning module/state identification for filtering.</param>
-    void BuildGraph(IExecutionGraphBuilder builder, TContext context, Identification functionId, Identification ownerId);
+    void BuildGraph(TBuilder builder, TContext context, Identification functionId, Identification ownerId);
 }

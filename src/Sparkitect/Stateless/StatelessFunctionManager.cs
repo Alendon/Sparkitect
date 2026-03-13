@@ -30,13 +30,21 @@ internal sealed class StatelessFunctionManager : IStatelessFunctionManager
         var graphBuilder = CreateGraphBuilder();
 
         using var entrypointContainer = ModDIService.CreateEntrypointContainer<
-            ApplySchedulingEntrypoint<TStatelessFunction, TContext>>(loadedMods);
+            ApplySchedulingEntrypoint<TStatelessFunction, TContext, IExecutionGraphBuilder>>(loadedMods);
 
         entrypointContainer.ProcessMany(entrypoint =>
             entrypoint.BuildGraph(graphBuilder, context));
 
         var sortedIds = graphBuilder.Resolve();
 
+        return InstantiateWrappers(sortedIds, container, facadeMap);
+    }
+
+    public IReadOnlyList<IStatelessFunction> InstantiateWrappers(
+        IReadOnlyList<Identification> sortedIds,
+        ICoreContainer container,
+        IReadOnlyDictionary<Type, Type> facadeMap)
+    {
         var result = new List<IStatelessFunction>(sortedIds.Count);
         foreach (var id in sortedIds)
         {

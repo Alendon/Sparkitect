@@ -14,6 +14,8 @@ public class FacadeMappingGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        var buildSettings = context.GetModBuildSettings();
+
         var markerAttributeProvider = context.SyntaxProvider.CreateSyntaxProvider<string?>(
             predicate: (node, _) => node is ClassDeclarationSyntax,
             transform: (syntaxContext, _) =>
@@ -55,8 +57,10 @@ public class FacadeMappingGenerator : IIncrementalGenerator
 
         var allMappingsProvider = interfacesWithFacadesProvider.Collect();
 
-        context.RegisterSourceOutput(allMappingsProvider, (context, interfaceMappings) =>
+        context.RegisterSourceOutput(allMappingsProvider.Combine(buildSettings), (context, combined) =>
         {
+            var (interfaceMappings, settings) = combined;
+
             if (interfaceMappings.IsEmpty)
                 return;
 
@@ -86,7 +90,7 @@ public class FacadeMappingGenerator : IIncrementalGenerator
                 var mappings = kvp.Value;
 
                 // Generate the configurator implementation
-                if (RenderFacadeConfigurator(mappings.ToImmutableArray(), markerAttributeType, out var code, out var fileName))
+                if (RenderFacadeConfigurator(mappings.ToImmutableArray(), markerAttributeType, settings, out var code, out var fileName))
                 {
                     context.AddSource(fileName, code);
                 }
@@ -179,12 +183,16 @@ public class FacadeMappingGenerator : IIncrementalGenerator
         return FluidHelper.TryRenderTemplate("DI.FacadeConfiguratorInterface.liquid", model, out code);
     }
 
-    internal static bool RenderFacadeConfigurator(ImmutableArray<FacadeMapping> mappings, string markerAttributeType, out string code, out string fileName)
+    internal static bool RenderFacadeConfigurator(ImmutableArray<FacadeMapping> mappings, string markerAttributeType, ModBuildSettings settings, out string code, out string fileName)
     {
         var configuratorInterfaceName = GetConfiguratorInterfaceName(markerAttributeType);
         var configuratorSimpleName = configuratorInterfaceName.Substring(1);
         var markerNamespace = ExtractNamespace(markerAttributeType);
         fileName = $"{configuratorSimpleName}.g.cs";
+
+        var ns = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
+            ? $"{markerNamespace}.CompilerGenerated.DI"
+            : $"{settings.SgOutputNamespace}.CompilerGenerated.DI";
 
         var sortedMappings = mappings
             .OrderBy(m => m.ServiceInterfaceType)
@@ -192,7 +200,7 @@ public class FacadeMappingGenerator : IIncrementalGenerator
             .ToArray();
 
         var model = new FacadeConfiguratorModel(
-            $"{markerNamespace}.CompilerGenerated.DI",
+            ns,
             $"Generated{configuratorSimpleName}",
             markerAttributeType,
             $"global::{markerNamespace}.{configuratorInterfaceName}",

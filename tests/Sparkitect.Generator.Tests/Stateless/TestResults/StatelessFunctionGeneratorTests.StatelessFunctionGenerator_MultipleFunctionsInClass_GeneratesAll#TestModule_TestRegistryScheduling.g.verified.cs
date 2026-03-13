@@ -7,7 +7,7 @@ namespace TestMod;
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.GameState.ApplySchedulingEntrypointAttribute<global::Sparkitect.Stateless.TestFunctionAttribute>]
 internal class TestModule_TestRegistryScheduling
-    : global::Sparkitect.GameState.ApplySchedulingEntrypoint<global::Sparkitect.Stateless.TestFunctionAttribute, global::StatelessTest.TestContext>
+    : global::Sparkitect.GameState.ApplySchedulingEntrypoint<global::Sparkitect.Stateless.TestFunctionAttribute, global::StatelessTest.TestContext, global::Sparkitect.Stateless.IExecutionGraphBuilder>
 {
     public override void BuildGraph(
         global::Sparkitect.Stateless.IExecutionGraphBuilder builder,

@@ -2,7 +2,7 @@
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
-namespace Sparkitect.Modding.CompilerGenerated.DI;
+namespace FacadeTest.Generated.CompilerGenerated.DI;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.DI.FacadeConfiguratorEntrypoint<global::Sparkitect.Modding.RegistryFacadeAttribute>]
