@@ -219,11 +219,25 @@ internal partial class RegistryConfigurator : global::Sparkitect.DI.IRegistryCon
         }
     }
 
-    internal static void OutputRegistryFactory(SourceProductionContext context, RegistryWithFactory rwf)
+    internal static void OutputRegistryFactory(SourceProductionContext context, (RegistryWithFactory Left, ModBuildSettings Right) pair)
     {
+        var (rwf, settings) = pair;
+
         if (DiPipeline.RenderFactory(rwf.FactoryData.Factory, out var code, out var fileName))
         {
             context.AddSource(fileName, code);
+        }
+
+        // Emit metadata entrypoint if facade metadata was extracted
+        if (rwf.FacadeMetadata.Count > 0)
+        {
+            var factory = rwf.FactoryData.Factory;
+            var wrapperTypeName = $"{factory.ImplementationNamespace}.{factory.ImplementationTypeName}_KeyedFactory";
+
+            var models = rwf.FacadeMetadata.Cast<IMetadataModel>().ToList();
+            if (DiPipeline.RenderMetadataEntrypoint(wrapperTypeName, factory.ImplementationNamespace, models, settings,
+                    out var metaCode, out var metaFileName))
+                context.AddSource(metaFileName, metaCode);
         }
     }
 

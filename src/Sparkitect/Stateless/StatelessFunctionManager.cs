@@ -1,5 +1,5 @@
 using Sparkitect.DI;
-using Sparkitect.DI.Container;
+using Sparkitect.DI.Resolution;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
 
@@ -10,7 +10,7 @@ internal sealed class StatelessFunctionManager : IStatelessFunctionManager
 {
     private readonly Dictionary<Identification, Type> _wrapperTypes = new();
 
-    public required IModDIService ModDIService { get; init; }
+    public required IDIService DIService { get; init; }
 
     public void AddFunction<TStatelessFunction>(Identification id)
         where TStatelessFunction : IStatelessFunction
@@ -19,8 +19,7 @@ internal sealed class StatelessFunctionManager : IStatelessFunctionManager
     }
 
     public IReadOnlyList<IStatelessFunction> GetSorted<TStatelessFunction, TContext, TRegistry>(
-        ICoreContainer container,
-        IReadOnlyDictionary<Type, Type> facadeMap,
+        IResolutionScope scope,
         TContext context,
         IEnumerable<string> loadedMods)
         where TStatelessFunction : StatelessFunctionAttribute<TContext, TRegistry>
@@ -29,7 +28,7 @@ internal sealed class StatelessFunctionManager : IStatelessFunctionManager
     {
         var graphBuilder = CreateGraphBuilder();
 
-        using var entrypointContainer = ModDIService.CreateEntrypointContainer<
+        using var entrypointContainer = DIService.CreateEntrypointContainer<
             ApplySchedulingEntrypoint<TStatelessFunction, TContext, IExecutionGraphBuilder>>(loadedMods);
 
         entrypointContainer.ProcessMany(entrypoint =>
@@ -37,13 +36,12 @@ internal sealed class StatelessFunctionManager : IStatelessFunctionManager
 
         var sortedIds = graphBuilder.Resolve();
 
-        return InstantiateWrappers(sortedIds, container, facadeMap);
+        return InstantiateWrappers(sortedIds, scope);
     }
 
     public IReadOnlyList<IStatelessFunction> InstantiateWrappers(
         IReadOnlyList<Identification> sortedIds,
-        ICoreContainer container,
-        IReadOnlyDictionary<Type, Type> facadeMap)
+        IResolutionScope scope)
     {
         var result = new List<IStatelessFunction>(sortedIds.Count);
         foreach (var id in sortedIds)
@@ -55,12 +53,15 @@ internal sealed class StatelessFunctionManager : IStatelessFunctionManager
             }
 
             var wrapper = (IStatelessFunction)Activator.CreateInstance(wrapperType)!;
-            wrapper.Initialize(container, facadeMap);
+            wrapper.Initialize(scope);
             result.Add(wrapper);
         }
 
         return result;
     }
+
+    public IReadOnlyCollection<Type> GetRegisteredWrapperTypes()
+        => _wrapperTypes.Values.ToList();
 
     public IExecutionGraphBuilder CreateGraphBuilder() => new ExecutionGraphBuilder();
 }

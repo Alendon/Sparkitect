@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Sparkitect.DI.Container;
+using Sparkitect.DI.Resolution;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
@@ -16,12 +16,11 @@ public interface IStatelessFunction
     public void Execute();
 
     /// <summary>
-    /// Initializes the state function wrapper with DI container and facade mappings.
+    /// Initializes the state function wrapper with a resolution scope for dependency resolution.
     /// </summary>
-    /// <param name="container">The DI container for resolving dependencies.</param>
-    /// <param name="facadeMap">Type substitution map for facade resolution.</param>
-    public void Initialize(ICoreContainer container, IReadOnlyDictionary<Type, Type> facadeMap);
-    
+    /// <param name="scope">The resolution scope for resolving dependencies.</param>
+    public void Initialize(IResolutionScope scope);
+
     public Identification Identification { get; }
     public Identification ParentIdentification { get; }
 }

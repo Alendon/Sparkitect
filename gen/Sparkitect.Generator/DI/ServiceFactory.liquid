@@ -24,32 +24,14 @@ internal class {{ ImplementationTypeName }}_Factory : Sparkitect.DI.IServiceFact
     {% endfor %}
     ];
 
-    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public object CreateInstance(global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         {% for argument in ConstructorArguments %}
-            var argType_{{ forloop.index }} = typeof({{ argument.Type }});
-            if (facadeMap.TryGetValue(argType_{{ forloop.index }}, out var mappedType_{{ forloop.index }}))
-                argType_{{ forloop.index }} = mappedType_{{ forloop.index }};
-
-            {{ argument.Type }} arg_{{ forloop.index }} = default;
-            if (argType_{{ forloop.index }} == typeof({{ argument.Type }}))
+            if(!scope.TryResolve<{{ argument.Type }}>(typeof({{ ImplementationTypeName }}_Factory), out var arg_{{ forloop.index }}))
             {
-                if(!container.TryResolveInternal<{{ argument.Type }}>(out arg_{{ forloop.index }}))
-                {
-                {% unless argument.IsOptional %}
-                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<{{ ImplementationTypeName }}, {{ argument.Type }}>("{{ argument.Name }}");
-                {% endunless %}
-                }
-            }
-            else
-            {
-                if(!container.TryResolveInternal(argType_{{ forloop.index }}, out var resolved_{{ forloop.index }}))
-                {
-                {% unless argument.IsOptional %}
-                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<{{ ImplementationTypeName }}, {{ argument.Type }}>("{{ argument.Name }}");
-                {% endunless %}
-                }
-                arg_{{ forloop.index }} = ({{ argument.Type }})resolved_{{ forloop.index }};
+            {% unless argument.IsOptional %}
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<{{ ImplementationTypeName }}, {{ argument.Type }}>("{{ argument.Name }}");
+            {% endunless %}
             }
         {% endfor %}
 
@@ -67,45 +49,23 @@ internal class {{ ImplementationTypeName }}_Factory : Sparkitect.DI.IServiceFact
 );
     }
 
-    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container) => CreateInstance(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
-
-    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public void ApplyProperties(object instance, global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         if (instance is not {{ ImplementationTypeName }} typedInstance)
             throw new InvalidCastException($"Service of type {instance.GetType().Name} could not be cast to {nameof({{ ImplementationTypeName }})}");
 
     {% for argument in RequiredProperties %}
-        var propType_{{ forloop.index }} = typeof({{ argument.Type }});
-        if (facadeMap.TryGetValue(propType_{{ forloop.index }}, out var mappedPropType_{{ forloop.index }}))
-            propType_{{ forloop.index }} = mappedPropType_{{ forloop.index }};
-
-        {{ argument.Type }} arg_{{ forloop.index }} = default;
-        if (propType_{{ forloop.index }} == typeof({{ argument.Type }}))
+        if(!scope.TryResolve<{{ argument.Type }}>(typeof({{ ImplementationTypeName }}_Factory), out var arg_{{ forloop.index }}))
         {
-            if(!container.TryResolveInternal<{{ argument.Type }}>(out arg_{{ forloop.index }}))
-            {
-            {% unless argument.IsOptional %}
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForProperty<{{ ImplementationTypeName }}, {{ argument.Type }}>("{{ argument.Name }}");
-            {% endunless %}
-            }
-            else
-            {
-                SetProperty_{{ forloop.index }}(typedInstance, arg_{{ forloop.index }});
-            }
+        {% unless argument.IsOptional %}
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForProperty<{{ ImplementationTypeName }}, {{ argument.Type }}>("{{ argument.Name }}");
+        {% endunless %}
         }
-        else
+        {% if argument.IsOptional %}
+        if (arg_{{ forloop.index }} is not null)
+        {% endif %}
         {
-            if(!container.TryResolveInternal(propType_{{ forloop.index }}, out var resolved_{{ forloop.index }}))
-            {
-            {% unless argument.IsOptional %}
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForProperty<{{ ImplementationTypeName }}, {{ argument.Type }}>("{{ argument.Name }}");
-            {% endunless %}
-            }
-            else
-            {
-                arg_{{ forloop.index }} = ({{ argument.Type }})resolved_{{ forloop.index }};
-                SetProperty_{{ forloop.index }}(typedInstance, arg_{{ forloop.index }});
-            }
+            SetProperty_{{ forloop.index }}(typedInstance, arg_{{ forloop.index }});
         }
     {% endfor %}
 
@@ -115,6 +75,4 @@ internal class {{ ImplementationTypeName }}_Factory : Sparkitect.DI.IServiceFact
     {% endfor %}
 
     }
-
-    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container) => ApplyProperties(instance, container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
 }

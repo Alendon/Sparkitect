@@ -1,3 +1,5 @@
+using Sparkitect.Generator.DI.Pipeline;
+
 namespace Sparkitect.Generator.Stateless;
 
 /// <summary>
@@ -31,7 +33,8 @@ public record StatelessFunctionModel(
     string ParentTypeName,
     string ParentIdentificationTypeName,
     ImmutableValueArray<StatelessParameterModel> Parameters,
-    ImmutableValueArray<SchedulingConstructorParam> SchedulingParams);
+    ImmutableValueArray<SchedulingConstructorParam> SchedulingParams,
+    ImmutableValueArray<FacadeMetadataModel> FacadeMetadata);
 
 /// <summary>
 /// Model for a parameter of a stateless function

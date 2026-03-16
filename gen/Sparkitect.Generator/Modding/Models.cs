@@ -9,7 +9,8 @@ namespace Sparkitect.Generator.Modding;
 /// </summary>
 internal record RegistryWithFactory(
     RegistryModel Registry,
-    FactoryWithRegistration FactoryData);
+    FactoryWithRegistration FactoryData,
+    ImmutableValueArray<FacadeMetadataModel> FacadeMetadata);
 
 public record RegistryModel(
     string TypeName,

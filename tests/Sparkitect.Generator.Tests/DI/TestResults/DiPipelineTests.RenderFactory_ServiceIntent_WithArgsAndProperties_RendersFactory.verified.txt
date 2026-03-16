@@ -20,53 +20,19 @@ internal class MyService_Factory : Sparkitect.DI.IServiceFactory
         (typeof(TestNamespace.IRenderer), false) 
     ];
 
-    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public object CreateInstance(global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         
-            var argType_1 = typeof(TestNamespace.ILogger);
-            if (facadeMap.TryGetValue(argType_1, out var mappedType_1))
-                argType_1 = mappedType_1;
-
-            TestNamespace.ILogger arg_1 = default;
-            if (argType_1 == typeof(TestNamespace.ILogger))
+            if(!scope.TryResolve<TestNamespace.ILogger>(typeof(MyService_Factory), out var arg_1))
             {
-                if(!container.TryResolveInternal<TestNamespace.ILogger>(out arg_1))
-                {
-                
-                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<MyService, TestNamespace.ILogger>("");
-                
-                }
-            }
-            else
-            {
-                if(!container.TryResolveInternal(argType_1, out var resolved_1))
-                {
-                
-                    throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<MyService, TestNamespace.ILogger>("");
-                
-                }
-                arg_1 = (TestNamespace.ILogger)resolved_1;
+            
+                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForConstructor<MyService, TestNamespace.ILogger>("");
+            
             }
         
-            var argType_2 = typeof(TestNamespace.IConfig?);
-            if (facadeMap.TryGetValue(argType_2, out var mappedType_2))
-                argType_2 = mappedType_2;
-
-            TestNamespace.IConfig? arg_2 = default;
-            if (argType_2 == typeof(TestNamespace.IConfig?))
+            if(!scope.TryResolve<TestNamespace.IConfig?>(typeof(MyService_Factory), out var arg_2))
             {
-                if(!container.TryResolveInternal<TestNamespace.IConfig?>(out arg_2))
-                {
-                
-                }
-            }
-            else
-            {
-                if(!container.TryResolveInternal(argType_2, out var resolved_2))
-                {
-                
-                }
-                arg_2 = (TestNamespace.IConfig?)resolved_2;
+            
             }
         
 
@@ -84,45 +50,21 @@ internal class MyService_Factory : Sparkitect.DI.IServiceFactory
 );
     }
 
-    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container) => CreateInstance(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
-
-    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public void ApplyProperties(object instance, global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         if (instance is not MyService typedInstance)
             throw new InvalidCastException($"Service of type {instance.GetType().Name} could not be cast to {nameof(MyService)}");
 
     
-        var propType_1 = typeof(TestNamespace.IRenderer);
-        if (facadeMap.TryGetValue(propType_1, out var mappedPropType_1))
-            propType_1 = mappedPropType_1;
-
-        TestNamespace.IRenderer arg_1 = default;
-        if (propType_1 == typeof(TestNamespace.IRenderer))
+        if(!scope.TryResolve<TestNamespace.IRenderer>(typeof(MyService_Factory), out var arg_1))
         {
-            if(!container.TryResolveInternal<TestNamespace.IRenderer>(out arg_1))
-            {
-            
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForProperty<MyService, TestNamespace.IRenderer>("");
-            
-            }
-            else
-            {
-                SetProperty_1(typedInstance, arg_1);
-            }
+        
+            throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForProperty<MyService, TestNamespace.IRenderer>("");
+        
         }
-        else
+        
         {
-            if(!container.TryResolveInternal(propType_1, out var resolved_1))
-            {
-            
-                throw global::Sparkitect.DI.Exceptions.DependencyResolutionException.CreateForProperty<MyService, TestNamespace.IRenderer>("");
-            
-            }
-            else
-            {
-                arg_1 = (TestNamespace.IRenderer)resolved_1;
-                SetProperty_1(typedInstance, arg_1);
-            }
+            SetProperty_1(typedInstance, arg_1);
         }
     
 
@@ -132,6 +74,4 @@ internal class MyService_Factory : Sparkitect.DI.IServiceFactory
     
 
     }
-
-    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container) => ApplyProperties(instance, container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
 }

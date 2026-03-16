@@ -35,12 +35,12 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
     {% endfor %}
     ];
 
-    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public bool TryPrepare(global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         bool allResolved = true;
 
         {% for argument in ConstructorArguments %}
-            if(!container.TryResolveMapped<{{ argument.Type }}>(out _arg_{{ forloop.index }}, facadeMap))
+            if(!scope.TryResolve<{{ argument.Type }}>(typeof({{ ImplementationTypeName }}_KeyedFactory), out _arg_{{ forloop.index }}))
             {
             {% unless argument.IsOptional %}
                 allResolved = false;
@@ -49,7 +49,7 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
         {% endfor %}
 
         {% for argument in RequiredProperties %}
-            if(!container.TryResolveMapped<{{ argument.Type }}>(out _prop_{{ forloop.index }}, facadeMap))
+            if(!scope.TryResolve<{{ argument.Type }}>(typeof({{ ImplementationTypeName }}_KeyedFactory), out _prop_{{ forloop.index }}))
             {
             {% unless argument.IsOptional %}
                 allResolved = false;
@@ -71,8 +71,6 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
 
         return true;
     }
-
-    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container) => TryPrepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
 
     public {{ BaseType }} CreateInstance()
     {

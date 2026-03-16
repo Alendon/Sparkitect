@@ -504,6 +504,112 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         await Assert.That(result.ConditionalModIds).HasCount().EqualTo(0);
     }
 
+    // ── ExtractFacadeMetadata Tests ─────────────────────────────────────
+
+    [Test]
+    public async Task ExtractFacadeMetadata_WithFacadeDecoratedDependency_ReturnsCorrectModels(CancellationToken token)
+    {
+        TestSources.Add(TestData.DiAttributes);
+        TestSources.Add(TestData.DiFacadeAttributes);
+        TestSources.Add(("TestTypes.cs",
+            """
+            using Sparkitect.GameState;
+
+            namespace DiPipelineTest;
+
+            [StateFacade<IFooFacade>]
+            public interface IFooService { }
+
+            public interface IFooFacade { }
+
+            public class MyService
+            {
+                public MyService(DiPipelineTest.IFooService dep) { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("DiPipelineTest.MyService");
+        await Assert.That(type).IsNotNull();
+
+        var result = DiPipeline.ExtractFacadeMetadata(type!, "Sparkitect.GameState.StateFacadeAttribute");
+
+        await Assert.That(result).HasCount().EqualTo(1);
+        await Assert.That(result[0].DependencyType).IsEqualTo("global::DiPipelineTest.IFooService");
+        await Assert.That(result[0].FacadedType).IsEqualTo("global::DiPipelineTest.IFooFacade");
+    }
+
+    [Test]
+    public async Task ExtractFacadeMetadata_NoFacadeDependencies_ReturnsEmptyList(CancellationToken token)
+    {
+        TestSources.Add(TestData.DiAttributes);
+        TestSources.Add(TestData.DiFacadeAttributes);
+        TestSources.Add(("TestTypes.cs",
+            """
+            namespace DiPipelineTest;
+
+            public interface IPlainService { }
+
+            public class PlainConsumer
+            {
+                public PlainConsumer(DiPipelineTest.IPlainService dep) { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("DiPipelineTest.PlainConsumer");
+        await Assert.That(type).IsNotNull();
+
+        var result = DiPipeline.ExtractFacadeMetadata(type!, "Sparkitect.GameState.StateFacadeAttribute");
+
+        await Assert.That(result).HasCount().EqualTo(0);
+    }
+
+    [Test]
+    public async Task ExtractFacadeMetadata_WrongCategory_ReturnsEmptyList(CancellationToken token)
+    {
+        TestSources.Add(TestData.DiAttributes);
+        TestSources.Add(TestData.DiFacadeAttributes);
+        TestSources.Add(("TestTypes.cs",
+            """
+            using Sparkitect.Modding;
+
+            namespace DiPipelineTest;
+
+            [RegistryFacade<IRegFacade>]
+            public interface IRegService { }
+
+            public interface IRegFacade { }
+
+            public class RegConsumer
+            {
+                public RegConsumer(DiPipelineTest.IRegFacade dep) { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("DiPipelineTest.RegConsumer");
+        await Assert.That(type).IsNotNull();
+
+        // Ask for StateFacade category, but the interface has RegistryFacade
+        var result = DiPipeline.ExtractFacadeMetadata(type!, "Sparkitect.GameState.StateFacadeAttribute");
+
+        await Assert.That(result).HasCount().EqualTo(0);
+    }
+
+    // ── FacadeMetadataModel Tests ────────────────────────────────────────
+
+    [Test]
+    public async Task FacadeMetadataModel_RenderCodeLines_ProducesCorrectCSharp()
+    {
+        var model = new FacadeMetadataModel("global::Test.IFooService", "global::Test.IFooFacade");
+        var lines = model.RenderCodeLines();
+
+        await Assert.That(lines).HasCount().EqualTo(2);
+        await Assert.That(lines[0]).IsEqualTo("dependencies[typeof(global::Test.IFooService)] ??= new();");
+        await Assert.That(lines[1]).IsEqualTo("dependencies[typeof(global::Test.IFooService)].Add(new global::Sparkitect.DI.Resolution.FacadeMapping(typeof(global::Test.IFooFacade)));");
+    }
+
     // ── RenderConfigurator Tests (snapshot-verified) ────────────────────
 
     [Test]

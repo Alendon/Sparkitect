@@ -1,8 +1,9 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using QuikGraph;
 using QuikGraph.Algorithms;
 using QuikGraph.Algorithms.TopologicalSort;
 using Sparkitect.DI.Exceptions;
+using Sparkitect.DI.Resolution;
 
 namespace Sparkitect.DI.Container;
 
@@ -11,18 +12,10 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
     private readonly Dictionary<Type, IServiceFactory> _registrations = [];
     private readonly Dictionary<Type, object> _instances = [];
     private readonly ICoreContainer? _parentContainer;
-    private readonly IReadOnlyDictionary<Type, Type>? _facadeMap;
 
     public CoreContainerBuilder(ICoreContainer? parentContainer)
     {
         _parentContainer = parentContainer;
-        _facadeMap = null;
-    }
-
-    public CoreContainerBuilder(ICoreContainer? parentContainer, IReadOnlyDictionary<Type, Type>? facadeMap)
-    {
-        _parentContainer = parentContainer;
-        _facadeMap = facadeMap;
     }
 
     public ICoreContainerBuilder Register<TServiceFactory>() where TServiceFactory : IServiceFactory, new()
@@ -113,27 +106,23 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
 
             foreach (var (dependencyType, isOptional) in serviceFactory.GetConstructorDependencies())
             {
-                var resolvedDependencyType = dependencyType;
-                if (_facadeMap?.TryGetValue(dependencyType, out var mappedType) == true)
-                    resolvedDependencyType = mappedType;
-
-                if(_parentContainer?.TryResolve(resolvedDependencyType, out _) is true) continue;
+                if(_parentContainer?.TryResolve(dependencyType, out _) is true) continue;
 
                 if (isOptional)
                 {
-                    if (_registrations.ContainsKey(resolvedDependencyType))
+                    if (_registrations.ContainsKey(dependencyType))
                     {
-                        graph.AddEdge(new Edge<Type>(resolvedDependencyType, serviceType));
+                        graph.AddEdge(new Edge<Type>(dependencyType, serviceType));
                     }
 
                     continue;
                 }
 
-                if (!_registrations.ContainsKey(resolvedDependencyType))
+                if (!_registrations.ContainsKey(dependencyType))
                     throw DependencyResolutionException.CreateForConstructor(
-                        serviceType, resolvedDependencyType, "unknown");
+                        serviceType, dependencyType, "unknown");
 
-                graph.AddEdge(new Edge<Type>(resolvedDependencyType, serviceType));
+                graph.AddEdge(new Edge<Type>(dependencyType, serviceType));
             }
         }
 
@@ -153,15 +142,11 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
                 if (isOptional)
                     continue;
 
-                var resolvedDependencyType = dependencyType;
-                if (_facadeMap?.TryGetValue(dependencyType, out var mappedType) == true)
-                    resolvedDependencyType = mappedType;
+                if(_parentContainer?.TryResolve(dependencyType, out _) is true) continue;
 
-                if(_parentContainer?.TryResolve(resolvedDependencyType, out _) is true) continue;
-
-                if (!_registrations.ContainsKey(resolvedDependencyType))
+                if (!_registrations.ContainsKey(dependencyType))
                     throw DependencyResolutionException.CreateForProperty(
-                        serviceType, resolvedDependencyType, "unknown");
+                        serviceType, dependencyType, "unknown");
             }
         }
     }
@@ -183,13 +168,9 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
 
             foreach (var (dependencyType, _) in serviceFactory.GetConstructorDependencies())
             {
-                var resolvedDependencyType = dependencyType;
-                if (_facadeMap?.TryGetValue(dependencyType, out var mappedType) == true)
-                    resolvedDependencyType = mappedType;
-
-                if (_registrations.ContainsKey(resolvedDependencyType))
+                if (_registrations.ContainsKey(dependencyType))
                 {
-                    graph.AddEdge(new Edge<Type>(resolvedDependencyType, serviceType));
+                    graph.AddEdge(new Edge<Type>(dependencyType, serviceType));
                 }
             }
         }
@@ -199,12 +180,15 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
         algorithm.Compute();
         var sortedTypes = algorithm.SortedVertices.ToList();
 
+        // Use BuilderResolutionScope as adapter for IServiceFactory calls
+        var scope = new BuilderResolutionScope(this);
+
         // First pass: Create all instances without applying property dependencies
         foreach (var serviceType in sortedTypes)
         {
             var serviceFactory = _registrations[serviceType];
 
-            var instance = serviceFactory.CreateInstance(this, _facadeMap ?? new Dictionary<Type, Type>());
+            var instance = serviceFactory.CreateInstance(scope);
             _instances[serviceType] = instance;
         }
 
@@ -214,7 +198,7 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
             var serviceFactory = _registrations[serviceType];
             var instance = _instances[serviceType];
 
-            serviceFactory.ApplyProperties(instance, this, _facadeMap ?? new Dictionary<Type, Type>());
+            serviceFactory.ApplyProperties(instance, scope);
         }
     }
 }

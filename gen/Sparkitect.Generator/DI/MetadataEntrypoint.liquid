@@ -1,0 +1,18 @@
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace {{ Namespace }};
+
+[global::Sparkitect.DI.Resolution.ResolutionMetadataEntrypoint<global::{{ WrapperTypeName }}>]
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+internal class {{ ClassName }} : global::Sparkitect.DI.Resolution.IResolutionMetadataEntrypoint<global::{{ WrapperTypeName }}>
+{
+    public void ConfigureResolutionMetadata(global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Collections.Generic.List<object>> dependencies)
+    {
+{% for block in InnerCodeBlocks %}
+      {
+{{ block }}
+      }
+{% endfor %}
+    }
+}

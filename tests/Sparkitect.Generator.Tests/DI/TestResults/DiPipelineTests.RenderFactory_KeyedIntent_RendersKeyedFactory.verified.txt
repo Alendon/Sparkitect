@@ -26,12 +26,12 @@ internal class TestRegistry_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<S
     
     ];
 
-    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public bool TryPrepare(global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         bool allResolved = true;
 
         
-            if(!container.TryResolveMapped<TestNamespace.ILogger>(out _arg_1, facadeMap))
+            if(!scope.TryResolve<TestNamespace.ILogger>(typeof(TestRegistry_KeyedFactory), out _arg_1))
             {
             
                 allResolved = false;
@@ -53,8 +53,6 @@ internal class TestRegistry_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<S
 
         return true;
     }
-
-    public bool TryPrepare(global::Sparkitect.DI.Container.ICoreContainer container) => TryPrepare(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
 
     public Sparkitect.Modding.IRegistryBase CreateInstance()
     {

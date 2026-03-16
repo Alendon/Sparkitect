@@ -25,7 +25,15 @@ public static partial class TestData
         public interface IStateMethod
         {
             void Execute();
-            void Initialize(Sparkitect.DI.Container.ICoreContainer container, System.Collections.Generic.IReadOnlyDictionary<System.Type, System.Type> facadeMap);
+            void Initialize(Sparkitect.DI.Resolution.IResolutionScope scope);
+        }
+
+        namespace Sparkitect.DI.Resolution
+        {
+            public interface IResolutionScope
+            {
+                bool TryResolve<T>(Type wrapperType, out T? service) where T : class;
+            }
         }
 
         // Schedule enum
@@ -121,7 +129,6 @@ public static partial class TestData
             public interface ICoreContainer
             {
                 bool TryResolve<T>(out T result) where T : class;
-                bool TryResolveMapped<T>(out T result, System.Collections.Generic.IReadOnlyDictionary<System.Type, System.Type> facadeMap) where T : class;
             }
         }
 

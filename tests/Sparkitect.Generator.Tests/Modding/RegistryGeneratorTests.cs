@@ -268,13 +268,14 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
                 new FactoryWithRegistration(
                     new FactoryModel("Sparkitect.Modding.IRegistryBase", "TestRegistry1", "DiTest", [], [],
                         new FactoryIntent.Keyed("test1"), []),
-                    new RegistrationModel("global::DiTest.TestRegistry1_KeyedFactory", []))),
+                    new RegistrationModel("global::DiTest.TestRegistry1_KeyedFactory", [])),
+                []),
             new(
                 new RegistryModel("TestRegistry2", "test2", "DiTest.Nested", false, [], []),
                 new FactoryWithRegistration(
                     new FactoryModel("Sparkitect.Modding.IRegistryBase", "TestRegistry2", "DiTest.Nested", [], [],
                         new FactoryIntent.Keyed("test2"), []),
-                    new RegistrationModel("global::DiTest.Nested.TestRegistry2_KeyedFactory", [])))
+                    new RegistrationModel("global::DiTest.Nested.TestRegistry2_KeyedFactory", [])), [])
         ];
 
         var success =

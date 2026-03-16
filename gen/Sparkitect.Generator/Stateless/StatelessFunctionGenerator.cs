@@ -4,6 +4,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sparkitect.Generator.DI.Pipeline;
 using Sparkitect.Generator.Modding;
 using Sparkitect.Utilities;
 
@@ -151,6 +152,10 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         var parentFullName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var wrapperFullTypeName = $"{parentFullName}.{wrapperClassName}";
 
+        // Extract facade metadata from the containing class's dependencies
+        var facadeMetadata = DiPipeline.ExtractFacadeMetadata(containingType, "Sparkitect.GameState.StateFacadeAttribute")
+            .ToImmutableValueArray();
+
         return new StatelessFunctionModel(
             methodSymbol.Name,
             identifier,
@@ -165,7 +170,8 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             parentFullName,
             parentIdentificationTypeName,
             parameters,
-            schedulingParams);
+            schedulingParams,
+            facadeMetadata);
     }
 
     internal static ImmutableValueArray<SchedulingConstructorParam> ExtractSchedulingParams(
@@ -380,6 +386,25 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         if (RenderWrapper(func, settings, out var code, out var fileName))
         {
             context.AddSource(fileName, code);
+        }
+
+        // Emit metadata entrypoint if facade metadata was extracted
+        if (func.FacadeMetadata.Count > 0)
+        {
+            // Strip global:: prefix for namespace extraction
+            var wrapperFullName = func.WrapperFullTypeName;
+            if (wrapperFullName.StartsWith("global::"))
+                wrapperFullName = wrapperFullName.Substring(8);
+
+            var lastDot = wrapperFullName.LastIndexOf('.');
+            var wrapperNs = lastDot >= 0 ? wrapperFullName.Substring(0, lastDot) : string.Empty;
+
+            var models = func.FacadeMetadata.Cast<IMetadataModel>().ToList();
+            if (DiPipeline.RenderMetadataEntrypoint(wrapperFullName, wrapperNs, models, settings,
+                    out var metaCode, out var metaFileName))
+            {
+                context.AddSource(metaFileName, metaCode);
+            }
         }
     }
 

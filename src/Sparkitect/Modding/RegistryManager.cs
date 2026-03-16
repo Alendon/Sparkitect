@@ -1,9 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using JetBrains.Annotations;
 using Serilog;
-using Sparkitect.CompilerGenerated;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
+using Sparkitect.DI.Resolution;
 using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
@@ -14,7 +13,7 @@ internal class RegistryManager : IRegistryManager
     internal required IModManager ModManager { get; init; }
     internal required IIdentificationManager IdentificationManager { get; init; }
     internal required IGameStateManager GameStateManager { get; init; }
-    internal required IModDIService ModDIService { get; init; }
+    internal required IDIService DIService { get; init; }
     internal required IResourceManager ResourceManager { get; init; }
 
     // Track which mods are processed per registry (registry identifier -> set of mod IDs)
@@ -50,16 +49,14 @@ internal class RegistryManager : IRegistryManager
     [MemberNotNull(nameof(_registryFactory))]
     internal void UpdateCache(ICoreContainer? coreContainer = null)
     {
-        // Extract mod IDs for comparison (runtime identification is ID-based)
         var modIds = ModManager.LoadedMods.Select(m => m.Id).ToList();
         var effectiveContainer = coreContainer ?? GameStateManager.CurrentCoreContainer;
 
-        if (_lastModSet?.SetEquals(modIds) is true && _registryFactory is not null && effectiveContainer.Equals(_lastCoreContainer)) return;
+        if (_lastModSet?.SetEquals(modIds) is true && _registryFactory is not null
+            && effectiveContainer.Equals(_lastCoreContainer)) return;
 
         if (_lastModSet is null)
-        {
             _lastModSet = new HashSet<string>(modIds);
-        }
         else
         {
             _lastModSet.Clear();
@@ -68,26 +65,10 @@ internal class RegistryManager : IRegistryManager
 
         _registryFactory?.Dispose();
 
-
-        var facadeHolder = new FacadeHolder();
-
-        using (var registryFacadeContainer = ModDIService.CreateEntrypointContainer<IRegistryFacadeConfigurator>(modIds))
-        {
-            registryFacadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
-        }
-
-
-        var facadeMap = facadeHolder.GetFacadeMapping();
-
-        // Create factory container builder with facade support
-        var builder = new FactoryContainerBuilder<IRegistryBase>(
-            effectiveContainer,
-            facadeMap);
-
-        using var configuratorContainer = ModDIService.CreateEntrypointContainer<IRegistryConfigurator>(modIds);
-        configuratorContainer.ProcessMany(x => x.Configure(builder, new HashSet<string>(modIds)));
-
-        _registryFactory = builder.Build(true);
+        var provider = new FacadeResolutionProvider();
+        _registryFactory = DIService.BuildFactoryContainer<IRegistryBase>(
+            effectiveContainer, provider, modIds,
+            typeof(RegistryConfiguratorAttribute));
         _lastCoreContainer = effectiveContainer;
     }
 
@@ -235,7 +216,7 @@ internal class RegistryManager : IRegistryManager
     {
         // Query registrations for this specific registry type
         // The generic attribute RegistrationsEntrypointAttribute<TRegistry> provides automatic filtering
-        using var registrationsContainer = ModDIService.CreateEntrypointContainer<Registrations<TRegistry>>(
+        using var registrationsContainer = DIService.CreateEntrypointContainer<Registrations<TRegistry>>(
             new[] { modId });
 
         var registrations = registrationsContainer.ResolveMany();

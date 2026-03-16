@@ -48,4 +48,32 @@ public static partial class TestData
             void Register(object factory);
         }
         """);
+
+    public static (string, object) DiFacadeAttributes => ("DiFacadeAttributes.cs",
+        """
+        using Sparkitect.DI.GeneratorAttributes;
+
+        namespace Sparkitect.GameState;
+
+        [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+        public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+
+        namespace Sparkitect.Modding;
+
+        [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+        public class RegistryFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+        """);
+
+    public static (string, object) DiResolutionScope => ("DiResolutionScope.cs",
+        """
+        using System.Diagnostics.CodeAnalysis;
+
+        namespace Sparkitect.DI.Resolution;
+
+        public interface IResolutionScope
+        {
+            bool TryResolve<T>(Type wrapperType, [NotNullWhen(true)] out T? service) where T : class;
+            bool TryResolve(Type wrapperType, Type serviceType, out object? service);
+        }
+        """);
 }

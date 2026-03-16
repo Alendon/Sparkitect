@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Sparkitect.Generator.DI.Pipeline;
 
 /// <summary>
@@ -71,3 +73,27 @@ public record ConstructorArgument(string Type, bool IsOptional);
 /// Represents a required property dependency for factory generation.
 /// </summary>
 public record RequiredProperty(string Type, string SetterName, bool IsOptional, string DeclaringTypeName);
+
+/// <summary>
+/// Base interface for metadata models that know how to produce their own C# code lines
+/// for inclusion in a metadata entrypoint class.
+/// </summary>
+public interface IMetadataModel
+{
+    /// <summary>
+    /// Renders the C# code lines that configure resolution metadata for this entry.
+    /// </summary>
+    IReadOnlyList<string> RenderCodeLines();
+}
+
+/// <summary>
+/// Metadata model representing a facade mapping from a dependency type to its backing service type.
+/// </summary>
+public record FacadeMetadataModel(string DependencyType, string FacadedType) : IMetadataModel
+{
+    public IReadOnlyList<string> RenderCodeLines() =>
+    [
+        $"dependencies[typeof({DependencyType})] ??= new();",
+        $"dependencies[typeof({DependencyType})].Add(new global::Sparkitect.DI.Resolution.FacadeMapping(typeof({FacadedType})));"
+    ];
+}

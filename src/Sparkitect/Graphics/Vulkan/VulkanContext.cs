@@ -35,7 +35,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     private DebugUtilsMessengerEXT _debugMessenger;
     private KhrSurface? _khrSurface;
 
-    public required IModDIService ModDIService { private get; init; }
+    public required IDIService ModDIService { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
     public required ICliArgumentHandler CliArgumentHandler { private get; init; }
 

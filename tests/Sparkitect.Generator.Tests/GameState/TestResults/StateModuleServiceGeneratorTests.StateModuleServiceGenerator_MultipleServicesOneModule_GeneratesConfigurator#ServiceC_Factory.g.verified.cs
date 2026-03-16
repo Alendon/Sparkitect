@@ -18,7 +18,7 @@ internal class ServiceC_Factory : Sparkitect.DI.IServiceFactory
     
     ];
 
-    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public object CreateInstance(global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         
 
@@ -32,9 +32,7 @@ internal class ServiceC_Factory : Sparkitect.DI.IServiceFactory
 );
     }
 
-    public object CreateInstance(global::Sparkitect.DI.Container.ICoreContainerBuilder container) => CreateInstance(container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
-
-    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container, global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+    public void ApplyProperties(object instance, global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         if (instance is not ServiceC typedInstance)
             throw new InvalidCastException($"Service of type {instance.GetType().Name} could not be cast to {nameof(ServiceC)}");
@@ -44,6 +42,4 @@ internal class ServiceC_Factory : Sparkitect.DI.IServiceFactory
     
 
     }
-
-    public void ApplyProperties(object instance, global::Sparkitect.DI.Container.ICoreContainerBuilder container) => ApplyProperties(instance, container, new global::System.Collections.Generic.Dictionary<global::System.Type, global::System.Type>());
 }

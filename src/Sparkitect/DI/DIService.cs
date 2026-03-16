@@ -2,12 +2,13 @@ using System.Reflection;
 using Serilog;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.Ordering;
+using Sparkitect.DI.Resolution;
 using Sparkitect.GameState;
 
 namespace Sparkitect.DI;
 
-[StateService<IModDIService, CoreModule>]
-internal class ModDIService : IModDIService
+[StateService<IDIService, CoreModule>]
+internal class DIService : IDIService
 {
     private readonly Dictionary<string, Assembly> _modAssemblies = new();
 
@@ -34,8 +35,12 @@ internal class ModDIService : IModDIService
     public IEntrypointContainer<T> CreateEntrypointContainer<T>(IEnumerable<string> modIds)
         where T : class, IBaseConfigurationEntrypoint
     {
-        var entrypointAttribute = T.EntrypointAttributeType;
+        return CreateEntrypointContainer<T>(modIds, T.EntrypointAttributeType);
+    }
 
+    public IEntrypointContainer<T> CreateEntrypointContainer<T>(IEnumerable<string> modIds, Type entrypointAttribute)
+        where T : class
+    {
         // Phase 1: Collect ALL candidate types across ALL mods
         var allCandidateTypes = new List<Type>();
 
@@ -43,7 +48,7 @@ internal class ModDIService : IModDIService
         {
             if (!_modAssemblies.TryGetValue(modId, out var assembly))
             {
-                Log.Warning("Assembly for mod {ModId} not found in ModDIService", modId);
+                Log.Warning("Assembly for mod {ModId} not found in DIService", modId);
                 continue;
             }
 
@@ -83,8 +88,64 @@ internal class ModDIService : IModDIService
         return new EntrypointContainer<T>(instances);
     }
 
+    public IResolutionScope BuildScope(
+        ICoreContainer container,
+        IResolutionProvider? provider,
+        IEnumerable<string> modIds,
+        IEnumerable<Type> wrapperTypes)
+    {
+        var modIdList = modIds as IReadOnlyList<string> ?? modIds.ToList();
+        var metadata = new Dictionary<Type, Dictionary<Type, List<object>>>();
+
+        foreach (var wrapperType in wrapperTypes)
+        {
+            var attrType = typeof(ResolutionMetadataEntrypointAttribute<>).MakeGenericType(wrapperType);
+
+            using var entrypointContainer =
+                CreateEntrypointContainer<IResolutionMetadataEntrypoint>(modIdList, attrType);
+
+            var innerDict = new Dictionary<Type, List<object>>();
+            entrypointContainer.ProcessMany(entrypoint => entrypoint.ConfigureResolutionMetadata(innerDict));
+
+            if (innerDict.Count > 0)
+            {
+                metadata[wrapperType] = innerDict;
+            }
+        }
+
+        return new ResolutionScope(container, provider, metadata);
+    }
+
+    public IFactoryContainer<TBase> BuildFactoryContainer<TBase>(
+        ICoreContainer container,
+        IResolutionProvider? provider,
+        IEnumerable<string> modIds,
+        Type configuratorEntrypointAttribute)
+        where TBase : class
+    {
+        var modIdList = modIds as IReadOnlyList<string> ?? modIds.ToList();
+        var modIdSet = modIdList.ToHashSet() as IReadOnlySet<string>;
+
+        // Step 1: Discover configurator entrypoints and collect factory registrations
+        var factoryBuilder = new FactoryContainerBuilder<TBase>(container);
+
+        using var configuratorContainer =
+            CreateEntrypointContainer<IFactoryConfiguratorBase<TBase>>(modIdList, configuratorEntrypointAttribute);
+
+        configuratorContainer.ProcessMany(configurator => configurator.Configure(factoryBuilder, modIdSet));
+
+        // Step 2: Extract wrapper types from registered factories
+        var wrapperTypes = factoryBuilder.GetRegisteredWrapperTypes();
+
+        // Step 3: Build resolution scope for those wrapper types
+        var scope = BuildScope(container, provider, modIdList, wrapperTypes);
+
+        // Step 4: Build factory container (prepares all factories with scope)
+        return factoryBuilder.Build(scope, skipMissing: true);
+    }
+
     private static IReadOnlyList<Type> OrderEntrypoints<T>(IReadOnlyList<Type> allCandidateTypes)
-        where T : class, IBaseConfigurationEntrypoint
+        where T : class
     {
         if (allCandidateTypes.Count <= 1)
         {

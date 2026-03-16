@@ -56,7 +56,11 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 var registration = DiPipeline.ToRegistration(factory, symbol);
                 var factoryData = new FactoryWithRegistration(factory, registration);
 
-                return new RegistryWithFactory(registryModel, factoryData);
+                // Extract facade metadata at the symbol boundary
+                var facadeMetadata = DiPipeline.ExtractFacadeMetadata(symbol, "Sparkitect.Modding.RegistryFacadeAttribute")
+                    .ToImmutableValueArray();
+
+                return new RegistryWithFactory(registryModel, factoryData, facadeMetadata);
             }).NotNull();
 
         // Project RegistryModel from RegistryWithFactory for existing consumers
@@ -71,8 +75,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(symbolRegistryModelsProvider.Combine(buildSettings), OutputRegistryMetadata);
 
-        // Generate keyed factory class for each registry via DiPipeline
-        context.RegisterSourceOutput(symbolRegistryWithFactoryProvider, OutputRegistryFactory);
+        // Generate keyed factory class (and metadata entrypoint) for each registry via DiPipeline
+        context.RegisterSourceOutput(symbolRegistryWithFactoryProvider.Combine(buildSettings), OutputRegistryFactory);
 
         // Generate configurator via DiPipeline (partial class with registration method)
         // and shell class with entrypoint attribute and interface implementation

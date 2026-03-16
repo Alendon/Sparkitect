@@ -27,7 +27,7 @@ internal class ModManager : IModManager
     private readonly Stack<LoadedModGroup> _loadedModGroups = new();
     public required ICliArgumentHandler CliArgumentHandler { private get; init; }
     public required IIdentificationManager IdentificationManager { private get; init; }
-    public required IModDIService ModDiService { private get; init; }
+    public required IDIService ModDiService { private get; init; }
     public required IResourceManager ResourceManager { private get; init; }
 
     private const string AddModDirsArgument = "addModDirs";

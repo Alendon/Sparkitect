@@ -1,14 +1,16 @@
+using Sparkitect.DI.Resolution;
+
 namespace Sparkitect.DI.Container;
 
 /// <summary>
-/// Builder for creating factory containers
+/// Builder for creating factory containers.
+/// Scope is provided at Build time, not at construction.
 /// </summary>
 /// <typeparam name="TBase">The base type for objects created by the factories</typeparam>
 internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     where TBase : class
 {
     private readonly ICoreContainer _coreContainer;
-    private readonly IReadOnlyDictionary<Type, Type>? _facadeMap;
     private readonly Dictionary<string, IKeyedFactory<TBase>> _factories = [];
 
     /// <summary>
@@ -18,18 +20,6 @@ internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     public FactoryContainerBuilder(ICoreContainer coreContainer)
     {
         _coreContainer = coreContainer ?? throw new ArgumentNullException(nameof(coreContainer));
-        _facadeMap = null;
-    }
-
-    /// <summary>
-    /// Creates a new factory container builder with the given core container and facade map
-    /// </summary>
-    /// <param name="coreContainer">The core container to resolve dependencies from</param>
-    /// <param name="facadeMap">Facade-to-service type mappings for dependency resolution</param>
-    public FactoryContainerBuilder(ICoreContainer coreContainer, IReadOnlyDictionary<Type, Type> facadeMap)
-    {
-        _coreContainer = coreContainer ?? throw new ArgumentNullException(nameof(coreContainer));
-        _facadeMap = facadeMap;
     }
 
     /// <summary>
@@ -48,17 +38,28 @@ internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     }
 
     /// <summary>
-    /// Builds the factory container with all registered factories
+    /// Returns the implementation types from each registered factory.
+    /// These are the SG-generated wrapper/factory class types known after Register calls.
     /// </summary>
+    public IReadOnlyList<Type> GetRegisteredWrapperTypes()
+    {
+        return _factories.Values.Select(f => f.ImplementationType).ToList();
+    }
+
+    /// <summary>
+    /// Builds the factory container with all registered factories using the provided resolution scope
+    /// </summary>
+    /// <param name="scope">The resolution scope for dependency resolution during factory preparation</param>
+    /// <param name="skipMissing">Skip factory entries which do not have all dependencies instead of throwing</param>
     /// <returns>The constructed factory container</returns>
     /// <exception cref="InvalidOperationException">Thrown when a factory's dependencies cannot be resolved</exception>
-    public IFactoryContainer<TBase> Build(bool skipMissing = false)
+    public IFactoryContainer<TBase> Build(IResolutionScope scope, bool skipMissing = false)
     {
         var preparedFactories = new Dictionary<string, IKeyedFactory<TBase>>();
 
         foreach (var (key, factory) in _factories)
         {
-            if (!factory.TryPrepare(_coreContainer, _facadeMap ?? new Dictionary<Type, Type>()))
+            if (!factory.TryPrepare(scope))
             {
                 if(skipMissing) continue;
 
@@ -70,5 +71,14 @@ internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
         }
 
         return new FactoryContainer<TBase>(preparedFactories);
+    }
+
+    /// <summary>
+    /// Builds the factory container with a default empty resolution scope (fallback to container).
+    /// </summary>
+    public IFactoryContainer<TBase> Build(bool skipMissing = false)
+    {
+        var scope = new ResolutionScope(_coreContainer, null, new Dictionary<Type, Dictionary<Type, List<object>>>());
+        return Build(scope, skipMissing);
     }
 }

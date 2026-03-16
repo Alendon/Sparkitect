@@ -25,9 +25,7 @@ public partial class TestModule
             );
         }
 
-        public void Initialize(
-            global::Sparkitect.DI.Container.ICoreContainer container,
-            global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+        public void Initialize(global::Sparkitect.DI.Resolution.IResolutionScope scope)
         {
 
         }

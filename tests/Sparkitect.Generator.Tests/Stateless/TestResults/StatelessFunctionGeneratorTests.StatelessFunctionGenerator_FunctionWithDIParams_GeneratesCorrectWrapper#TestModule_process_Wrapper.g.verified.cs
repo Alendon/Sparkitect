@@ -33,12 +33,10 @@ public partial class TestModule
             );
         }
 
-        public void Initialize(
-            global::Sparkitect.DI.Container.ICoreContainer container,
-            global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+        public void Initialize(global::Sparkitect.DI.Resolution.IResolutionScope scope)
         {
 
-            if (!container.TryResolveMapped<global::TestMod.ILogger>(out _param0, facadeMap))
+            if (!scope.TryResolve<global::TestMod.ILogger>(typeof(ProcessFunc), out _param0))
             {
 
                 throw new global::System.InvalidOperationException(
@@ -46,7 +44,7 @@ public partial class TestModule
 
             }
 
-            if (!container.TryResolveMapped<global::TestMod.IConfig>(out _param1, facadeMap))
+            if (!scope.TryResolve<global::TestMod.IConfig>(typeof(ProcessFunc), out _param1))
             {
 
                 throw new global::System.InvalidOperationException(

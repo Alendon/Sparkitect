@@ -1,4 +1,4 @@
-using Sparkitect.DI.Container;
+using Sparkitect.DI.Resolution;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
@@ -6,8 +6,7 @@ namespace Sparkitect.Stateless;
 public interface IStatelessFunctionManager
 {
     IReadOnlyList<IStatelessFunction> GetSorted<TStatelessFunction, TContext, TRegistry>(
-        ICoreContainer container,
-        IReadOnlyDictionary<Type, Type> facadeMap,
+        IResolutionScope scope,
         TContext context,
         IEnumerable<string> loadedMods)
         where TStatelessFunction : StatelessFunctionAttribute<TContext, TRegistry>
@@ -17,18 +16,22 @@ public interface IStatelessFunctionManager
     /// <summary>
     /// Instantiates stateless function wrappers for the given sorted IDs.
     /// Each ID must have been previously registered via AddFunction.
-    /// Wrappers are created via Activator.CreateInstance and initialized with the container and facade map.
+    /// Wrappers are created via Activator.CreateInstance and initialized with the resolution scope.
     /// </summary>
     /// <param name="sortedIds">The topologically sorted function IDs.</param>
-    /// <param name="container">The core container for wrapper initialization.</param>
-    /// <param name="facadeMap">The facade type map for wrapper initialization.</param>
+    /// <param name="scope">The resolution scope for wrapper initialization.</param>
     /// <returns>The instantiated and initialized stateless function wrappers in sorted order.</returns>
     IReadOnlyList<IStatelessFunction> InstantiateWrappers(
         IReadOnlyList<Identification> sortedIds,
-        ICoreContainer container,
-        IReadOnlyDictionary<Type, Type> facadeMap);
+        IResolutionScope scope);
 
     IExecutionGraphBuilder CreateGraphBuilder();
+
+    /// <summary>
+    /// Gets the CLR types of all registered stateless function wrappers.
+    /// Used by callers to build resolution scopes with the correct wrapper type set.
+    /// </summary>
+    IReadOnlyCollection<Type> GetRegisteredWrapperTypes();
 
     /// <summary>
     /// Registers a stateless function with its identification.

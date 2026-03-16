@@ -42,15 +42,12 @@ public interface ICoreConfigurator<TDiscoveryAttribute>
 }
 
 /// <summary>
-/// Configuration entrypoint for factory registration. Implementations register keyed factories
-/// with an <see cref="IFactoryContainerBuilder{TBase}"/> during initialization.
+/// Non-generic bridge interface for factory configurators.
+/// Enables <see cref="IDIService.BuildFactoryContainer{TBase}"/> to discover configurators
+/// with the relaxed <c>CreateEntrypointContainer</c> overload and call Configure through the base interface.
 /// </summary>
 /// <typeparam name="TBase">The base type for objects created by the factories.</typeparam>
-/// <typeparam name="TDiscoveryAttribute">The attribute type used to discover implementations of this entrypoint.</typeparam>
-public interface IFactoryConfigurator<TBase, TDiscoveryAttribute>
-    : IConfigurationEntrypoint<TDiscoveryAttribute>
-    where TBase : class
-    where TDiscoveryAttribute : Attribute
+public interface IFactoryConfiguratorBase<TBase> where TBase : class
 {
     /// <summary>
     /// Configures keyed factories with the factory container builder.
@@ -59,3 +56,14 @@ public interface IFactoryConfigurator<TBase, TDiscoveryAttribute>
     /// <param name="loadedMods">The set of currently loaded mod IDs.</param>
     void Configure(IFactoryContainerBuilder<TBase> builder, IReadOnlySet<string> loadedMods);
 }
+
+/// <summary>
+/// Configuration entrypoint for factory registration. Implementations register keyed factories
+/// with an <see cref="IFactoryContainerBuilder{TBase}"/> during initialization.
+/// </summary>
+/// <typeparam name="TBase">The base type for objects created by the factories.</typeparam>
+/// <typeparam name="TDiscoveryAttribute">The attribute type used to discover implementations of this entrypoint.</typeparam>
+public interface IFactoryConfigurator<TBase, TDiscoveryAttribute>
+    : IConfigurationEntrypoint<TDiscoveryAttribute>, IFactoryConfiguratorBase<TBase>
+    where TBase : class
+    where TDiscoveryAttribute : Attribute;

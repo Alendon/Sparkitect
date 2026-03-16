@@ -28,12 +28,10 @@ public partial class {{ ParentTypeName }}
             );
         }
 
-        public void Initialize(
-            global::Sparkitect.DI.Container.ICoreContainer container,
-            global::System.Collections.Generic.IReadOnlyDictionary<global::System.Type, global::System.Type> facadeMap)
+        public void Initialize(global::Sparkitect.DI.Resolution.IResolutionScope scope)
         {
 {% for param in Parameters %}
-            if (!container.TryResolveMapped<{{ param.ParameterType }}>(out _param{{ param.Index }}, facadeMap))
+            if (!scope.TryResolve<{{ param.ParameterType }}>(typeof({{ WrapperClassName }}), out _param{{ param.Index }}))
             {
 {% unless param.IsOptional %}
                 throw new global::System.InvalidOperationException(

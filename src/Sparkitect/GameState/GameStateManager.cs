@@ -6,6 +6,7 @@ using Semver;
 using Serilog;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.DI.Container;
+using Sparkitect.DI.Resolution;
 using Sparkitect.Modding;
 using Sparkitect.DI;
 using Sparkitect.Modding.IDs;
@@ -40,7 +41,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
     public required IModManager ModManager { get; init; }
     public required IRegistryManager RegistryManager { get; init; }
-    public required IModDIService ModDIService { get; init; }
+    public required IDIService DIService { get; init; }
     public required IStatelessFunctionManager FunctionManager { get; init; }
 
     public ICoreContainer CurrentCoreContainer => _stateStack.Count > 0 ? _stateStack.Peek().Container : RootContainer;
@@ -87,7 +88,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         // Query entry state selector to determine initial active state
         // Note: Root state is registered but never framed - it's a semantic anchor
-        using var entrySelectorContainer = ModDIService.CreateEntrypointContainer<IEntryStateSelector>(rootModIds);
+        using var entrySelectorContainer = DIService.CreateEntrypointContainer<IEntryStateSelector>(rootModIds);
         var entrySelector = entrySelectorContainer.ResolveMany().FirstOrDefault();
 
         if (entrySelector == null)
@@ -448,17 +449,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return modules;
     }
 
-    private IReadOnlyDictionary<Type, Type> LoadFacadeMap(IEnumerable<string> additionalMods)
-    {
-        var facadeHolder = new FacadeHolder();
-
-        using var facadeContainer = ModDIService.CreateEntrypointContainer<IFacadeConfigurator<StateFacadeAttribute>>(LoadedMods.Concat(additionalMods));
-        facadeContainer.ProcessMany(x => x.ConfigureFacades(facadeHolder));
-
-        return facadeHolder.GetFacadeMapping();
-    }
-
-    private ICoreContainer BuildContainerForState(Identification stateId, ICoreContainer parentContainer, IEnumerable<string> additionalMods)
+private ICoreContainer BuildContainerForState(Identification stateId, ICoreContainer parentContainer, IEnumerable<string> additionalMods)
     {
         if (!_registeredStates.TryGetValue(stateId, out var stateMetadata))
         {
@@ -482,7 +473,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         var loadedMods = new HashSet<string>(LoadedMods.Concat(additionalMods));
 
         // Register services for new modules (skip CoreModule — its services are in the root container)
-        using var configuratorContainer = ModDIService.CreateEntrypointContainer<IStateModuleServiceConfigurator>(loadedMods);
+        using var configuratorContainer = DIService.CreateEntrypointContainer<IStateModuleServiceConfigurator>(loadedMods);
         configuratorContainer.ProcessMany(configurator =>
         {
             if (configurator.ModuleType == typeof(CoreModule)) return;
@@ -517,8 +508,10 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             throw new InvalidOperationException($"State {stateId} is not registered");
         }
 
-        var facadeMap = LoadFacadeMap(additionalMods);
         var allMods = LoadedMods.Concat(additionalMods).ToArray();
+        var provider = new FacadeResolutionProvider();
+        var wrapperTypes = FunctionManager.GetRegisteredWrapperTypes();
+        var scope = DIService.BuildScope(container, provider, allMods, wrapperTypes);
 
         // Build state stack: existing frames + new state
         var stateStack = _stateStack
@@ -538,15 +531,15 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         var transitionEnterMethods = FunctionManager.GetSorted<
             TransitionFunctionAttribute, TransitionContext, TransitionRegistry>(
-            container, facadeMap, transitionEnterCtx, allMods);
+            scope, transitionEnterCtx, allMods);
 
         var transitionExitMethods = FunctionManager.GetSorted<
             TransitionFunctionAttribute, TransitionContext, TransitionRegistry>(
-            container, facadeMap, transitionExitCtx, allMods);
+            scope, transitionExitCtx, allMods);
 
         var perFrameMethods = FunctionManager.GetSorted<
             PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry>(
-            container, facadeMap, perFrameCtx, allMods);
+            scope, perFrameCtx, allMods);
 
         return new ActiveStateFrame(
             stateId,

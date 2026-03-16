@@ -198,6 +198,160 @@ public static class DiPipeline
         return FluidHelper.TryRenderTemplate("DI.Configurator.liquid", templateModel, out code);
     }
 
+    private const string FacadeMarkerBaseName =
+        "Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute";
+
+    /// <summary>
+    /// Extracts facade metadata from a symbol's constructor parameters and injectable properties.
+    /// For each dependency type that is an interface with a facade marker attribute matching
+    /// the given category, produces a <see cref="FacadeMetadataModel"/>.
+    /// </summary>
+    /// <param name="symbol">The class symbol whose dependencies to scan.</param>
+    /// <param name="facadeCategoryTypeName">
+    /// The full type name of the facade category attribute (e.g., "Sparkitect.GameState.StateFacadeAttribute").
+    /// </param>
+    /// <returns>A list of facade metadata models for matching dependencies.</returns>
+    public static IReadOnlyList<FacadeMetadataModel> ExtractFacadeMetadata(
+        INamedTypeSymbol symbol, string facadeCategoryTypeName)
+    {
+        var results = new List<FacadeMetadataModel>();
+
+        // Scan constructor parameters
+        var constructor = symbol.Constructors.FirstOrDefault();
+        if (constructor is not null)
+        {
+            foreach (var param in constructor.Parameters)
+            {
+                if (param.Type is INamedTypeSymbol paramType && paramType.TypeKind == TypeKind.Interface)
+                {
+                    CollectFacadeMappings(paramType, facadeCategoryTypeName, results);
+                }
+            }
+        }
+
+        // Scan injectable properties
+        var properties = GetInjectableProperties(symbol);
+        foreach (var prop in properties)
+        {
+            if (prop.Type is INamedTypeSymbol propType && propType.TypeKind == TypeKind.Interface)
+            {
+                CollectFacadeMappings(propType, facadeCategoryTypeName, results);
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Renders a metadata entrypoint class from the given wrapper type and metadata models.
+    /// Uses the MetadataEntrypoint.liquid template for the shell class.
+    /// </summary>
+    /// <param name="wrapperTypeName">The fully qualified wrapper type name (used for the attribute and interface generic arg).</param>
+    /// <param name="wrapperTypeNamespace">The namespace of the wrapper type (used for className derivation).</param>
+    /// <param name="models">The metadata models to render as inner code blocks.</param>
+    /// <param name="settings">Build settings for namespace computation.</param>
+    /// <param name="code">The rendered source code output.</param>
+    /// <param name="fileName">The generated file name.</param>
+    /// <returns>True if rendering succeeded.</returns>
+    public static bool RenderMetadataEntrypoint(
+        string wrapperTypeName,
+        string wrapperTypeNamespace,
+        IReadOnlyList<IMetadataModel> models,
+        ModBuildSettings settings,
+        out string code,
+        out string fileName)
+    {
+        if (models.Count == 0)
+        {
+            code = string.Empty;
+            fileName = string.Empty;
+            return false;
+        }
+
+        var ns = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
+            ? $"{wrapperTypeNamespace}.CompilerGenerated.DI"
+            : $"{settings.SgOutputNamespace}.CompilerGenerated.DI";
+
+        // Build inner code blocks from each model's RenderCodeLines()
+        var innerCodeBlocks = new List<string>();
+        foreach (var model in models)
+        {
+            var lines = model.RenderCodeLines();
+            var block = string.Join("\n", lines.Select(l => $"        {l}"));
+            innerCodeBlocks.Add(block);
+        }
+
+        // Derive a safe class name from the wrapper type name
+        var safeClassName = wrapperTypeName.Replace(".", "_").Replace("+", "_");
+        var className = $"{safeClassName}_ResolutionMetadata";
+
+        fileName = $"{className}.g.cs";
+
+        var templateModel = new
+        {
+            Namespace = ns,
+            WrapperTypeName = wrapperTypeName,
+            ClassName = className,
+            InnerCodeBlocks = innerCodeBlocks.ToArray()
+        };
+
+        return FluidHelper.TryRenderTemplate("DI.MetadataEntrypoint.liquid", templateModel, out code);
+    }
+
+    /// <summary>
+    /// Scans an interface symbol's attributes for facade markers matching the given category.
+    /// </summary>
+    private static void CollectFacadeMappings(
+        INamedTypeSymbol interfaceSymbol, string facadeCategoryTypeName, List<FacadeMetadataModel> results)
+    {
+        foreach (var attr in interfaceSymbol.GetAttributes())
+        {
+            if (attr.AttributeClass is null)
+                continue;
+
+            // Check if this attribute inherits from FacadeMarkerAttribute<T>
+            if (!IsFacadeMarkerAttribute(attr.AttributeClass))
+                continue;
+
+            // Check if the attribute's ConstructedFrom matches the category
+            var constructedFrom = attr.AttributeClass.ConstructedFrom.ToDisplayString(
+                DisplayFormats.NamespaceAndType);
+
+            if (constructedFrom != facadeCategoryTypeName)
+                continue;
+
+            // Extract the facade type from the attribute's type argument
+            if (attr.AttributeClass.TypeArguments.FirstOrDefault() is INamedTypeSymbol facadeType)
+            {
+                var dependencyType = interfaceSymbol.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat);
+                var facadedType = facadeType.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat);
+
+                results.Add(new FacadeMetadataModel(dependencyType, facadedType));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks if a type symbol inherits from FacadeMarkerAttribute (the generic base).
+    /// </summary>
+    private static bool IsFacadeMarkerAttribute(INamedTypeSymbol attributeClass)
+    {
+        var currentType = attributeClass.BaseType;
+        while (currentType is not null)
+        {
+            var originalDefinition = currentType.OriginalDefinition.ToDisplayString(
+                DisplayFormats.NamespaceAndType);
+            if (originalDefinition == FacadeMarkerBaseName)
+                return true;
+
+            currentType = currentType.BaseType;
+        }
+
+        return false;
+    }
+
     /// <summary>
     /// Walks the type hierarchy collecting required properties with a set method.
     /// Walks injectable (required + has setter) properties for factory code generation.
