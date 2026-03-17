@@ -164,6 +164,9 @@ public static partial class TestData
         {
             // Base class for facade marker attributes (matches StateUtils.FacadeMarkerBase)
             public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;
+
+            [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+            public sealed class FacadeForAttribute<TService> : Attribute where TService : class;
         }
 
         namespace Sparkitect.GameState

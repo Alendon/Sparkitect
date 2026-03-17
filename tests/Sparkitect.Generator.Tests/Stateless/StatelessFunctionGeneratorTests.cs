@@ -375,6 +375,106 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     }
 
     [Test]
+    public async Task StatelessFunction_WithFacadeParameter_GeneratesMetadataEntrypoint(CancellationToken token)
+    {
+        TestSources.Add(("FacadeTypes.cs", """
+            using Sparkitect.DI.GeneratorAttributes;
+
+            namespace Sparkitect.GameState
+            {
+                [AttributeUsage(AttributeTargets.Interface, AllowMultiple = true)]
+                public class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+            }
+
+            namespace Sparkitect.DI.GeneratorAttributes
+            {
+                [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+                public sealed class FacadeForAttribute<TService> : Attribute where TService : class;
+            }
+            """));
+        TestSources.Add(("TestModule.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.GameState;
+
+            namespace TestMod;
+
+            [StateFacade<ITestServiceFacade>]
+            public interface ITestService { }
+
+            [FacadeFor<ITestService>]
+            public interface ITestServiceFacade { }
+
+            public partial class TestModule : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+
+                [TestFunction("process")]
+                [TestScheduling]
+                public static void Process(ITestServiceFacade facade) { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var generatedFiles = driverRunResult.GeneratedTrees
+            .Select(t => System.IO.Path.GetFileName(t.FilePath))
+            .ToList();
+
+        // RenderMetadataEntrypoint names the file {SafeClassName}_ResolutionMetadata.g.cs
+        await Assert.That(generatedFiles.Any(f => f.Contains("ResolutionMetadata"))).IsTrue();
+    }
+
+    [Test]
+    public async Task StatelessFunction_MultipleParentsForSameRegistry_ProducesUniqueHintNames(CancellationToken token)
+    {
+        TestSources.Add(("TestModules.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace TestMod;
+
+            public partial class ClassA : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+
+                [TestFunction("alpha")]
+                [TestScheduling]
+                public static void Alpha() { }
+            }
+
+            public partial class ClassB : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 2);
+
+                [TestFunction("beta")]
+                [TestScheduling]
+                public static void Beta() { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var generatedFiles = driverRunResult.GeneratedTrees
+            .Select(t => System.IO.Path.GetFileName(t.FilePath))
+            .ToList();
+
+        // Both parents target TestRegistry, so registration files should have parent disambiguation
+        var registrationFiles = generatedFiles.Where(f => f.Contains("Registration")).ToList();
+        await Assert.That(registrationFiles.Count).IsGreaterThanOrEqualTo(2);
+
+        // All registration file names should be unique (no collision)
+        await Assert.That(registrationFiles.Distinct().Count()).IsEqualTo(registrationFiles.Count);
+
+        // Files should contain parent class disambiguation
+        await Assert.That(registrationFiles.Any(f => f.Contains("ClassA"))).IsTrue();
+        await Assert.That(registrationFiles.Any(f => f.Contains("ClassB"))).IsTrue();
+    }
+
+    [Test]
     public async Task StatelessFunctionGenerator_WithParentIdAttribute_UsesOverriddenParent(CancellationToken token)
     {
         TestSources.Add(("TestModule.cs", """

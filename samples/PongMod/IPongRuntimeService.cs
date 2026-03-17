@@ -3,7 +3,6 @@ using Sparkitect.GameState;
 
 namespace PongMod;
 
-[StateFacade<IPongRuntimeServiceStateFacade>]
 public interface IPongRuntimeService
 {
     ref PongGameData GameData { get; }
@@ -23,5 +22,3 @@ public interface IPongRuntimeService
     void MoveRightPaddle(float delta);
     void ResetBall();
 }
-
-public interface IPongRuntimeServiceStateFacade;

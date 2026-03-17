@@ -53,15 +53,23 @@ public static partial class TestData
         """
         using Sparkitect.DI.GeneratorAttributes;
 
-        namespace Sparkitect.GameState;
+        namespace Sparkitect.GameState
+        {
+            [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+            public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+        }
 
-        [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
-        public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+        namespace Sparkitect.Modding
+        {
+            [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+            public class RegistryFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+        }
 
-        namespace Sparkitect.Modding;
-
-        [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
-        public class RegistryFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+        namespace Sparkitect.DI.GeneratorAttributes
+        {
+            [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+            public sealed class FacadeForAttribute<TService> : Attribute where TService : class;
+        }
         """);
 
     public static (string, object) DiResolutionScope => ("DiResolutionScope.cs",

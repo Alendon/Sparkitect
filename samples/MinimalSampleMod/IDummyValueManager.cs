@@ -1,4 +1,5 @@
-﻿using Sparkitect.GameState;
+﻿using Sparkitect.DI.GeneratorAttributes;
+using Sparkitect.GameState;
 using Sparkitect.Modding;
 
 namespace MinimalSampleMod;
@@ -10,7 +11,8 @@ public interface IDummyValueManager
     string GetDummyValue(Identification id);
 }
 
+[FacadeFor<IDummyValueManager>]
 public interface IDummyValueManagerStateFacade
 {
-    
+    string GetDummyFacaded(Identification id);
 }

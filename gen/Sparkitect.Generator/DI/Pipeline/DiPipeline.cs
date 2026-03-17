@@ -201,6 +201,9 @@ public static class DiPipeline
     private const string FacadeMarkerBaseName =
         "Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute";
 
+    private const string FacadeForBaseName =
+        "Sparkitect.DI.GeneratorAttributes.FacadeForAttribute";
+
     /// <summary>
     /// Extracts facade metadata from a symbol's constructor parameters and injectable properties.
     /// For each dependency type that is an interface with a facade marker attribute matching
@@ -299,15 +302,47 @@ public static class DiPipeline
     }
 
     /// <summary>
-    /// Scans an interface symbol's attributes for facade markers matching the given category.
+    /// Scans a dependency interface for [FacadeFor&lt;TService&gt;] and, when found,
+    /// verifies the service has a matching category attribute pointing back to this facade.
     /// </summary>
-    private static void CollectFacadeMappings(
+    public static void CollectFacadeMappings(
         INamedTypeSymbol interfaceSymbol, string facadeCategoryTypeName, List<FacadeMetadataModel> results)
     {
+        // Look for [FacadeFor<TService>] on the dependency interface
         foreach (var attr in interfaceSymbol.GetAttributes())
         {
-            if (attr.AttributeClass is null)
+            if (attr.AttributeClass is null) continue;
+
+            // Check if this is FacadeForAttribute<T>
+            if (attr.AttributeClass.ConstructedFrom.ToDisplayString(DisplayFormats.NamespaceAndType)
+                != FacadeForBaseName)
                 continue;
+
+            // Extract TService
+            if (attr.AttributeClass.TypeArguments.FirstOrDefault() is not INamedTypeSymbol serviceType)
+                continue;
+
+            // Verify serviceType has matching category attribute pointing back to this facade
+            if (!HasMatchingCategoryAttribute(serviceType, facadeCategoryTypeName, interfaceSymbol))
+                continue;
+
+            // CORRECT direction: facade type -> service type
+            var facadeTypeName = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var serviceTypeName = serviceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            results.Add(new FacadeMetadataModel(facadeTypeName, serviceTypeName));
+        }
+    }
+
+    /// <summary>
+    /// Checks if a service type has a facade category attribute (matching the category filter)
+    /// whose type argument is the given facade type.
+    /// </summary>
+    private static bool HasMatchingCategoryAttribute(
+        INamedTypeSymbol serviceType, string facadeCategoryTypeName, INamedTypeSymbol facadeType)
+    {
+        foreach (var attr in serviceType.GetAttributes())
+        {
+            if (attr.AttributeClass is null) continue;
 
             // Check if this attribute inherits from FacadeMarkerAttribute<T>
             if (!IsFacadeMarkerAttribute(attr.AttributeClass))
@@ -316,21 +351,17 @@ public static class DiPipeline
             // Check if the attribute's ConstructedFrom matches the category
             var constructedFrom = attr.AttributeClass.ConstructedFrom.ToDisplayString(
                 DisplayFormats.NamespaceAndType);
-
             if (constructedFrom != facadeCategoryTypeName)
                 continue;
 
-            // Extract the facade type from the attribute's type argument
-            if (attr.AttributeClass.TypeArguments.FirstOrDefault() is INamedTypeSymbol facadeType)
+            // Check if the type argument matches the facade type we're looking for
+            if (attr.AttributeClass.TypeArguments.FirstOrDefault() is INamedTypeSymbol attrFacadeType
+                && SymbolEqualityComparer.Default.Equals(attrFacadeType, facadeType))
             {
-                var dependencyType = interfaceSymbol.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat);
-                var facadedType = facadeType.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat);
-
-                results.Add(new FacadeMetadataModel(dependencyType, facadedType));
+                return true;
             }
         }
+        return false;
     }
 
     /// <summary>

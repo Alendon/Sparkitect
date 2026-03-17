@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,8 +13,6 @@ public class StateModuleServiceGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var buildSettings = context.GetModBuildSettings();
-
         var stateServicesProvider = context.SyntaxProvider.ForAttributeWithMetadataName(
             StateServiceAttributeMetadataName,
             (node, _) => node is ClassDeclarationSyntax,
@@ -40,36 +37,17 @@ public class StateModuleServiceGenerator : IIncrementalGenerator
 
                 var registration = DiPipeline.ToRegistration(factory, classSymbol);
 
-                // Extract facade metadata at the symbol boundary
-                var facadeMetadata = DiPipeline.ExtractFacadeMetadata(classSymbol, "Sparkitect.GameState.StateFacadeAttribute")
-                    .ToImmutableValueArray();
-
                 return new StateServiceData(
                     new FactoryWithRegistration(factory, registration),
                     moduleType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    moduleType.Name,
-                    facadeMetadata);
+                    moduleType.Name);
             }).NotNull();
 
-        // Output individual factory classes and metadata entrypoints
-        context.RegisterSourceOutput(stateServicesProvider.Combine(buildSettings), (ctx, pair) =>
+        // Output individual factory classes
+        context.RegisterSourceOutput(stateServicesProvider, (ctx, data) =>
         {
-            var (data, settings) = pair;
-
             if (DiPipeline.RenderFactory(data.FactoryData.Factory, out var code, out var fileName))
                 ctx.AddSource(fileName, code);
-
-            // Emit metadata entrypoint if facade metadata was extracted
-            if (data.FacadeMetadata.Count > 0)
-            {
-                var factory = data.FactoryData.Factory;
-                var wrapperTypeName = $"{factory.ImplementationNamespace}.{factory.ImplementationTypeName}_Factory";
-
-                var models = data.FacadeMetadata.Cast<IMetadataModel>().ToList();
-                if (DiPipeline.RenderMetadataEntrypoint(wrapperTypeName, factory.ImplementationNamespace, models, settings,
-                        out var metaCode, out var metaFileName))
-                    ctx.AddSource(metaFileName, metaCode);
-            }
         });
 
         // Group by module and output configurators
@@ -107,5 +85,4 @@ public class StateModuleServiceGenerator : IIncrementalGenerator
 internal record StateServiceData(
     FactoryWithRegistration FactoryData,
     string ModuleTypeFullName,
-    string ModuleTypeName,
-    ImmutableValueArray<FacadeMetadataModel> FacadeMetadata);
+    string ModuleTypeName);

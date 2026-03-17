@@ -93,7 +93,7 @@ public record FacadeMetadataModel(string DependencyType, string FacadedType) : I
 {
     public IReadOnlyList<string> RenderCodeLines() =>
     [
-        $"dependencies[typeof({DependencyType})] ??= new();",
+        $"dependencies.TryAdd(typeof({DependencyType}), new());",
         $"dependencies[typeof({DependencyType})].Add(new global::Sparkitect.DI.Resolution.FacadeMapping(typeof({FacadedType})));"
     ];
 }

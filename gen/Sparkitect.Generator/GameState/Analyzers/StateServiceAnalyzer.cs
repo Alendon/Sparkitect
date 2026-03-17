@@ -12,6 +12,7 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
 {
     private const string StateServiceAttributeMetadataName = "Sparkitect.GameState.StateServiceAttribute";
     private const string CoreModuleTypeName = "Sparkitect.GameState.CoreModule";
+    private const string FacadeForBaseName = "Sparkitect.DI.GeneratorAttributes.FacadeForAttribute";
 
     private static Location? GetAttributeLocation(AttributeData attr)
     {
@@ -21,7 +22,8 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
         StateServiceInterfaceNotImplemented,
         StateServiceFacadeNotImplemented,
-        StateServiceInterfaceMissingFacade);
+        FacadeMissingFacadeForAttribute,
+        FacadeForInconsistentWithService);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -80,22 +82,16 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
         if (moduleType?.ToDisplayString(DisplayFormats.NamespaceAndType) == CoreModuleTypeName)
             return;
 
-        // Get all StateFacade attributes from the interface
+        // Get all facade marker attributes from the interface (StateFacade, RegistryFacade, etc.)
         var facadeAttributes = interfaceType.GetAttributes()
             .Where(attr => IsStateFacadeAttribute(attr))
             .ToList();
 
-        // Validate: Interface must have at least one StateFacade attribute
-        if (!facadeAttributes.Any())
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                StateServiceInterfaceMissingFacade,
-                attrLocation ?? implementationType.Locations.FirstOrDefault(),
-                interfaceType.Name));
-            return;
-        }
+        // If no facades, that's fine (SPARK0303 removed -- facades are optional)
+        // But if facades exist, validate implementation and consistency
 
-        // Validate: Implementation must implement all required facades
+        // Validate: Implementation must implement all required facades (SPARK0302)
+        // and facade has [FacadeFor<interfaceType>] back-tracking (SPARK0304)
         foreach (var facadeAttr in facadeAttributes)
         {
             if (facadeAttr.AttributeClass?.TypeArguments.FirstOrDefault() is not INamedTypeSymbol facadeType)
@@ -110,12 +106,68 @@ public class StateServiceAnalyzer : DiagnosticAnalyzer
                     interfaceType.Name,
                     facadeType.Name));
             }
+
+            // SPARK0304: Check that facadeType has [FacadeFor<interfaceType>]
+            var hasFacadeFor = HasFacadeForAttribute(facadeType, interfaceType);
+            if (!hasFacadeFor)
+            {
+                // Get the category attribute name for the error message (e.g., "StateFacade")
+                var categoryName = facadeAttr.AttributeClass.Name.Replace("Attribute", "");
+                context.ReportDiagnostic(Diagnostic.Create(
+                    FacadeMissingFacadeForAttribute,
+                    facadeType.Locations.FirstOrDefault() ?? attrLocation ?? implementationType.Locations.FirstOrDefault(),
+                    facadeType.Name,
+                    categoryName,
+                    interfaceType.Name));
+            }
+        }
+
+        // SPARK0305: Check reverse direction -- for each facade referenced by this interface,
+        // verify any [FacadeFor<T>] on the facade points back to this interface
+        foreach (var facadeAttr in facadeAttributes)
+        {
+            if (facadeAttr.AttributeClass?.TypeArguments.FirstOrDefault() is not INamedTypeSymbol facadeType)
+                continue;
+
+            foreach (var facadeForAttr in facadeType.GetAttributes())
+            {
+                if (facadeForAttr.AttributeClass is null) continue;
+                if (facadeForAttr.AttributeClass.ConstructedFrom.ToDisplayString(DisplayFormats.NamespaceAndType) != FacadeForBaseName)
+                    continue;
+
+                if (facadeForAttr.AttributeClass.TypeArguments.FirstOrDefault() is INamedTypeSymbol targetService
+                    && !SymbolEqualityComparer.Default.Equals(targetService, interfaceType))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        FacadeForInconsistentWithService,
+                        facadeType.Locations.FirstOrDefault() ?? attrLocation ?? implementationType.Locations.FirstOrDefault(),
+                        facadeType.Name,
+                        targetService.Name));
+                }
+            }
         }
     }
 
     private static bool ImplementsInterface(INamedTypeSymbol type, INamedTypeSymbol interfaceType)
     {
         return type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, interfaceType));
+    }
+
+    private static bool HasFacadeForAttribute(INamedTypeSymbol facadeType, INamedTypeSymbol expectedServiceType)
+    {
+        foreach (var attr in facadeType.GetAttributes())
+        {
+            if (attr.AttributeClass is null) continue;
+            if (attr.AttributeClass.ConstructedFrom.ToDisplayString(DisplayFormats.NamespaceAndType) != FacadeForBaseName)
+                continue;
+
+            if (attr.AttributeClass.TypeArguments.FirstOrDefault() is INamedTypeSymbol targetService
+                && SymbolEqualityComparer.Default.Equals(targetService, expectedServiceType))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static bool IsStateFacadeAttribute(AttributeData attribute)

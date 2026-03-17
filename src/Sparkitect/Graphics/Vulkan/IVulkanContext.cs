@@ -1,5 +1,6 @@
 ﻿using Silk.NET.Vulkan;
 using Silk.NET.Windowing;
+using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Utils;
@@ -45,6 +46,7 @@ public interface IVulkanContext
     IReadOnlyList<VulkanQueue> GetQueuesForFamily(uint familyIndex);
 }
 
+[FacadeFor<IVulkanContext>]
 public interface IVulkanContextStateFacade
 {
     void Initialize();

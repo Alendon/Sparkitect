@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using Sparkitect.DI.Container;
+using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.Modding;
 
 namespace Sparkitect.GameState;
@@ -55,6 +56,7 @@ public interface IGameStateManager
 /// <summary>
 /// Registry-exclusive facade for IGameStateManager. Accessible only within registry contexts.
 /// </summary>
+[FacadeFor<IGameStateManager>]
 public interface IGameStateManagerRegistryFacade
 {
     /// <summary>
@@ -87,6 +89,7 @@ public interface IGameStateManagerRegistryFacade
 /// <summary>
 /// State-function-exclusive facade for IGameStateManager. Currently empty - reserved for future state-specific APIs.
 /// </summary>
+[FacadeFor<IGameStateManager>]
 public interface IGameStateManagerStateFacade
 {
 

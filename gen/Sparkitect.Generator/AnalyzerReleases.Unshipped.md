@@ -39,7 +39,8 @@
 
 | SPARK0301 | Sparkitect | Error    | StateService does not implement declared interface                    |
 | SPARK0302 | Sparkitect | Error    | StateService does not implement required facade                       |
-| SPARK0303 | Sparkitect | Error    | StateService interface missing StateFacade attribute                  |
+| SPARK0304 | Sparkitect | Error    | Facade interface missing [FacadeFor] attribute                        |
+| SPARK0305 | Sparkitect | Error    | FacadeFor attribute inconsistent with service facade declaration      |
 
 <!-- Category 04: Stateless Function Diagnostics -->
 
@@ -67,3 +68,4 @@
 | SPARK0107 | Sparkitect | Error    | Removed: DI Invalid key property (DiFactoryAnalyzer deleted)                      |
 | SPARK0108 | Sparkitect | Error    | Removed: DI Conflicting key associations (DiFactoryAnalyzer deleted)              |
 | SPARK0231 | Sparkitect | Error    | Replaced by SPARK0502 via [SnakeCase] attribute on generated provider attributes  |
+| SPARK0303 | Sparkitect | Error    | Removed: StateService interface missing StateFacade attribute (facades now optional) |

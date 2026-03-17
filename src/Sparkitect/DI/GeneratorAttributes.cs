@@ -9,3 +9,12 @@ namespace Sparkitect.DI.GeneratorAttributes;
 /// </summary>
 /// <typeparam name="TFacade">The exclusive facade interface type accessible only to the specific subsystem.</typeparam>
 public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;
+
+/// <summary>
+/// Navigation hint attribute placed on facade interfaces to enable source generator
+/// back-tracking from facade type to service type. Not a category marker -- purely
+/// for SG extraction.
+/// </summary>
+/// <typeparam name="TService">The service interface type this facade belongs to.</typeparam>
+[AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+public sealed class FacadeForAttribute<TService> : Attribute where TService : class;

@@ -152,9 +152,16 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         var parentFullName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var wrapperFullTypeName = $"{parentFullName}.{wrapperClassName}";
 
-        // Extract facade metadata from the containing class's dependencies
-        var facadeMetadata = DiPipeline.ExtractFacadeMetadata(containingType, "Sparkitect.GameState.StateFacadeAttribute")
-            .ToImmutableValueArray();
+        // Extract facade metadata from method parameters (not from the containing class)
+        var facadeResults = new List<FacadeMetadataModel>();
+        foreach (var param in methodSymbol.Parameters)
+        {
+            if (param.Type is INamedTypeSymbol paramType && paramType.TypeKind == TypeKind.Interface)
+            {
+                DiPipeline.CollectFacadeMappings(paramType, "Sparkitect.GameState.StateFacadeAttribute", facadeResults);
+            }
+        }
+        var facadeMetadata = facadeResults.ToImmutableValueArray();
 
         return new StatelessFunctionModel(
             methodSymbol.Name,
@@ -480,14 +487,19 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
                     "Stateless",
                     entries.ToImmutableValueArray());
 
+                // Disambiguate hintName when multiple parent classes target the same registry
+                var parentShortName = parent.ParentTypeName.Contains('.')
+                    ? parent.ParentTypeName.Substring(parent.ParentTypeName.LastIndexOf('.') + 1)
+                    : parent.ParentTypeName;
+
                 // Output registration using RegistryGenerator
-                if (RegistryGenerator.RenderRegistryRegistrationsUnit(unit, settings, out var regCode, out var regFile))
+                if (RegistryGenerator.RenderRegistryRegistrationsUnit(unit, settings, out var regCode, out var regFile, hintPrefix: parentShortName))
                 {
                     context.AddSource(regFile, regCode);
                 }
 
                 // Output ID properties using RegistryGenerator
-                if (RegistryGenerator.RenderRegistryIdPropertiesUnit(unit, settings, out var idCode, out var idFile))
+                if (RegistryGenerator.RenderRegistryIdPropertiesUnit(unit, settings, out var idCode, out var idFile, hintPrefix: parentShortName))
                 {
                     context.AddSource(idFile, idCode);
                 }

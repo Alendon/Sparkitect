@@ -43,7 +43,7 @@ internal class FactoryContainerBuilder<TBase> : IFactoryContainerBuilder<TBase>
     /// </summary>
     public IReadOnlyList<Type> GetRegisteredWrapperTypes()
     {
-        return _factories.Values.Select(f => f.ImplementationType).ToList();
+        return _factories.Values.Select(f => f.GetType()).ToList();
     }
 
     /// <summary>

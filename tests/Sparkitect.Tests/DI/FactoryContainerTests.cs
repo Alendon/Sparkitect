@@ -130,31 +130,6 @@ public class FactoryContainerTests
     }
 
     [Test]
-    public async Task Metadata_ReturnsImplementationTypes()
-    {
-        // Arrange
-        var service1 = new TestService();
-        var service2 = new OverrideTestService();
-        var factory1 = CreateMockFactory("key1", service1, typeof(TestService));
-        var factory2 = CreateMockFactory("key2", service2, typeof(OverrideTestService));
-        var factories = new Dictionary<string, IKeyedFactory<ITestService>>
-        {
-            { "key1", factory1 },
-            { "key2", factory2 }
-        };
-        var container = new FactoryContainer<ITestService>(factories);
-
-        // Act
-        var metadata = container.Metadata;
-
-        // Assert
-        await Assert.That(metadata).IsNotNull();
-        await Assert.That(metadata.Count).IsEqualTo(2);
-        await Assert.That(metadata["key1"]).IsEqualTo(typeof(TestService));
-        await Assert.That(metadata["key2"]).IsEqualTo(typeof(OverrideTestService));
-    }
-
-    [Test]
     public async Task Dispose_WithDisposableFactories_DisposesAll()
     {
         // Arrange

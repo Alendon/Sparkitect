@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
@@ -27,4 +28,5 @@ public interface IShaderManager
     void UnregisterModule(Identification id);
 }
 
+[FacadeFor<IShaderManager>]
 public interface IShaderManagerStateFacade;

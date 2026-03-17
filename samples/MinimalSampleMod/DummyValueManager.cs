@@ -24,4 +24,9 @@ public class DummyValueManager : IDummyValueManager, IDummyValueManagerStateFaca
     {
         return _values[id];
     }
+
+    public string GetDummyFacaded(Identification id)
+    {
+        return _values[id];
+    }
 }

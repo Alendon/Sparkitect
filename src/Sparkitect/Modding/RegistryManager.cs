@@ -31,11 +31,6 @@ internal class RegistryManager : IRegistryManager
         UpdateCache();
         var identifier = TRegistry.Identifier;
 
-        if (!_registryFactory.Metadata.ContainsKey(identifier))
-        {
-            throw new InvalidOperationException($"No DI Metadata for {typeof(TRegistry)} found");
-        }
-
         IdentificationManager.RegisterCategory(identifier);
         _processedModsByRegistry.Add(identifier, []);
 

@@ -1,4 +1,4 @@
-﻿//HintName: TestRegistry.IdProperties_Providers.g.cs
+﻿//HintName: TestModule_TestRegistry.IdProperties_Providers.g.cs
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 

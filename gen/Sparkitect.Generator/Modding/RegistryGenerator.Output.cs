@@ -8,10 +8,12 @@ namespace Sparkitect.Generator.Modding;
 
 public partial class RegistryGenerator
 {
-    public static bool RenderRegistryRegistrationsUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
+    public static bool RenderRegistryRegistrationsUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName, string hintPrefix = "")
     {
         var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
-        fileName = $"{unit.Model.TypeName}Registrations_{suffix}.g.cs";
+        fileName = string.IsNullOrEmpty(hintPrefix)
+            ? $"{unit.Model.TypeName}Registrations_{suffix}.g.cs"
+            : $"{hintPrefix}_{unit.Model.TypeName}Registrations_{suffix}.g.cs";
 
         var ns = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
             ? unit.Model.ContainingNamespace + ".Registrations"
@@ -79,10 +81,12 @@ public partial class RegistryGenerator
         return FluidHelper.TryRenderTemplate("Modding.RegistryIdExtensions.Framework.liquid", tpl, out code);
     }
 
-    public static bool RenderRegistryIdPropertiesUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName)
+    public static bool RenderRegistryIdPropertiesUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName, string hintPrefix = "")
     {
         var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
-        fileName = $"{unit.Model.TypeName}.IdProperties_{suffix}.g.cs";
+        fileName = string.IsNullOrEmpty(hintPrefix)
+            ? $"{unit.Model.TypeName}.IdProperties_{suffix}.g.cs"
+            : $"{hintPrefix}_{unit.Model.TypeName}.IdProperties_{suffix}.g.cs";
 
         var categoryPascal = StringCase.ToPascalCase(unit.Model.Key);
         var registrationsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)

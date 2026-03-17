@@ -14,7 +14,7 @@ using Sparkitect.Graphics.Vulkan.Vma;
 namespace PongMod;
 
 [StateService<IPongRuntimeService, PongModule>]
-internal class PongRuntimeService : IPongRuntimeService, IPongRuntimeServiceStateFacade
+internal class PongRuntimeService : IPongRuntimeService
 {
     private PongGameData _gameData;
     private Vector3 _backgroundColor = new(0.1f, 0.1f, 0.15f);
