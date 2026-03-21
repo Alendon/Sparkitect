@@ -13,6 +13,18 @@ public static partial class TestData
         global using System.Threading.Tasks;
         """);
 
+    public static (string, object) MetadataTypes => ("MetadataTypes.cs",
+        """
+        namespace Sparkitect.Metadata
+        {
+            [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+            public sealed class MetadataCategoryMarkerAttribute : Attribute;
+
+            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+            public abstract class MetadataAttribute<TMetadata> : Attribute;
+        }
+        """);
+
     public static (string, object) Sparkitect => ("Core.cs",
             """
             using System.Runtime.InteropServices;

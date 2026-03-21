@@ -5,6 +5,7 @@ using Sparkitect.DI.Resolution;
 using Sparkitect.ECS;
 using Sparkitect.ECS.Systems;
 using Sparkitect.GameState;
+using Sparkitect.Metadata;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
@@ -300,9 +301,9 @@ public class SystemManagerTests
         // that populates the graph with the specified nodes
         var entrypoint = new TestSchedulingEntrypoint(graphNodes, edges ?? []);
         var container = new TestEntrypointContainer<
-            ApplySchedulingEntrypoint<EcsSystemFunctionAttribute, EcsSystemContext, IEcsGraphBuilder>>(entrypoint);
+            ApplyMetadataEntrypoint<IScheduling>>(entrypoint);
         diServiceImposter.CreateEntrypointContainer<
-                ApplySchedulingEntrypoint<EcsSystemFunctionAttribute, EcsSystemContext, IEcsGraphBuilder>>(
+                ApplyMetadataEntrypoint<IScheduling>>(
                 Arg<IEnumerable<string>>.Any())
             .Returns(container);
 
@@ -328,15 +329,39 @@ public class SystemManagerTests
     private sealed class TestSchedulingEntrypoint(
         (Identification systemId, Identification groupId)[] nodes,
         (Identification from, Identification to)[] edges)
-        : ApplySchedulingEntrypoint<EcsSystemFunctionAttribute, EcsSystemContext, IEcsGraphBuilder>
+        : ApplyMetadataEntrypoint<IScheduling>
     {
-        public override void BuildGraph(IEcsGraphBuilder builder, EcsSystemContext context)
+        public override void CollectMetadata(Dictionary<Identification, IScheduling> metadata)
         {
-            foreach (var (systemId, groupId) in nodes)
-                builder.AddNode(systemId, groupId);
+            // Build edge lookup: for each system, find its OrderAfter edges
+            var orderAfterBySystem = new Dictionary<Identification, List<TestOrderAfterAttribute>>();
             foreach (var (from, to) in edges)
-                builder.AddEdge(from, to, optional: false);
+            {
+                // "from -> to" means from runs before to, i.e., to has OrderAfter(from)
+                if (!orderAfterBySystem.TryGetValue(to, out var list))
+                {
+                    list = [];
+                    orderAfterBySystem[to] = list;
+                }
+                list.Add(new TestOrderAfterAttribute(from));
+            }
+
+            foreach (var (systemId, groupId) in nodes)
+            {
+                var orderAfter = orderAfterBySystem.TryGetValue(systemId, out var afterList)
+                    ? afterList.Cast<OrderAfterAttribute>().ToArray()
+                    : [];
+                var scheduling = new EcsSystemScheduling(orderAfter, []);
+                scheduling.OwnerId = groupId;
+                metadata[systemId] = scheduling;
+            }
         }
+    }
+
+    private sealed class TestOrderAfterAttribute(Identification other) : OrderAfterAttribute
+    {
+        public override Identification Other => other;
+        public override bool Optional => false;
     }
 
     private sealed class TestEntrypointContainer<T>(params T[] entries)

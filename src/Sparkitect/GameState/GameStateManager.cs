@@ -10,6 +10,7 @@ using Sparkitect.DI.Resolution;
 using Sparkitect.Modding;
 using Sparkitect.DI;
 using Sparkitect.Modding.IDs;
+using Sparkitect.Metadata;
 using Sparkitect.Stateless;
 using Sparkitect.Utils;
 
@@ -529,17 +530,44 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
 
         var perFrameCtx = new PerFrameContext { StateStack = stateStack };
 
-        var transitionEnterMethods = FunctionManager.GetSorted<
-            TransitionFunctionAttribute, TransitionContext, TransitionRegistry>(
-            scope, transitionEnterCtx, allMods);
+        // Collect ALL scheduling metadata
+        var metadata = new Dictionary<Identification, IScheduling>();
+        using (var schedulingContainer = DIService.CreateEntrypointContainer<
+            ApplyMetadataEntrypoint<IScheduling>>(allMods))
+        {
+            schedulingContainer.ProcessMany(ep => ep.CollectMetadata(metadata));
+        }
 
-        var transitionExitMethods = FunctionManager.GetSorted<
-            TransitionFunctionAttribute, TransitionContext, TransitionRegistry>(
-            scope, transitionExitCtx, allMods);
+        // Build PerFrame graph
+        var perFrameBuilder = FunctionManager.CreateGraphBuilder();
+        foreach (var (id, scheduling) in metadata)
+        {
+            if (scheduling is PerFrameScheduling pfs)
+                pfs.BuildGraph(perFrameBuilder, perFrameCtx, id);
+        }
+        var perFrameMethods = FunctionManager.InstantiateWrappers(perFrameBuilder.Resolve(), scope);
 
-        var perFrameMethods = FunctionManager.GetSorted<
-            PerFrameFunctionAttribute, PerFrameContext, PerFrameRegistry>(
-            scope, perFrameCtx, allMods);
+        // Build Transition enter graph
+        var transitionEnterBuilder = FunctionManager.CreateGraphBuilder();
+        foreach (var (id, scheduling) in metadata)
+        {
+            if (scheduling is OnCreateScheduling ocs)
+                ocs.BuildGraph(transitionEnterBuilder, transitionEnterCtx, id);
+            else if (scheduling is OnFrameEnterScheduling ofes)
+                ofes.BuildGraph(transitionEnterBuilder, transitionEnterCtx, id);
+        }
+        var transitionEnterMethods = FunctionManager.InstantiateWrappers(transitionEnterBuilder.Resolve(), scope);
+
+        // Build Transition exit graph
+        var transitionExitBuilder = FunctionManager.CreateGraphBuilder();
+        foreach (var (id, scheduling) in metadata)
+        {
+            if (scheduling is OnDestroyScheduling ods)
+                ods.BuildGraph(transitionExitBuilder, transitionExitCtx, id);
+            else if (scheduling is OnFrameExitScheduling ofxs)
+                ofxs.BuildGraph(transitionExitBuilder, transitionExitCtx, id);
+        }
+        var transitionExitMethods = FunctionManager.InstantiateWrappers(transitionExitBuilder.Resolve(), scope);
 
         return new ActiveStateFrame(
             stateId,

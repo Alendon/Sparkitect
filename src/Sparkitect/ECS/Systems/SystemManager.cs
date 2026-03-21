@@ -1,5 +1,6 @@
 using Sparkitect.DI;
 using Sparkitect.GameState;
+using Sparkitect.Metadata;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
@@ -73,12 +74,19 @@ internal class SystemManager(
         var context = new EcsSystemContext { World = world };
         var loadedMods = gameStateManager.LoadedMods;
 
-        var graphBuilder = new EcsGraphBuilder();
+        // Collect ECS system scheduling metadata
+        var metadata = new Dictionary<Identification, IScheduling>();
         using var entrypointContainer = diService.CreateEntrypointContainer<
-            ApplySchedulingEntrypoint<EcsSystemFunctionAttribute, EcsSystemContext, IEcsGraphBuilder>>(loadedMods);
+            ApplyMetadataEntrypoint<IScheduling>>(loadedMods);
+        entrypointContainer.ProcessMany(ep => ep.CollectMetadata(metadata));
 
-        entrypointContainer.ProcessMany(entrypoint =>
-            entrypoint.BuildGraph(graphBuilder, context));
+        // Build ECS graph from metadata
+        var graphBuilder = new EcsGraphBuilder();
+        foreach (var (id, scheduling) in metadata)
+        {
+            if (scheduling is EcsSystemScheduling ess)
+                ess.BuildGraph(graphBuilder, context, id);
+        }
 
         var graph = graphBuilder.Resolve();
 

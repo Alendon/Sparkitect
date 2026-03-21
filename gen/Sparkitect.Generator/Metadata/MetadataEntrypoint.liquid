@@ -4,16 +4,15 @@
 namespace {{ Namespace }};
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-[global::Sparkitect.Metadata.ApplyMetadataEntrypointAttribute<global::Sparkitect.Stateless.IScheduling>]
+[global::Sparkitect.Metadata.ApplyMetadataEntrypointAttribute<{{ MetadataTypeName }}>]
 internal class {{ ClassName }}
-    : global::Sparkitect.Metadata.ApplyMetadataEntrypoint<global::Sparkitect.Stateless.IScheduling>
+    : global::Sparkitect.Metadata.ApplyMetadataEntrypoint<{{ MetadataTypeName }}>
 {
     public override void CollectMetadata(
-        global::System.Collections.Generic.Dictionary<global::Sparkitect.Modding.Identification, global::Sparkitect.Stateless.IScheduling> metadata)
+        global::System.Collections.Generic.Dictionary<global::Sparkitect.Modding.Identification, {{ MetadataTypeName }}> metadata)
     {
-{% for func in Functions %}
         {
-{% for param in func.SchedulingParams %}
+{% for param in ConstructorParams %}
 {% if param.IsArray %}
             {{ param.AttributeTypeName }}[] param_{{ forloop.index0 }} = [
 {% for inst in param.Instances %}
@@ -29,14 +28,12 @@ internal class {{ ClassName }}
 {% endif %}
 {% endif %}
 {% endfor %}
-            var scheduling = new {{ func.SchedulingTypeName }}(
-{% for param in func.SchedulingParams %}
+            var instance = new {{ MetadataTypeName }}(
+{% for param in ConstructorParams %}
                 param_{{ forloop.index0 }}{% unless forloop.last %},{% endunless %}
 {% endfor %}
             );
-            scheduling.OwnerId = global::Sparkitect.Modding.IdentificationHelper.Read<{{ func.ParentIdentificationTypeName }}>();
-            metadata[global::Sparkitect.Modding.IdentificationHelper.Read<{{ func.WrapperFullTypeName }}>()] = scheduling;
+            metadata[global::Sparkitect.Modding.IdentificationHelper.Read<{{ TypeFullName }}>()] = instance;
         }
-{% endfor %}
     }
 }

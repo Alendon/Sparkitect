@@ -5,14 +5,6 @@ namespace Sparkitect.Stateless;
 
 public interface IStatelessFunctionManager
 {
-    IReadOnlyList<IStatelessFunction> GetSorted<TStatelessFunction, TContext, TRegistry>(
-        IResolutionScope scope,
-        TContext context,
-        IEnumerable<string> loadedMods)
-        where TStatelessFunction : StatelessFunctionAttribute<TContext, TRegistry>
-        where TContext : class
-        where TRegistry : IRegistry;
-
     /// <summary>
     /// Instantiates stateless function wrappers for the given sorted IDs.
     /// Each ID must have been previously registered via AddFunction.

@@ -6,6 +6,6 @@ namespace TestMod.Generated.IdExtensions;
 
 public readonly partial struct TestModTestIDs
 {
-public global::Sparkitect.Modding.Identification Init => global::TestMod.Generated.Registrations.TestRegistryRegistrations_Providers.Init;
+public global::Sparkitect.Modding.Identification Init => global::TestMod.Generated.Registrations.TestModule_TestRegistryRegistrations_Providers.Init;
 }
 

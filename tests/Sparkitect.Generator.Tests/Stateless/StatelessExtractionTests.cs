@@ -18,6 +18,7 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
         TestSources.Add(TestData.DiAttributes);
         TestSources.Add(TestData.Sparkitect);
         TestSources.Add(TestData.ModdingCode);
+        TestSources.Add(TestData.MetadataTypes);
         TestSources.Add(TestData.StatelessCoreTypes);
         TestSources.Add(TestData.StatelessTestTypes);
 

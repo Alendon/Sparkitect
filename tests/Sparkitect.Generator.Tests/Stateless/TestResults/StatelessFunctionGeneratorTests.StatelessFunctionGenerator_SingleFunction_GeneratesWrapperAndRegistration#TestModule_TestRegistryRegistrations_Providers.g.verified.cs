@@ -9,7 +9,7 @@ using Sparkitect.DI;
 using Sparkitect.DI.Container;
 
 [global::Sparkitect.DI.RegistrationsEntrypoint<global::StatelessTest.TestRegistry>]
-public class TestRegistryRegistrations_Providers : global::Sparkitect.DI.Registrations<global::StatelessTest.TestRegistry>
+public class TestModule_TestRegistryRegistrations_Providers : global::Sparkitect.DI.Registrations<global::StatelessTest.TestRegistry>
 {
     public override string CategoryIdentifier => "test";
 

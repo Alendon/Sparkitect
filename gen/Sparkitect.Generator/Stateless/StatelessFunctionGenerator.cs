@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sparkitect.Generator.DI.Pipeline;
+using Sparkitect.Generator.Metadata;
 using Sparkitect.Generator.Modding;
 using Sparkitect.Utilities;
 
@@ -87,24 +88,20 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         if (!RegistryGenerator.TryExtractRegistryKey(registryType, out var registryKey))
             return null;
 
-        // Find SchedulingAttribute (or derived)
-        AttributeData? schedulingAttr = null;
+        // Find SchedulingAttribute (or derived) -- now via MetadataAttribute<T> base
         INamedTypeSymbol? schedulingType = null;
-        INamedTypeSymbol? builderType = null;
 
         foreach (var attr in methodSymbol.GetAttributes())
         {
-            var baseGeneric = FindGenericBase(attr.AttributeClass, SchedulingAttributeBase);
-            if (baseGeneric is { TypeArguments.Length: 5 })
+            var baseGeneric = FindGenericBase(attr.AttributeClass, "Sparkitect.Metadata.MetadataAttribute");
+            if (baseGeneric is { TypeArguments.Length: 1 })
             {
-                schedulingAttr = attr;
                 schedulingType = baseGeneric.TypeArguments[0] as INamedTypeSymbol;
-                builderType = baseGeneric.TypeArguments[4] as INamedTypeSymbol;
                 break;
             }
         }
 
-        if (schedulingAttr is null || schedulingType is null || builderType is null)
+        if (schedulingType is null)
             return null;
 
         // Get containing type
@@ -174,7 +171,6 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             registryType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             registryKey,
             contextType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-            builderType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             parentFullName,
             parentIdentificationTypeName,
             parameters,
@@ -186,74 +182,18 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         INamedTypeSymbol schedulingType,
         IMethodSymbol method)
     {
+        var metadataParams = MetadataExtractionPipeline.Extract(
+            schedulingType, method, ResolveTypeArgument);
+
+        // Convert MetadataConstructorParam -> SchedulingConstructorParam
         var builder = new ImmutableValueArray<SchedulingConstructorParam>.Builder();
-
-        // Get single constructor
-        var ctor = schedulingType.Constructors.FirstOrDefault(c => !c.IsStatic);
-        if (ctor is null)
-            return builder.ToImmutableValueArray();
-
-        foreach (var ctorParam in ctor.Parameters)
+        foreach (var mp in metadataParams)
         {
-            var paramType = ctorParam.Type;
-            bool isArray = paramType is IArrayTypeSymbol;
-            bool isNullable = paramType.NullableAnnotation == NullableAnnotation.Annotated;
-
-            // Get element type if array
-            var elementType = isArray ? ((IArrayTypeSymbol)paramType).ElementType : paramType;
-
-            // Get non-generic base for matching (strip nullable)
-            var baseTypeName = GetNonGenericBaseTypeName(elementType);
-
-            // Match method attributes to this param type
             var instances = new ImmutableValueArray<SchedulingAttributeInstance>.Builder();
-            foreach (var attr in method.GetAttributes())
-            {
-                var attrBaseName = GetNonGenericBaseTypeName(attr.AttributeClass);
-                if (attrBaseName == baseTypeName)
-                {
-                    // Extract generic args
-                    var genericArgs = new ImmutableValueArray<string>.Builder();
-                    if (attr.AttributeClass is { IsGenericType: true })
-                    {
-                        foreach (var typeArg in attr.AttributeClass.TypeArguments)
-                        {
-                            var resolvedTypeName = ResolveTypeArgument(typeArg, method);
-                            genericArgs.Add(resolvedTypeName);
-                        }
-                    }
-
-                    // Extract constructor args
-                    var ctorArgs = new ImmutableValueArray<string>.Builder();
-                    foreach (var arg in attr.ConstructorArguments)
-                    {
-                        ctorArgs.Add(FormatTypedConstant(arg));
-                    }
-
-                    instances.Add(new SchedulingAttributeInstance(
-                        genericArgs.ToImmutableValueArray(),
-                        ctorArgs.ToImmutableValueArray()));
-                }
-            }
-
-            var attrTypeName = elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            // Strip generic suffix for base type name in template
-            if (elementType is INamedTypeSymbol { IsGenericType: true } namedType)
-            {
-                attrTypeName = namedType.ConstructedFrom.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                // Remove `N suffix
-                var backtickIdx = attrTypeName.IndexOf('`');
-                if (backtickIdx > 0)
-                    attrTypeName = attrTypeName.Substring(0, backtickIdx);
-            }
-
-            builder.Add(new SchedulingConstructorParam(
-                attrTypeName,
-                isNullable,
-                isArray,
-                instances.ToImmutableValueArray()));
+            foreach (var mi in mp.Instances)
+                instances.Add(new SchedulingAttributeInstance(mi.GenericArgs, mi.CtorArgs));
+            builder.Add(new SchedulingConstructorParam(mp.AttributeTypeName, mp.IsNullable, mp.IsArray, instances.ToImmutableValueArray()));
         }
-
         return builder.ToImmutableValueArray();
     }
 
@@ -263,7 +203,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
     /// Roslyn returns ErrorTypeSymbol. We deduce the correct globalized name from the
     /// wrapper naming convention ({IdentifierPascal}Func).
     /// </summary>
-    private static string ResolveTypeArgument(ITypeSymbol typeArg, IMethodSymbol method)
+    private static string ResolveTypeArgument(ITypeSymbol typeArg, ISymbol symbol)
     {
         // Normal case: type resolved successfully
         if (typeArg.TypeKind != TypeKind.Error)
@@ -293,7 +233,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
 
         // Unqualified form: OtherMethodFunc
         // Must be a sibling method in the same class - check if such a method exists
-        var containingType = method.ContainingType;
+        var containingType = symbol.ContainingType;
         if (containingType is null)
         {
             return typeArg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -305,59 +245,16 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
     }
 
     internal static string GetNonGenericBaseTypeName(ITypeSymbol? type)
-    {
-        if (type is null) return string.Empty;
-
-        // Handle nullable
-        if (type.NullableAnnotation == NullableAnnotation.Annotated && type is INamedTypeSymbol nullable)
-        {
-            type = nullable.TypeArguments.FirstOrDefault() ?? type;
-        }
-
-        if (type is INamedTypeSymbol { IsGenericType: true } named)
-        {
-            return named.ConstructedFrom.ToDisplayString(DisplayFormats.NamespaceAndType);
-        }
-
-        return type.ToDisplayString(DisplayFormats.NamespaceAndType);
-    }
+        => MetadataExtractionPipeline.GetNonGenericBaseTypeName(type);
 
     internal static string FormatTypedConstant(TypedConstant constant)
-    {
-        if (constant.IsNull) return "null";
-
-        return constant.Kind switch
-        {
-            TypedConstantKind.Primitive when constant.Value is string s => $"\"{s}\"",
-            TypedConstantKind.Primitive when constant.Value is bool b => b ? "true" : "false",
-            TypedConstantKind.Primitive => constant.Value?.ToString() ?? "null",
-            TypedConstantKind.Enum => $"({constant.Type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}){constant.Value}",
-            _ => constant.ToCSharpString()
-        };
-    }
+        => MetadataExtractionPipeline.FormatTypedConstant(constant);
 
     private static bool InheritsFrom(INamedTypeSymbol? type, string baseTypeName)
-    {
-        while (type is not null)
-        {
-            if (type.ToDisplayString(DisplayFormats.NamespaceAndType) == baseTypeName)
-                return true;
-            type = type.BaseType;
-        }
-        return false;
-    }
+        => MetadataExtractionPipeline.InheritsFrom(type, baseTypeName);
 
     private static INamedTypeSymbol? FindGenericBase(INamedTypeSymbol? type, string genericBaseName)
-    {
-        while (type is not null)
-        {
-            if (type.IsGenericType &&
-                type.ConstructedFrom.ToDisplayString(DisplayFormats.NamespaceAndType.WithGenericsOptions(SymbolDisplayGenericsOptions.None)) == genericBaseName)
-                return type;
-            type = type.BaseType;
-        }
-        return null;
-    }
+        => MetadataExtractionPipeline.FindGenericBase(type, genericBaseName);
 
     private static ImmutableValueArray<StatelessParentModel> GroupByParent(
         IEnumerable<StatelessFunctionModel> functions)
@@ -574,9 +471,6 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         {
             Namespace = parent.ParentNamespace,
             ClassName = $"{parent.ParentTypeName}_{registryShort}Scheduling",
-            StatelessFunctionAttributeType = firstFunc.FunctionAttributeTypeName,
-            ContextType = firstFunc.ContextTypeName,
-            BuilderType = firstFunc.BuilderTypeName,
             Functions = functions.Select(f => new
             {
                 f.SchedulingTypeName,

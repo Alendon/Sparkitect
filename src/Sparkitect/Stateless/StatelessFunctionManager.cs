@@ -18,27 +18,6 @@ internal sealed class StatelessFunctionManager : IStatelessFunctionManager
         _wrapperTypes[id] = typeof(TStatelessFunction);
     }
 
-    public IReadOnlyList<IStatelessFunction> GetSorted<TStatelessFunction, TContext, TRegistry>(
-        IResolutionScope scope,
-        TContext context,
-        IEnumerable<string> loadedMods)
-        where TStatelessFunction : StatelessFunctionAttribute<TContext, TRegistry>
-        where TContext : class
-        where TRegistry : IRegistry
-    {
-        var graphBuilder = CreateGraphBuilder();
-
-        using var entrypointContainer = DIService.CreateEntrypointContainer<
-            ApplySchedulingEntrypoint<TStatelessFunction, TContext, IExecutionGraphBuilder>>(loadedMods);
-
-        entrypointContainer.ProcessMany(entrypoint =>
-            entrypoint.BuildGraph(graphBuilder, context));
-
-        var sortedIds = graphBuilder.Resolve();
-
-        return InstantiateWrappers(sortedIds, scope);
-    }
-
     public IReadOnlyList<IStatelessFunction> InstantiateWrappers(
         IReadOnlyList<Identification> sortedIds,
         IResolutionScope scope)

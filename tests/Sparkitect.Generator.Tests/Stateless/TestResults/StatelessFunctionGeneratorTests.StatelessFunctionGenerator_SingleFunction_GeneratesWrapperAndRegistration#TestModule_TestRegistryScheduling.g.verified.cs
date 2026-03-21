@@ -5,13 +5,12 @@
 namespace TestMod;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-[global::Sparkitect.GameState.ApplySchedulingEntrypointAttribute<global::Sparkitect.Stateless.TestFunctionAttribute>]
+[global::Sparkitect.Metadata.ApplyMetadataEntrypointAttribute<global::Sparkitect.Stateless.IScheduling>]
 internal class TestModule_TestRegistryScheduling
-    : global::Sparkitect.GameState.ApplySchedulingEntrypoint<global::Sparkitect.Stateless.TestFunctionAttribute, global::StatelessTest.TestContext, global::Sparkitect.Stateless.IExecutionGraphBuilder>
+    : global::Sparkitect.Metadata.ApplyMetadataEntrypoint<global::Sparkitect.Stateless.IScheduling>
 {
-    public override void BuildGraph(
-        global::Sparkitect.Stateless.IExecutionGraphBuilder builder,
-        global::StatelessTest.TestContext context)
+    public override void CollectMetadata(
+        global::System.Collections.Generic.Dictionary<global::Sparkitect.Modding.Identification, global::Sparkitect.Stateless.IScheduling> metadata)
     {
 
         {
@@ -35,7 +34,8 @@ internal class TestModule_TestRegistryScheduling
                 param_1
 
             );
-            scheduling.BuildGraph(builder, context, global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule.InitFunc>(), global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule>());
+            scheduling.OwnerId = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule>();
+            metadata[global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule.InitFunc>()] = scheduling;
         }
 
     }

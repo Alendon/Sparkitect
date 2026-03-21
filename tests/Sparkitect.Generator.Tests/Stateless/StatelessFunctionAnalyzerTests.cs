@@ -10,6 +10,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     {
         TestSources.Add(TestData.GlobalUsings);
         TestSources.Add(TestData.Sparkitect);
+        TestSources.Add(TestData.MetadataTypes);
         TestSources.Add(TestData.StatelessCoreTypes);
         TestSources.Add(TestData.StatelessTestTypes);
     }

@@ -3,11 +3,12 @@ using Sparkitect.Stateless;
 
 namespace Sparkitect.ECS.Systems;
 
-public sealed class EcsSystemScheduling
-    : IScheduling<EcsSystemFunctionAttribute, EcsSystemContext, SystemRegistry, IEcsGraphBuilder>
+public sealed class EcsSystemScheduling : IScheduling
 {
     private readonly OrderAfterAttribute[] _orderAfter;
     private readonly OrderBeforeAttribute[] _orderBefore;
+
+    public Identification OwnerId { get; set; }
 
     public EcsSystemScheduling(OrderAfterAttribute[] orderAfter, OrderBeforeAttribute[] orderBefore)
     {
@@ -15,20 +16,19 @@ public sealed class EcsSystemScheduling
         _orderBefore = orderBefore;
     }
 
-    public void BuildGraph(IEcsGraphBuilder builder, EcsSystemContext context,
-        Identification functionId, Identification ownerId)
+    public void BuildGraph(IEcsGraphBuilder builder, EcsSystemContext context, Identification functionId)
     {
         // Inclusion filtering: check if system is active in the World
         var systems = context.World.GetSystems();
         if (!systems.TryGetValue(functionId, out var state) || state != SystemState.Active)
             return;
 
-        // Check group state if ownerId is a registered group
+        // Check group state if OwnerId is a registered group
         var groups = context.World.GetSystemGroups();
-        if (groups.TryGetValue(ownerId, out var groupState) && groupState != SystemState.Active)
+        if (groups.TryGetValue(OwnerId, out var groupState) && groupState != SystemState.Active)
             return;
 
-        builder.AddNode(functionId, ownerId);
+        builder.AddNode(functionId, OwnerId);
 
         // Manual edge application (OrderAttributes.Apply takes IExecutionGraphBuilder, not IEcsGraphBuilder)
         foreach (var after in _orderAfter)

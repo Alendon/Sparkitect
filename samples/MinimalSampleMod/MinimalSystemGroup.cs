@@ -10,6 +10,7 @@ using Sparkitect.Modding.IDs;
 namespace MinimalSampleMod;
 
 [SystemGroupRegistry.RegisterSystemGroup("minimal")]
+[SystemGroupScheduling]
 public partial class MinimalSystemGroup : IHasIdentification
 {
     public static Identification Identification => EcsSystemGroupID.MinimalSampleMod.Minimal;
