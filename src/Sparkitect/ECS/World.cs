@@ -1,6 +1,8 @@
 using Serilog;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Storage;
+using Sparkitect.ECS.Systems;
+using Sparkitect.Modding;
 
 namespace Sparkitect.ECS;
 
@@ -31,6 +33,10 @@ internal class World : IWorld
 
     // Filter registry
     private readonly List<FilterEntry> _filters = new();
+
+    // System and group state
+    private readonly Dictionary<Identification, SystemState> _systems = new();
+    private readonly Dictionary<Identification, SystemState> _systemGroups = new();
 
     /// <summary>
     /// Creates a new World with default initial capacity.
@@ -275,6 +281,106 @@ internal class World : IWorld
             var matches = EvaluateFilter(entry.Filter);
             entry.Callback(matches);
         }
+    }
+
+    // --- System/Group state ---
+
+    /// <inheritdoc/>
+    public void AddSystem(Identification systemId)
+    {
+        ThrowIfDisposed();
+        if (!_systems.TryAdd(systemId, SystemState.Active))
+        {
+            throw new InvalidOperationException(
+                $"System {systemId} is already registered.");
+        }
+    }
+
+    /// <inheritdoc/>
+    public void RemoveSystem(Identification systemId)
+    {
+        ThrowIfDisposed();
+        _systems.Remove(systemId);
+    }
+
+    /// <inheritdoc/>
+    public void SetSystemState(Identification systemId, SystemState state)
+    {
+        ThrowIfDisposed();
+        if (!_systems.ContainsKey(systemId))
+        {
+            throw new InvalidOperationException(
+                $"System {systemId} is not registered.");
+        }
+        _systems[systemId] = state;
+    }
+
+    /// <inheritdoc/>
+    public SystemState GetSystemState(Identification systemId)
+    {
+        ThrowIfDisposed();
+        if (!_systems.TryGetValue(systemId, out var state))
+        {
+            throw new InvalidOperationException(
+                $"System {systemId} is not registered.");
+        }
+        return state;
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyDictionary<Identification, SystemState> GetSystems()
+    {
+        ThrowIfDisposed();
+        return _systems;
+    }
+
+    /// <inheritdoc/>
+    public void AddSystemGroup(Identification groupId)
+    {
+        ThrowIfDisposed();
+        if (!_systemGroups.TryAdd(groupId, SystemState.Active))
+        {
+            throw new InvalidOperationException(
+                $"System group {groupId} is already registered.");
+        }
+    }
+
+    /// <inheritdoc/>
+    public void RemoveSystemGroup(Identification groupId)
+    {
+        ThrowIfDisposed();
+        _systemGroups.Remove(groupId);
+    }
+
+    /// <inheritdoc/>
+    public void SetGroupState(Identification groupId, SystemState state)
+    {
+        ThrowIfDisposed();
+        if (!_systemGroups.ContainsKey(groupId))
+        {
+            throw new InvalidOperationException(
+                $"System group {groupId} is not registered.");
+        }
+        _systemGroups[groupId] = state;
+    }
+
+    /// <inheritdoc/>
+    public SystemState GetGroupState(Identification groupId)
+    {
+        ThrowIfDisposed();
+        if (!_systemGroups.TryGetValue(groupId, out var state))
+        {
+            throw new InvalidOperationException(
+                $"System group {groupId} is not registered.");
+        }
+        return state;
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyDictionary<Identification, SystemState> GetSystemGroups()
+    {
+        ThrowIfDisposed();
+        return _systemGroups;
     }
 
     // --- Entity ID pool ---

@@ -16,8 +16,12 @@ public partial class SampleEntryState : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
     public static Identification Identification => StateID.MinimalSampleMod.Sample;
-    public static IReadOnlyList<Identification> Modules => [StateModuleID.MinimalSampleMod.Sample, StateModuleID.Sparkitect.Vulkan];
-    
+
+    public static IReadOnlyList<Identification> Modules =>
+    [
+        StateModuleID.MinimalSampleMod.Sample, StateModuleID.Sparkitect.Vulkan, StateModuleID.Sparkitect.Ecs
+    ];
+
     [DummyRegistry.RegisterValue("hello1")]
     public static string SomeValueToRegister() => "Hello World";
 
@@ -29,7 +33,7 @@ public partial class SampleEntryState : IStateDescriptor
         Log.Information("Testing VkCommandPool...");
 
         var poolResult = vulkanContext.CreateCommandPool(CommandPoolCreateFlags.ResetCommandBufferBit, 0);
-        
+
         if (poolResult is not VkResult<VkCommandPool>.Success(var pool))
         {
             Log.Error("Failed to create command pool");
@@ -56,9 +60,8 @@ public partial class SampleEntryState : IStateDescriptor
     [PerFrameScheduling]
     public static void PrintOnFrame(IDummyValueManagerStateFacade dummyValueManager)
     {
-        Log.Information("Dummy Value fetched for {Id} as: {Value}", DummyID.MinimalSampleMod.Hello1, dummyValueManager.GetDummyFacaded(DummyID.MinimalSampleMod.Hello1));
+        Log.Information("Dummy Value fetched for {Id} as: {Value}", DummyID.MinimalSampleMod.Hello1,
+            dummyValueManager.GetDummyFacaded(DummyID.MinimalSampleMod.Hello1));
         Thread.Sleep(1000);
     }
-    
-    
 }

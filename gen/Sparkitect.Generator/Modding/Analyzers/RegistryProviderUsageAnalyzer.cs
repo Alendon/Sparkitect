@@ -56,6 +56,8 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
                     MethodDeclarationSyntax mds => ctx.SemanticModel.GetDeclaredSymbol(mds, ctx.CancellationToken),
                     PropertyDeclarationSyntax pds => ctx.SemanticModel.GetDeclaredSymbol(pds, ctx.CancellationToken),
                     ClassDeclarationSyntax cds => ctx.SemanticModel.GetDeclaredSymbol(cds, ctx.CancellationToken),
+                    StructDeclarationSyntax sds => ctx.SemanticModel.GetDeclaredSymbol(sds, ctx.CancellationToken),
+                    InterfaceDeclarationSyntax ids => ctx.SemanticModel.GetDeclaredSymbol(ids, ctx.CancellationToken),
                     _ => null
                 };
                 if (targetSymbol is null) return;
@@ -153,6 +155,8 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
             MethodDeclarationSyntax mds => ctx.SemanticModel.GetDeclaredSymbol(mds, ctx.CancellationToken),
             PropertyDeclarationSyntax pds => ctx.SemanticModel.GetDeclaredSymbol(pds, ctx.CancellationToken),
             ClassDeclarationSyntax cds => ctx.SemanticModel.GetDeclaredSymbol(cds, ctx.CancellationToken),
+            StructDeclarationSyntax sds => ctx.SemanticModel.GetDeclaredSymbol(sds, ctx.CancellationToken),
+            InterfaceDeclarationSyntax ids => ctx.SemanticModel.GetDeclaredSymbol(ids, ctx.CancellationToken),
             _ => null
         };
         if (targetSymbol is null) return;

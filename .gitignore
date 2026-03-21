@@ -14,3 +14,4 @@ docs/export.txt
 .run/
 .planning/
 BenchmarkDotNet.Artifacts/
+**/TestResults/**

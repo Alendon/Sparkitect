@@ -16,8 +16,11 @@ public class RegistryAttribute : Attribute
     public required string Identifier { get; set; }
 
     /// <summary>
-    /// When true, the registry is managed by an external source generator.
-    /// The base Registry SG skips registration attribute generation; external SG handles registration.
+    /// When true, disables the default registry pipeline (registration attribute generation, keyed factory, etc.).
+    /// Use this for registries whose registration targets are not types — e.g., stateless function registries
+    /// that register methods. The external source generator is responsible for handling registration instead.
+    /// Standard type-based registries (including those with <see cref="RegistryMethodAttribute"/>) should leave
+    /// this as false.
     /// </summary>
     public bool External { get; set; } = false;
 }

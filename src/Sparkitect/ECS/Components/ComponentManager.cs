@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Sparkitect.GameState;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Components;
@@ -7,6 +8,7 @@ namespace Sparkitect.ECS.Components;
 /// Stores component size metadata per <see cref="Identification"/>.
 /// Backing store for <see cref="IComponentManager"/>.
 /// </summary>
+[StateService<IComponentManager, EcsModule>]
 public class ComponentManager : IComponentManager
 {
     private readonly Dictionary<Identification, int> _components = new();

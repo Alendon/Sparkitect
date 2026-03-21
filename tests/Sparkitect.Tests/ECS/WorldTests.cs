@@ -1,6 +1,8 @@
 using Sparkitect.ECS;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Storage;
+using Sparkitect.ECS.Systems;
+using Sparkitect.Modding;
 
 namespace Sparkitect.Tests.ECS;
 
@@ -474,5 +476,100 @@ public class WorldTests
             var accessor = world.GetStorage(handles[i]);
             await Assert.That(accessor.Handle).IsEqualTo(handles[i]);
         }
+    }
+
+    // --- System state tests ---
+
+    private static readonly Identification TestSystem1 = Identification.Create(1, 1, 1);
+    private static readonly Identification TestSystem2 = Identification.Create(1, 1, 2);
+    private static readonly Identification TestGroup1 = Identification.Create(2, 1, 1);
+    private static readonly Identification TestGroup2 = Identification.Create(2, 1, 2);
+
+    [Test]
+    public async Task AddSystem_GetSystems_ReturnsSystemWithActiveState()
+    {
+        using var world = IWorld.Create();
+        world.AddSystem(TestSystem1);
+
+        var systems = world.GetSystems();
+
+        await Assert.That(systems.ContainsKey(TestSystem1)).IsTrue();
+        await Assert.That(systems[TestSystem1]).IsEqualTo(SystemState.Active);
+    }
+
+    [Test]
+    public async Task SetSystemState_Inactive_GetSystemStateReturnsInactive()
+    {
+        using var world = IWorld.Create();
+        world.AddSystem(TestSystem1);
+
+        world.SetSystemState(TestSystem1, SystemState.Inactive);
+
+        await Assert.That(world.GetSystemState(TestSystem1)).IsEqualTo(SystemState.Inactive);
+    }
+
+    [Test]
+    public async Task RemoveSystem_GetSystems_NoLongerContainsSystem()
+    {
+        using var world = IWorld.Create();
+        world.AddSystem(TestSystem1);
+
+        world.RemoveSystem(TestSystem1);
+
+        var systems = world.GetSystems();
+        await Assert.That(systems.ContainsKey(TestSystem1)).IsFalse();
+    }
+
+    [Test]
+    public async Task AddSystemGroup_GetSystemGroups_ReturnsGroupWithActiveState()
+    {
+        using var world = IWorld.Create();
+        world.AddSystemGroup(TestGroup1);
+
+        var groups = world.GetSystemGroups();
+
+        await Assert.That(groups.ContainsKey(TestGroup1)).IsTrue();
+        await Assert.That(groups[TestGroup1]).IsEqualTo(SystemState.Active);
+    }
+
+    [Test]
+    public async Task SetGroupState_Inactive_GetGroupStateReturnsInactive()
+    {
+        using var world = IWorld.Create();
+        world.AddSystemGroup(TestGroup1);
+
+        world.SetGroupState(TestGroup1, SystemState.Inactive);
+
+        await Assert.That(world.GetGroupState(TestGroup1)).IsEqualTo(SystemState.Inactive);
+    }
+
+    [Test]
+    public async Task RemoveSystemGroup_GetSystemGroups_NoLongerContainsGroup()
+    {
+        using var world = IWorld.Create();
+        world.AddSystemGroup(TestGroup1);
+
+        world.RemoveSystemGroup(TestGroup1);
+
+        var groups = world.GetSystemGroups();
+        await Assert.That(groups.ContainsKey(TestGroup1)).IsFalse();
+    }
+
+    [Test]
+    public async Task GetSystemState_UnknownSystem_ThrowsInvalidOperationException()
+    {
+        using var world = IWorld.Create();
+        var unknown = Identification.Create(99, 99, 99);
+
+        await Assert.That(() => world.GetSystemState(unknown)).Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task AddSystem_DuplicateId_ThrowsInvalidOperationException()
+    {
+        using var world = IWorld.Create();
+        world.AddSystem(TestSystem1);
+
+        await Assert.That(() => world.AddSystem(TestSystem1)).Throws<InvalidOperationException>();
     }
 }

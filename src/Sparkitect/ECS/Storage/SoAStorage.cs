@@ -28,7 +28,7 @@ public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, ICompo
     /// <param name="world">The world this storage belongs to, used for BindEntity calls.</param>
     /// <param name="initialCapacity">Initial entity capacity per column.</param>
     public SoAStorage(
-        IReadOnlyList<(Identification Id, int Size, int Alignment)> componentMeta,
+        IReadOnlyList<(Identification Id, int Size)> componentMeta,
         IObjectTracker<IDisposable> tracker,
         IWorld world,
         int initialCapacity = 64)
@@ -36,9 +36,9 @@ public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, ICompo
         _world = world;
         _identityMap = new EntityIdentityMap<int>(initialCapacity);
         _columns = new Dictionary<Identification, NativeColumn>(componentMeta.Count);
-        foreach (var (id, size, alignment) in componentMeta)
+        foreach (var (id, size) in componentMeta)
         {
-            _columns[id] = new NativeColumn(size, alignment, initialCapacity, tracker);
+            _columns[id] = new NativeColumn(size, initialCapacity, tracker);
         }
     }
 

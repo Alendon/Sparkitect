@@ -48,7 +48,7 @@ public class NativeColumnTests
     public async Task Constructor_AllocatesMemory_StartsWithZeroCount()
     {
         var tracker = new FakeObjectTracker();
-        using var column = new NativeColumn(sizeof(int), sizeof(int), 8, tracker);
+        using var column = new NativeColumn(sizeof(int), 8, tracker);
 
         await Assert.That(column.Count).IsEqualTo(0);
         await Assert.That(column.Capacity).IsEqualTo(8);
@@ -60,7 +60,7 @@ public class NativeColumnTests
     public async Task SetGet_StoresAndRetrievesValue()
     {
         var tracker = new FakeObjectTracker();
-        using var column = new NativeColumn(sizeof(int), sizeof(int), 8, tracker);
+        using var column = new NativeColumn(sizeof(int), 8, tracker);
 
         var slot = column.AddSlot();
         column.Set(slot, 42);
@@ -73,7 +73,7 @@ public class NativeColumnTests
     public async Task SetGet_MultipleSlots_IndependentValues()
     {
         var tracker = new FakeObjectTracker();
-        using var column = new NativeColumn(sizeof(float), sizeof(float), 8, tracker);
+        using var column = new NativeColumn(sizeof(float), 8, tracker);
 
         var s0 = column.AddSlot();
         var s1 = column.AddSlot();
@@ -88,7 +88,7 @@ public class NativeColumnTests
     public async Task EnsureCapacity_GrowsPreservingExistingData()
     {
         var tracker = new FakeObjectTracker();
-        using var column = new NativeColumn(sizeof(int), sizeof(int), 2, tracker);
+        using var column = new NativeColumn(sizeof(int), 2, tracker);
 
         var s0 = column.AddSlot();
         column.Set(s0, 100);
@@ -109,7 +109,7 @@ public class NativeColumnTests
     public async Task SwapRemove_CopiesElementFromSourceToDestination()
     {
         var tracker = new FakeObjectTracker();
-        using var column = new NativeColumn(sizeof(int), sizeof(int), 8, tracker);
+        using var column = new NativeColumn(sizeof(int), 8, tracker);
 
         var s0 = column.AddSlot();
         var s1 = column.AddSlot();
@@ -125,7 +125,7 @@ public class NativeColumnTests
     public async Task Dispose_FreesMemoryAndCallsTrackerFree()
     {
         var tracker = new FakeObjectTracker();
-        var column = new NativeColumn(sizeof(int), sizeof(int), 8, tracker);
+        var column = new NativeColumn(sizeof(int), 8, tracker);
 
         await Assert.That(tracker.TrackCount).IsEqualTo(1);
         await Assert.That(tracker.UntrackCount).IsEqualTo(0);
@@ -139,7 +139,7 @@ public class NativeColumnTests
     public async Task Dispose_DoubleDispose_IsSafe()
     {
         var tracker = new FakeObjectTracker();
-        var column = new NativeColumn(sizeof(int), sizeof(int), 8, tracker);
+        var column = new NativeColumn(sizeof(int), 8, tracker);
 
         column.Dispose();
         column.Dispose(); // Should not throw or double-free
@@ -151,7 +151,7 @@ public class NativeColumnTests
     public async Task AddSlot_ReturnsSequentialIndices()
     {
         var tracker = new FakeObjectTracker();
-        using var column = new NativeColumn(sizeof(int), sizeof(int), 8, tracker);
+        using var column = new NativeColumn(sizeof(int), 8, tracker);
 
         var s0 = column.AddSlot();
         var s1 = column.AddSlot();
@@ -167,7 +167,7 @@ public class NativeColumnTests
     public async Task RemoveSlotBySwap_MiddleElement_SwapsWithLastAndDecrements()
     {
         var tracker = new FakeObjectTracker();
-        using var column = new NativeColumn(sizeof(int), sizeof(int), 8, tracker);
+        using var column = new NativeColumn(sizeof(int), 8, tracker);
 
         column.AddSlot(); column.Set(0, 10);
         column.AddSlot(); column.Set(1, 20);
@@ -184,7 +184,7 @@ public class NativeColumnTests
     public async Task RemoveSlotBySwap_LastElement_JustDecrements()
     {
         var tracker = new FakeObjectTracker();
-        using var column = new NativeColumn(sizeof(int), sizeof(int), 8, tracker);
+        using var column = new NativeColumn(sizeof(int), 8, tracker);
 
         column.AddSlot(); column.Set(0, 10);
         column.AddSlot(); column.Set(1, 20);

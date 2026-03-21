@@ -75,6 +75,8 @@ public partial class RegistryGenerator
             MethodDeclarationSyntax mds => semanticModel.GetDeclaredSymbol(mds, cancellationToken),
             PropertyDeclarationSyntax pds => semanticModel.GetDeclaredSymbol(pds, cancellationToken),
             ClassDeclarationSyntax cds => semanticModel.GetDeclaredSymbol(cds, cancellationToken),
+            StructDeclarationSyntax sds => semanticModel.GetDeclaredSymbol(sds, cancellationToken),
+            InterfaceDeclarationSyntax ids => semanticModel.GetDeclaredSymbol(ids, cancellationToken),
             _ => null
         };
         if (targetSymbol is null) return null;

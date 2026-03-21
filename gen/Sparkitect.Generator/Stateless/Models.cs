@@ -25,6 +25,7 @@ public record StatelessFunctionModel(
     string IdentifierPascal,
     string WrapperClassName,
     string WrapperFullTypeName,
+    string FunctionAttributeTypeName,
     string SchedulingTypeName,
     string RegistryTypeName,
     string RegistryKey,

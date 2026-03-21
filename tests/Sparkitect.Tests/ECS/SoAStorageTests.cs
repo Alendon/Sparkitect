@@ -12,10 +12,10 @@ public class SoAStorageTests
 
     private static SoAStorage CreateTestStorage(FakeObjectTracker tracker, IWorld? world = null, int initialCapacity = 64)
     {
-        var componentMeta = new (Identification Id, int Size, int Alignment)[]
+        var componentMeta = new (Identification Id, int Size)[]
         {
-            (PositionId, sizeof(float) * 2, sizeof(float)),
-            (VelocityId, sizeof(float) * 2, sizeof(float))
+            (PositionId, sizeof(float) * 2),
+            (VelocityId, sizeof(float) * 2)
         };
         return new SoAStorage(componentMeta, tracker, world ?? IWorld.Create(), initialCapacity);
     }

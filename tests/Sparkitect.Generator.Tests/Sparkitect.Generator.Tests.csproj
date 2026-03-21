@@ -14,44 +14,16 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
         <PackageReference Include="Moq" Version="4.20.72" />
         <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0"/>
-        <PackageReference Include="TUnit" Version="1.2.11" />
-        <PackageReference Include="Verify" Version="31.7.1" />
+        <PackageReference Include="TUnit" Version="1.19.74" />
+        <PackageReference Include="Verify" Version="31.13.5" />
         <PackageReference Include="Verify.SourceGenerators" Version="2.5.0"/>
-        <PackageReference Include="Verify.TUnit" Version="31.7.1" />
+        <PackageReference Include="Verify.TUnit" Version="31.13.5" />
         <PackageReference Include="Fluid.Core" Version="2.31.0" />
         <PackageReference Include="YamlDotNet" Version="16.3.0" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Compile Remove="**/TestResults/**/*.cs" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_RegistrationsUnit_TypeEntry_Snapshot.received.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_RegistrationsUnit_Snapshot.verified.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_RegistrationsUnit_Snapshot.received.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdPropertiesUnit_Snapshot.verified.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdPropertiesUnit_Snapshot.received.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdExtensions_Framework_UsesPascalCaseModId_Snapshot.verified.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdExtensions_Framework_UsesPascalCaseModId_Snapshot.received.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdExtensions_Framework_Snapshot.verified.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdExtensions_Framework_Snapshot.received.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdContainer_Framework_Snapshot.verified.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.Render_IdContainer_Framework_Snapshot.received.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.RenderRegistryAttributes_SingleFile_Snapshot.verified.txt" />
-      <None Remove="Modding\TestResults\RegistryGeneratorUnitTests.RenderRegistryAttributes_SingleFile_Snapshot.received.txt" />
-      <None Remove="GameState\TestResults\StateServiceFactoryGeneratorTests.StateServiceFactoryGenerator_ServiceWithDependencies_GeneratesFactory#TestStateService_Factory.g.verified.cs" />
-      <None Remove="GameState\TestResults\StateServiceFactoryGeneratorTests.StateServiceFactoryGenerator_ServiceWithDependencies_GeneratesFactory#TestStateService_Factory.g.received.cs" />
-      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_SingleFacadeInterface_GeneratesConfigurator#StateFacadeConfigurator.g.verified.cs" />
-      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleInterfacesWithFacades_GeneratesUnifiedConfigurator#IStateFacadeConfigurator.g.received.cs" />
-      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleFacadesOnInterface_GeneratesAllMappings#StateFacadeConfigurator.g.verified.cs" />
-      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleFacadesOnInterface_GeneratesAllMappings#RegistryFacadeConfigurator.g.verified.cs" />
-      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleFacadesOnInterface_GeneratesAllMappings#IStateFacadeConfigurator.g.verified.cs" />
-      <None Remove="DI\TestResults\FacadeMappingGeneratorTests.FacadeMappingGenerator_MultipleFacadesOnInterface_GeneratesAllMappings#IStateFacadeConfigurator.g.received.cs" />
     </ItemGroup>
 
 </Project>

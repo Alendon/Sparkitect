@@ -12,7 +12,7 @@ public abstract class StatelessFunctionRegistryBase : IRegistryBase
 
     public required IStatelessFunctionManager StatelessFunctionManager { get; init; }
 
-    public void Register<TStatelessFunction>(Identification id) where TStatelessFunction : IStatelessFunction
+    public virtual void Register<TStatelessFunction>(Identification id) where TStatelessFunction : IStatelessFunction
     {
         _wrapperTypes[id] = typeof(TStatelessFunction);
         StatelessFunctionManager.AddFunction<TStatelessFunction>(id);

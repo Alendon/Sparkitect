@@ -169,6 +169,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             identifierPascal,
             wrapperClassName,
             wrapperFullTypeName,
+            statelessFuncAttr.AttributeClass!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             schedulingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             registryType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             registryKey,
@@ -567,20 +568,13 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
 
         fileName = $"{parent.ParentTypeName}_{registryShort}Scheduling.g.cs";
 
-        // Need to determine the StatelessFunctionAttribute type for this registry
-        // Use first function's info
         var firstFunc = functions[0];
-
-        // Build StatelessFunctionAttribute type from registry
-        // E.g., TransitionRegistry -> TransitionFunctionAttribute
-        var funcAttrType = registryShort.Replace("Registry", "FunctionAttribute");
-        var funcAttrFullType = $"global::Sparkitect.Stateless.{funcAttrType}";
 
         var model = new
         {
             Namespace = parent.ParentNamespace,
             ClassName = $"{parent.ParentTypeName}_{registryShort}Scheduling",
-            StatelessFunctionAttributeType = funcAttrFullType,
+            StatelessFunctionAttributeType = firstFunc.FunctionAttributeTypeName,
             ContextType = firstFunc.ContextTypeName,
             BuilderType = firstFunc.BuilderTypeName,
             Functions = functions.Select(f => new

@@ -1,5 +1,7 @@
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Storage;
+using Sparkitect.ECS.Systems;
+using Sparkitect.Modding;
 
 namespace Sparkitect.ECS;
 
@@ -117,6 +119,74 @@ public interface IWorld : IDisposable
     /// <param name="id">The entity ID to query.</param>
     /// <returns>A <see cref="StorageAccessor"/> for the entity's bound storage.</returns>
     StorageAccessor GetStorage(EntityId id);
+
+    /// <summary>
+    /// Registers a system with default <see cref="Systems.SystemState.Active"/> state.
+    /// </summary>
+    /// <param name="systemId">The system identification.</param>
+    /// <exception cref="InvalidOperationException">A system with this ID is already registered.</exception>
+    void AddSystem(Identification systemId);
+
+    /// <summary>
+    /// Removes a system. No-op if the system is not registered.
+    /// </summary>
+    /// <param name="systemId">The system identification.</param>
+    void RemoveSystem(Identification systemId);
+
+    /// <summary>
+    /// Sets the state of a registered system.
+    /// </summary>
+    /// <param name="systemId">The system identification.</param>
+    /// <param name="state">The new state.</param>
+    /// <exception cref="InvalidOperationException">The system is not registered.</exception>
+    void SetSystemState(Identification systemId, SystemState state);
+
+    /// <summary>
+    /// Gets the state of a registered system.
+    /// </summary>
+    /// <param name="systemId">The system identification.</param>
+    /// <returns>The current system state.</returns>
+    /// <exception cref="InvalidOperationException">The system is not registered.</exception>
+    SystemState GetSystemState(Identification systemId);
+
+    /// <summary>
+    /// Returns all registered systems and their states.
+    /// </summary>
+    IReadOnlyDictionary<Identification, SystemState> GetSystems();
+
+    /// <summary>
+    /// Registers a system group with default <see cref="Systems.SystemState.Active"/> state.
+    /// </summary>
+    /// <param name="groupId">The group identification.</param>
+    /// <exception cref="InvalidOperationException">A group with this ID is already registered.</exception>
+    void AddSystemGroup(Identification groupId);
+
+    /// <summary>
+    /// Removes a system group. No-op if the group is not registered.
+    /// </summary>
+    /// <param name="groupId">The group identification.</param>
+    void RemoveSystemGroup(Identification groupId);
+
+    /// <summary>
+    /// Sets the state of a registered system group.
+    /// </summary>
+    /// <param name="groupId">The group identification.</param>
+    /// <param name="state">The new state.</param>
+    /// <exception cref="InvalidOperationException">The group is not registered.</exception>
+    void SetGroupState(Identification groupId, SystemState state);
+
+    /// <summary>
+    /// Gets the state of a registered system group.
+    /// </summary>
+    /// <param name="groupId">The group identification.</param>
+    /// <returns>The current group state.</returns>
+    /// <exception cref="InvalidOperationException">The group is not registered.</exception>
+    SystemState GetGroupState(Identification groupId);
+
+    /// <summary>
+    /// Returns all registered system groups and their states.
+    /// </summary>
+    IReadOnlyDictionary<Identification, SystemState> GetSystemGroups();
 
     /// <summary>
     /// Creates a new World instance.

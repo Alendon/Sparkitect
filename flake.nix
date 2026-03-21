@@ -50,6 +50,12 @@
 
           # Vulkan setup
           export VK_LAYER_PATH="${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d"
+
+          # TUnit test runner — structured output for CI and LLM agents
+          export TUNIT_ENABLE_JUNIT_REPORTER=true
+          # Output path uses TUnit default: TestResults/{AssemblyName}-junit.xml
+          export TUNIT_DISABLE_HTML_REPORTER=true
+          export TUNIT_DISABLE_LOGO=true
         '';
       };
     };

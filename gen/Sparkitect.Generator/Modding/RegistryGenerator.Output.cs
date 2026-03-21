@@ -36,9 +36,12 @@ public partial class RegistryGenerator
 
         var useResourceManager = entries.Any(e => e.Files.Length > 0);
 
+        var typePrefix = string.IsNullOrEmpty(hintPrefix) ? "" : hintPrefix + "_";
+
         var model = new
         {
             Namespace = ns,
+            TypePrefix = typePrefix,
             RegistryName = unit.Model.TypeName,
             RegistryFullName = unit.Model.ContainingNamespace + "." + unit.Model.TypeName,
             CategoryKey = unit.Model.Key,
@@ -96,11 +99,14 @@ public partial class RegistryGenerator
             ? unit.Model.ContainingNamespace + ".IdExtensions"
             : settings.SgOutputNamespace + ".IdExtensions";
 
+        var typePrefix = string.IsNullOrEmpty(hintPrefix) ? "" : hintPrefix + "_";
+
         var tpl = new
         {
             ExtensionsNamespace = extensionsNs,
             ModStructName = StringCase.ToPascalCase(settings.ModId) + categoryPascal + "IDs",
             RegistrationsNamespace = registrationsNs,
+            TypePrefix = typePrefix,
             RegistryName = unit.Model.TypeName,
             SourceTag = suffix,
             Entries = unit.Entries.OrderBy(e => e.Id).Select(e => new { PropertyName = StringCase.ToPascalCase(e.Id) }).ToArray()

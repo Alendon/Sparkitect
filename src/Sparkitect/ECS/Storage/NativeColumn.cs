@@ -36,10 +36,9 @@ public sealed unsafe class NativeColumn : IDisposable
     /// Creates a new NativeColumn backed by NativeMemory.
     /// </summary>
     /// <param name="elementSize">Byte size of each element.</param>
-    /// <param name="elementAlignment">Byte alignment of each element (reserved for future use).</param>
     /// <param name="initialCapacity">Initial number of elements to allocate.</param>
     /// <param name="tracker">Object tracker for leak detection.</param>
-    public NativeColumn(int elementSize, int elementAlignment, int initialCapacity, IObjectTracker<IDisposable> tracker)
+    public NativeColumn(int elementSize, int initialCapacity, IObjectTracker<IDisposable> tracker)
     {
         _elementSize = elementSize;
         _capacity = initialCapacity;
