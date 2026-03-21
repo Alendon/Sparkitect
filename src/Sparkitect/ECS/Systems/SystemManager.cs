@@ -16,6 +16,9 @@ internal class SystemManager(
     private readonly HashSet<Identification> _registeredGroups = [];
     private readonly Dictionary<IWorld, CachedWorldState> _worldCache = new();
 
+    private Dictionary<Identification, IScheduling>? _systemMetadata;
+    private Dictionary<Identification, SystemGroupScheduling>? _groupMetadata;
+
     internal IReadOnlySet<Identification> RegisteredSystems => _registeredSystems;
     internal IReadOnlySet<Identification> RegisteredGroups => _registeredGroups;
 
@@ -29,6 +32,67 @@ internal class SystemManager(
         _registeredGroups.Add(id);
     }
 
+    public void FetchMetadata()
+    {
+        var loadedMods = gameStateManager.LoadedMods;
+
+        _systemMetadata = new Dictionary<Identification, IScheduling>();
+        using var systemContainer = diService.CreateEntrypointContainer<
+            ApplyMetadataEntrypoint<IScheduling>>(loadedMods);
+        systemContainer.ProcessMany(ep => ep.CollectMetadata(_systemMetadata));
+
+        _groupMetadata = new Dictionary<Identification, SystemGroupScheduling>();
+        using var groupContainer = diService.CreateEntrypointContainer<
+            ApplyMetadataEntrypoint<SystemGroupScheduling>>(loadedMods);
+        groupContainer.ProcessMany(ep => ep.CollectMetadata(_groupMetadata));
+    }
+
+    public SystemTreeNode BuildTree(Identification rootGroupId)
+    {
+        if (_groupMetadata is null || _systemMetadata is null)
+            throw new InvalidOperationException("FetchMetadata must be called before BuildTree.");
+
+        if (!_registeredGroups.Contains(rootGroupId))
+            throw new InvalidOperationException($"Group {rootGroupId} is not registered.");
+
+        // Build parent -> children maps
+        var groupChildren = new Dictionary<Identification, List<Identification>>();
+
+        // Map group->parent from group metadata
+        foreach (var (groupId, groupSched) in _groupMetadata)
+        {
+            if (!_registeredGroups.Contains(groupId)) continue;
+            if (groupSched.ParentGroupId is { } parentId)
+            {
+                if (!groupChildren.TryGetValue(parentId, out var children))
+                {
+                    children = new List<Identification>();
+                    groupChildren[parentId] = children;
+                }
+                children.Add(groupId);
+            }
+        }
+
+        // Map system->parent from system metadata (OwnerId = parent group)
+        foreach (var (systemId, scheduling) in _systemMetadata)
+        {
+            if (!_registeredSystems.Contains(systemId)) continue;
+            if (scheduling is EcsSystemScheduling ess)
+            {
+                var parentId = ess.OwnerId;
+                if (!groupChildren.TryGetValue(parentId, out var children))
+                {
+                    children = new List<Identification>();
+                    groupChildren[parentId] = children;
+                }
+                children.Add(systemId);
+            }
+        }
+
+        // Recursively build tree from root
+        return BuildNode(rootGroupId, groupChildren);
+    }
+
     public void ExecuteSystems(IWorld world)
     {
         if (!_worldCache.TryGetValue(world, out var cached))
@@ -37,23 +101,44 @@ internal class SystemManager(
             _worldCache[world] = cached;
         }
 
-        var systems = world.GetSystems();
-        var groups = world.GetSystemGroups();
+        var tree = world.GetSystemTree();
+        if (tree is null) return;
 
-        foreach (var systemId in cached.Graph.SortedSystems)
+        var sortedAll = cached.Graph.SortedAll;
+        var skipRanges = cached.Graph.GroupSkipRanges;
+        var groupIds = cached.Graph.GroupIds;
+
+        int i = 0;
+        while (i < sortedAll.Count)
         {
-            // Skip inactive systems
-            if (!systems.TryGetValue(systemId, out var systemState) || systemState != SystemState.Active)
-                continue;
+            var id = sortedAll[i];
 
-            // Skip systems whose group is inactive
-            if (cached.Graph.GroupMembership.TryGetValue(systemId, out var groupId)
-                && groups.TryGetValue(groupId, out var groupState)
-                && groupState != SystemState.Active)
+            if (groupIds.Contains(id))
+            {
+                // Group gate node: check state in tree
+                var groupNode = FindNodeInTree(tree, id);
+                if (groupNode is null || groupNode.State != SystemState.Active)
+                {
+                    // Skip entire subtree
+                    if (skipRanges.TryGetValue(i, out var skipTo))
+                        i = skipTo;
+                    else
+                        i++;
+                    continue;
+                }
+                i++;
                 continue;
+            }
 
-            if (cached.Wrappers.TryGetValue(systemId, out var wrapper))
-                wrapper.Execute();
+            // System node: check own state in tree
+            var systemNode = FindNodeInTree(tree, id);
+            if (systemNode is not null && systemNode.State == SystemState.Active)
+            {
+                if (cached.Wrappers.TryGetValue(id, out var wrapper))
+                    wrapper.Execute();
+            }
+
+            i++;
         }
     }
 
@@ -69,25 +154,27 @@ internal class SystemManager(
 
     internal bool HasCachedWorld(IWorld world) => _worldCache.ContainsKey(world);
 
+    internal void InjectMetadata(
+        Dictionary<Identification, IScheduling> systems,
+        Dictionary<Identification, SystemGroupScheduling> groups)
+    {
+        _systemMetadata = systems;
+        _groupMetadata = groups;
+    }
+
     internal CachedWorldState BuildWorldCache(IWorld world)
     {
-        var context = new EcsSystemContext { World = world };
+        if (_systemMetadata is null || _groupMetadata is null)
+            throw new InvalidOperationException("FetchMetadata must be called before BuildWorldCache.");
+
+        var tree = world.GetSystemTree()
+            ?? throw new InvalidOperationException("World must have a system tree set before building cache.");
+
         var loadedMods = gameStateManager.LoadedMods;
 
-        // Collect ECS system scheduling metadata
-        var metadata = new Dictionary<Identification, IScheduling>();
-        using var entrypointContainer = diService.CreateEntrypointContainer<
-            ApplyMetadataEntrypoint<IScheduling>>(loadedMods);
-        entrypointContainer.ProcessMany(ep => ep.CollectMetadata(metadata));
-
-        // Build ECS graph from metadata
+        // Build graph by walking the tree
         var graphBuilder = new EcsGraphBuilder();
-        foreach (var (id, scheduling) in metadata)
-        {
-            if (scheduling is EcsSystemScheduling ess)
-                ess.BuildGraph(graphBuilder, context, id);
-        }
-
+        graphBuilder.BuildFromTree(tree, _systemMetadata, _groupMetadata);
         var graph = graphBuilder.Resolve();
 
         var wrapperTypes = sfManager.GetRegisteredWrapperTypes();
@@ -98,6 +185,7 @@ internal class SystemManager(
             loadedMods,
             wrapperTypes);
 
+        // Only instantiate wrappers for systems (not groups)
         var wrappers = sfManager.InstantiateWrappers(graph.SortedSystems, scope);
 
         var wrapperMap = new Dictionary<Identification, IStatelessFunction>();
@@ -107,6 +195,43 @@ internal class SystemManager(
         }
 
         return new CachedWorldState(graph, wrapperMap);
+    }
+
+    private SystemTreeNode BuildNode(
+        Identification groupId,
+        Dictionary<Identification, List<Identification>> groupChildren)
+    {
+        var node = new SystemTreeNode(groupId, isGroup: true);
+
+        if (groupChildren.TryGetValue(groupId, out var children))
+        {
+            foreach (var childId in children)
+            {
+                if (_registeredGroups.Contains(childId))
+                {
+                    // Child is a group -- recurse
+                    node.Children.Add(BuildNode(childId, groupChildren));
+                }
+                else if (_registeredSystems.Contains(childId))
+                {
+                    // Child is a system -- leaf node
+                    node.Children.Add(new SystemTreeNode(childId, isGroup: false));
+                }
+            }
+        }
+
+        return node;
+    }
+
+    private static SystemTreeNode? FindNodeInTree(SystemTreeNode root, Identification id)
+    {
+        if (root.Id == id) return root;
+        foreach (var child in root.Children)
+        {
+            var found = FindNodeInTree(child, id);
+            if (found is not null) return found;
+        }
+        return null;
     }
 
     internal sealed class CachedWorldState(

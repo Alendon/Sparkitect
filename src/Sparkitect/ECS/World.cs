@@ -34,9 +34,8 @@ internal class World : IWorld
     // Filter registry
     private readonly List<FilterEntry> _filters = new();
 
-    // System and group state
-    private readonly Dictionary<Identification, SystemState> _systems = new();
-    private readonly Dictionary<Identification, SystemState> _systemGroups = new();
+    // System tree
+    private SystemTreeNode? _systemTree;
 
     /// <summary>
     /// Creates a new World with default initial capacity.
@@ -283,104 +282,45 @@ internal class World : IWorld
         }
     }
 
-    // --- System/Group state ---
+    // --- System tree ---
 
     /// <inheritdoc/>
-    public void AddSystem(Identification systemId)
+    public void SetSystemTree(SystemTreeNode root)
     {
         ThrowIfDisposed();
-        if (!_systems.TryAdd(systemId, SystemState.Active))
+        _systemTree = root;
+    }
+
+    /// <inheritdoc/>
+    public SystemTreeNode? GetSystemTree()
+    {
+        ThrowIfDisposed();
+        return _systemTree;
+    }
+
+    /// <inheritdoc/>
+    public void SetNodeState(Identification id, SystemState state)
+    {
+        ThrowIfDisposed();
+        if (_systemTree is null)
+            throw new InvalidOperationException("No system tree is set on this world.");
+
+        var node = FindNode(_systemTree, id);
+        if (node is null)
+            throw new InvalidOperationException($"Node {id} not found in the system tree.");
+
+        node.State = state;
+    }
+
+    private static SystemTreeNode? FindNode(SystemTreeNode root, Identification id)
+    {
+        if (root.Id == id) return root;
+        foreach (var child in root.Children)
         {
-            throw new InvalidOperationException(
-                $"System {systemId} is already registered.");
+            var found = FindNode(child, id);
+            if (found is not null) return found;
         }
-    }
-
-    /// <inheritdoc/>
-    public void RemoveSystem(Identification systemId)
-    {
-        ThrowIfDisposed();
-        _systems.Remove(systemId);
-    }
-
-    /// <inheritdoc/>
-    public void SetSystemState(Identification systemId, SystemState state)
-    {
-        ThrowIfDisposed();
-        if (!_systems.ContainsKey(systemId))
-        {
-            throw new InvalidOperationException(
-                $"System {systemId} is not registered.");
-        }
-        _systems[systemId] = state;
-    }
-
-    /// <inheritdoc/>
-    public SystemState GetSystemState(Identification systemId)
-    {
-        ThrowIfDisposed();
-        if (!_systems.TryGetValue(systemId, out var state))
-        {
-            throw new InvalidOperationException(
-                $"System {systemId} is not registered.");
-        }
-        return state;
-    }
-
-    /// <inheritdoc/>
-    public IReadOnlyDictionary<Identification, SystemState> GetSystems()
-    {
-        ThrowIfDisposed();
-        return _systems;
-    }
-
-    /// <inheritdoc/>
-    public void AddSystemGroup(Identification groupId)
-    {
-        ThrowIfDisposed();
-        if (!_systemGroups.TryAdd(groupId, SystemState.Active))
-        {
-            throw new InvalidOperationException(
-                $"System group {groupId} is already registered.");
-        }
-    }
-
-    /// <inheritdoc/>
-    public void RemoveSystemGroup(Identification groupId)
-    {
-        ThrowIfDisposed();
-        _systemGroups.Remove(groupId);
-    }
-
-    /// <inheritdoc/>
-    public void SetGroupState(Identification groupId, SystemState state)
-    {
-        ThrowIfDisposed();
-        if (!_systemGroups.ContainsKey(groupId))
-        {
-            throw new InvalidOperationException(
-                $"System group {groupId} is not registered.");
-        }
-        _systemGroups[groupId] = state;
-    }
-
-    /// <inheritdoc/>
-    public SystemState GetGroupState(Identification groupId)
-    {
-        ThrowIfDisposed();
-        if (!_systemGroups.TryGetValue(groupId, out var state))
-        {
-            throw new InvalidOperationException(
-                $"System group {groupId} is not registered.");
-        }
-        return state;
-    }
-
-    /// <inheritdoc/>
-    public IReadOnlyDictionary<Identification, SystemState> GetSystemGroups()
-    {
-        ThrowIfDisposed();
-        return _systemGroups;
+        return null;
     }
 
     // --- Entity ID pool ---

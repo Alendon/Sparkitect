@@ -478,7 +478,7 @@ public class WorldTests
         }
     }
 
-    // --- System state tests ---
+    // --- System tree tests ---
 
     private static readonly Identification TestSystem1 = Identification.Create(1, 1, 1);
     private static readonly Identification TestSystem2 = Identification.Create(1, 1, 2);
@@ -486,90 +486,81 @@ public class WorldTests
     private static readonly Identification TestGroup2 = Identification.Create(2, 1, 2);
 
     [Test]
-    public async Task AddSystem_GetSystems_ReturnsSystemWithActiveState()
+    public async Task SetSystemTree_GetSystemTree_ReturnsTree()
     {
         using var world = IWorld.Create();
-        world.AddSystem(TestSystem1);
+        var root = new SystemTreeNode(TestGroup1, isGroup: true);
+        root.Children.Add(new SystemTreeNode(TestSystem1, isGroup: false));
 
-        var systems = world.GetSystems();
+        world.SetSystemTree(root);
 
-        await Assert.That(systems.ContainsKey(TestSystem1)).IsTrue();
-        await Assert.That(systems[TestSystem1]).IsEqualTo(SystemState.Active);
+        var tree = world.GetSystemTree();
+        await Assert.That(tree).IsNotNull();
+        await Assert.That(tree!.Id).IsEqualTo(TestGroup1);
+        await Assert.That(tree.IsGroup).IsTrue();
+        await Assert.That(tree.Children).HasCount().EqualTo(1);
+        await Assert.That(tree.Children[0].Id).IsEqualTo(TestSystem1);
     }
 
     [Test]
-    public async Task SetSystemState_Inactive_GetSystemStateReturnsInactive()
+    public async Task GetSystemTree_NoTreeSet_ReturnsNull()
     {
         using var world = IWorld.Create();
-        world.AddSystem(TestSystem1);
 
-        world.SetSystemState(TestSystem1, SystemState.Inactive);
+        var tree = world.GetSystemTree();
 
-        await Assert.That(world.GetSystemState(TestSystem1)).IsEqualTo(SystemState.Inactive);
+        await Assert.That(tree).IsNull();
     }
 
     [Test]
-    public async Task RemoveSystem_GetSystems_NoLongerContainsSystem()
+    public async Task SetNodeState_ChangesNodeState()
     {
         using var world = IWorld.Create();
-        world.AddSystem(TestSystem1);
+        var root = new SystemTreeNode(TestGroup1, isGroup: true);
+        root.Children.Add(new SystemTreeNode(TestSystem1, isGroup: false));
+        world.SetSystemTree(root);
 
-        world.RemoveSystem(TestSystem1);
+        world.SetNodeState(TestSystem1, SystemState.Inactive);
 
-        var systems = world.GetSystems();
-        await Assert.That(systems.ContainsKey(TestSystem1)).IsFalse();
+        var tree = world.GetSystemTree()!;
+        await Assert.That(tree.Children[0].State).IsEqualTo(SystemState.Inactive);
     }
 
     [Test]
-    public async Task AddSystemGroup_GetSystemGroups_ReturnsGroupWithActiveState()
+    public async Task SetNodeState_NoTree_ThrowsInvalidOperationException()
     {
         using var world = IWorld.Create();
-        world.AddSystemGroup(TestGroup1);
 
-        var groups = world.GetSystemGroups();
-
-        await Assert.That(groups.ContainsKey(TestGroup1)).IsTrue();
-        await Assert.That(groups[TestGroup1]).IsEqualTo(SystemState.Active);
+        await Assert.That(() => world.SetNodeState(TestSystem1, SystemState.Inactive))
+            .Throws<InvalidOperationException>();
     }
 
     [Test]
-    public async Task SetGroupState_Inactive_GetGroupStateReturnsInactive()
+    public async Task SetNodeState_NodeNotFound_ThrowsInvalidOperationException()
     {
         using var world = IWorld.Create();
-        world.AddSystemGroup(TestGroup1);
-
-        world.SetGroupState(TestGroup1, SystemState.Inactive);
-
-        await Assert.That(world.GetGroupState(TestGroup1)).IsEqualTo(SystemState.Inactive);
-    }
-
-    [Test]
-    public async Task RemoveSystemGroup_GetSystemGroups_NoLongerContainsGroup()
-    {
-        using var world = IWorld.Create();
-        world.AddSystemGroup(TestGroup1);
-
-        world.RemoveSystemGroup(TestGroup1);
-
-        var groups = world.GetSystemGroups();
-        await Assert.That(groups.ContainsKey(TestGroup1)).IsFalse();
-    }
-
-    [Test]
-    public async Task GetSystemState_UnknownSystem_ThrowsInvalidOperationException()
-    {
-        using var world = IWorld.Create();
+        var root = new SystemTreeNode(TestGroup1, isGroup: true);
+        world.SetSystemTree(root);
         var unknown = Identification.Create(99, 99, 99);
 
-        await Assert.That(() => world.GetSystemState(unknown)).Throws<InvalidOperationException>();
+        await Assert.That(() => world.SetNodeState(unknown, SystemState.Inactive))
+            .Throws<InvalidOperationException>();
     }
 
     [Test]
-    public async Task AddSystem_DuplicateId_ThrowsInvalidOperationException()
+    public async Task SetSystemTree_ReplacesExistingTree()
     {
         using var world = IWorld.Create();
-        world.AddSystem(TestSystem1);
+        var root1 = new SystemTreeNode(TestGroup1, isGroup: true);
+        root1.Children.Add(new SystemTreeNode(TestSystem1, isGroup: false));
+        world.SetSystemTree(root1);
 
-        await Assert.That(() => world.AddSystem(TestSystem1)).Throws<InvalidOperationException>();
+        var root2 = new SystemTreeNode(TestGroup2, isGroup: true);
+        root2.Children.Add(new SystemTreeNode(TestSystem2, isGroup: false));
+        world.SetSystemTree(root2);
+
+        var tree = world.GetSystemTree()!;
+        await Assert.That(tree.Id).IsEqualTo(TestGroup2);
+        await Assert.That(tree.Children[0].Id).IsEqualTo(TestSystem2);
     }
 }

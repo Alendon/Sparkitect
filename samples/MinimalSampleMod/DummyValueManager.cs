@@ -55,8 +55,11 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
 
         var soaStorage = new SoAStorage([(UnmanagedComponentID.MinimalSampleMod.Minimal, compSize)], _tracker, _world, 32);
         var storageHandle = _world.AddStorage(soaStorage, soaStorage.CreateCapabilityRegistrations());
-        _world.AddSystemGroup(EcsSystemGroupID.MinimalSampleMod.Minimal);
-        _world.AddSystem(EcsSystemID.MinimalSampleMod.Sample);
+
+        // Build system tree: root group with one system
+        var root = new SystemTreeNode(EcsSystemGroupID.MinimalSampleMod.Minimal, isGroup: true);
+        root.Children.Add(new SystemTreeNode(EcsSystemID.MinimalSampleMod.Sample, isGroup: false));
+        _world.SetSystemTree(root);
 
         var storage = _world.GetStorage(storageHandle);
         for (int i = 0; i < 3; i++)

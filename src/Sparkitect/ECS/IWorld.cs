@@ -121,72 +121,25 @@ public interface IWorld : IDisposable
     StorageAccessor GetStorage(EntityId id);
 
     /// <summary>
-    /// Registers a system with default <see cref="Systems.SystemState.Active"/> state.
+    /// Sets the system tree for this world. The tree defines all systems and groups
+    /// and their hierarchy. Replaces any existing tree.
     /// </summary>
-    /// <param name="systemId">The system identification.</param>
-    /// <exception cref="InvalidOperationException">A system with this ID is already registered.</exception>
-    void AddSystem(Identification systemId);
+    /// <param name="root">The root node of the system tree (must be a group).</param>
+    void SetSystemTree(SystemTreeNode root);
 
     /// <summary>
-    /// Removes a system. No-op if the system is not registered.
+    /// Returns the current system tree root, or null if no tree is set.
     /// </summary>
-    /// <param name="systemId">The system identification.</param>
-    void RemoveSystem(Identification systemId);
+    SystemTreeNode? GetSystemTree();
 
     /// <summary>
-    /// Sets the state of a registered system.
+    /// Sets the state of a node in the tree by walking the tree to find it.
+    /// Does NOT trigger graph rebuild -- state changes are evaluated at execution time.
     /// </summary>
-    /// <param name="systemId">The system identification.</param>
+    /// <param name="id">The identification of the node to modify.</param>
     /// <param name="state">The new state.</param>
-    /// <exception cref="InvalidOperationException">The system is not registered.</exception>
-    void SetSystemState(Identification systemId, SystemState state);
-
-    /// <summary>
-    /// Gets the state of a registered system.
-    /// </summary>
-    /// <param name="systemId">The system identification.</param>
-    /// <returns>The current system state.</returns>
-    /// <exception cref="InvalidOperationException">The system is not registered.</exception>
-    SystemState GetSystemState(Identification systemId);
-
-    /// <summary>
-    /// Returns all registered systems and their states.
-    /// </summary>
-    IReadOnlyDictionary<Identification, SystemState> GetSystems();
-
-    /// <summary>
-    /// Registers a system group with default <see cref="Systems.SystemState.Active"/> state.
-    /// </summary>
-    /// <param name="groupId">The group identification.</param>
-    /// <exception cref="InvalidOperationException">A group with this ID is already registered.</exception>
-    void AddSystemGroup(Identification groupId);
-
-    /// <summary>
-    /// Removes a system group. No-op if the group is not registered.
-    /// </summary>
-    /// <param name="groupId">The group identification.</param>
-    void RemoveSystemGroup(Identification groupId);
-
-    /// <summary>
-    /// Sets the state of a registered system group.
-    /// </summary>
-    /// <param name="groupId">The group identification.</param>
-    /// <param name="state">The new state.</param>
-    /// <exception cref="InvalidOperationException">The group is not registered.</exception>
-    void SetGroupState(Identification groupId, SystemState state);
-
-    /// <summary>
-    /// Gets the state of a registered system group.
-    /// </summary>
-    /// <param name="groupId">The group identification.</param>
-    /// <returns>The current group state.</returns>
-    /// <exception cref="InvalidOperationException">The group is not registered.</exception>
-    SystemState GetGroupState(Identification groupId);
-
-    /// <summary>
-    /// Returns all registered system groups and their states.
-    /// </summary>
-    IReadOnlyDictionary<Identification, SystemState> GetSystemGroups();
+    /// <exception cref="InvalidOperationException">The node was not found in the tree.</exception>
+    void SetNodeState(Identification id, SystemState state);
 
     /// <summary>
     /// Creates a new World instance.

@@ -39,21 +39,21 @@ public abstract class OrderAfterAttribute() : Attribute
 }
 
 
-[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
-public sealed class OrderBeforeAttribute<TOtherFunction>() : OrderBeforeAttribute
-    where TOtherFunction : IStatelessFunction, IHasIdentification
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+public sealed class OrderBeforeAttribute<TOther>() : OrderBeforeAttribute
+    where TOther : IHasIdentification
 {
-    public override Identification Other => TOtherFunction.Identification;
+    public override Identification Other => TOther.Identification;
     public override bool Optional => IsOptional;
     public bool IsOptional { get; set; } = false;
 }
 
-[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
-public sealed class OrderAfterAttribute<TOtherFunction>() : OrderAfterAttribute
-    where TOtherFunction : IStatelessFunction, IHasIdentification
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+public sealed class OrderAfterAttribute<TOther>() : OrderAfterAttribute
+    where TOther : IHasIdentification
 {
-    public override Identification Other => TOtherFunction.Identification;
-    
+    public override Identification Other => TOther.Identification;
+
     public override bool Optional => IsOptional;
     public bool IsOptional { get; set; } = false;
 }

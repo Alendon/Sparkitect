@@ -49,13 +49,25 @@ public sealed class TransitionFunctionAttribute(string identifier)
     : StatelessFunctionAttribute<TransitionContext, TransitionRegistry>(identifier);
 
 /// <summary>
-/// Explicitly specifies the parent (owner) of a stateless function.
-/// Takes priority over containing class's IHasIdentification.
+/// Abstract base for parent ID attributes. Carries the resolved Identification of the parent.
+/// </summary>
+public abstract class ParentIdAttribute : Attribute
+{
+    public abstract Identification Other { get; }
+}
+
+/// <summary>
+/// Explicitly specifies the parent (owner) of a stateless function or system group.
+/// On methods: takes priority over containing class's IHasIdentification.
+/// On classes: declares group-to-group parentage for system group hierarchy.
 /// </summary>
 /// <typeparam name="TOwner">The owner type implementing IHasIdentification.</typeparam>
-[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-public sealed class ParentIdAttribute<TOwner> : Attribute
-    where TOwner : IHasIdentification;
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+public sealed class ParentIdAttribute<TOwner> : ParentIdAttribute
+    where TOwner : IHasIdentification
+{
+    public override Identification Other => TOwner.Identification;
+}
 
 /// <summary>
 /// Marker base for scheduling parameter attributes. Used by analyzers to validate

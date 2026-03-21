@@ -1,15 +1,32 @@
 using Sparkitect.Metadata;
+using Sparkitect.Modding;
+using Sparkitect.Stateless;
 
 namespace Sparkitect.ECS.Systems;
 
 /// <summary>
-/// Metadata type for system groups. Carries scheduling/ordering
-/// information for system group types.
-/// Minimal placeholder for Phase 29.3 -- full content added in Phase 29.4.
+/// Metadata type for system groups. Carries ordering constraints and parent group relationship.
+/// Constructor parameters are matched by MetadataExtractionPipeline against class-level attributes.
 /// </summary>
 public class SystemGroupScheduling
 {
-    // Phase 29.4 will add: ordering params (OrderAfter/OrderBefore), ParentGroup, etc.
+    private readonly OrderAfterAttribute[] _orderAfter;
+    private readonly OrderBeforeAttribute[] _orderBefore;
+    private readonly ParentIdAttribute? _parentId;
+
+    public IReadOnlyList<OrderAfterAttribute> OrderAfter => _orderAfter;
+    public IReadOnlyList<OrderBeforeAttribute> OrderBefore => _orderBefore;
+    public Identification? ParentGroupId => _parentId?.Other;
+
+    public SystemGroupScheduling(
+        OrderAfterAttribute[] orderAfter,
+        OrderBeforeAttribute[] orderBefore,
+        ParentIdAttribute? parentId)
+    {
+        _orderAfter = orderAfter;
+        _orderBefore = orderBefore;
+        _parentId = parentId;
+    }
 }
 
 /// <summary>
