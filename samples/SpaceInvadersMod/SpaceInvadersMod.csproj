@@ -1,0 +1,36 @@
+<Project>
+    <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.props"/>
+
+    <PropertyGroup>
+        <ModName>Space Invaders</ModName>
+        <ModId>space_invaders_mod</ModId>
+        <ModVersion>1.0.0</ModVersion>
+        <ModAuthor>Sparkitect</ModAuthor>
+        <ModDescription>Space Invaders sample mod for Sparkitect ECS</ModDescription>
+        <IsRootMod>true</IsRootMod>
+        <LangVersion>preview</LangVersion>
+
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDependencyFile>true</GenerateDependencyFile>
+        <RootNamespace>SpaceInvadersMod</RootNamespace>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" SetTargetFramework="TargetFramework=netstandard2.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="OneOf" Version="3.0.271" />
+    </ItemGroup>
+
+    <!-- Mod dependencies -->
+    <ItemGroup>
+        <ModProjectDependency Include="..\..\src\Sparkitect\Sparkitect.csproj" />
+    </ItemGroup>
+
+    <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.targets"/>
+</Project>
