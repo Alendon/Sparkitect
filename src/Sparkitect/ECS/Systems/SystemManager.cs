@@ -1,4 +1,5 @@
 using Sparkitect.DI;
+using Sparkitect.ECS.Commands;
 using Sparkitect.GameState;
 using Sparkitect.Metadata;
 using Sparkitect.Modding;
@@ -162,6 +163,13 @@ internal class SystemManager(
 
     internal bool HasCachedWorld(IWorld world) => _worldCache.ContainsKey(world);
 
+    public ICommandBufferAccessor? GetCommandBufferAccessor(IWorld world)
+    {
+        return _worldCache.TryGetValue(world, out var cached)
+            ? cached.CommandBufferAccessor
+            : null;
+    }
+
     internal void InjectMetadata(
         Dictionary<Identification, IScheduling> systems,
         Dictionary<Identification, SystemGroupScheduling> groups)
@@ -187,6 +195,8 @@ internal class SystemManager(
 
         var wrapperTypes = sfManager.GetRegisteredWrapperTypes();
         var provider = new EcsResolutionProvider(world);
+        var commandBufferAccessor = new CommandBufferAccessor(world);
+        provider.SetCommandBufferAccessor(commandBufferAccessor);
         var scope = diService.BuildScope(
             gameStateManager.CurrentCoreContainer,
             provider,
@@ -202,7 +212,7 @@ internal class SystemManager(
             wrapperMap[wrapper.Identification] = wrapper;
         }
 
-        return new CachedWorldState(graph, wrapperMap, provider);
+        return new CachedWorldState(graph, wrapperMap, provider, commandBufferAccessor);
     }
 
     private SystemTreeNode BuildNode(
@@ -245,10 +255,12 @@ internal class SystemManager(
     internal sealed class CachedWorldState(
         EcsExecutionGraph graph,
         Dictionary<Identification, IStatelessFunction> wrappers,
-        EcsResolutionProvider provider)
+        EcsResolutionProvider provider,
+        CommandBufferAccessor commandBufferAccessor)
     {
         public EcsExecutionGraph Graph { get; } = graph;
         public Dictionary<Identification, IStatelessFunction> Wrappers { get; } = wrappers;
         public EcsResolutionProvider Provider { get; } = provider;
+        public CommandBufferAccessor CommandBufferAccessor { get; } = commandBufferAccessor;
     }
 }

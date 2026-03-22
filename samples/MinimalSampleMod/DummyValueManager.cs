@@ -2,6 +2,7 @@
 using Serilog;
 using Sparkitect.ECS;
 using Sparkitect.ECS.Capabilities;
+using Sparkitect.ECS.Commands;
 using Sparkitect.ECS.Components;
 using Sparkitect.ECS.Storage;
 using Sparkitect.ECS.Systems;
@@ -40,6 +41,7 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
 
     private IWorld? _world;
     private IObjectTracker<IDisposable>? _tracker;
+    private ICommandBufferAccessor? _commandBufferAccessor;
 
     public IWorld? GetWorld() => _world;
     
@@ -88,14 +90,20 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
         }
         
         systemManager.ExecuteSystems(_world);
-        
+
+        // Retrieve accessor after ExecuteSystems (which triggers BuildWorldCache on first call)
+        _commandBufferAccessor ??= systemManager.GetCommandBufferAccessor(_world);
+
+        // Play back deferred structural mutations from command buffers
+        if (_commandBufferAccessor is not null)
+            _commandBufferAccessor.Playback();
     }
 
     public void DestroyWorld()
     {
+        _commandBufferAccessor = null;
         _world?.Dispose();
         _world = null;
-        
     }
 
     

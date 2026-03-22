@@ -1,23 +1,36 @@
 using Sparkitect.DI.Container;
 using Sparkitect.DI.Resolution;
+using Sparkitect.ECS.Commands;
 using Sparkitect.ECS.Queries;
 
 namespace Sparkitect.ECS.Systems;
 
 /// <summary>
-/// Resolution provider for ECS query parameters. Reads <see cref="QueryParameterMetadata"/>
-/// entries from the metadata list, creates query instances via the metadata's CreateQuery,
-/// and tracks them for lifecycle cleanup.
+/// Resolution provider for ECS query parameters and command buffer accessors.
+/// Reads <see cref="QueryParameterMetadata"/> entries from the metadata list, creates
+/// query instances via the metadata's CreateQuery, and tracks them for lifecycle cleanup.
+/// Reads <see cref="CommandBufferAccessorMetadata"/> entries and returns the shared
+/// accessor set via <see cref="SetCommandBufferAccessor"/>.
 /// </summary>
 internal class EcsResolutionProvider : IResolutionProvider
 {
     private readonly IWorld _world;
     private readonly List<QueryParameterMetadata> _trackedMetadata = new();
     private readonly List<object> _trackedQueries = new();
+    private ICommandBufferAccessor? _commandBufferAccessor;
 
     internal EcsResolutionProvider(IWorld world)
     {
         _world = world;
+    }
+
+    /// <summary>
+    /// Sets the shared command buffer accessor for this provider.
+    /// Called by SystemManager.BuildWorldCache after creating the accessor.
+    /// </summary>
+    internal void SetCommandBufferAccessor(ICommandBufferAccessor accessor)
+    {
+        _commandBufferAccessor = accessor;
     }
 
     /// <inheritdoc/>
@@ -31,6 +44,14 @@ internal class EcsResolutionProvider : IResolutionProvider
                 _trackedMetadata.Add(queryMeta);
                 _trackedQueries.Add(query);
                 service = query;
+                return true;
+            }
+
+            if (entry is CommandBufferAccessorMetadata)
+            {
+                service = _commandBufferAccessor
+                    ?? throw new InvalidOperationException(
+                        "CommandBufferAccessor not set on EcsResolutionProvider.");
                 return true;
             }
         }

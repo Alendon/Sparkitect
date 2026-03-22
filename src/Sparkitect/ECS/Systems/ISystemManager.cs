@@ -1,9 +1,15 @@
+using Sparkitect.ECS.Commands;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Systems;
 
 public interface ISystemManager
 {
+    /// <summary>
+    /// Retrieves the shared command buffer accessor for the specified world.
+    /// Returns null if the world cache has not been built yet.
+    /// </summary>
+    ICommandBufferAccessor? GetCommandBufferAccessor(IWorld world);
     void RegisterSystem(Identification id);
     void RegisterSystemGroup(Identification id);
 
