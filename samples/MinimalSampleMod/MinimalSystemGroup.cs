@@ -1,8 +1,6 @@
-using System.Runtime.CompilerServices;
 using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Serilog;
-using Sparkitect.ECS.Capabilities;
-using Sparkitect.ECS.Storage;
+using Sparkitect.ECS.Queries;
 using Sparkitect.ECS.Systems;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
@@ -17,43 +15,14 @@ public partial class MinimalSystemGroup : IHasIdentification
 
     [EcsSystemFunction("sample")]
     [EcsSystemScheduling]
-    private static unsafe void SampleSystem(IDummyValueManager dummyValueManager)
+    private static void SampleSystem(ComponentQuery query)
     {
-        //This setup of world access is planned to later be wrapped in coming queries
-        var world = dummyValueManager.GetWorld();
-        
-        
-        var storages = world!.Resolve([new InteractionCapability()]);
-        foreach (var handle in storages)
+        foreach (var entity in query)
         {
-            var iteration = world.GetStorage(handle).As<IChunkedIteration>()!;
-            ChunkHandle chunkHandle = default;
-
-            while (iteration.GetNextChunk(ref chunkHandle, out var length))
-            {
-                var components = new Span<MinimalComponent>(
-                    iteration.GetChunkComponentData(ref chunkHandle, UnmanagedComponentID.MinimalSampleMod.Minimal),
-                    length);
-
-                foreach (ref var component in components)
-                {
-                    SystemLogic(ref component);
-                }
-            }
-        }
-    }
-
-    private static void SystemLogic(ref MinimalComponent component)
-    {
-        Log.Information("Component Value: {Value}",component.Value);
-        component.Value++;
-    }
-
-    struct InteractionCapability : ICapabilityRequirement<IChunkedIteration, ComponentSetMetadata>
-    {
-        public bool Matches(ComponentSetMetadata metadata)
-        {
-            return metadata.Components.Contains(UnmanagedComponentID.MinimalSampleMod.Minimal);
+            ref var component = ref entity.GetRef<MinimalComponent>(
+                UnmanagedComponentID.MinimalSampleMod.Minimal);
+            Log.Information("Component Value: {Value}",component.Value);
+            component.Value++;
         }
     }
 }

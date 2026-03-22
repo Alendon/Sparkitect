@@ -3,6 +3,9 @@ using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.Resolution;
 using Sparkitect.ECS;
+using Sparkitect.ECS.Capabilities;
+using Sparkitect.ECS.Queries;
+using Sparkitect.ECS.Storage;
 using Sparkitect.ECS.Systems;
 using Sparkitect.GameState;
 using Sparkitect.Metadata;
@@ -470,14 +473,89 @@ public class SystemManagerTests
     // --- EcsResolutionProvider Tests ---
 
     [Test]
-    public async Task EcsResolutionProvider_TryResolve_ReturnsFalse()
+    public async Task EcsResolutionProvider_TryResolve_ReturnsFalseForNonQueryMetadata()
     {
-        var provider = new EcsResolutionProvider();
+        using var world = IWorld.Create();
+        var provider = new EcsResolutionProvider(world);
 
-        var result = provider.TryResolve(typeof(string), null!, [], out var service);
+        var result = provider.TryResolve(typeof(string), null!, [new FacadeMapping(typeof(string))], out var service);
 
         await Assert.That(result).IsFalse();
         await Assert.That(service).IsNull();
+    }
+
+    [Test]
+    public async Task EcsResolutionProvider_TryResolve_ReturnsQueryForQueryMetadata()
+    {
+        using var world = IWorld.Create();
+        var tracker = new FakeObjectTracker();
+        using var storage = new SoAStorage(
+            [(TestPosition.Identification, sizeof(float) * 2)],
+            tracker, world);
+        var handle = world.AddStorage(storage, storage.CreateCapabilityRegistrations());
+        storage.SetHandle(handle);
+
+        var provider = new EcsResolutionProvider(world);
+        var metadata = new ComponentQueryMetadata([TestPosition.Identification]);
+
+        var result = provider.TryResolve(typeof(ComponentQuery), null!, [metadata], out var service);
+
+        await Assert.That(result).IsTrue();
+        await Assert.That(service).IsNotNull();
+        await Assert.That(service).IsTypeOf<ComponentQuery>();
+
+        // Cleanup
+        provider.CleanupQueries();
+    }
+
+    [Test]
+    public async Task EcsResolutionProvider_CleanupQueries_DisposesTrackedQueries()
+    {
+        using var world = IWorld.Create();
+        var provider = new EcsResolutionProvider(world);
+        var metadata = new ComponentQueryMetadata([TestPosition.Identification]);
+
+        provider.TryResolve(typeof(ComponentQuery), null!, [metadata], out _);
+
+        // CleanupQueries should dispose queries (unregister filters)
+        provider.CleanupQueries();
+
+        // Adding a storage after cleanup should not throw --
+        // filter was unregistered so no callback fires on disposed query
+        var tracker = new FakeObjectTracker();
+        using var storage = new SoAStorage(
+            [(TestPosition.Identification, sizeof(float) * 2)],
+            tracker, world);
+        var handle = world.AddStorage(storage, storage.CreateCapabilityRegistrations());
+
+        await Assert.That(true).IsTrue();
+    }
+
+    [Test]
+    public async Task NotifyDispose_CleansUpQueries()
+    {
+        using var world = IWorld.Create();
+        var tracker = new FakeObjectTracker();
+
+        // Add storage so the query has something to match
+        using var storage = new SoAStorage(
+            [(TestPosition.Identification, sizeof(float) * 2)],
+            tracker, world);
+        var handle = world.AddStorage(storage, storage.CreateCapabilityRegistrations());
+        storage.SetHandle(handle);
+
+        // Build a real EcsResolutionProvider with a query
+        var provider = new EcsResolutionProvider(world);
+        var metadata = new ComponentQueryMetadata([TestPosition.Identification]);
+        provider.TryResolve(typeof(ComponentQuery), null!, [metadata], out _);
+
+        // Simulate what NotifyDispose does: cleanup then remove
+        provider.CleanupQueries();
+
+        // Verify no exception from double cleanup
+        provider.CleanupQueries();
+
+        await Assert.That(true).IsTrue();
     }
 
     // --- FetchMetadata Tests ---

@@ -19,16 +19,19 @@ public partial class EcsModule : IStateModule
     static void AddRegistries(IRegistryManager registryManager)
     {
         registryManager.AddRegistry<UnmanagedComponentRegistry>();
+        registryManager.ProcessAllMissing<SystemGroupRegistry>();
         registryManager.AddRegistry<SystemRegistry>();
     }
     
     [OnFrameEnterScheduling]
     [TransitionFunction("process_ecs_registries_up")]
     [OrderAfter<AddEcsRegistriesFunc>]
-    static void ProcessRegistriesUp(IRegistryManager registryManager)
+    static void ProcessRegistriesUp(IRegistryManager registryManager, ISystemManager systemManager)
     {
         registryManager.ProcessAllMissing<UnmanagedComponentRegistry>();
+        registryManager.ProcessAllMissing<SystemGroupRegistry>();
         registryManager.ProcessAllMissing<SystemRegistry>();
+        systemManager.FetchMetadata();
     }
     
     

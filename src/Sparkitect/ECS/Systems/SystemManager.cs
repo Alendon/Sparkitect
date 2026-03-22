@@ -144,12 +144,20 @@ internal class SystemManager(
 
     public void NotifyRebuild(IWorld world)
     {
-        _worldCache.Remove(world);
+        if (_worldCache.TryGetValue(world, out var cached))
+        {
+            cached.Provider.CleanupQueries();
+            _worldCache.Remove(world);
+        }
     }
 
     public void NotifyDispose(IWorld world)
     {
-        _worldCache.Remove(world);
+        if (_worldCache.TryGetValue(world, out var cached))
+        {
+            cached.Provider.CleanupQueries();
+            _worldCache.Remove(world);
+        }
     }
 
     internal bool HasCachedWorld(IWorld world) => _worldCache.ContainsKey(world);
@@ -165,7 +173,7 @@ internal class SystemManager(
     internal CachedWorldState BuildWorldCache(IWorld world)
     {
         if (_systemMetadata is null || _groupMetadata is null)
-            throw new InvalidOperationException("FetchMetadata must be called before BuildWorldCache.");
+            throw new InvalidOperationException($"{nameof(FetchMetadata)} must be called before BuildWorldCache.");
 
         var tree = world.GetSystemTree()
             ?? throw new InvalidOperationException("World must have a system tree set before building cache.");
@@ -178,7 +186,7 @@ internal class SystemManager(
         var graph = graphBuilder.Resolve();
 
         var wrapperTypes = sfManager.GetRegisteredWrapperTypes();
-        var provider = new EcsResolutionProvider();
+        var provider = new EcsResolutionProvider(world);
         var scope = diService.BuildScope(
             gameStateManager.CurrentCoreContainer,
             provider,
@@ -194,7 +202,7 @@ internal class SystemManager(
             wrapperMap[wrapper.Identification] = wrapper;
         }
 
-        return new CachedWorldState(graph, wrapperMap);
+        return new CachedWorldState(graph, wrapperMap, provider);
     }
 
     private SystemTreeNode BuildNode(
@@ -236,9 +244,11 @@ internal class SystemManager(
 
     internal sealed class CachedWorldState(
         EcsExecutionGraph graph,
-        Dictionary<Identification, IStatelessFunction> wrappers)
+        Dictionary<Identification, IStatelessFunction> wrappers,
+        EcsResolutionProvider provider)
     {
         public EcsExecutionGraph Graph { get; } = graph;
         public Dictionary<Identification, IStatelessFunction> Wrappers { get; } = wrappers;
+        public EcsResolutionProvider Provider { get; } = provider;
     }
 }

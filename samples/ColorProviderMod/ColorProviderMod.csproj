@@ -19,7 +19,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj"
-                          ReferenceOutputAssembly="false" OutputItemType="Analyzer"/>
+                          ReferenceOutputAssembly="false" OutputItemType="Analyzer" SetTargetFramework="TargetFramework=netstandard2.0" />
     </ItemGroup>
 
     <!-- Mod dependencies - Sparkitect only, no other mods -->
