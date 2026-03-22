@@ -94,13 +94,15 @@ internal class SystemManager(
         return BuildNode(rootGroupId, groupChildren);
     }
 
-    public void ExecuteSystems(IWorld world)
+    public void ExecuteSystems(IWorld world, FrameTiming frameTiming)
     {
         if (!_worldCache.TryGetValue(world, out var cached))
         {
             cached = BuildWorldCache(world);
             _worldCache[world] = cached;
         }
+
+        cached.FrameTimingHolder.Update(frameTiming);
 
         var tree = world.GetSystemTree();
         if (tree is null) return;
@@ -197,11 +199,19 @@ internal class SystemManager(
         var provider = new EcsResolutionProvider(world);
         var commandBufferAccessor = new CommandBufferAccessor(world);
         provider.SetCommandBufferAccessor(commandBufferAccessor);
+        var frameTimingHolder = new FrameTimingHolder();
+        provider.SetFrameTimingHolder(frameTimingHolder);
+
+        var supplementalMetadata = new Dictionary<Type, List<object>>
+        {
+            [typeof(FrameTimingHolder)] = [new FrameTimingMetadata()]
+        };
         var scope = diService.BuildScope(
             gameStateManager.CurrentCoreContainer,
             provider,
             loadedMods,
-            wrapperTypes);
+            wrapperTypes,
+            supplementalMetadata);
 
         // Only instantiate wrappers for systems (not groups)
         var wrappers = sfManager.InstantiateWrappers(graph.SortedSystems, scope);
@@ -212,7 +222,7 @@ internal class SystemManager(
             wrapperMap[wrapper.Identification] = wrapper;
         }
 
-        return new CachedWorldState(graph, wrapperMap, provider, commandBufferAccessor);
+        return new CachedWorldState(graph, wrapperMap, provider, commandBufferAccessor, frameTimingHolder);
     }
 
     private SystemTreeNode BuildNode(
@@ -256,11 +266,13 @@ internal class SystemManager(
         EcsExecutionGraph graph,
         Dictionary<Identification, IStatelessFunction> wrappers,
         EcsResolutionProvider provider,
-        CommandBufferAccessor commandBufferAccessor)
+        CommandBufferAccessor commandBufferAccessor,
+        FrameTimingHolder frameTimingHolder)
     {
         public EcsExecutionGraph Graph { get; } = graph;
         public Dictionary<Identification, IStatelessFunction> Wrappers { get; } = wrappers;
         public EcsResolutionProvider Provider { get; } = provider;
         public CommandBufferAccessor CommandBufferAccessor { get; } = commandBufferAccessor;
+        public FrameTimingHolder FrameTimingHolder { get; } = frameTimingHolder;
     }
 }

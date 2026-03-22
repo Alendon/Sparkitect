@@ -72,7 +72,7 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System2, isGroup: false));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(1);
         await Assert.That(wrapper2.ExecuteCount).IsEqualTo(1);
@@ -93,7 +93,7 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System2, isGroup: false, SystemState.Inactive));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(1);
         await Assert.That(wrapper2.ExecuteCount).IsEqualTo(0);
@@ -117,7 +117,7 @@ public class SystemManagerTests
         root.Children.Add(groupB);
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(1);
         await Assert.That(wrapper2.ExecuteCount).IsEqualTo(0);
@@ -143,7 +143,7 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System3, isGroup: false));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(executionOrder).HasCount().EqualTo(3);
         await Assert.That(executionOrder[0]).IsEqualTo(System3);
@@ -168,7 +168,7 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System2, isGroup: false));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(0);
         await Assert.That(wrapper2.ExecuteCount).IsEqualTo(0);
@@ -194,7 +194,7 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System2, isGroup: false));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(0);
         await Assert.That(wrapper2.ExecuteCount).IsEqualTo(1);
@@ -219,14 +219,14 @@ public class SystemManagerTests
 
         // Deactivate group, execute -- nothing runs
         root.State = SystemState.Inactive;
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(0);
         await Assert.That(wrapper2.ExecuteCount).IsEqualTo(0);
 
         // Reactivate group, execute -- System1 runs (Active), System2 does NOT (Inactive child state preserved)
         root.State = SystemState.Active;
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(1);
         await Assert.That(wrapper2.ExecuteCount).IsEqualTo(0);
@@ -246,17 +246,17 @@ public class SystemManagerTests
         world.SetSystemTree(root);
 
         // First call builds cache
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(manager.HasCachedWorld(world)).IsTrue();
 
         // Toggle state, execute again -- cache persists
         root.State = SystemState.Inactive;
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(manager.HasCachedWorld(world)).IsTrue();
 
         // Toggle back
         root.State = SystemState.Active;
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(manager.HasCachedWorld(world)).IsTrue();
     }
 
@@ -278,7 +278,7 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System2, isGroup: false));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(executionOrder).HasCount().EqualTo(2);
         await Assert.That(executionOrder[0]).IsEqualTo(System1);
@@ -310,7 +310,7 @@ public class SystemManagerTests
         root.Children.Add(groupC);
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
 
         await Assert.That(executionOrder).HasCount().EqualTo(2);
         // GroupC before GroupB, so System2 before System1
@@ -338,12 +338,12 @@ public class SystemManagerTests
         world.SetSystemTree(root);
 
         // All active -- system executes
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(1);
 
         // Deactivate middle group -- system skipped
         groupB.State = SystemState.Inactive;
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(1); // still 1, not 2
     }
 
@@ -359,7 +359,7 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System1, isGroup: false));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(manager.HasCachedWorld(world)).IsTrue();
 
         manager.NotifyRebuild(world);
@@ -376,7 +376,7 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System1, isGroup: false));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(manager.HasCachedWorld(world)).IsTrue();
 
         manager.NotifyDispose(world);
@@ -403,8 +403,8 @@ public class SystemManagerTests
         root2.Children.Add(new SystemTreeNode(System2, isGroup: false));
         world2.SetSystemTree(root2);
 
-        manager.ExecuteSystems(world1);
-        manager.ExecuteSystems(world2);
+        manager.ExecuteSystems(world1, default);
+        manager.ExecuteSystems(world2, default);
 
         await Assert.That(wrapper1.ExecuteCount).IsEqualTo(1);
         await Assert.That(wrapper2.ExecuteCount).IsEqualTo(1);
@@ -428,7 +428,7 @@ public class SystemManagerTests
         world.SetSystemTree(root);
 
         await Assert.That(manager.HasCachedWorld(world)).IsFalse();
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(manager.HasCachedWorld(world)).IsTrue();
     }
 
@@ -442,8 +442,8 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System1, isGroup: false));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
+        manager.ExecuteSystems(world, default);
 
         // Wrapper executed twice (once per ExecuteSystems) but cache only built once
         await Assert.That(wrapper.ExecuteCount).IsEqualTo(2);
@@ -460,13 +460,13 @@ public class SystemManagerTests
         root.Children.Add(new SystemTreeNode(System1, isGroup: false));
         world.SetSystemTree(root);
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(manager.HasCachedWorld(world)).IsTrue();
 
         manager.NotifyRebuild(world);
         await Assert.That(manager.HasCachedWorld(world)).IsFalse();
 
-        manager.ExecuteSystems(world);
+        manager.ExecuteSystems(world, default);
         await Assert.That(manager.HasCachedWorld(world)).IsTrue();
     }
 
@@ -556,6 +556,52 @@ public class SystemManagerTests
         provider.CleanupQueries();
 
         await Assert.That(true).IsTrue();
+    }
+
+    [Test]
+    public async Task ExecuteSystems_DeliversFrameTimingToHolder()
+    {
+        // Create a real EcsResolutionProvider to verify FrameTimingHolder resolution
+        using var world = IWorld.Create();
+        var provider = new EcsResolutionProvider(world);
+        var holder = new FrameTimingHolder();
+        provider.SetFrameTimingHolder(holder);
+
+        // Verify TryResolve returns the holder for FrameTimingMetadata
+        var resolved = provider.TryResolve(
+            typeof(FrameTimingHolder), null!, [new FrameTimingMetadata()], out var service);
+
+        await Assert.That(resolved).IsTrue();
+        await Assert.That(service).IsNotNull();
+        await Assert.That(service).IsTypeOf<FrameTimingHolder>();
+
+        // Update holder and verify values propagate
+        var timing = new FrameTiming(0.016f, 1.5f);
+        holder.Update(timing);
+
+        var resolvedHolder = (FrameTimingHolder)service!;
+        await Assert.That(resolvedHolder.DeltaTime).IsEqualTo(0.016f);
+        await Assert.That(resolvedHolder.TotalTime).IsEqualTo(1.5f);
+
+        // Update again to verify mutability
+        var timing2 = new FrameTiming(0.033f, 2.0f);
+        holder.Update(timing2);
+
+        await Assert.That(resolvedHolder.DeltaTime).IsEqualTo(0.033f);
+        await Assert.That(resolvedHolder.TotalTime).IsEqualTo(2.0f);
+    }
+
+    [Test]
+    public async Task EcsResolutionProvider_TryResolve_ThrowsWithoutFrameTimingHolder()
+    {
+        using var world = IWorld.Create();
+        var provider = new EcsResolutionProvider(world);
+
+        // Do NOT set holder -- should throw
+        await Assert.That(() =>
+        {
+            provider.TryResolve(typeof(FrameTimingHolder), null!, [new FrameTimingMetadata()], out _);
+        }).Throws<InvalidOperationException>().WithMessageMatching("*FrameTimingHolder*");
     }
 
     // --- FetchMetadata Tests ---

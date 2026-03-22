@@ -65,6 +65,24 @@ public interface IDIService
         IEnumerable<Type> wrapperTypes);
 
     /// <summary>
+    /// Builds a resolution scope with additional metadata injected into every wrapper type.
+    /// Used by ECS to automatically provide FrameTimingMetadata without requiring
+    /// per-system hand-written metadata entrypoints.
+    /// </summary>
+    /// <param name="container">The core container for fallback resolution.</param>
+    /// <param name="provider">Optional resolution provider for metadata-driven resolution.</param>
+    /// <param name="modIds">Mod IDs to scan for metadata entrypoints.</param>
+    /// <param name="wrapperTypes">The wrapper/factory types to collect metadata for.</param>
+    /// <param name="supplementalMetadata">Additional metadata merged into every wrapper type's metadata dictionary.</param>
+    /// <returns>A configured resolution scope.</returns>
+    IResolutionScope BuildScope(
+        ICoreContainer container,
+        IResolutionProvider? provider,
+        IEnumerable<string> modIds,
+        IEnumerable<Type> wrapperTypes,
+        Dictionary<Type, List<object>>? supplementalMetadata);
+
+    /// <summary>
     /// Builds a complete factory container, owning the full pipeline:
     /// discovers configurator entrypoints, collects factory registrations,
     /// extracts wrapper types, builds resolution scope, prepares factories, and returns the container.

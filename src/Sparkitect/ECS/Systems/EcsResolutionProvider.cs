@@ -6,11 +6,13 @@ using Sparkitect.ECS.Queries;
 namespace Sparkitect.ECS.Systems;
 
 /// <summary>
-/// Resolution provider for ECS query parameters and command buffer accessors.
+/// Resolution provider for ECS query parameters, command buffer accessors, and frame timing.
 /// Reads <see cref="QueryParameterMetadata"/> entries from the metadata list, creates
 /// query instances via the metadata's CreateQuery, and tracks them for lifecycle cleanup.
 /// Reads <see cref="CommandBufferAccessorMetadata"/> entries and returns the shared
 /// accessor set via <see cref="SetCommandBufferAccessor"/>.
+/// Reads <see cref="FrameTimingMetadata"/> entries and returns the cached
+/// holder set via <see cref="SetFrameTimingHolder"/>.
 /// </summary>
 internal class EcsResolutionProvider : IResolutionProvider
 {
@@ -18,6 +20,7 @@ internal class EcsResolutionProvider : IResolutionProvider
     private readonly List<QueryParameterMetadata> _trackedMetadata = new();
     private readonly List<object> _trackedQueries = new();
     private ICommandBufferAccessor? _commandBufferAccessor;
+    private FrameTimingHolder? _frameTimingHolder;
 
     internal EcsResolutionProvider(IWorld world)
     {
@@ -31,6 +34,15 @@ internal class EcsResolutionProvider : IResolutionProvider
     internal void SetCommandBufferAccessor(ICommandBufferAccessor accessor)
     {
         _commandBufferAccessor = accessor;
+    }
+
+    /// <summary>
+    /// Sets the shared frame timing holder for this provider.
+    /// Called by SystemManager.BuildWorldCache after creating the holder.
+    /// </summary>
+    internal void SetFrameTimingHolder(FrameTimingHolder holder)
+    {
+        _frameTimingHolder = holder;
     }
 
     /// <inheritdoc/>
@@ -52,6 +64,14 @@ internal class EcsResolutionProvider : IResolutionProvider
                 service = _commandBufferAccessor
                     ?? throw new InvalidOperationException(
                         "CommandBufferAccessor not set on EcsResolutionProvider.");
+                return true;
+            }
+
+            if (entry is FrameTimingMetadata)
+            {
+                service = _frameTimingHolder
+                    ?? throw new InvalidOperationException(
+                        "FrameTimingHolder not set on EcsResolutionProvider.");
                 return true;
             }
         }

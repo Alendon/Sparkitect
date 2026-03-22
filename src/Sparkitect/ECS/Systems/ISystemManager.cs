@@ -27,7 +27,7 @@ public interface ISystemManager
     /// <returns>The root node of the constructed tree.</returns>
     SystemTreeNode BuildTree(Identification rootGroupId);
 
-    void ExecuteSystems(IWorld world);
+    void ExecuteSystems(IWorld world, FrameTiming frameTiming);
     void NotifyRebuild(IWorld world);
     void NotifyDispose(IWorld world);
 }

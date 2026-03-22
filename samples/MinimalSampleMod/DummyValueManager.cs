@@ -1,4 +1,5 @@
-﻿using MinimalSampleMod.CompilerGenerated.IdExtensions;
+﻿using System.Diagnostics;
+using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Serilog;
 using Sparkitect.ECS;
 using Sparkitect.ECS.Capabilities;
@@ -17,7 +18,9 @@ namespace MinimalSampleMod;
 public class DummyValueManager(IComponentManager componentManager, ISystemManager systemManager) : IDummyValueManager, IDummyValueManagerStateFacade
 {
     private readonly Dictionary<Identification, string> _values = [];
-    
+    private readonly Stopwatch _frameTimer = new();
+    private float _lastFrameTime;
+
     public void AddDummyValue(Identification id, string value)
     {
         Log.Information("Registering value '{Value}' for '{Id}'", value, id);
@@ -51,6 +54,8 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
     {
         _world = IWorld.Create();
         _tracker = new ObjectTracker<IDisposable>();
+        _frameTimer.Restart();
+        _lastFrameTime = 0f;
         
         var compSize = componentManager.GetSize(UnmanagedComponentID.MinimalSampleMod.Minimal);
 
@@ -89,7 +94,10 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
             return;
         }
         
-        systemManager.ExecuteSystems(_world);
+        var currentTime = (float)_frameTimer.Elapsed.TotalSeconds;
+        var deltaTime = currentTime - _lastFrameTime;
+        _lastFrameTime = currentTime;
+        systemManager.ExecuteSystems(_world, new FrameTiming(deltaTime, currentTime));
 
         // Retrieve accessor after ExecuteSystems (which triggers BuildWorldCache on first call)
         _commandBufferAccessor ??= systemManager.GetCommandBufferAccessor(_world);
@@ -102,6 +110,7 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
     public void DestroyWorld()
     {
         _commandBufferAccessor = null;
+        _frameTimer.Stop();
         _world?.Dispose();
         _world = null;
     }

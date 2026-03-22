@@ -94,6 +94,16 @@ internal class DIService : IDIService
         IEnumerable<string> modIds,
         IEnumerable<Type> wrapperTypes)
     {
+        return BuildScope(container, provider, modIds, wrapperTypes, supplementalMetadata: null);
+    }
+
+    public IResolutionScope BuildScope(
+        ICoreContainer container,
+        IResolutionProvider? provider,
+        IEnumerable<string> modIds,
+        IEnumerable<Type> wrapperTypes,
+        Dictionary<Type, List<object>>? supplementalMetadata)
+    {
         var modIdList = modIds as IReadOnlyList<string> ?? modIds.ToList();
         var metadata = new Dictionary<Type, Dictionary<Type, List<object>>>();
 
@@ -106,6 +116,19 @@ internal class DIService : IDIService
 
             var innerDict = new Dictionary<Type, List<object>>();
             entrypointContainer.ProcessMany(entrypoint => entrypoint.ConfigureResolutionMetadata(innerDict));
+
+            if (supplementalMetadata is not null)
+            {
+                foreach (var (type, entries) in supplementalMetadata)
+                {
+                    if (!innerDict.TryGetValue(type, out var list))
+                    {
+                        list = new List<object>();
+                        innerDict[type] = list;
+                    }
+                    list.AddRange(entries);
+                }
+            }
 
             if (innerDict.Count > 0)
             {
