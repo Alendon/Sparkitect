@@ -42,9 +42,9 @@ public class SoAStorageTests
         using var storage = CreateTestStorage(tracker);
 
         var slot = storage.AllocateEntity();
-        storage.Set(PositionId, slot, new TestPosition { X = 1.0f, Y = 2.0f });
+        storage.Set(slot, new TestPosition { X = 1.0f, Y = 2.0f });
 
-        var pos = storage.Get<TestPosition>(PositionId, slot);
+        var pos = storage.Get<TestPosition>(slot);
 
         await Assert.That(pos.X).IsEqualTo(1.0f);
         await Assert.That(pos.Y).IsEqualTo(2.0f);
@@ -60,15 +60,15 @@ public class SoAStorageTests
         var s1 = storage.AllocateEntity();
         var s2 = storage.AllocateEntity();
 
-        storage.Set(PositionId, s0, new TestPosition { X = 10f, Y = 10f });
-        storage.Set(PositionId, s1, new TestPosition { X = 20f, Y = 20f });
-        storage.Set(PositionId, s2, new TestPosition { X = 30f, Y = 30f });
+        storage.Set(s0, new TestPosition { X = 10f, Y = 10f });
+        storage.Set(s1, new TestPosition { X = 20f, Y = 20f });
+        storage.Set(s2, new TestPosition { X = 30f, Y = 30f });
 
         storage.RemoveEntity(s0); // Remove first, last (30,30) moves to index 0
 
         // After removal: slot 0 has entity from slot 2, slot 1 unchanged
-        var pos0 = storage.Get<TestPosition>(PositionId, 0);
-        var pos1 = storage.Get<TestPosition>(PositionId, 1);
+        var pos0 = storage.Get<TestPosition>(0);
+        var pos1 = storage.Get<TestPosition>(1);
 
         await Assert.That(pos0.X).IsEqualTo(30f);
         await Assert.That(pos0.Y).IsEqualTo(30f);
@@ -85,8 +85,8 @@ public class SoAStorageTests
         storage.AllocateEntity();
         var s1 = storage.AllocateEntity();
 
-        storage.Set(PositionId, 0, new TestPosition { X = 10f, Y = 10f });
-        storage.Set(PositionId, 1, new TestPosition { X = 20f, Y = 20f });
+        storage.Set(0, new TestPosition { X = 10f, Y = 10f });
+        storage.Set(1, new TestPosition { X = 20f, Y = 20f });
 
         storage.RemoveEntity(s1); // Remove last, no swap
 
@@ -95,7 +95,7 @@ public class SoAStorageTests
         storage.GetNextChunk(ref handle, out int length);
         await Assert.That(length).IsEqualTo(1);
 
-        var pos0 = storage.Get<TestPosition>(PositionId, 0);
+        var pos0 = storage.Get<TestPosition>(0);
         await Assert.That(pos0.X).IsEqualTo(10f);
     }
 
@@ -140,7 +140,7 @@ public class SoAStorageTests
         using var storage = CreateTestStorage(tracker);
 
         storage.AllocateEntity();
-        storage.Set(PositionId, 0, new TestPosition { X = 5f, Y = 6f });
+        storage.Set(0, new TestPosition { X = 5f, Y = 6f });
 
         var handle = new ChunkHandle();
         storage.GetNextChunk(ref handle, out _);
@@ -182,8 +182,8 @@ public class SoAStorageTests
 
         // Allocate entity and set component data
         var slot = storage.AllocateEntity();
-        storage.Set(PositionId, slot, new TestPosition { X = 42f, Y = 99f });
-        storage.Set(VelocityId, slot, new TestVelocity { Dx = 1f, Dy = -1f });
+        storage.Set(slot, new TestPosition { X = 42f, Y = 99f });
+        storage.Set(slot, new TestVelocity { Dx = 1f, Dy = -1f });
 
         // Register with World using instance capability registrations
         var capabilities = storage.CreateCapabilityRegistrations();
@@ -213,7 +213,7 @@ public class SoAStorageTests
         await Assert.That(length).IsEqualTo(1);
 
         // Verify component data via component access
-        var pos = componentAccess!.Get<TestPosition>(PositionId, 0);
+        var pos = componentAccess!.Get<TestPosition>(0);
         await Assert.That(pos.X).IsEqualTo(42f);
         await Assert.That(pos.Y).IsEqualTo(99f);
     }
@@ -304,9 +304,9 @@ public class SoAStorageTests
         storage.Assign(id1, s1);
         storage.Assign(id2, s2);
 
-        storage.Set(PositionId, s0, new TestPosition { X = 10f, Y = 10f });
-        storage.Set(PositionId, s1, new TestPosition { X = 20f, Y = 20f });
-        storage.Set(PositionId, s2, new TestPosition { X = 30f, Y = 30f });
+        storage.Set(s0, new TestPosition { X = 10f, Y = 10f });
+        storage.Set(s1, new TestPosition { X = 20f, Y = 20f });
+        storage.Set(s2, new TestPosition { X = 30f, Y = 30f });
 
         // Remove entity at slot 0 -- entity from slot 2 swaps to slot 0
         storage.Unassign(id0);
@@ -323,7 +323,7 @@ public class SoAStorageTests
         await Assert.That(slot1).IsEqualTo(1);
 
         // Verify component data was swapped correctly too
-        var pos0 = storage.Get<TestPosition>(PositionId, 0);
+        var pos0 = storage.Get<TestPosition>(0);
         await Assert.That(pos0.X).IsEqualTo(30f);
     }
 
@@ -336,8 +336,8 @@ public class SoAStorageTests
 
         var capabilities = storage.CreateCapabilityRegistrations();
 
-        // Should have 4 registrations: IChunkedIteration, IComponentAccess<int>, IEntityMutation<int>, IEntityIdentity<int>
-        await Assert.That(capabilities).HasCount().EqualTo(4);
+        // Should have 5 registrations: IChunkedIteration, IChunkedIteration<int>, IComponentAccess<int>, IEntityMutation<int>, IEntityIdentity<int>
+        await Assert.That(capabilities).Count().IsEqualTo(5);
     }
 
     [Test]
@@ -354,7 +354,7 @@ public class SoAStorageTests
         // Allocate entity ID and slot, assign identity
         var entityId = world.AllocateEntityId();
         var slot = storage.AllocateEntity();
-        storage.Set(PositionId, slot, new TestPosition { X = 100f, Y = 200f });
+        storage.Set(slot, new TestPosition { X = 100f, Y = 200f });
         storage.Assign(entityId, slot);
 
         // Verify entity is valid and resolvable

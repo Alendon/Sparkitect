@@ -16,9 +16,9 @@ public static class CommandBufferExtensions
         /// <typeparam name="T">The unmanaged component type.</typeparam>
         /// <param name="compId">The component identification.</param>
         /// <param name="value">The component value to set.</param>
-        public void SetComponent<T>(Identification compId, T value) where T : unmanaged
+        public void SetComponent<T>(T value) where T : unmanaged, IHasIdentification
         {
-            buffer.Commands.Add(new SetComponentCommand<TKey, T>(compId, value));
+            buffer.Commands.Add(new SetComponentCommand<TKey, T>(value));
         }
 
         /// <summary>

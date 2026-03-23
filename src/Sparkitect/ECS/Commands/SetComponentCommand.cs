@@ -11,14 +11,12 @@ namespace Sparkitect.ECS.Commands;
 /// <typeparam name="T">The unmanaged component type.</typeparam>
 public class SetComponentCommand<TKey, T> : ICommand
     where TKey : unmanaged
-    where T : unmanaged
+    where T : unmanaged, IHasIdentification
 {
-    private readonly Identification _componentId;
     private readonly T _value;
 
-    public SetComponentCommand(Identification componentId, T value)
+    public SetComponentCommand(T value)
     {
-        _componentId = componentId;
         _value = value;
     }
 
@@ -29,6 +27,6 @@ public class SetComponentCommand<TKey, T> : ICommand
         var identity = accessor.As<IEntityIdentity<TKey>>()!;
         identity.TryResolve(entityId, out var slot);
         var componentAccess = accessor.As<IComponentAccess<TKey>>()!;
-        componentAccess.Set(_componentId, slot, _value);
+        componentAccess.Set( slot, _value);
     }
 }

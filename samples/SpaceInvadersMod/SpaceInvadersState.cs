@@ -3,6 +3,7 @@ using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
+using Sparkitect.Stateless;
 
 namespace SpaceInvadersMod;
 
@@ -19,4 +20,20 @@ public partial class SpaceInvadersState : IStateDescriptor
         StateModuleID.Sparkitect.Windowing,
         StateModuleID.Sparkitect.Ecs
     ];
+
+    [PerFrameFunction("process_input")]
+    [PerFrameScheduling]
+    [OrderBefore<SimulateEcsWorldFunc>]
+    static void ProcessInput(ISpaceInvadersRuntimeServiceStateFacade manager)
+    {
+        manager.ProcessInput();
+    }
+
+    [PerFrameFunction("check_game_state")]
+    [PerFrameScheduling]
+    [OrderAfter<SimulateEcsWorldFunc>]
+    static void CheckGameState(ISpaceInvadersRuntimeServiceStateFacade manager)
+    {
+        manager.CheckGameState();
+    }
 }

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.Modding;
 using Sparkitect.Utils;
@@ -10,7 +11,8 @@ namespace Sparkitect.ECS.Storage;
 /// and single-chunk dense iteration. Implements entity identity tracking via
 /// <see cref="IEntityIdentity{TKey}"/> delegating to an internal <see cref="EntityIdentityMap{TKey}"/>.
 /// </summary>
-public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, IComponentAccess<int>, IEntityMutation<int>, IEntityIdentity<int>
+[PublicAPI]
+public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, IChunkedIteration<EntityId>, IComponentAccess<int>, IEntityMutation<int>, IEntityIdentity<int>
 {
     private readonly Dictionary<Identification, NativeColumn> _columns;
     private readonly IWorld _world;
@@ -47,6 +49,9 @@ public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, ICompo
     /// Must be called before <see cref="Assign"/> so that BindEntity can reference this storage.
     /// </summary>
     /// <param name="handle">The handle returned by <see cref="IWorld.AddStorage"/>.</param>
+    /// <inheritdoc/>
+    public int Count => _count;
+
     public void SetHandle(StorageHandle handle)
     {
         _handle = handle;
@@ -64,15 +69,15 @@ public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, ICompo
     }
 
     /// <inheritdoc/>
-    public ref T Get<T>(Identification componentId, int slot) where T : unmanaged
+    public ref T Get<T>(int slot) where T : unmanaged, IHasIdentification
     {
-        return ref _columns[componentId].Get<T>(slot);
+        return ref _columns[T.Identification].Get<T>(slot);
     }
 
     /// <inheritdoc/>
-    public void Set<T>(Identification componentId, int slot, T value) where T : unmanaged
+    public void Set<T>(int slot, T value) where T : unmanaged, IHasIdentification
     {
-        _columns[componentId].Set(slot, value);
+        _columns[T.Identification].Set(slot, value);
     }
 
     /// <inheritdoc/>
@@ -144,6 +149,12 @@ public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, ICompo
         return column.GetElementPtr(handle.Offset);
     }
 
+    /// <inheritdoc/>
+    public EntityId GetKey(ref ChunkHandle handle, int index)
+    {
+        return _identityMap.GetEntityId(handle.Offset + index);
+    }
+
     /// <summary>
     /// Creates capability registrations for this storage's component set and identity capability.
     /// Each capability interface gets its own registration with shared ComponentSetMetadata.
@@ -156,6 +167,7 @@ public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, ICompo
         return new CapabilityRegistration[]
         {
             new CapabilityRegistration<IChunkedIteration, ComponentSetMetadata>(metadata),
+            new CapabilityRegistration<IChunkedIteration<EntityId>, ComponentSetMetadata>(metadata),
             new CapabilityRegistration<IComponentAccess<int>, ComponentSetMetadata>(metadata),
             new CapabilityRegistration<IEntityMutation<int>, ComponentSetMetadata>(metadata),
             new CapabilityRegistration<IEntityIdentity<int>, EntityIdentityMetadata>(new EntityIdentityMetadata()),

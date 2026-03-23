@@ -4,7 +4,13 @@ namespace Sparkitect.ECS.Storage;
 /// Non-generic base interface for all storage implementations.
 /// Extends <see cref="IDisposable"/> for lifecycle management by <see cref="World"/>.
 /// </summary>
-public interface IStorage : IDisposable;
+public interface IStorage : IDisposable
+{
+    /// <summary>
+    /// The number of entities currently stored.
+    /// </summary>
+    int Count { get; }
+}
 
 /// <summary>
 /// Generic storage contract parameterized by entity key type.

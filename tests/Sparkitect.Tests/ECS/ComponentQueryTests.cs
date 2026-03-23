@@ -26,8 +26,8 @@ public class ComponentQueryTests
         for (int i = 0; i < 3; i++)
         {
             var slot = storage.AllocateEntity();
-            storage.Set(PositionId, slot, new TestPosition { X = i * 10f, Y = i * 20f });
-            storage.Set(VelocityId, slot, new TestVelocity { Dx = i * 1f, Dy = i * 2f });
+            storage.Set(slot, new TestPosition { X = i * 10f, Y = i * 20f });
+            storage.Set(slot, new TestVelocity { Dx = i * 1f, Dy = i * 2f });
         }
 
         var metadata = new ComponentQueryMetadata([PositionId, VelocityId]);
@@ -36,10 +36,10 @@ public class ComponentQueryTests
         var positions = new List<TestPosition>();
         foreach (var entity in query)
         {
-            positions.Add(entity.Get<TestPosition>(PositionId));
+            positions.Add(entity.Get<TestPosition>());
         }
 
-        await Assert.That(positions).HasCount().EqualTo(3);
+        await Assert.That(positions).Count().IsEqualTo(3);
         await Assert.That(positions[0].X).IsEqualTo(0f);
         await Assert.That(positions[1].X).IsEqualTo(10f);
         await Assert.That(positions[2].X).IsEqualTo(20f);
@@ -58,7 +58,7 @@ public class ComponentQueryTests
         for (int i = 0; i < 2; i++)
         {
             var slot = storage1.AllocateEntity();
-            storage1.Set(PositionId, slot, new TestPosition { X = i, Y = 0 });
+            storage1.Set(slot, new TestPosition { X = i, Y = 0 });
         }
 
         // Storage 2: 3 entities
@@ -68,7 +68,7 @@ public class ComponentQueryTests
         for (int i = 0; i < 3; i++)
         {
             var slot = storage2.AllocateEntity();
-            storage2.Set(PositionId, slot, new TestPosition { X = 100 + i, Y = 0 });
+            storage2.Set(slot, new TestPosition { X = 100 + i, Y = 0 });
         }
 
         var metadata = new ComponentQueryMetadata([PositionId, VelocityId]);
@@ -77,10 +77,10 @@ public class ComponentQueryTests
         var xValues = new List<float>();
         foreach (var entity in query)
         {
-            xValues.Add(entity.Get<TestPosition>(PositionId).X);
+            xValues.Add(entity.Get<TestPosition>().X);
         }
 
-        await Assert.That(xValues).HasCount().EqualTo(5);
+        await Assert.That(xValues).Count().IsEqualTo(5);
         // First storage entities
         await Assert.That(xValues[0]).IsEqualTo(0f);
         await Assert.That(xValues[1]).IsEqualTo(1f);
@@ -120,19 +120,19 @@ public class ComponentQueryTests
         storage.SetHandle(handle);
 
         var slot = storage.AllocateEntity();
-        storage.Set(PositionId, slot, new TestPosition { X = 42f, Y = 99f });
+        storage.Set(slot, new TestPosition { X = 42f, Y = 99f });
 
         var metadata = new ComponentQueryMetadata([PositionId]);
         using var query = (ComponentQuery)metadata.CreateQuery(world);
 
         foreach (var entity in query)
         {
-            ref var pos = ref entity.GetRef<TestPosition>(PositionId);
+            ref var pos = ref entity.GetRef<TestPosition>();
             pos.X = 777f;
         }
 
         // Verify mutation persisted in the underlying storage
-        var readBack = storage.Get<TestPosition>(PositionId, 0);
+        var readBack = storage.Get<TestPosition>(0);
         await Assert.That(readBack.X).IsEqualTo(777f);
     }
 
@@ -146,7 +146,7 @@ public class ComponentQueryTests
         storage.SetHandle(handle);
 
         var slot = storage.AllocateEntity();
-        storage.Set(PositionId, slot, new TestPosition { X = 42f, Y = 99f });
+        storage.Set(slot, new TestPosition { X = 42f, Y = 99f });
 
         var metadata = new ComponentQueryMetadata([PositionId]);
         using var query = (ComponentQuery)metadata.CreateQuery(world);
@@ -154,12 +154,12 @@ public class ComponentQueryTests
         TestPosition copy = default;
         foreach (var entity in query)
         {
-            copy = entity.Get<TestPosition>(PositionId);
+            copy = entity.Get<TestPosition>();
             // Modifying copy should not affect storage
             copy.X = 999f;
         }
 
-        var readBack = storage.Get<TestPosition>(PositionId, 0);
+        var readBack = storage.Get<TestPosition>(0);
         await Assert.That(readBack.X).IsEqualTo(42f);
         await Assert.That(copy.X).IsEqualTo(999f);
     }
@@ -187,14 +187,14 @@ public class ComponentQueryTests
         storage.SetHandle(handle);
 
         var slot = storage.AllocateEntity();
-        storage.Set(PositionId, slot, new TestPosition { X = 55f, Y = 0f });
+        storage.Set(slot, new TestPosition { X = 55f, Y = 0f });
 
         // Query should now see the new storage
         var countAfter = 0;
         float xValue = 0;
         foreach (var entity in query)
         {
-            xValue = entity.Get<TestPosition>(PositionId).X;
+            xValue = entity.Get<TestPosition>().X;
             countAfter++;
         }
 

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using Silk.NET.Input;
 using SpaceInvadersMod.CompilerGenerated.IdExtensions;
 using SpaceInvadersMod.Components;
 using Sparkitect.ECS;
@@ -9,9 +10,11 @@ using Sparkitect.ECS.Components;
 using Sparkitect.ECS.Storage;
 using Sparkitect.ECS.Systems;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Utils;
+using Sparkitect.Windowing;
 
 namespace SpaceInvadersMod;
 
@@ -25,7 +28,89 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     private readonly Stopwatch _frameTimer = new();
     private float _lastFrameTime;
 
+    private RenderEntity[] _renderBuffer = new RenderEntity[SpaceInvadersConstants.MaxRenderEntities];
+    private int _renderEntityCount;
+    private bool _isGameplayActive;
+    private ISparkitWindow? _window;
+    private StorageHandle _playerStorageHandle;
+    private StorageHandle _enemyStorageHandle;
+
+    // Input: physical key → action mapping, cached per frame
+    private static readonly Dictionary<Key, GameAction> KeyMap = new()
+    {
+        [Key.Left] = GameAction.MoveLeft,
+        [Key.A] = GameAction.MoveLeft,
+        [Key.Right] = GameAction.MoveRight,
+        [Key.D] = GameAction.MoveRight,
+        [Key.Up] = GameAction.Shoot,
+        [Key.Space] = GameAction.TogglePause,
+    };
+
+    private readonly HashSet<GameAction> _activeActions = [];
+    private bool _pauseToggleConsumed;
+
+    public required IWindowManager WindowManager { private get; init; }
+    public required IVulkanContext VulkanContext { private get; init; }
+    public required IGameStateManager GameStateManager { private get; init; }
+    public required IShaderManager ShaderManager { private get; init; }
+
     public IWorld? GetWorld() => _world;
+    public RenderEntity[] GetRenderBuffer() => _renderBuffer;
+    public void SetRenderEntityCount(int count) => _renderEntityCount = count;
+    public int GetRenderEntityCount() => _renderEntityCount;
+    public bool IsGameplayActive => _isGameplayActive;
+    public void SetGameplayActive(bool active) => _isGameplayActive = active;
+
+    public bool IsActionDown(GameAction action) => _activeActions.Contains(action);
+
+    public void ProcessInput()
+    {
+        _activeActions.Clear();
+
+        var keyboard = _window?.Keyboard;
+        if (keyboard is null) return;
+
+        foreach (var (key, action) in KeyMap)
+        {
+            if (keyboard.IsKeyDown(key))
+                _activeActions.Add(action);
+        }
+
+        // Edge-detect pause toggle: only fire once per press
+        if (_activeActions.Contains(GameAction.TogglePause))
+        {
+            if (_pauseToggleConsumed)
+                _activeActions.Remove(GameAction.TogglePause);
+            else
+                _pauseToggleConsumed = true;
+        }
+        else
+        {
+            _pauseToggleConsumed = false;
+        }
+    }
+
+    public void CheckGameState()
+    {
+        if (_world is null) return;
+
+        if (_isGameplayActive)
+        {
+            var playerCount = _world.GetStorage(_playerStorageHandle).Count;
+            var enemyCount = _world.GetStorage(_enemyStorageHandle).Count;
+
+            if (playerCount == 0 || enemyCount == 0)
+            {
+                _isGameplayActive = false;
+                _world.SetNodeState(EcsSystemGroupID.SpaceInvadersMod.Gameplay, SystemState.Inactive);
+            }
+        }
+        else if (IsActionDown(GameAction.TogglePause))
+        {
+            _isGameplayActive = true;
+            _world.SetNodeState(EcsSystemGroupID.SpaceInvadersMod.Gameplay, SystemState.Active);
+        }
+    }
 
     public IWorld BuildWorld()
     {
@@ -62,21 +147,27 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         var enemyHandle = _world.AddStorage(enemyStorage, enemyStorage.CreateCapabilityRegistrations());
         var bulletHandle = _world.AddStorage(bulletStorage, bulletStorage.CreateCapabilityRegistrations());
 
+        _playerStorageHandle = playerHandle;
+        _enemyStorageHandle = enemyHandle;
+
         _world.SetSystemTree(systemManager.BuildTree(EcsSystemGroupID.SpaceInvadersMod.SpaceInvaders));
 
         // Spawn player entity
         var playerAccessor = _world.GetStorage(playerHandle);
         var playerSlot = playerAccessor.AsStorage<int>()!.AllocateEntity();
         var playerComponents = playerAccessor.As<IComponentAccess<int>>()!;
-        playerComponents.Set(posId, playerSlot, new Position { Value = new Vector2(0.5f, 0.9f) });
-        playerComponents.Set(velId, playerSlot, new Velocity { Value = Vector2.Zero });
-        playerComponents.Set(cooldownId, playerSlot, new ShootCooldown { Remaining = 0f });
-        playerComponents.Set(playerTagId, playerSlot, new PlayerTag());
+        var playerIdAccessor = playerAccessor.As<IEntityIdentity<int>>()!;
+        playerIdAccessor.Assign(_world.AllocateEntityId(), playerSlot);
+        playerComponents.Set(playerSlot, new Position { Value = new Vector2(0.5f, 0.9f) });
+        playerComponents.Set(playerSlot, new Velocity { Value = Vector2.Zero });
+        playerComponents.Set(playerSlot, new ShootCooldown { Remaining = 0f });
+        playerComponents.Set(playerSlot, new PlayerTag());
 
         // Spawn enemy formation: 5 rows x 11 cols
         var enemyAccessor = _world.GetStorage(enemyHandle);
         var enemySlotAllocator = enemyAccessor.AsStorage<int>()!;
         var enemyComponents = enemyAccessor.As<IComponentAccess<int>>()!;
+        var enemyIdAccessor = enemyAccessor.As<IEntityIdentity<int>>()!;
 
         const int rows = 5;
         const int cols = 11;
@@ -90,14 +181,19 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             for (var col = 0; col < cols; col++)
             {
                 var slot = enemySlotAllocator.AllocateEntity();
-                enemyComponents.Set(posId, slot, new Position { Value = new Vector2(startX + col * spacingX, startY + row * spacingY) });
-                enemyComponents.Set(velId, slot, new Velocity { Value = Vector2.Zero });
-                enemyComponents.Set(cooldownId, slot, new ShootCooldown { Remaining = 0f });
-                enemyComponents.Set(enemyTagId, slot, new EnemyTag());
+                enemyIdAccessor.Assign(_world.AllocateEntityId(), slot);
+                enemyComponents.Set(slot, new Position { Value = new Vector2(startX + col * spacingX, startY + row * spacingY) });
+                enemyComponents.Set(slot, new Velocity { Value = Vector2.Zero });
+                enemyComponents.Set(slot, new ShootCooldown { Remaining = 0f });
+                enemyComponents.Set(slot, new EnemyTag());
             }
         }
 
         systemManager.NotifyRebuild(_world);
+
+        // Per D-11: Game starts with GameplayGroup inactive (paused)
+        _world.SetNodeState(EcsSystemGroupID.SpaceInvadersMod.Gameplay, SystemState.Inactive);
+        _isGameplayActive = false;
 
         return _world;
     }
@@ -123,4 +219,8 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         _world?.Dispose();
         _world = null;
     }
+
+    public void InitializeRendering() { /* Plan 03 */ }
+    public void Render() { /* Plan 03 */ }
+    public void CleanupRendering() { /* Plan 03 */ }
 }

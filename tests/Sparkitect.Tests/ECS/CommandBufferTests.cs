@@ -19,7 +19,7 @@ public class CommandBufferTests
     {
         var buffer = new CommandBuffer<int>(EntityId.None, default, isCreate: false);
 
-        buffer.SetComponent(PositionId, new TestPosition { X = 1f, Y = 2f });
+        buffer.SetComponent(new TestPosition { X = 1f, Y = 2f });
 
         await Assert.That(buffer.Commands).HasCount().EqualTo(1);
         await Assert.That(buffer.Commands[0]).IsAssignableTo<SetComponentCommand<int, TestPosition>>();
@@ -144,7 +144,7 @@ public class CommandBufferTests
         storage.SetHandle(handle);
 
         var buffer = accessor.Create<int>(handle);
-        buffer.SetComponent(PositionId, new TestPosition { X = 42f, Y = 99f });
+        buffer.SetComponent(new TestPosition { X = 42f, Y = 99f });
 
         accessor.Playback();
 
@@ -152,7 +152,7 @@ public class CommandBufferTests
         await Assert.That(world.GetEntityState(buffer.EntityId)).IsEqualTo(EntityState.Bound);
 
         // Component data should be readable
-        var pos = storage.Get<TestPosition>(PositionId, 0);
+        var pos = storage.Get<TestPosition>(0);
         await Assert.That(pos.X).IsEqualTo(42f);
         await Assert.That(pos.Y).IsEqualTo(99f);
     }
@@ -171,17 +171,17 @@ public class CommandBufferTests
         // Create an entity directly
         var entityId = world.AllocateEntityId();
         var slot = storage.AllocateEntity();
-        storage.Set(PositionId, slot, new TestPosition { X = 1f, Y = 2f });
+        storage.Set(slot, new TestPosition { X = 1f, Y = 2f });
         storage.Assign(entityId, slot);
 
         // Modify via command buffer
         var buffer = accessor.Modify<int>(entityId);
-        buffer.SetComponent(PositionId, new TestPosition { X = 100f, Y = 200f });
+        buffer.SetComponent(new TestPosition { X = 100f, Y = 200f });
 
         accessor.Playback();
 
         // Component should be updated
-        var pos = storage.Get<TestPosition>(PositionId, slot);
+        var pos = storage.Get<TestPosition>(slot);
         await Assert.That(pos.X).IsEqualTo(100f);
         await Assert.That(pos.Y).IsEqualTo(200f);
     }
@@ -200,7 +200,7 @@ public class CommandBufferTests
         // Create an entity directly
         var entityId = world.AllocateEntityId();
         var slot = storage.AllocateEntity();
-        storage.Set(PositionId, slot, new TestPosition { X = 1f, Y = 2f });
+        storage.Set(slot, new TestPosition { X = 1f, Y = 2f });
         storage.Assign(entityId, slot);
 
         // Destroy via command buffer
@@ -229,16 +229,16 @@ public class CommandBufferTests
 
         // Create two entities via command buffers
         var buffer1 = accessor.Create<int>(handle);
-        buffer1.SetComponent(PositionId, new TestPosition { X = 1f, Y = 10f });
+        buffer1.SetComponent(new TestPosition { X = 1f, Y = 10f });
 
         var buffer2 = accessor.Create<int>(handle);
-        buffer2.SetComponent(PositionId, new TestPosition { X = 2f, Y = 20f });
+        buffer2.SetComponent(new TestPosition { X = 2f, Y = 20f });
 
         accessor.Playback();
 
         // First buffer's entity should get slot 0, second gets slot 1 (FIFO)
-        var pos0 = storage.Get<TestPosition>(PositionId, 0);
-        var pos1 = storage.Get<TestPosition>(PositionId, 1);
+        var pos0 = storage.Get<TestPosition>(0);
+        var pos1 = storage.Get<TestPosition>(1);
 
         await Assert.That(pos0.X).IsEqualTo(1f);
         await Assert.That(pos0.Y).IsEqualTo(10f);
@@ -260,20 +260,20 @@ public class CommandBufferTests
         storage.SetHandle(handle);
 
         var buffer = accessor.Create<int>(handle);
-        buffer.SetComponent(PositionId, new TestPosition { X = 1f, Y = 2f });
+        buffer.SetComponent(new TestPosition { X = 1f, Y = 2f });
 
         accessor.Playback();
 
         // Second playback should be a no-op (auto-cleared)
         // Create another entity to verify accessor works fresh
         var buffer2 = accessor.Create<int>(handle);
-        buffer2.SetComponent(PositionId, new TestPosition { X = 99f, Y = 99f });
+        buffer2.SetComponent(new TestPosition { X = 99f, Y = 99f });
 
         accessor.Playback();
 
         // Should now have 2 entities total (one from each playback cycle)
-        var pos0 = storage.Get<TestPosition>(PositionId, 0);
-        var pos1 = storage.Get<TestPosition>(PositionId, 1);
+        var pos0 = storage.Get<TestPosition>(0);
+        var pos1 = storage.Get<TestPosition>(1);
         await Assert.That(pos0.X).IsEqualTo(1f);
         await Assert.That(pos1.X).IsEqualTo(99f);
     }
@@ -295,8 +295,8 @@ public class CommandBufferTests
         for (int i = 0; i < 3; i++)
         {
             var buffer = accessor.Create<int>(handle);
-            buffer.SetComponent(PositionId, new TestPosition { X = i * 10f, Y = i * 20f });
-            buffer.SetComponent(VelocityId, new TestVelocity { Dx = i * 1f, Dy = i * 2f });
+            buffer.SetComponent(new TestPosition { X = i * 10f, Y = i * 20f });
+            buffer.SetComponent(new TestVelocity { Dx = i * 1f, Dy = i * 2f });
         }
 
         accessor.Playback();
@@ -308,7 +308,7 @@ public class CommandBufferTests
         var positions = new List<TestPosition>();
         foreach (var entity in query)
         {
-            positions.Add(entity.Get<TestPosition>(PositionId));
+            positions.Add(entity.Get<TestPosition>());
         }
 
         await Assert.That(positions).HasCount().EqualTo(3);

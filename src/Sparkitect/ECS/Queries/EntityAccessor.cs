@@ -23,11 +23,10 @@ public readonly unsafe struct EntityAccessor
     /// Returns a mutable reference to the component value for this entity.
     /// </summary>
     /// <typeparam name="T">The unmanaged component type.</typeparam>
-    /// <param name="componentId">The component identification.</param>
     /// <returns>A reference to the component value.</returns>
-    public ref T GetRef<T>(Identification componentId) where T : unmanaged
+    public ref T GetRef<T>() where T : unmanaged, IHasIdentification
     {
-        var basePtr = _componentPointers[componentId];
+        var basePtr = _componentPointers[T.Identification];
         return ref Unsafe.AsRef<T>((void*)(basePtr + _index * sizeof(T)));
     }
 
@@ -35,10 +34,9 @@ public readonly unsafe struct EntityAccessor
     /// Returns a copy of the component value for this entity.
     /// </summary>
     /// <typeparam name="T">The unmanaged component type.</typeparam>
-    /// <param name="componentId">The component identification.</param>
     /// <returns>A copy of the component value.</returns>
-    public T Get<T>(Identification componentId) where T : unmanaged
+    public T Get<T>() where T : unmanaged, IHasIdentification
     {
-        return GetRef<T>(componentId);
+        return GetRef<T>();
     }
 }

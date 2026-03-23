@@ -36,6 +36,8 @@ public class TestStorage : IStorage<int>
     {
         IsDisposed = true;
     }
+
+    public int Count => _nextKey;
 }
 
 public class TestCapabilityStorage : IStorage<int>, ITestCapability
@@ -49,6 +51,8 @@ public class TestCapabilityStorage : IStorage<int>, ITestCapability
     {
         IsDisposed = true;
     }
+
+    public int Count => _nextKey;
 }
 
 public class ThrowingStorage : IStorage<int>
@@ -62,6 +66,8 @@ public class ThrowingStorage : IStorage<int>
         IsDisposed = true;
         throw new InvalidOperationException("Dispose failed on purpose");
     }
+    
+    public int Count => 0;
 }
 
 public class WorldTests

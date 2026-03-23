@@ -28,3 +28,31 @@ public struct ComponentSetRequirement : ICapabilityRequirement<IChunkedIteration
         return _requiredComponents.IsSubsetOf(metadata.Components);
     }
 }
+
+/// <summary>
+/// Generic capability requirement for matching storages that implement
+/// <see cref="Capabilities.IChunkedIteration{TKey}"/> and contain a set of components.
+/// </summary>
+public struct ComponentSetRequirement<TKey> : ICapabilityRequirement<IChunkedIteration<TKey>, ComponentSetMetadata>
+    where TKey : unmanaged
+{
+    private readonly HashSet<Identification> _requiredComponents;
+
+    /// <summary>
+    /// Creates a requirement that matches storages containing all specified components
+    /// and implementing keyed iteration.
+    /// </summary>
+    /// <param name="componentIds">The component identifications that must all be present.</param>
+    public ComponentSetRequirement(IReadOnlyList<Identification> componentIds)
+    {
+        _requiredComponents = new HashSet<Identification>(componentIds);
+    }
+
+    /// <summary>
+    /// Returns true when the storage's component set is a superset of the required components.
+    /// </summary>
+    public bool Matches(ComponentSetMetadata metadata)
+    {
+        return _requiredComponents.IsSubsetOf(metadata.Components);
+    }
+}

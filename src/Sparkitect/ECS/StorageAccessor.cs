@@ -24,6 +24,11 @@ public readonly ref struct StorageAccessor
     }
 
     /// <summary>
+    /// The number of entities currently in this storage.
+    /// </summary>
+    public int Count => _storage.Count;
+
+    /// <summary>
     /// Attempts to cast the underlying storage to a capability interface.
     /// Returns <c>null</c> if the storage does not implement the requested capability.
     /// </summary>

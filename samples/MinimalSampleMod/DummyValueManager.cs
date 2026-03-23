@@ -75,8 +75,7 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
                 return _world;
             }
             
-            storage.As<IComponentAccess<int>>()!.Set(UnmanagedComponentID.MinimalSampleMod.Minimal, entity.Value,
-                new MinimalComponent() { Value = Random.Shared.Next()});
+            storage.As<IComponentAccess<int>>()!.Set(entity.Value, new MinimalComponent() { Value = Random.Shared.Next()});
         }
         
         

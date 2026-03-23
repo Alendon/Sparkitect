@@ -16,7 +16,7 @@ public interface IComponentAccess<TKey> : ICapability
     /// <param name="componentId">The component identification to locate the correct column.</param>
     /// <param name="slot">The slot index within the storage.</param>
     /// <returns>A reference to the component value.</returns>
-    ref T Get<T>(Identification componentId, TKey slot) where T : unmanaged;
+    ref T Get<T>(TKey slot) where T : unmanaged, IHasIdentification;
 
     /// <summary>
     /// Sets the component value at the given slot.
@@ -25,5 +25,5 @@ public interface IComponentAccess<TKey> : ICapability
     /// <param name="componentId">The component identification to locate the correct column.</param>
     /// <param name="slot">The slot index within the storage.</param>
     /// <param name="value">The value to store.</param>
-    void Set<T>(Identification componentId, TKey slot, T value) where T : unmanaged;
+    void Set<T>(TKey slot, T value) where T : unmanaged, IHasIdentification;
 }
