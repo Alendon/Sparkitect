@@ -32,5 +32,10 @@
         <ModProjectDependency Include="..\..\src\Sparkitect\Sparkitect.csproj" />
     </ItemGroup>
 
+    <!-- Slang shaders to compile -->
+    <ItemGroup>
+        <SlangShader Include="Shaders\space_invaders.slang" />
+    </ItemGroup>
+
     <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.targets"/>
 </Project>

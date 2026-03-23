@@ -5,5 +5,6 @@ public enum GameAction
     MoveLeft,
     MoveRight,
     Shoot,
-    TogglePause
+    TogglePause,
+    Restart
 }

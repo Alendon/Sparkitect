@@ -1,0 +1,290 @@
+; SPIR-V
+; Version: 1.5
+; Generator: Khronos Slang Compiler; 0
+; Bound: 200
+; Schema: 0
+               OpCapability StorageImageReadWithoutFormat
+               OpCapability StorageImageWriteWithoutFormat
+               OpCapability Shader
+               OpExtension "SPV_KHR_storage_buffer_storage_class"
+        %ext = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %main "main" %gameData %entities %outputImage %gl_GlobalInvocationID
+               OpExecutionMode %main LocalSize 8 8 1
+               OpSource Slang 1
+               OpName %RenderEntity "RenderEntity"
+               OpMemberName %RenderEntity 0 "position"
+               OpMemberName %RenderEntity 1 "entityType"
+               OpName %GameData "SpaceInvadersGameData"
+               OpMemberName %GameData 0 "entityCount"
+               OpMemberName %GameData 1 "screenWidth"
+               OpMemberName %GameData 2 "screenHeight"
+               OpMemberName %GameData 3 "padding"
+               OpMemberName %GameData 4 "backgroundColor"
+               OpName %Buffer "StructuredBuffer"
+               OpMemberName %Buffer 0 "data"
+               OpName %gameData "gameData"
+               OpName %entities "entities"
+               OpName %outputImage "outputImage"
+               OpName %main "computeMain"
+               OpDecorate %gl_GlobalInvocationID BuiltIn GlobalInvocationId
+               OpDecorate %GameData Block
+               OpMemberDecorate %GameData 0 Offset 0
+               OpMemberDecorate %GameData 1 Offset 4
+               OpMemberDecorate %GameData 2 Offset 8
+               OpMemberDecorate %GameData 3 Offset 12
+               OpMemberDecorate %GameData 4 Offset 16
+               OpMemberDecorate %RenderEntity 0 Offset 0
+               OpMemberDecorate %RenderEntity 1 Offset 8
+               OpDecorate %rtarr ArrayStride 16
+               OpDecorate %Buffer Block
+               OpMemberDecorate %Buffer 0 Offset 0
+               OpDecorate %entities Binding 1
+               OpDecorate %entities DescriptorSet 0
+               OpDecorate %entities NonWritable
+               OpDecorate %outputImage Binding 0
+               OpDecorate %outputImage DescriptorSet 0
+
+; Types
+       %void = OpTypeVoid
+     %voidfn = OpTypeFunction %void
+       %bool = OpTypeBool
+       %uint = OpTypeInt 32 0
+        %int = OpTypeInt 32 1
+      %float = OpTypeFloat 32
+    %v2float = OpTypeVector %float 2
+    %v3float = OpTypeVector %float 3
+    %v4float = OpTypeVector %float 4
+     %v2uint = OpTypeVector %uint 2
+     %v3uint = OpTypeVector %uint 3
+
+; Pointer types
+  %ptr_bool  = OpTypePointer Function %bool
+  %ptr_uint  = OpTypePointer Function %uint
+ %ptr_float  = OpTypePointer Function %float
+%ptr_v2float = OpTypePointer Function %v2float
+%ptr_v3float = OpTypePointer Function %v3float
+ %ptr_v3uint = OpTypePointer Input %v3uint
+  %ptr_pc_u  = OpTypePointer PushConstant %uint
+ %ptr_pc_v3  = OpTypePointer PushConstant %v3float
+
+; Struct types
+%RenderEntity = OpTypeStruct %v2float %uint
+      %rtarr = OpTypeRuntimeArray %RenderEntity
+     %Buffer = OpTypeStruct %rtarr
+   %GameData = OpTypeStruct %uint %uint %uint %float %v3float
+
+; Pointer to struct types
+ %ptr_pc_gd  = OpTypePointer PushConstant %GameData
+ %ptr_sb_buf = OpTypePointer StorageBuffer %Buffer
+ %ptr_sb_ent = OpTypePointer StorageBuffer %RenderEntity
+  %imageType = OpTypeImage %float 2D 2 0 0 2 Unknown
+  %ptr_image = OpTypePointer UniformConstant %imageType
+
+; Constants
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+      %int_0 = OpConstant %int 0
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+      %int_4 = OpConstant %int 4
+    %float_1 = OpConstant %float 1
+      %false = OpConstantFalse %bool
+       %true = OpConstantTrue %bool
+
+; Entity rendering constants
+  %f_0_030 = OpConstant %float 0.0299999993
+  %f_0_015 = OpConstant %float 0.0149999997
+  %f_0_200 = OpConstant %float 0.200000003
+  %f_0_800 = OpConstant %float 0.800000012
+%playerColor = OpConstantComposite %v3float %f_0_200 %f_0_800 %f_0_200
+  %f_0_025 = OpConstant %float 0.0250000004
+  %f_0_900 = OpConstant %float 0.899999976
+  %f_0_300 = OpConstant %float 0.300000012
+%enemyColor  = OpConstantComposite %v3float %f_0_900 %f_0_300 %f_0_300
+  %f_0_003 = OpConstant %float 0.00300000003
+  %f_0_010 = OpConstant %float 0.00999999978
+%whiteColor  = OpConstantComposite %v3float %float_1 %float_1 %float_1
+
+; Global variables
+%gl_GlobalInvocationID = OpVariable %ptr_v3uint Input
+   %gameData = OpVariable %ptr_pc_gd PushConstant
+   %entities = OpVariable %ptr_sb_buf StorageBuffer
+%outputImage = OpVariable %ptr_image UniformConstant
+
+; ---- Main function ----
+       %main = OpFunction %void None %voidfn
+      %entry = OpLabel
+
+; Local variables
+      %v_hit = OpVariable %ptr_bool Function
+        %v_i = OpVariable %ptr_uint Function
+    %v_color = OpVariable %ptr_v3float Function
+    %v_halfW = OpVariable %ptr_float Function
+    %v_halfH = OpVariable %ptr_float Function
+  %v_entPos  = OpVariable %ptr_v2float Function
+    %v_inXY  = OpVariable %ptr_bool Function
+
+; Load pixel coordinate
+       %gid  = OpLoad %v3uint %gl_GlobalInvocationID
+       %pix  = OpVectorShuffle %v2uint %gid %gid 0 1
+       %px   = OpCompositeExtract %uint %gid 0
+       %py   = OpCompositeExtract %uint %gid 1
+
+; Load screen dimensions
+    %p_sw    = OpAccessChain %ptr_pc_u %gameData %int_1
+       %sw   = OpLoad %uint %p_sw
+    %p_sh    = OpAccessChain %ptr_pc_u %gameData %int_2
+       %sh   = OpLoad %uint %p_sh
+
+; Bounds check: if (px >= sw || py >= sh) return
+    %oob_x   = OpUGreaterThanEqual %bool %px %sw
+    %oob_y   = OpUGreaterThanEqual %bool %py %sh
+    %oob     = OpLogicalOr %bool %oob_x %oob_y
+               OpSelectionMerge %after_oob None
+               OpBranchConditional %oob %do_return %after_oob
+  %do_return = OpLabel
+               OpReturn
+ %after_oob  = OpLabel
+
+; Compute normalized UV = pixelCoord / screenSize
+     %pf     = OpConvertUToF %v2float %pix
+     %swf    = OpConvertUToF %float %sw
+     %shf    = OpConvertUToF %float %sh
+     %scr    = OpCompositeConstruct %v2float %swf %shf
+     %uv     = OpFDiv %v2float %pf %scr
+
+; Load background color
+    %p_bg    = OpAccessChain %ptr_pc_v3 %gameData %int_4
+      %bg    = OpLoad %v3float %p_bg
+
+; Initialize: color = background, i = 0, hit = false
+               OpStore %v_color %bg
+               OpStore %v_i %uint_0
+               OpStore %v_hit %false
+
+; ---- Entity loop ----
+               OpBranch %loop_hdr
+  %loop_hdr  = OpLabel
+               OpLoopMerge %loop_end %loop_cont None
+               OpBranch %loop_cond
+ %loop_cond  = OpLabel
+    %p_ec    = OpAccessChain %ptr_pc_u %gameData %int_0
+      %ec    = OpLoad %uint %p_ec
+      %ci    = OpLoad %uint %v_i
+    %in_rng  = OpULessThan %bool %ci %ec
+               OpBranchConditional %in_rng %loop_body %loop_end
+
+ %loop_body  = OpLabel
+; Load entity[i]
+      %li    = OpLoad %uint %v_i
+   %p_ent    = OpAccessChain %ptr_sb_ent %entities %int_0 %li
+     %ent    = OpLoad %RenderEntity %p_ent
+    %epos    = OpCompositeExtract %v2float %ent 0
+   %etype    = OpCompositeExtract %uint %ent 1
+               OpStore %v_entPos %epos
+
+; Switch on entity type to set halfW, halfH, color
+               OpSelectionMerge %sw_merge None
+               OpSwitch %etype %sw_default 0 %sw_player 1 %sw_enemy 2 %sw_bullet
+
+ %sw_default = OpLabel
+               OpStore %v_halfW %f_0_003
+               OpStore %v_halfH %f_0_003
+               OpStore %v_color %whiteColor
+               OpBranch %sw_merge
+
+  %sw_player = OpLabel
+               OpStore %v_halfW %f_0_030
+               OpStore %v_halfH %f_0_015
+               OpStore %v_color %playerColor
+               OpBranch %sw_merge
+
+   %sw_enemy = OpLabel
+               OpStore %v_halfW %f_0_025
+               OpStore %v_halfH %f_0_015
+               OpStore %v_color %enemyColor
+               OpBranch %sw_merge
+
+  %sw_bullet = OpLabel
+               OpStore %v_halfW %f_0_003
+               OpStore %v_halfH %f_0_010
+               OpStore %v_color %whiteColor
+               OpBranch %sw_merge
+
+  %sw_merge  = OpLabel
+
+; AABB hit test: abs(uv.x - entity.x) < halfW && abs(uv.y - entity.y) < halfH
+; Default: not a hit
+               OpStore %v_inXY %false
+
+     %uv_x   = OpCompositeExtract %float %uv 0
+    %le_pos  = OpLoad %v2float %v_entPos
+     %ex     = OpCompositeExtract %float %le_pos 0
+     %dx     = OpFSub %float %uv_x %ex
+    %adx     = OpExtInst %float %ext FAbs %dx
+     %hw     = OpLoad %float %v_halfW
+   %hit_x    = OpFOrdLessThan %bool %adx %hw
+
+               OpSelectionMerge %after_x None
+               OpBranchConditional %hit_x %check_y %after_x
+
+  %check_y   = OpLabel
+     %uv_y   = OpCompositeExtract %float %uv 1
+     %ey     = OpCompositeExtract %float %le_pos 1
+     %dy     = OpFSub %float %uv_y %ey
+    %ady     = OpExtInst %float %ext FAbs %dy
+     %hh     = OpLoad %float %v_halfH
+   %hit_y    = OpFOrdLessThan %bool %ady %hh
+               OpStore %v_inXY %hit_y
+               OpBranch %after_x
+
+  %after_x   = OpLabel
+
+; Check if we got a full hit
+  %got_hit   = OpLoad %bool %v_inXY
+               OpSelectionMerge %after_hit None
+               OpBranchConditional %got_hit %is_hit %after_hit
+
+    %is_hit  = OpLabel
+; Entity hit! Set hit flag (color already set by switch)
+               OpStore %v_hit %true
+               OpBranch %after_hit
+
+ %after_hit  = OpLabel
+; If hit, break out of loop; otherwise continue
+   %brk_chk  = OpLoad %bool %v_hit
+               OpSelectionMerge %after_brk None
+               OpBranchConditional %brk_chk %do_break %after_brk
+  %do_break  = OpLabel
+               OpBranch %loop_end
+ %after_brk  = OpLabel
+; Continue loop
+               OpBranch %loop_cont
+
+; Loop continue: i++
+ %loop_cont  = OpLabel
+      %old_i = OpLoad %uint %v_i
+      %new_i = OpIAdd %uint %old_i %uint_1
+               OpStore %v_i %new_i
+               OpBranch %loop_hdr
+
+; ---- After loop ----
+  %loop_end  = OpLabel
+; If no hit, restore background color
+    %was_hit = OpLoad %bool %v_hit
+               OpSelectionMerge %after_bg None
+               OpBranchConditional %was_hit %after_bg %set_bg
+
+    %set_bg  = OpLabel
+               OpStore %v_color %bg
+               OpBranch %after_bg
+
+  %after_bg  = OpLabel
+; Write final color
+  %fin_color = OpLoad %v3float %v_color
+   %fin_v4   = OpCompositeConstruct %v4float %fin_color %float_1
+      %img   = OpLoad %imageType %outputImage
+               OpImageWrite %img %pix %fin_v4
+               OpReturn
+               OpFunctionEnd

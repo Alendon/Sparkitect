@@ -62,6 +62,7 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
 
         var soaStorage = new SoAStorage([(UnmanagedComponentID.MinimalSampleMod.Minimal, compSize)], _tracker, _world, 32);
         var storageHandle = _world.AddStorage(soaStorage, soaStorage.CreateCapabilityRegistrations());
+        soaStorage.SetHandle(storageHandle);
         
         _world.SetSystemTree(systemManager.BuildTree(EcsSystemGroupID.MinimalSampleMod.Minimal));
 

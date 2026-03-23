@@ -74,12 +74,56 @@ public class ComponentQueryMetadata<TKey> : QueryParameterMetadata
             matchedStorages.AddRange(storages);
         });
 
-        return new ComponentQuery<TKey>(world, _componentIds, matchedStorages, filterHandle);
+        return CreateQueryInstance(world, _componentIds, matchedStorages, filterHandle);
+    }
+
+    /// <summary>
+    /// Creates the query instance. Override in <see cref="ComponentQueryMetadata{TQuery,TKey}"/>
+    /// to construct typed subclasses.
+    /// </summary>
+    protected virtual ComponentQuery<TKey> CreateQueryInstance(
+        IWorld world, IReadOnlyList<Identification> componentIds,
+        List<StorageHandle> matchedStorages, FilterHandle filterHandle)
+    {
+        return new ComponentQuery<TKey>(world, componentIds, matchedStorages, filterHandle);
     }
 
     /// <inheritdoc/>
     public override void DisposeQuery(object query)
     {
         ((ComponentQuery<TKey>)query).Dispose();
+    }
+}
+
+/// <summary>
+/// Typed query parameter metadata that creates a specific <typeparamref name="TQuery"/> subclass
+/// of <see cref="ComponentQuery{TKey}"/>. Used for named query types (e.g., BulletQuery, EnemyQuery)
+/// that enable multiple distinct query parameters of the same base type on a single system.
+/// </summary>
+public class ComponentQueryMetadata<TQuery, TKey> : ComponentQueryMetadata<TKey>
+    where TQuery : ComponentQuery<TKey>
+    where TKey : unmanaged
+{
+    private readonly Func<IWorld, IReadOnlyList<Identification>, List<StorageHandle>, FilterHandle, TQuery> _factory;
+
+    /// <summary>
+    /// Creates metadata for a typed keyed ComponentQuery targeting the specified components.
+    /// </summary>
+    /// <param name="componentIds">The component identifications to query.</param>
+    /// <param name="factory">Factory delegate that constructs the specific query subclass.</param>
+    public ComponentQueryMetadata(
+        IReadOnlyList<Identification> componentIds,
+        Func<IWorld, IReadOnlyList<Identification>, List<StorageHandle>, FilterHandle, TQuery> factory)
+        : base(componentIds)
+    {
+        _factory = factory;
+    }
+
+    /// <inheritdoc/>
+    protected override ComponentQuery<TKey> CreateQueryInstance(
+        IWorld world, IReadOnlyList<Identification> componentIds,
+        List<StorageHandle> matchedStorages, FilterHandle filterHandle)
+    {
+        return _factory(world, componentIds, matchedStorages, filterHandle);
     }
 }

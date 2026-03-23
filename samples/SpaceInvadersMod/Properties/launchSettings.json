@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Run Space Invaders": {
+      "commandName": "Executable",
+      "executablePath": "$(SolutionDir)/src/Sparkitect/bin/$(Configuration)/net10.0/Sparkitect",
+      "commandLineArgs": "-addModDirs=$(ProjectDir)/bin/$(Configuration)/net10.0",
+      "workingDirectory": "$(ProjectDir)/.run"
+    }
+  }
+}

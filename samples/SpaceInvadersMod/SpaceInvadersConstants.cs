@@ -3,16 +3,19 @@ namespace SpaceInvadersMod;
 public static class SpaceInvadersConstants
 {
     // Movement speeds (units/sec in 0-1 normalized space)
-    public const float PlayerSpeed = 0.6f;
-    public const float BulletSpeed = 0.8f;
+    public const float PlayerSpeed = 0.3f;
+    public const float BulletSpeed = 0.4f;
 
     // Shoot cooldowns (seconds)
     public const float PlayerShootCooldown = 0.3f;
-    public const float EnemyShootCooldownMin = 1.0f;
-    public const float EnemyShootCooldownMax = 3.0f;
+    public const float EnemyShootCooldownMin = 2.0f;
+    public const float EnemyShootCooldownMax = 5.0f;
+    // Re-fire cooldowns: much longer since 55 enemies share the pool
+    public const float EnemyRefireCooldownMin = 8.0f;
+    public const float EnemyRefireCooldownMax = 15.0f;
 
     // Enemy oscillation (per D-05/D-07: deterministic sine wave)
-    public const float EnemyOscillationSpeed = 1.5f;
+    public const float EnemyOscillationSpeed = 0.75f;
     public const float EnemyOscillationAmplitude = 0.15f;
 
     // AABB half-extents (per D-12: fixed-size per entity type in 0-1 coords)

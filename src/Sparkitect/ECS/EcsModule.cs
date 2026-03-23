@@ -19,7 +19,7 @@ public partial class EcsModule : IStateModule
     static void AddRegistries(IRegistryManager registryManager)
     {
         registryManager.AddRegistry<UnmanagedComponentRegistry>();
-        registryManager.ProcessAllMissing<SystemGroupRegistry>();
+        registryManager.AddRegistry<SystemGroupRegistry>();
         registryManager.AddRegistry<SystemRegistry>();
     }
     

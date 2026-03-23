@@ -59,8 +59,8 @@ public partial class GameplayGroup
             var modifyBuffer = commandBufferAccessor.Modify<int>(shooterCandidate);
             modifyBuffer.SetComponent(new ShootCooldown
             {
-                Remaining = SpaceInvadersConstants.EnemyShootCooldownMin +
-                    Random.Shared.NextSingle() * (SpaceInvadersConstants.EnemyShootCooldownMax - SpaceInvadersConstants.EnemyShootCooldownMin)
+                Remaining = SpaceInvadersConstants.EnemyRefireCooldownMin +
+                    Random.Shared.NextSingle() * (SpaceInvadersConstants.EnemyRefireCooldownMax - SpaceInvadersConstants.EnemyRefireCooldownMin)
             });
 
             // Spawn enemy bullet (per D-08: BulletData.Direction = -1)
