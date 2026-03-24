@@ -30,8 +30,8 @@ public class ComponentQueryTests
             storage.Set(slot, new TestVelocity { Dx = i * 1f, Dy = i * 2f });
         }
 
-        var metadata = new ComponentQueryMetadata([PositionId, VelocityId]);
-        using var query = (ComponentQuery)metadata.CreateQuery(world);
+        var metadata = new TestQueryMetadata([PositionId, VelocityId]);
+        using var query = (TestQuery)metadata.CreateQuery(world);
 
         var positions = new List<TestPosition>();
         foreach (var entity in query)
@@ -71,8 +71,8 @@ public class ComponentQueryTests
             storage2.Set(slot, new TestPosition { X = 100 + i, Y = 0 });
         }
 
-        var metadata = new ComponentQueryMetadata([PositionId, VelocityId]);
-        using var query = (ComponentQuery)metadata.CreateQuery(world);
+        var metadata = new TestQueryMetadata([PositionId, VelocityId]);
+        using var query = (TestQuery)metadata.CreateQuery(world);
 
         var xValues = new List<float>();
         foreach (var entity in query)
@@ -96,8 +96,8 @@ public class ComponentQueryTests
         using var world = IWorld.Create();
         // No storages added
 
-        var metadata = new ComponentQueryMetadata([PositionId]);
-        using var query = (ComponentQuery)metadata.CreateQuery(world);
+        var metadata = new TestQueryMetadata([PositionId]);
+        using var query = (TestQuery)metadata.CreateQuery(world);
 
         var count = 0;
         foreach (var _ in query)
@@ -122,8 +122,8 @@ public class ComponentQueryTests
         var slot = storage.AllocateEntity();
         storage.Set(slot, new TestPosition { X = 42f, Y = 99f });
 
-        var metadata = new ComponentQueryMetadata([PositionId]);
-        using var query = (ComponentQuery)metadata.CreateQuery(world);
+        var metadata = new TestQueryMetadata([PositionId]);
+        using var query = (TestQuery)metadata.CreateQuery(world);
 
         foreach (var entity in query)
         {
@@ -148,8 +148,8 @@ public class ComponentQueryTests
         var slot = storage.AllocateEntity();
         storage.Set(slot, new TestPosition { X = 42f, Y = 99f });
 
-        var metadata = new ComponentQueryMetadata([PositionId]);
-        using var query = (ComponentQuery)metadata.CreateQuery(world);
+        var metadata = new TestQueryMetadata([PositionId]);
+        using var query = (TestQuery)metadata.CreateQuery(world);
 
         TestPosition copy = default;
         foreach (var entity in query)
@@ -173,8 +173,8 @@ public class ComponentQueryTests
         var tracker = new FakeObjectTracker();
 
         // Create query before adding storage
-        var metadata = new ComponentQueryMetadata([PositionId]);
-        using var query = (ComponentQuery)metadata.CreateQuery(world);
+        var metadata = new TestQueryMetadata([PositionId]);
+        using var query = (TestQuery)metadata.CreateQuery(world);
 
         // Verify empty initially
         var countBefore = 0;
@@ -210,8 +210,8 @@ public class ComponentQueryTests
         using var world = IWorld.Create();
         var tracker = new FakeObjectTracker();
 
-        var metadata = new ComponentQueryMetadata([PositionId]);
-        var query = (ComponentQuery)metadata.CreateQuery(world);
+        var metadata = new TestQueryMetadata([PositionId]);
+        var query = (TestQuery)metadata.CreateQuery(world);
 
         // Dispose the query
         query.Dispose();

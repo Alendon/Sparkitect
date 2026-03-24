@@ -1,8 +1,4 @@
-using SpaceInvadersMod.CompilerGenerated.IdExtensions;
-using SpaceInvadersMod.Components;
-using Sparkitect.ECS.Queries;
 using Sparkitect.ECS.Systems;
-using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
 
 namespace SpaceInvadersMod;
@@ -13,15 +9,15 @@ public partial class GameplayGroup
     [EcsSystemScheduling]
     [OrderAfter<GameplayGroup.EnemyAiFunc>]
     private static void MovementSystem(
-        ComponentQuery query,
+        MovementQuery query,
         FrameTimingHolder frameTiming)
     {
         var dt = frameTiming.DeltaTime;
 
         foreach (var entity in query)
         {
-            ref var pos = ref entity.GetRef<Position>();
-            var vel = entity.Get<Velocity>();
+            ref var pos = ref entity.GetPosition();
+            var vel = entity.GetVelocity();
 
             pos.Value += vel.Value * dt;
         }

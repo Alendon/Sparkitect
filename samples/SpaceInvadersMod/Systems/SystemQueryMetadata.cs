@@ -1,32 +1,26 @@
-using SpaceInvadersMod.CompilerGenerated.IdExtensions;
 using Sparkitect.DI.Resolution;
-using Sparkitect.ECS;
 using Sparkitect.ECS.Commands;
 using Sparkitect.ECS.Queries;
 using Sparkitect.ECS.Systems;
-using Sparkitect.Modding;
-using Sparkitect.Modding.IDs;
 
 namespace SpaceInvadersMod;
 
 // Hand-written metadata entrypoints for ECS system DI parameter resolution (v1.4).
 // v1.5 will automate this via the source generator.
 
-// PlayerInputSystem: ComponentQuery<EntityId>[PlayerTag], ICommandBufferAccessor, FrameTimingHolder
+// PlayerInputSystem: PlayerInputQuery, ICommandBufferAccessor, FrameTimingHolder
 [ResolutionMetadataEntrypoint<SpaceInvadersSystemGroup.PlayerInputFunc>]
 internal class PlayerInputFuncMetadata
     : IResolutionMetadataEntrypoint<SpaceInvadersSystemGroup.PlayerInputFunc>
 {
     public void ConfigureResolutionMetadata(Dictionary<Type, List<object>> dependencies)
     {
-        dependencies.TryAdd(typeof(ComponentQuery<EntityId>), new());
-        dependencies[typeof(ComponentQuery<EntityId>)].Add(
-            new ComponentQueryMetadata<EntityId>([
-                UnmanagedComponentID.SpaceInvadersMod.Position,
-                UnmanagedComponentID.SpaceInvadersMod.Velocity,
-                UnmanagedComponentID.SpaceInvadersMod.ShootCooldown,
-                UnmanagedComponentID.SpaceInvadersMod.PlayerTag
-            ]));
+        dependencies.TryAdd(typeof(PlayerInputQuery), new());
+        dependencies[typeof(PlayerInputQuery)].Add(
+            new SgQueryMetadata<PlayerInputQuery>(
+                PlayerInputQuery.ReadComponentIds,
+                PlayerInputQuery.WriteComponentIds,
+                world => new PlayerInputQuery(world)));
 
         dependencies.TryAdd(typeof(ICommandBufferAccessor), new());
         dependencies[typeof(ICommandBufferAccessor)].Add(new CommandBufferAccessorMetadata(null!));
@@ -45,53 +39,40 @@ internal class RenderDataFuncMetadata
     {
         dependencies.TryAdd(typeof(BulletQuery), new());
         dependencies[typeof(BulletQuery)].Add(
-            new ComponentQueryMetadata<BulletQuery, EntityId>(
-                [
-                    UnmanagedComponentID.SpaceInvadersMod.Position,
-                    UnmanagedComponentID.SpaceInvadersMod.Velocity,
-                    UnmanagedComponentID.SpaceInvadersMod.BulletData
-                ],
-                static (world, ids, storages, filter) => new BulletQuery(world, ids, storages, filter)));
+            new SgQueryMetadata<BulletQuery>(
+                BulletQuery.ReadComponentIds,
+                BulletQuery.WriteComponentIds,
+                world => new BulletQuery(world)));
 
         dependencies.TryAdd(typeof(PlayerQuery), new());
         dependencies[typeof(PlayerQuery)].Add(
-            new ComponentQueryMetadata<PlayerQuery, EntityId>(
-                [
-                    UnmanagedComponentID.SpaceInvadersMod.Position,
-                    UnmanagedComponentID.SpaceInvadersMod.Velocity,
-                    UnmanagedComponentID.SpaceInvadersMod.ShootCooldown,
-                    UnmanagedComponentID.SpaceInvadersMod.PlayerTag
-                ],
-                static (world, ids, storages, filter) => new PlayerQuery(world, ids, storages, filter)));
+            new SgQueryMetadata<PlayerQuery>(
+                PlayerQuery.ReadComponentIds,
+                PlayerQuery.WriteComponentIds,
+                world => new PlayerQuery(world)));
 
         dependencies.TryAdd(typeof(EnemyQuery), new());
         dependencies[typeof(EnemyQuery)].Add(
-            new ComponentQueryMetadata<EnemyQuery, EntityId>(
-                [
-                    UnmanagedComponentID.SpaceInvadersMod.Position,
-                    UnmanagedComponentID.SpaceInvadersMod.Velocity,
-                    UnmanagedComponentID.SpaceInvadersMod.ShootCooldown,
-                    UnmanagedComponentID.SpaceInvadersMod.EnemyTag
-                ],
-                static (world, ids, storages, filter) => new EnemyQuery(world, ids, storages, filter)));
+            new SgQueryMetadata<EnemyQuery>(
+                EnemyQuery.ReadComponentIds,
+                EnemyQuery.WriteComponentIds,
+                world => new EnemyQuery(world)));
     }
 }
 
-// EnemyAiSystem: ComponentQuery<EntityId>[EnemyTag], ICommandBufferAccessor, FrameTimingHolder
+// EnemyAiSystem: EnemyAiQuery, ICommandBufferAccessor, FrameTimingHolder
 [ResolutionMetadataEntrypoint<GameplayGroup.EnemyAiFunc>]
 internal class EnemyAiFuncMetadata
     : IResolutionMetadataEntrypoint<GameplayGroup.EnemyAiFunc>
 {
     public void ConfigureResolutionMetadata(Dictionary<Type, List<object>> dependencies)
     {
-        dependencies.TryAdd(typeof(ComponentQuery<EntityId>), new());
-        dependencies[typeof(ComponentQuery<EntityId>)].Add(
-            new ComponentQueryMetadata<EntityId>([
-                UnmanagedComponentID.SpaceInvadersMod.Position,
-                UnmanagedComponentID.SpaceInvadersMod.Velocity,
-                UnmanagedComponentID.SpaceInvadersMod.ShootCooldown,
-                UnmanagedComponentID.SpaceInvadersMod.EnemyTag
-            ]));
+        dependencies.TryAdd(typeof(EnemyAiQuery), new());
+        dependencies[typeof(EnemyAiQuery)].Add(
+            new SgQueryMetadata<EnemyAiQuery>(
+                EnemyAiQuery.ReadComponentIds,
+                EnemyAiQuery.WriteComponentIds,
+                world => new EnemyAiQuery(world)));
 
         dependencies.TryAdd(typeof(ICommandBufferAccessor), new());
         dependencies[typeof(ICommandBufferAccessor)].Add(new CommandBufferAccessorMetadata(null!));
@@ -101,19 +82,19 @@ internal class EnemyAiFuncMetadata
     }
 }
 
-// MovementSystem: ComponentQuery[Position+Velocity], FrameTimingHolder
+// MovementSystem: MovementQuery, FrameTimingHolder
 [ResolutionMetadataEntrypoint<GameplayGroup.MovementFunc>]
 internal class MovementFuncMetadata
     : IResolutionMetadataEntrypoint<GameplayGroup.MovementFunc>
 {
     public void ConfigureResolutionMetadata(Dictionary<Type, List<object>> dependencies)
     {
-        dependencies.TryAdd(typeof(ComponentQuery), new());
-        dependencies[typeof(ComponentQuery)].Add(
-            new ComponentQueryMetadata([
-                UnmanagedComponentID.SpaceInvadersMod.Position,
-                UnmanagedComponentID.SpaceInvadersMod.Velocity
-            ]));
+        dependencies.TryAdd(typeof(MovementQuery), new());
+        dependencies[typeof(MovementQuery)].Add(
+            new SgQueryMetadata<MovementQuery>(
+                MovementQuery.ReadComponentIds,
+                MovementQuery.WriteComponentIds,
+                world => new MovementQuery(world)));
 
         dependencies.TryAdd(typeof(FrameTimingHolder), new());
         dependencies[typeof(FrameTimingHolder)].Add(new FrameTimingMetadata());
@@ -129,55 +110,43 @@ internal class CollisionFuncMetadata
     {
         dependencies.TryAdd(typeof(BulletQuery), new());
         dependencies[typeof(BulletQuery)].Add(
-            new ComponentQueryMetadata<BulletQuery, EntityId>(
-                [
-                    UnmanagedComponentID.SpaceInvadersMod.Position,
-                    UnmanagedComponentID.SpaceInvadersMod.Velocity,
-                    UnmanagedComponentID.SpaceInvadersMod.BulletData
-                ],
-                static (world, ids, storages, filter) => new BulletQuery(world, ids, storages, filter)));
+            new SgQueryMetadata<BulletQuery>(
+                BulletQuery.ReadComponentIds,
+                BulletQuery.WriteComponentIds,
+                world => new BulletQuery(world)));
 
         dependencies.TryAdd(typeof(EnemyQuery), new());
         dependencies[typeof(EnemyQuery)].Add(
-            new ComponentQueryMetadata<EnemyQuery, EntityId>(
-                [
-                    UnmanagedComponentID.SpaceInvadersMod.Position,
-                    UnmanagedComponentID.SpaceInvadersMod.Velocity,
-                    UnmanagedComponentID.SpaceInvadersMod.ShootCooldown,
-                    UnmanagedComponentID.SpaceInvadersMod.EnemyTag
-                ],
-                static (world, ids, storages, filter) => new EnemyQuery(world, ids, storages, filter)));
+            new SgQueryMetadata<EnemyQuery>(
+                EnemyQuery.ReadComponentIds,
+                EnemyQuery.WriteComponentIds,
+                world => new EnemyQuery(world)));
 
         dependencies.TryAdd(typeof(PlayerQuery), new());
         dependencies[typeof(PlayerQuery)].Add(
-            new ComponentQueryMetadata<PlayerQuery, EntityId>(
-                [
-                    UnmanagedComponentID.SpaceInvadersMod.Position,
-                    UnmanagedComponentID.SpaceInvadersMod.Velocity,
-                    UnmanagedComponentID.SpaceInvadersMod.ShootCooldown,
-                    UnmanagedComponentID.SpaceInvadersMod.PlayerTag
-                ],
-                static (world, ids, storages, filter) => new PlayerQuery(world, ids, storages, filter)));
+            new SgQueryMetadata<PlayerQuery>(
+                PlayerQuery.ReadComponentIds,
+                PlayerQuery.WriteComponentIds,
+                world => new PlayerQuery(world)));
 
         dependencies.TryAdd(typeof(ICommandBufferAccessor), new());
         dependencies[typeof(ICommandBufferAccessor)].Add(new CommandBufferAccessorMetadata(null!));
     }
 }
 
-// BulletCleanupSystem: ComponentQuery<EntityId>[BulletData], ICommandBufferAccessor
+// BulletCleanupSystem: BulletCleanupQuery, ICommandBufferAccessor
 [ResolutionMetadataEntrypoint<GameplayGroup.BulletCleanupFunc>]
 internal class BulletCleanupFuncMetadata
     : IResolutionMetadataEntrypoint<GameplayGroup.BulletCleanupFunc>
 {
     public void ConfigureResolutionMetadata(Dictionary<Type, List<object>> dependencies)
     {
-        dependencies.TryAdd(typeof(ComponentQuery<EntityId>), new());
-        dependencies[typeof(ComponentQuery<EntityId>)].Add(
-            new ComponentQueryMetadata<EntityId>([
-                UnmanagedComponentID.SpaceInvadersMod.Position,
-                UnmanagedComponentID.SpaceInvadersMod.Velocity,
-                UnmanagedComponentID.SpaceInvadersMod.BulletData
-            ]));
+        dependencies.TryAdd(typeof(BulletCleanupQuery), new());
+        dependencies[typeof(BulletCleanupQuery)].Add(
+            new SgQueryMetadata<BulletCleanupQuery>(
+                BulletCleanupQuery.ReadComponentIds,
+                BulletCleanupQuery.WriteComponentIds,
+                world => new BulletCleanupQuery(world)));
 
         dependencies.TryAdd(typeof(ICommandBufferAccessor), new());
         dependencies[typeof(ICommandBufferAccessor)].Add(new CommandBufferAccessorMetadata(null!));

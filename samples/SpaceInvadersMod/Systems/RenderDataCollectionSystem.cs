@@ -1,14 +1,4 @@
-using System.Numerics;
-using System.Runtime.CompilerServices;
-using SpaceInvadersMod.CompilerGenerated.IdExtensions;
-using SpaceInvadersMod.Components;
-using Sparkitect.ECS;
-using Sparkitect.ECS.Capabilities;
-using Sparkitect.ECS.Queries;
-using Sparkitect.ECS.Storage;
 using Sparkitect.ECS.Systems;
-using Sparkitect.Modding;
-using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
 
 namespace SpaceInvadersMod;
@@ -26,35 +16,44 @@ public partial class SpaceInvadersSystemGroup
         int count = 0;
 
         // Collect players
-        count = CollectRenderEntities(playerQuery, buffer, count, SpaceInvadersConstants.TypePlayer);
-
-        // Collect enemies
-        count = CollectRenderEntities(enemyQuery, buffer, count, SpaceInvadersConstants.TypeEnemy);
-
-        // Collect bullets
-        count = CollectRenderEntities(bulletQuery, buffer, count, SpaceInvadersConstants.TypeBullet);
-
-        runtimeService.SetRenderEntityCount(count);
-    }
-
-    private static int CollectRenderEntities(
-        ComponentQuery<EntityId> query,
-        RenderEntity[] buffer, int startIndex, uint entityType)
-    {
-        int count = startIndex;
-
-        foreach (var entity in query)
+        foreach (var entity in playerQuery)
         {
-            if (count >= buffer.Length) return count;
-            var pos = entity.Get<Position>();
+            if (count >= buffer.Length) break;
+            var pos = entity.GetPosition();
             buffer[count] = new RenderEntity
             {
                 Position = pos.Value,
-                EntityType = entityType
+                EntityType = SpaceInvadersConstants.TypePlayer
             };
             count++;
         }
 
-        return count;
+        // Collect enemies
+        foreach (var entity in enemyQuery)
+        {
+            if (count >= buffer.Length) break;
+            var pos = entity.GetPosition();
+            buffer[count] = new RenderEntity
+            {
+                Position = pos.Value,
+                EntityType = SpaceInvadersConstants.TypeEnemy
+            };
+            count++;
+        }
+
+        // Collect bullets
+        foreach (var entity in bulletQuery)
+        {
+            if (count >= buffer.Length) break;
+            var pos = entity.GetPosition();
+            buffer[count] = new RenderEntity
+            {
+                Position = pos.Value,
+                EntityType = SpaceInvadersConstants.TypeBullet
+            };
+            count++;
+        }
+
+        runtimeService.SetRenderEntityCount(count);
     }
 }

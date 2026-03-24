@@ -1,7 +1,5 @@
-using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Sparkitect.DI.Resolution;
 using Sparkitect.ECS.Queries;
-using Sparkitect.Modding.IDs;
 
 namespace MinimalSampleMod;
 
@@ -12,10 +10,11 @@ internal class SampleSystemQueryMetadata
     public void ConfigureResolutionMetadata(
         Dictionary<Type, List<object>> dependencies)
     {
-        dependencies.TryAdd(typeof(ComponentQuery), new());
-        dependencies[typeof(ComponentQuery)].Add(
-            new ComponentQueryMetadata([
-                UnmanagedComponentID.MinimalSampleMod.Minimal
-            ]));
+        dependencies.TryAdd(typeof(SampleQuery), new());
+        dependencies[typeof(SampleQuery)].Add(
+            new SgQueryMetadata<SampleQuery>(
+                SampleQuery.ReadComponentIds,
+                SampleQuery.WriteComponentIds,
+                world => new SampleQuery(world)));
     }
 }

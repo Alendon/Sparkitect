@@ -301,9 +301,9 @@ public class CommandBufferTests
 
         accessor.Playback();
 
-        // Verify via ComponentQuery
-        var metadata = new ComponentQueryMetadata([PositionId, VelocityId]);
-        using var query = (ComponentQuery)metadata.CreateQuery(world);
+        // Verify via TestQuery
+        var metadata = new TestQueryMetadata([PositionId, VelocityId]);
+        using var query = (TestQuery)metadata.CreateQuery(world);
 
         var positions = new List<TestPosition>();
         foreach (var entity in query)

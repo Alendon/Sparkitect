@@ -15,7 +15,7 @@ public partial class GameplayGroup
     [EcsSystemFunction("enemy_ai")]
     [EcsSystemScheduling]
     private static void EnemyAiSystem(
-        ComponentQuery<EntityId> query,
+        EnemyAiQuery query,
         ICommandBufferAccessor commandBufferAccessor,
         FrameTimingHolder frameTiming)
     {
@@ -33,9 +33,9 @@ public partial class GameplayGroup
 
         foreach (var entity in query)
         {
-            ref var vel = ref entity.GetRef<Velocity>();
-            ref var cooldown = ref entity.GetRef<ShootCooldown>();
-            var pos = entity.Get<Position>();
+            ref var vel = ref entity.GetVelocity();
+            ref var cooldown = ref entity.GetShootCooldown();
+            var pos = entity.GetPosition();
 
             vel.Value = new Vector2(oscillationVelocity, 0f);
 

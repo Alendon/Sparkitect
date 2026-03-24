@@ -1,0 +1,246 @@
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+#nullable enable
+
+namespace {{ Namespace }};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+partial class {{ ClassName }} : global::System.IDisposable
+{
+    private readonly global::Sparkitect.ECS.IWorld _world;
+    private readonly global::System.Collections.Generic.List<global::Sparkitect.ECS.StorageHandle> _matchedStorages;
+    private readonly global::Sparkitect.ECS.FilterHandle _filterHandle;
+
+    public static global::System.Collections.Generic.IReadOnlyList<global::Sparkitect.Modding.Identification> ReadComponentIds { get; } =
+    {% if ReadComponents.size > 0 %}
+    [
+        {% for c in ReadComponents %}
+        {{ c.FullyQualifiedName }}.Identification,
+        {% endfor %}
+    ];
+    {% else %}
+        global::System.Array.Empty<global::Sparkitect.Modding.Identification>();
+    {% endif %}
+
+    public static global::System.Collections.Generic.IReadOnlyList<global::Sparkitect.Modding.Identification> WriteComponentIds { get; } =
+    {% if WriteComponents.size > 0 %}
+    [
+        {% for c in WriteComponents %}
+        {{ c.FullyQualifiedName }}.Identification,
+        {% endfor %}
+    ];
+    {% else %}
+        global::System.Array.Empty<global::Sparkitect.Modding.Identification>();
+    {% endif %}
+
+    public static global::System.Collections.Generic.IReadOnlyList<global::Sparkitect.Modding.Identification> ExcludeComponentIds { get; } =
+    {% if ExcludeComponents.size > 0 %}
+    [
+        {% for c in ExcludeComponents %}
+        {{ c.FullyQualifiedName }}.Identification,
+        {% endfor %}
+    ];
+    {% else %}
+        global::System.Array.Empty<global::Sparkitect.Modding.Identification>();
+    {% endif %}
+
+    public {{ ClassName }}(global::Sparkitect.ECS.IWorld world)
+    {
+        _world = world;
+        global::Sparkitect.ECS.Capabilities.ICapabilityRequirement[] filter =
+        {% if IsKeyed and KeyRequired %}
+            [new global::Sparkitect.ECS.Queries.ComponentSetRequirement<{{ KeyTypeFullyQualified }}>(
+        {% else %}
+            [new global::Sparkitect.ECS.Queries.ComponentSetRequirement(
+        {% endif %}
+                new global::Sparkitect.Modding.Identification[]
+                {
+                    {% for c in AllComponents %}
+                    {{ c.FullyQualifiedName }}.Identification,
+                    {% endfor %}
+                })];
+        _matchedStorages = new();
+        _filterHandle = world.RegisterFilter(filter, storages =>
+        {
+            _matchedStorages.Clear();
+            _matchedStorages.AddRange(storages);
+        });
+    }
+
+    public void Dispose() => _world.UnregisterFilter(_filterHandle);
+
+    public Enumerator GetEnumerator() => new(_world, _matchedStorages);
+
+    public readonly unsafe struct Entity
+    {
+        {% for c in AllComponents %}
+        private readonly nint _{{ c.ShortName | downcase }}Ptr;
+        {% endfor %}
+        private readonly int _index;
+        {% if IsKeyed %}
+        private readonly global::Sparkitect.ECS.Capabilities.IChunkedIteration<{{ KeyTypeFullyQualified }}> _keySource;
+        private readonly global::Sparkitect.ECS.Storage.ChunkHandle _chunkHandle;
+        {% endif %}
+
+        internal Entity(
+            {% for c in AllComponents %}
+            nint {{ c.ShortName | downcase }}Ptr,
+            {% endfor %}
+            int index{% if IsKeyed %},
+            global::Sparkitect.ECS.Capabilities.IChunkedIteration<{{ KeyTypeFullyQualified }}> keySource,
+            global::Sparkitect.ECS.Storage.ChunkHandle chunkHandle{% endif %})
+        {
+            {% for c in AllComponents %}
+            _{{ c.ShortName | downcase }}Ptr = {{ c.ShortName | downcase }}Ptr;
+            {% endfor %}
+            _index = index;
+            {% if IsKeyed %}
+            _keySource = keySource;
+            _chunkHandle = chunkHandle;
+            {% endif %}
+        }
+
+        {% if IsKeyed %}
+        public {{ KeyTypeFullyQualified }} Key => _keySource.GetKey(ref global::System.Runtime.CompilerServices.Unsafe.AsRef(in _chunkHandle), _index);
+        {% endif %}
+
+        {% for c in ReadComponents %}
+        public ref readonly {{ c.FullyQualifiedName }} Get{{ c.ShortName }}()
+        {
+            return ref global::System.Runtime.CompilerServices.Unsafe.AsRef<{{ c.FullyQualifiedName }}>(
+                (void*)(_{{ c.ShortName | downcase }}Ptr + _index * sizeof({{ c.FullyQualifiedName }})));
+        }
+        {% endfor %}
+
+        {% for c in WriteComponents %}
+        public ref {{ c.FullyQualifiedName }} Get{{ c.ShortName }}()
+        {
+            return ref global::System.Runtime.CompilerServices.Unsafe.AsRef<{{ c.FullyQualifiedName }}>(
+                (void*)(_{{ c.ShortName | downcase }}Ptr + _index * sizeof({{ c.FullyQualifiedName }})));
+        }
+        {% endfor %}
+    }
+
+    public unsafe struct Enumerator : global::System.Collections.Generic.IEnumerator<Entity>
+    {
+        private readonly global::Sparkitect.ECS.IWorld _world;
+        private readonly global::System.Collections.Generic.List<global::Sparkitect.ECS.StorageHandle> _matchedStorages;
+
+        private int _storageIndex;
+        {% if IsKeyed %}
+        private global::Sparkitect.ECS.Capabilities.IChunkedIteration<{{ KeyTypeFullyQualified }}>? _currentIteration;
+        {% else %}
+        private global::Sparkitect.ECS.Capabilities.IChunkedIteration? _currentIteration;
+        {% endif %}
+        private global::Sparkitect.ECS.Storage.ChunkHandle _chunkHandle;
+        private int _chunkLength;
+        private int _entityIndex;
+        private bool _hasChunk;
+        private Entity _current;
+
+        {% for c in AllComponents %}
+        private nint _{{ c.ShortName | downcase }}Ptr;
+        {% endfor %}
+
+        internal Enumerator(
+            global::Sparkitect.ECS.IWorld world,
+            global::System.Collections.Generic.List<global::Sparkitect.ECS.StorageHandle> matchedStorages)
+        {
+            _world = world;
+            _matchedStorages = matchedStorages;
+            _storageIndex = -1;
+            _currentIteration = null;
+            _chunkHandle = default;
+            _chunkLength = 0;
+            _entityIndex = 0;
+            _hasChunk = false;
+            _current = default;
+            {% for c in AllComponents %}
+            _{{ c.ShortName | downcase }}Ptr = default;
+            {% endfor %}
+        }
+
+        public Entity Current => _current;
+        object global::System.Collections.IEnumerator.Current => Current;
+
+        public bool MoveNext()
+        {
+            while (true)
+            {
+                if (_hasChunk && _entityIndex < _chunkLength)
+                {
+                    _current = new Entity(
+                        {% for c in AllComponents %}
+                        _{{ c.ShortName | downcase }}Ptr,
+                        {% endfor %}
+                        _entityIndex{% if IsKeyed %},
+                        _currentIteration!,
+                        _chunkHandle{% endif %});
+                    _entityIndex++;
+                    return true;
+                }
+
+                if (_currentIteration is not null)
+                {
+                    if (_currentIteration.GetNextChunk(ref _chunkHandle, out _chunkLength))
+                    {
+                        _hasChunk = true;
+                        _entityIndex = 0;
+                        BuildComponentPointers();
+                        continue;
+                    }
+                }
+
+                _storageIndex++;
+                if (_storageIndex >= _matchedStorages.Count)
+                    return false;
+
+                var handle = _matchedStorages[_storageIndex];
+                {% if IsKeyed %}
+                _currentIteration = _world.GetStorage(handle)
+                    .As<global::Sparkitect.ECS.Capabilities.IChunkedIteration<{{ KeyTypeFullyQualified }}>>();
+                {% else %}
+                _currentIteration = _world.GetStorage(handle)
+                    .As<global::Sparkitect.ECS.Capabilities.IChunkedIteration>();
+                {% endif %}
+                _chunkHandle = default; // Fresh per storage (pitfall 3)
+                _hasChunk = false;
+
+                if (_currentIteration is null)
+                    continue;
+
+                if (_currentIteration.GetNextChunk(ref _chunkHandle, out _chunkLength))
+                {
+                    _hasChunk = true;
+                    _entityIndex = 0;
+                    BuildComponentPointers();
+                    continue;
+                }
+            }
+        }
+
+        private void BuildComponentPointers()
+        {
+            {% for c in AllComponents %}
+            _{{ c.ShortName | downcase }}Ptr = (nint)_currentIteration!.GetChunkComponentData(
+                ref _chunkHandle, {{ c.FullyQualifiedName }}.Identification);
+            {% endfor %}
+        }
+
+        public void Reset()
+        {
+            _storageIndex = -1;
+            _currentIteration = null;
+            _chunkHandle = default;
+            _chunkLength = 0;
+            _entityIndex = 0;
+            _hasChunk = false;
+            _current = default;
+            {% for c in AllComponents %}
+            _{{ c.ShortName | downcase }}Ptr = default;
+            {% endfor %}
+        }
+
+        public void Dispose() { }
+    }
+}

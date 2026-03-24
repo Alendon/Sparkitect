@@ -17,7 +17,7 @@ public partial class SpaceInvadersSystemGroup
     [EcsSystemScheduling]
     [OrderBefore<GameplayGroup>]
     private static void PlayerInputSystem(
-        ComponentQuery<EntityId> query,
+        PlayerInputQuery query,
         ICommandBufferAccessor commandBufferAccessor,
         FrameTimingHolder frameTiming,
         ISpaceInvadersRuntimeService runtimeService)
@@ -26,9 +26,9 @@ public partial class SpaceInvadersSystemGroup
 
         foreach (var entity in query)
         {
-            ref var pos = ref entity.GetRef<Position>();
-            ref var vel = ref entity.GetRef<Velocity>();
-            ref var cooldown = ref entity.GetRef<ShootCooldown>();
+            ref var pos = ref entity.GetPosition();
+            ref var vel = ref entity.GetVelocity();
+            ref var cooldown = ref entity.GetShootCooldown();
 
             var moveDir = 0f;
             if (runtimeService.IsActionDown(GameAction.MoveLeft))

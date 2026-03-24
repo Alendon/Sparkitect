@@ -496,13 +496,13 @@ public class SystemManagerTests
         storage.SetHandle(handle);
 
         var provider = new EcsResolutionProvider(world);
-        var metadata = new ComponentQueryMetadata([TestPosition.Identification]);
+        var metadata = new TestQueryMetadata([TestPosition.Identification]);
 
-        var result = provider.TryResolve(typeof(ComponentQuery), null!, [metadata], out var service);
+        var result = provider.TryResolve(typeof(TestQuery), null!, [metadata], out var service);
 
         await Assert.That(result).IsTrue();
         await Assert.That(service).IsNotNull();
-        await Assert.That(service).IsTypeOf<ComponentQuery>();
+        await Assert.That(service).IsTypeOf<TestQuery>();
 
         // Cleanup
         provider.CleanupQueries();
@@ -513,9 +513,9 @@ public class SystemManagerTests
     {
         using var world = IWorld.Create();
         var provider = new EcsResolutionProvider(world);
-        var metadata = new ComponentQueryMetadata([TestPosition.Identification]);
+        var metadata = new TestQueryMetadata([TestPosition.Identification]);
 
-        provider.TryResolve(typeof(ComponentQuery), null!, [metadata], out _);
+        provider.TryResolve(typeof(TestQuery), null!, [metadata], out _);
 
         // CleanupQueries should dispose queries (unregister filters)
         provider.CleanupQueries();
@@ -546,8 +546,8 @@ public class SystemManagerTests
 
         // Build a real EcsResolutionProvider with a query
         var provider = new EcsResolutionProvider(world);
-        var metadata = new ComponentQueryMetadata([TestPosition.Identification]);
-        provider.TryResolve(typeof(ComponentQuery), null!, [metadata], out _);
+        var metadata = new TestQueryMetadata([TestPosition.Identification]);
+        provider.TryResolve(typeof(TestQuery), null!, [metadata], out _);
 
         // Simulate what NotifyDispose does: cleanup then remove
         provider.CleanupQueries();

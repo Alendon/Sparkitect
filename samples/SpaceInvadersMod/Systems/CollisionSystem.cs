@@ -1,20 +1,15 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using SpaceInvadersMod.CompilerGenerated.IdExtensions;
-using SpaceInvadersMod.Components;
 using Sparkitect.ECS;
 using Sparkitect.ECS.Commands;
-using Sparkitect.ECS.Queries;
 using Sparkitect.ECS.Systems;
-using Sparkitect.Modding;
-using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
 
 namespace SpaceInvadersMod;
 
 public partial class GameplayGroup
 {
-    
+
     [EcsSystemFunction("collision")]
     [EcsSystemScheduling]
     [OrderAfter<GameplayGroup.MovementFunc>]
@@ -24,19 +19,32 @@ public partial class GameplayGroup
     {
         foreach (var bullet in bulletQuery)
         {
-            var playerBullet = bullet.Get<BulletData>().Direction > 0f;
-            var bulletPos = bullet.Get<Position>().Value;
+            var playerBullet = bullet.GetBulletData().Direction > 0f;
+            var bulletPos = bullet.GetPosition().Value;
 
-            ComponentQuery<EntityId> targetQuery = playerBullet ? enemyQuery : playerQuery;
-            
-            foreach (var enemy in targetQuery)
+            if (playerBullet)
             {
-                var pos = enemy.Get<Position>().Value;
-                if (!AabbOverlap(bulletPos, SpaceInvadersConstants.BulletHalfW, SpaceInvadersConstants.BulletHalfH,
-                        pos, SpaceInvadersConstants.EnemyHalfW, SpaceInvadersConstants.EnemyHalfH)) continue;
-                
-                commandBufferAccessor.Modify<int>(bullet.Key).DestroyEntity();
-                commandBufferAccessor.Modify<int>(enemy.Key).DestroyEntity();
+                foreach (var enemy in enemyQuery)
+                {
+                    var pos = enemy.GetPosition().Value;
+                    if (!AabbOverlap(bulletPos, SpaceInvadersConstants.BulletHalfW, SpaceInvadersConstants.BulletHalfH,
+                            pos, SpaceInvadersConstants.EnemyHalfW, SpaceInvadersConstants.EnemyHalfH)) continue;
+
+                    commandBufferAccessor.Modify<int>(bullet.Key).DestroyEntity();
+                    commandBufferAccessor.Modify<int>(enemy.Key).DestroyEntity();
+                }
+            }
+            else
+            {
+                foreach (var player in playerQuery)
+                {
+                    var pos = player.GetPosition().Value;
+                    if (!AabbOverlap(bulletPos, SpaceInvadersConstants.BulletHalfW, SpaceInvadersConstants.BulletHalfH,
+                            pos, SpaceInvadersConstants.EnemyHalfW, SpaceInvadersConstants.EnemyHalfH)) continue;
+
+                    commandBufferAccessor.Modify<int>(bullet.Key).DestroyEntity();
+                    commandBufferAccessor.Modify<int>(player.Key).DestroyEntity();
+                }
             }
         }
     }
