@@ -35,8 +35,7 @@ public interface IGameStateManager
     /// Transition executes between frames.
     /// </summary>
     /// <param name="stateId">The target state identification.</param>
-    /// <param name="payload">Optional payload data passed to the target state.</param>
-    void Request(Identification stateId, object? payload = null);
+    void Request(Identification stateId);
 
     /// <summary>
     /// Requests a state transition with additional mod loading. Target must be a child state.
@@ -44,8 +43,7 @@ public interface IGameStateManager
     /// </summary>
     /// <param name="stateIdFunc">Function returning the target state identification (called after mods are loaded).</param>
     /// <param name="additionalMods">Mod file identifiers (ID + Version) to load before transition.</param>
-    /// <param name="payload">Optional payload data passed to the target state.</param>
-    void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<ModFileIdentifier> additionalMods, object? payload = null);
+    void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<ModFileIdentifier> additionalMods);
 
     /// <summary>
     /// Requests engine shutdown.

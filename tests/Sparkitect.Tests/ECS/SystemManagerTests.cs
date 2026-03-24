@@ -968,12 +968,10 @@ public class SystemManagerTests
         private readonly List<Identification>? _executionOrder;
         public int ExecuteCount { get; private set; }
         public Identification Identification { get; }
-        public Identification ParentIdentification { get; }
 
         public TrackingWrapper(Identification id, Identification parentId, List<Identification>? executionOrder = null)
         {
             Identification = id;
-            ParentIdentification = parentId;
             _executionOrder = executionOrder;
         }
 

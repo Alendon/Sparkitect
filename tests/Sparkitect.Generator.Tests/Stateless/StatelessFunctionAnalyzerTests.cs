@@ -330,7 +330,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
             public class OtherFunction : IStatelessFunction, IHasIdentification
             {
                 public static Identification Identification => Identification.Empty;
-                public Identification ParentIdentication => Identification.Empty;
+
                 public void Execute() { }
                 public void Initialize(object container, IReadOnlyDictionary<Type, Type> facadeMap) { }
                 Identification IStatelessFunction.Identification => Identification;
@@ -364,7 +364,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
             public class OtherFunction : IStatelessFunction, IHasIdentification
             {
                 public static Identification Identification => Identification.Empty;
-                public Identification ParentIdentication => Identification.Empty;
+
                 public void Execute() { }
                 public void Initialize(object container, IReadOnlyDictionary<Type, Type> facadeMap) { }
                 Identification IStatelessFunction.Identification => Identification;
@@ -398,7 +398,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
             public class OtherFunction : IStatelessFunction, IHasIdentification
             {
                 public static Identification Identification => Identification.Empty;
-                public Identification ParentIdentication => Identification.Empty;
+
                 public void Execute() { }
                 public void Initialize(object container, IReadOnlyDictionary<Type, Type> facadeMap) { }
                 Identification IStatelessFunction.Identification => Identification;

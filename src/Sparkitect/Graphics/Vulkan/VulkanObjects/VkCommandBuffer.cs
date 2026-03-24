@@ -5,7 +5,8 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
 public class VkCommandBuffer : VulkanObject
 {
-    public VkCommandBuffer(CommandBuffer commandBuffer, IVulkanContext vulkanContext, VkCommandPool pool) : base(vulkanContext)
+    public VkCommandBuffer(CommandBuffer commandBuffer, IVulkanContext vulkanContext, VkCommandPool pool,
+        CallerContext callerContext = default) : base(vulkanContext, callerContext)
     {
         Handle = commandBuffer;
         ParentPool = pool;

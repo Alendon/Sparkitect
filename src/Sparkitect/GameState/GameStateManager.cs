@@ -118,7 +118,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         StartMainLoop();
     }
 
-    public void Request(Identification stateId, object? payload = null)
+    public void Request(Identification stateId)
     {
         if (_stateStack.Count == 0)
         {
@@ -157,15 +157,16 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         if (_pendingTransitionTarget.HasValue)
         {
-            Log.Warning("Overwriting pending transition to {OldTarget} with new target {NewTarget}",
-                _pendingTransitionTarget.Value, stateId);
+            throw new InvalidOperationException(
+                $"A state transition to {_pendingTransitionTarget.Value} is already pending. " +
+                $"Cannot request a second transition to {stateId} in the same frame.");
         }
 
         _pendingTransitionTarget = stateId;
         Log.Debug("Queued state transition to {StateId}", stateId);
     }
 
-    public void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<ModFileIdentifier> additionalMods, object? payload = null)
+    public void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<ModFileIdentifier> additionalMods)
     {
         if (_stateStack.Count == 0)
         {
@@ -764,8 +765,8 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
     /// <list type="number">
     ///   <item>If roots.json config exists: load only specified mods</item>
     ///   <item>If no config but mods with IsRootMod=true exist: load those mods</item>
-    ///   <item>If no config and no IsRootMod mods: load all discovered mods (backward compatibility)</item>
     /// </list>
+    /// <para>Throws <see cref="InvalidOperationException"/> if neither source provides root mods.</para>
     /// </remarks>
     private ModFileIdentifier[] SelectRootMods()
     {
@@ -790,10 +791,8 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             return rootMods;
         }
 
-        // Backward compatibility: no config + no IsRootMod mods = load all discovered mods
-        Log.Information("No root mod config and no IsRootMod mods found. Loading all {Count} discovered mods (backward compatibility)",
-            ModManager.DiscoveredArchives.Count);
-        return ModManager.DiscoveredArchives.Select(m => new ModFileIdentifier(m.Id, m.Version)).ToArray();
+        throw new InvalidOperationException(
+            "No root mod configuration found. Create a roots.json file or set IsRootMod=true in a mod manifest.");
     }
 
     /// <summary>

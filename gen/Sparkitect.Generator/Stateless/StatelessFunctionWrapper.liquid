@@ -12,8 +12,6 @@ public partial class {{ ParentTypeName }}
         public global::Sparkitect.Modding.Identification Identification => global::Sparkitect.Modding.IdentificationHelper.Read<{{ WrapperClassName }}>();
         static global::Sparkitect.Modding.Identification global::Sparkitect.Modding.IHasIdentification.Identification => {{ IdPropertyPath }};
 
-        public global::Sparkitect.Modding.Identification ParentIdentification => global::Sparkitect.Modding.IdentificationHelper.Read<{{ ParentIdentificationTypeName }}>();
-
 {% for param in Parameters %}
         private {{ param.ParameterType }} _param{{ param.Index }};
 {% endfor %}

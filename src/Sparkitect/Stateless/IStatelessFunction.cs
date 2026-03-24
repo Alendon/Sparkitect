@@ -22,5 +22,4 @@ public interface IStatelessFunction
     public void Initialize(IResolutionScope scope);
 
     public Identification Identification { get; }
-    public Identification ParentIdentification { get; }
 }

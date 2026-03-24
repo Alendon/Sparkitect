@@ -512,9 +512,6 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
 
         // Wrapper should be nested in FunctionContainer (where declared)
         await Assert.That(wrapperCode).Contains("public partial class FunctionContainer");
-
-        // ParentIdentification should point to ParentModule (overridden by attribute, fully qualified)
-        await Assert.That(wrapperCode).Contains("IdentificationHelper.Read<global::TestMod.ParentModule>");
     }
 
     [Test]
@@ -554,8 +551,5 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
 
         // Wrapper nested in TestModule
         await Assert.That(wrapperCode).Contains("public partial class TestModule");
-
-        // ParentIdentification should point to ParentModule (overridden, fully qualified)
-        await Assert.That(wrapperCode).Contains("IdentificationHelper.Read<global::TestMod.ParentModule>");
     }
 }

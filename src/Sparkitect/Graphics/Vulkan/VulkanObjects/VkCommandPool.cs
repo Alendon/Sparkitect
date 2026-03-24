@@ -17,7 +17,8 @@ public class VkCommandPool : VulkanObject
     public CommandPool Handle { get; }
     
 
-    public VkResult<VkCommandBuffer> AllocateCommandBuffer(CommandBufferLevel level)
+    public VkResult<VkCommandBuffer> AllocateCommandBuffer(CommandBufferLevel level,
+        [InjectCallerContext] CallerContext callerContext = default)
     {
         CommandBufferAllocateInfo allocInfo = new()
         {
@@ -28,24 +29,26 @@ public class VkCommandPool : VulkanObject
         };
 
         var result = Vk.AllocateCommandBuffers(Device, allocInfo, out var commandBuffer);
-        
+
         if(result != Result.Success) return VkResult<VkCommandBuffer>._Error(result);
 
-        var buffer = new VkCommandBuffer(commandBuffer, VulkanContext, this);
+        var buffer = new VkCommandBuffer(commandBuffer, VulkanContext, this, callerContext);
         _allocatedBuffers.Add(buffer);
         return VkResult<VkCommandBuffer>._Success(buffer);
     }
 
-    public VkResult<VkCommandBuffer[]> AllocateCommandBuffers(CommandBufferLevel level, int amount)
+    public VkResult<VkCommandBuffer[]> AllocateCommandBuffers(CommandBufferLevel level, int amount,
+        [InjectCallerContext] CallerContext callerContext = default)
     {
         VkCommandBuffer[] buffers = new VkCommandBuffer[amount];
-        var result = AllocateCommandBuffers(level, buffers);
+        var result = AllocateCommandBuffers(level, buffers, callerContext);
         if(result != Result.Success) return VkResult<VkCommandBuffer[]>._Error(result);
 
         return VkResult<VkCommandBuffer[]>._Success(buffers);
     }
     
-    public Result AllocateCommandBuffers(CommandBufferLevel level, Span<VkCommandBuffer> target)
+    public Result AllocateCommandBuffers(CommandBufferLevel level, Span<VkCommandBuffer> target,
+        CallerContext callerContext = default)
     {
         CommandBufferAllocateInfo allocInfo = new()
         {
@@ -58,14 +61,14 @@ public class VkCommandPool : VulkanObject
         var buffers = target.Length < 1024
             ? stackalloc CommandBuffer[target.Length]
             : new CommandBuffer[target.Length];
-        
+
         var result = Vk.AllocateCommandBuffers(Device, allocInfo, out buffers[0]);
 
         if (result != Result.Success) return result;
 
         for (var i = 0; i < target.Length; i++)
         {
-            var buffer = new VkCommandBuffer(buffers[i], VulkanContext, this);
+            var buffer = new VkCommandBuffer(buffers[i], VulkanContext, this, callerContext);
             target[i] = buffer;
             _allocatedBuffers.Add(buffer);
         }
