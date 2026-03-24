@@ -57,6 +57,9 @@ public static partial class TestData
         {
             [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
             public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+
+            [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+            public sealed class StateFacadeAttribute : Attribute;
         }
 
         namespace Sparkitect.Modding
@@ -69,6 +72,10 @@ public static partial class TestData
         {
             [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
             public sealed class FacadeForAttribute<TService> : Attribute where TService : class;
+
+            [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+            public sealed class FacadeCategoryMappingAttribute<TFacadeCategory> : Attribute
+                where TFacadeCategory : Attribute;
         }
         """);
 

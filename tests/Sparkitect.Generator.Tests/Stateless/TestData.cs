@@ -132,6 +132,7 @@ public static partial class TestData
         using Sparkitect.Modding;
         using Sparkitect.Stateless;
         using Sparkitect.DI.GeneratorAttributes;
+        using Sparkitect.GameState;
 
         namespace StatelessTest
         {
@@ -157,8 +158,17 @@ public static partial class TestData
             /// <summary>
             /// Test function attribute extending StatelessFunctionAttribute.
             /// </summary>
+            [FacadeCategoryMapping<StateFacadeAttribute>]
             [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
             public sealed class TestFunctionAttribute(string identifier)
+                : StatelessFunctionAttribute<TestContext, TestRegistry>(identifier);
+
+            /// <summary>
+            /// Test function attribute WITHOUT FacadeCategoryMapping marker.
+            /// Used to verify that SF categories without the marker produce no facade metadata.
+            /// </summary>
+            [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+            public sealed class NoFacadeTestFunctionAttribute(string identifier)
                 : StatelessFunctionAttribute<TestContext, TestRegistry>(identifier);
 
             /// <summary>

@@ -19,6 +19,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
         TestSources.Add(TestData.Sparkitect);
         TestSources.Add(TestData.ModdingCode);
         TestSources.Add(TestData.MetadataTypes);
+        TestSources.Add(TestData.DiFacadeAttributes);
         TestSources.Add(TestData.StatelessCoreTypes);
         TestSources.Add(TestData.StatelessTestTypes);
 
@@ -426,6 +427,62 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
 
         // RenderMetadataEntrypoint names the file {SafeClassName}_ResolutionMetadata.g.cs
         await Assert.That(generatedFiles.Any(f => f.Contains("ResolutionMetadata"))).IsTrue();
+    }
+
+    [Test]
+    public async Task StatelessFunction_NoFacadeCategoryMapping_ProducesNoFacadeMetadata(CancellationToken token)
+    {
+        TestSources.Add(("FacadeTypes.cs", """
+            using Sparkitect.DI.GeneratorAttributes;
+
+            namespace Sparkitect.GameState
+            {
+                [AttributeUsage(AttributeTargets.Interface, AllowMultiple = true)]
+                public class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
+            }
+
+            namespace Sparkitect.DI.GeneratorAttributes
+            {
+                [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+                public sealed class FacadeForAttribute<TService> : Attribute where TService : class;
+            }
+            """));
+        TestSources.Add(("TestModule.cs", """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.GameState;
+
+            namespace TestMod;
+
+            [StateFacade<ITestServiceFacade>]
+            public interface ITestService { }
+
+            [FacadeFor<ITestService>]
+            public interface ITestServiceFacade { }
+
+            public partial class TestModule : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 1);
+
+                [NoFacadeTestFunction("process")]
+                [TestScheduling]
+                public static void Process(ITestServiceFacade facade) { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var generatedFiles = driverRunResult.GeneratedTrees
+            .Select(t => System.IO.Path.GetFileName(t.FilePath))
+            .ToList();
+
+        // Should NOT produce ResolutionMetadata since NoFacadeTestFunctionAttribute has no FacadeCategoryMapping marker
+        await Assert.That(generatedFiles.Any(f => f.Contains("ResolutionMetadata"))).IsFalse();
+
+        // Should still produce Wrapper (function itself is valid)
+        await Assert.That(generatedFiles.Any(f => f.Contains("Wrapper"))).IsTrue();
     }
 
     [Test]

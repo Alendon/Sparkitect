@@ -1,3 +1,4 @@
+using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
 
@@ -36,6 +37,7 @@ public abstract class StatelessFunctionAttribute<TContext, TRegistry> : Stateles
 /// Executes every frame while the owning state/module is active.
 /// Must be combined with a scheduling attribute.
 /// </summary>
+[FacadeCategoryMapping<StateFacadeAttribute>]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 public sealed class PerFrameFunctionAttribute(string identifier)
     : StatelessFunctionAttribute<PerFrameContext, PerFrameRegistry>(identifier);
@@ -44,6 +46,7 @@ public sealed class PerFrameFunctionAttribute(string identifier)
 /// Marks a static method as a transition stateless function.
 /// Must be combined with a scheduling attribute (OnCreate, OnDestroy, etc.).
 /// </summary>
+[FacadeCategoryMapping<StateFacadeAttribute>]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 public sealed class TransitionFunctionAttribute(string identifier)
     : StatelessFunctionAttribute<TransitionContext, TransitionRegistry>(identifier);

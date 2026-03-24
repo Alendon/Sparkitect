@@ -18,3 +18,14 @@ public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade :
 /// <typeparam name="TService">The service interface type this facade belongs to.</typeparam>
 [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
 public sealed class FacadeForAttribute<TService> : Attribute where TService : class;
+
+/// <summary>
+/// Marker attribute applied to SF category attribute class definitions to indicate
+/// which facade category should be used for facade extraction on methods decorated
+/// with that SF attribute. SF categories without this marker produce no facade mappings.
+/// </summary>
+/// <typeparam name="TFacadeCategory">The facade category attribute type
+/// (e.g., StateFacadeAttribute).</typeparam>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class FacadeCategoryMappingAttribute<TFacadeCategory> : Attribute
+    where TFacadeCategory : Attribute;

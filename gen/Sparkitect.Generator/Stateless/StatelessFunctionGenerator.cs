@@ -18,6 +18,8 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
     private const string SchedulingAttributeBase = "Sparkitect.Stateless.SchedulingAttribute";
     private const string IHasIdentificationInterface = "Sparkitect.Modding.IHasIdentification";
     private const string ParentIdAttributeBase = "Sparkitect.Stateless.ParentIdAttribute";
+    private const string FacadeCategoryMappingBaseName =
+        "Sparkitect.DI.GeneratorAttributes.FacadeCategoryMappingAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -149,13 +151,18 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         var parentFullName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var wrapperFullTypeName = $"{parentFullName}.{wrapperClassName}";
 
-        // Extract facade metadata from method parameters (not from the containing class)
+        // Resolve facade category from SF attribute's marker (null = skip facade extraction per D-03)
+        var facadeCategoryTypeName = ResolveFacadeCategoryTypeName(statelessFuncAttr.AttributeClass!);
+
         var facadeResults = new List<FacadeMetadataModel>();
-        foreach (var param in methodSymbol.Parameters)
+        if (facadeCategoryTypeName is not null)
         {
-            if (param.Type is INamedTypeSymbol paramType && paramType.TypeKind == TypeKind.Interface)
+            foreach (var param in methodSymbol.Parameters)
             {
-                DiPipeline.CollectFacadeMappings(paramType, "Sparkitect.GameState.StateFacadeAttribute", facadeResults);
+                if (param.Type is INamedTypeSymbol paramType && paramType.TypeKind == TypeKind.Interface)
+                {
+                    DiPipeline.CollectFacadeMappings(paramType, facadeCategoryTypeName, facadeResults);
+                }
             }
         }
         var facadeMetadata = facadeResults.ToImmutableValueArray();
@@ -255,6 +262,28 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
 
     private static INamedTypeSymbol? FindGenericBase(INamedTypeSymbol? type, string genericBaseName)
         => MetadataExtractionPipeline.FindGenericBase(type, genericBaseName);
+
+    /// <summary>
+    /// Reads the [FacadeCategoryMapping&lt;T&gt;] marker from an SF attribute class definition
+    /// and returns the facade category type name, or null if no marker is present.
+    /// </summary>
+    private static string? ResolveFacadeCategoryTypeName(INamedTypeSymbol sfAttributeClass)
+    {
+        foreach (var attr in sfAttributeClass.GetAttributes())
+        {
+            if (attr.AttributeClass is not { IsGenericType: true } attrClass)
+                continue;
+
+            if (attrClass.ConstructedFrom.ToDisplayString(DisplayFormats.NamespaceAndType)
+                != FacadeCategoryMappingBaseName)
+                continue;
+
+            if (attrClass.TypeArguments.FirstOrDefault() is INamedTypeSymbol facadeCategoryType)
+                return facadeCategoryType.ToDisplayString(DisplayFormats.NamespaceAndType);
+        }
+
+        return null;
+    }
 
     private static ImmutableValueArray<StatelessParentModel> GroupByParent(
         IEnumerable<StatelessFunctionModel> functions)
