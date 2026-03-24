@@ -95,7 +95,7 @@ public class MetadataGenerator : IIncrementalGenerator
 
         var templateModel = new
         {
-            Namespace = model.TypeNamespace,
+            Namespace = settings.ComputeOutputNamespace(),
             ClassName = className,
             model.MetadataTypeName,
             model.TypeFullName,

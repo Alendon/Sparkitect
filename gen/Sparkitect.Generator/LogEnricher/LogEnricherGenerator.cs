@@ -79,8 +79,7 @@ public class LogEnricherGenerator : IIncrementalGenerator
         var classSymbol = valueTuple.Left.Key as INamedTypeSymbol;
         var invocations = valueTuple.Left.Select(x => (x.invocationSymbol, x.methodSymbol)).ToList();
         var buildSettings = valueTuple.Right;
-        //TODO base the namespace on the SgOutputNamespace option
-        var interceptorNamespace = $"{buildSettings.RootNamespace}.LogEnricher";
+        var interceptorNamespace = buildSettings.ComputeOutputNamespace("LogEnricher");
 
         if (!buildSettings.EnableLogEnrichment)
         {

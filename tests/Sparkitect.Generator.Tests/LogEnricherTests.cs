@@ -44,6 +44,7 @@ public class LogEnricherTests : SourceGeneratorTestBase<LogEnricherGenerator>
             build_property.ModName = ValidationTestMod
             build_property.DisableLogEnrichmentGenerator = false
             build_property.RootNamespace = ValidationTest
+            build_property.SgOutputNamespace = ValidationTest.Generated
             """));
 
         var (_, driverRunResult) = await RunGeneratorAsync(token);

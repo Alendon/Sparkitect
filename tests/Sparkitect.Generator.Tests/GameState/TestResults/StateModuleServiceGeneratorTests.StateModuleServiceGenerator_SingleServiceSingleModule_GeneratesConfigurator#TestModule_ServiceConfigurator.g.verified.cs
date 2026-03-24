@@ -2,7 +2,7 @@
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
-namespace Sparkitect.CompilerGenerated.GameState;
+namespace StateServiceTest.Generated.GameState;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.GameState.StateModuleServiceConfiguratorEntrypointAttribute]

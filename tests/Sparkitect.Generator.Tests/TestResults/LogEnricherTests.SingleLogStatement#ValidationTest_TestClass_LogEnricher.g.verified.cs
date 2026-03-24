@@ -2,7 +2,7 @@
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
-namespace ValidationTest.LogEnricher;
+namespace ValidationTest.Generated.LogEnricher;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 file class ValidationTest_TestClass_LogEnricher

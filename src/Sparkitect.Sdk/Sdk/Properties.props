@@ -12,9 +12,6 @@
         <GenerateDependencyFile>true</GenerateDependencyFile>
         <SparkitectAutoDetectDependencies Condition="'$(SparkitectAutoDetectDependencies)' == ''">true</SparkitectAutoDetectDependencies>
         <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
-
-        <!-- Enable interceptors for CallerContext generator -->
-        <InterceptorsNamespaces>$(InterceptorsNamespaces);$(RootNamespace).CallerContext</InterceptorsNamespaces>
     </PropertyGroup>
 
     <!-- Root mod configuration -->

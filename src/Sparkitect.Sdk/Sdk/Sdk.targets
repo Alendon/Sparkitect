@@ -3,7 +3,7 @@
     <PropertyGroup>
         <Version Condition="'$(Version)' == ''">$(ModVersion)</Version>
         <SgOutputNamespace Condition="'$(SgOutputNamespace)' == ''">$(RootNamespace).CompilerGenerated</SgOutputNamespace>
-        <InterceptorsNamespaces>$(InterceptorsNamespaces);$(RootNamespace).LogEnricher</InterceptorsNamespaces>
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);$(SgOutputNamespace).LogEnricher;$(SgOutputNamespace).CallerContext</InterceptorsNamespaces>
     </PropertyGroup>
 
     <!-- SG related CompilerVisibleProperties -->

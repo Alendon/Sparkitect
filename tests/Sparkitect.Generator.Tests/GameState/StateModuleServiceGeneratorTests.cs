@@ -15,9 +15,19 @@ public class StateModuleServiceGeneratorTests : SourceGeneratorTestBase<StateMod
         TestSources.Add(TestData.Sparkitect);
         TestSources.Add(TestData.DiAttributes);
         TestSources.Add(TestData.GameStateAttributes);
+
+        AnalyzerConfigFiles.Add(("/TestConfig.editorconfig",
+            """
+            is_global = true
+            build_property.ModName = Test Mod
+            build_property.ModId = test_mod
+            build_property.RootNamespace = StateServiceTest
+            build_property.SgOutputNamespace = StateServiceTest.Generated
+            """));
     }
 
-    public override ModBuildSettings BuildSettings { get; }
+    public override ModBuildSettings BuildSettings => new("Test Mod", "test_mod",
+        "StateServiceTest", false, "StateServiceTest.Generated");
 
     [Test]
     public async Task StateModuleServiceGenerator_SingleServiceSingleModule_GeneratesConfigurator(CancellationToken token)

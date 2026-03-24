@@ -1,9 +1,9 @@
 ﻿#pragma warning disable CS9113
 #pragma warning disable CS1591
 
-[assembly: global::Sparkitect.Modding.RegistryMetadataAttribute<global::DiTest.TestRegistry_Metadata>]
+[assembly: global::Sparkitect.Modding.RegistryMetadataAttribute<global::SampleTest.Generated.TestRegistry_Metadata>]
 
-namespace DiTest;
+namespace SampleTest.Generated;
 
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

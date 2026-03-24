@@ -431,7 +431,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         var model = new
         {
             Namespace = parentNs,
-            RootNamespace = settings.SgOutputNamespace,
+            IdExtensionsNamespace = settings.ComputeOutputNamespace("IdExtensions"),
             ParentTypeName = parentShort,
             ParentIdentificationTypeName = func.ParentIdentificationTypeName, // Use fully qualified name for cross-namespace references
             MethodName = func.MethodName,

@@ -3,7 +3,7 @@
 #pragma warning disable CS1591
 #nullable enable
 
-namespace TestMod;
+namespace TestMod.Generated;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.Metadata.ApplyMetadataEntrypointAttribute<global::MetadataTest.TestMetadataType>]

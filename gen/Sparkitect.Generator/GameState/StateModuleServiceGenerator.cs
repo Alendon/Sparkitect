@@ -13,6 +13,8 @@ public class StateModuleServiceGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        var buildSettings = context.GetModBuildSettings();
+
         var stateServicesProvider = context.SyntaxProvider.ForAttributeWithMetadataName(
             StateServiceAttributeMetadataName,
             (node, _) => node is ClassDeclarationSyntax,
@@ -52,8 +54,9 @@ public class StateModuleServiceGenerator : IIncrementalGenerator
 
         // Group by module and output configurators
         var grouped = stateServicesProvider.Collect();
-        context.RegisterSourceOutput(grouped, (ctx, allServices) =>
+        context.RegisterSourceOutput(grouped.Combine(buildSettings), (ctx, pair) =>
         {
+            var (allServices, settings) = pair;
             var moduleGroups = allServices
                 .GroupBy(s => s.ModuleTypeFullName)
                 .ToArray();
@@ -67,7 +70,7 @@ public class StateModuleServiceGenerator : IIncrementalGenerator
                 var first = group.First();
                 var options = new ConfiguratorOptions(
                     ClassName: $"{first.ModuleTypeName}_ServiceConfigurator",
-                    Namespace: "Sparkitect.CompilerGenerated.GameState",
+                    Namespace: settings.ComputeOutputNamespace("GameState"),
                     BaseType: "Sparkitect.GameState.IStateModuleServiceConfigurator",
                     EntrypointAttribute: "Sparkitect.GameState.StateModuleServiceConfiguratorEntrypointAttribute",
                     Kind: new ConfiguratorKind.Service(),

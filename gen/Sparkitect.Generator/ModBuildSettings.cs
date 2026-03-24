@@ -8,7 +8,19 @@ public record ModBuildSettings(
     string ModId,
     string RootNamespace,
     bool EnableLogEnrichment,
-    string SgOutputNamespace);
+    string SgOutputNamespace)
+{
+    /// <summary>
+    /// Computes the output namespace for source-generated code.
+    /// All generators that produce standalone infrastructure classes must use this method.
+    /// </summary>
+    /// <param name="suffix">Optional sub-namespace suffix (e.g., "Registrations", "LogEnricher").</param>
+    /// <returns>The fully qualified output namespace.</returns>
+    public string ComputeOutputNamespace(string? suffix = null)
+    {
+        return string.IsNullOrEmpty(suffix) ? SgOutputNamespace : $"{SgOutputNamespace}.{suffix}";
+    }
+}
 
 public static class GlobalOptionsExtensions
 {

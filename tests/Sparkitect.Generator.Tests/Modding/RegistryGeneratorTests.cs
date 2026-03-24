@@ -251,7 +251,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             )
         );
 
-        var success = RegistryGenerator.RenderRegistryMetadata(model, out var code, out var fileName);
+        var success = RegistryGenerator.RenderRegistryMetadata(model, BuildSettings, out var code, out var fileName);
 
         await Assert.That(success).IsTrue();
         await Assert.That(fileName).IsEqualTo("TestRegistry_Metadata.g.cs");

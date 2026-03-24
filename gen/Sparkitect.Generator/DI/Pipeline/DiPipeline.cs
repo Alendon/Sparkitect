@@ -271,9 +271,7 @@ public static class DiPipeline
             return false;
         }
 
-        var ns = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
-            ? $"{wrapperTypeNamespace}.CompilerGenerated.DI"
-            : $"{settings.SgOutputNamespace}.CompilerGenerated.DI";
+        var ns = settings.ComputeOutputNamespace("CompilerGenerated.DI");
 
         // Build inner code blocks from each model's RenderCodeLines()
         var innerCodeBlocks = new List<string>();

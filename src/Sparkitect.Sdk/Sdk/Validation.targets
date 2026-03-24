@@ -5,6 +5,8 @@
         <Error Text="ModName must be set" Condition="'$(ModName)' == ''"/>
         <Error Text="ModVersion must be set" Condition="'$(ModVersion)' == ''"/>
         <Error Text="ModAuthor must be set" Condition="'$(ModAuthor)' == ''"/>
+        <Error Text="RootNamespace must be set" Condition="'$(RootNamespace)' == ''"/>
+        <Error Text="SgOutputNamespace must be set. Ensure RootNamespace is defined or set SgOutputNamespace explicitly." Condition="'$(SgOutputNamespace)' == ''"/>
     </Target>
 
     <!-- Output mod information -->

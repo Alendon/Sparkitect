@@ -81,7 +81,7 @@ public class CallerContextGenerator : IIncrementalGenerator
         var classSymbol = valueTuple.Left.Key as INamedTypeSymbol;
         var invocations = valueTuple.Left.Select(x => (x.invocationOperation, x.methodSymbol)).ToList();
         var buildSettings = valueTuple.Right;
-        var interceptorNamespace = $"{buildSettings.RootNamespace}.CallerContext";
+        var interceptorNamespace = buildSettings.ComputeOutputNamespace("CallerContext");
 
         var fullClassName = $"{classSymbol!.ToDisplayString().Replace('.', '_').Replace('<', '_').Replace('>', '_')}_CallerContextInjector";
 

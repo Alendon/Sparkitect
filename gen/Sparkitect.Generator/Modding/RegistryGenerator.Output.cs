@@ -15,9 +15,7 @@ public partial class RegistryGenerator
             ? $"{unit.Model.TypeName}Registrations_{suffix}.g.cs"
             : $"{hintPrefix}_{unit.Model.TypeName}Registrations_{suffix}.g.cs";
 
-        var ns = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
-            ? unit.Model.ContainingNamespace + ".Registrations"
-            : settings.SgOutputNamespace + ".Registrations";
+        var ns = settings.ComputeOutputNamespace("Registrations");
 
         var entries = unit.Entries
             .OrderBy(e => e.Id)
@@ -68,8 +66,8 @@ public partial class RegistryGenerator
     {
         var categoryPascal = StringCase.ToPascalCase(model.Key);
         var modPascal = StringCase.ToPascalCase(settings.ModId);
-        var registrationsNs = settings.SgOutputNamespace;
-        var extensionsNs = settings.SgOutputNamespace;
+        var registrationsNs = settings.ComputeOutputNamespace("Registrations");
+        var extensionsNs = settings.ComputeOutputNamespace();
 
         fileName = $"{model.TypeName}.IdFramework.g.cs";
         var tpl = new
@@ -92,12 +90,8 @@ public partial class RegistryGenerator
             : $"{hintPrefix}_{unit.Model.TypeName}.IdProperties_{suffix}.g.cs";
 
         var categoryPascal = StringCase.ToPascalCase(unit.Model.Key);
-        var registrationsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
-            ? unit.Model.ContainingNamespace + ".Registrations"
-            : settings.SgOutputNamespace + ".Registrations";
-        var extensionsNs = string.IsNullOrWhiteSpace(settings.SgOutputNamespace)
-            ? unit.Model.ContainingNamespace + ".IdExtensions"
-            : settings.SgOutputNamespace + ".IdExtensions";
+        var registrationsNs = settings.ComputeOutputNamespace("Registrations");
+        var extensionsNs = settings.ComputeOutputNamespace("IdExtensions");
 
         var typePrefix = string.IsNullOrEmpty(hintPrefix) ? "" : hintPrefix + "_";
 
@@ -115,7 +109,7 @@ public partial class RegistryGenerator
         return FluidHelper.TryRenderTemplate("Modding.RegistryIdProperties.Unit.liquid", tpl, out code);
     }
     
-    internal static bool RenderRegistryMetadata(RegistryModel model, out string code, out string fileName)
+    internal static bool RenderRegistryMetadata(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
     {
         fileName = $"{model.TypeName}_Metadata.g.cs";
         
@@ -134,7 +128,7 @@ public partial class RegistryGenerator
         
         var metadataModel = new
         {
-            Namespace = model.ContainingNamespace,
+            Namespace = settings.ComputeOutputNamespace(),
             MetadataClassName = $"{model.TypeName}_Metadata",
             TypeName = model.TypeName,
             Key = model.Key,
@@ -173,7 +167,7 @@ public partial class RegistryGenerator
 
         var options = new ConfiguratorOptions(
             ClassName: "RegistryConfigurator",
-            Namespace: settings.SgOutputNamespace,
+            Namespace: settings.ComputeOutputNamespace(),
             BaseType: "Sparkitect.DI.IRegistryConfigurator",
             EntrypointAttribute: "Sparkitect.DI.RegistryConfiguratorAttribute",
             Kind: new ConfiguratorKind.Keyed("Sparkitect.Modding.IRegistryBase"),
@@ -195,7 +189,7 @@ public partial class RegistryGenerator
         return $@"#pragma warning disable CS9113
 #pragma warning disable CS1591
 
-namespace {settings.SgOutputNamespace};
+namespace {settings.ComputeOutputNamespace()};
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
 [global::Sparkitect.DI.RegistryConfigurator]
@@ -223,7 +217,7 @@ internal partial class RegistryConfigurator : global::Sparkitect.DI.IRegistryCon
     {
         var (model, settings) = arg2;
         
-        if (RenderRegistryMetadata(model, out var code, out var fileName))
+        if (RenderRegistryMetadata(model, settings, out var code, out var fileName))
         {
             context.AddSource(fileName, code);
         }

@@ -26,7 +26,7 @@
         <ModVersion>1.0.0</ModVersion>
         <DisableLogEnrichmentGenerator>false</DisableLogEnrichmentGenerator>
 
-        <InterceptorsNamespaces>$(InterceptorsNamespaces);Sparkitect.LogEnricher;Sparkitect.CallerContext</InterceptorsNamespaces>
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Sparkitect.CompilerGenerated.LogEnricher;Sparkitect.CompilerGenerated.CallerContext</InterceptorsNamespaces>
     </PropertyGroup>
 
     <ItemGroup>
