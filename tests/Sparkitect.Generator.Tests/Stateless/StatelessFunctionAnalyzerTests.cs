@@ -234,6 +234,35 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         await AssertNoDiagnostics(diagnostics);
     }
 
+    [Test]
+    public async Task ConcreteParameterWithAllowConcreteResolution_NoDiagnostic()
+    {
+        var code = """
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+            using Sparkitect.DI.GeneratorAttributes;
+
+            [AllowConcreteResolution]
+            public class QueryType { }
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod(QueryType query) { }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertNoDiagnostics(diagnostics);
+    }
+
     #endregion
 
     #region SPARK0404 - Missing IHasIdentification

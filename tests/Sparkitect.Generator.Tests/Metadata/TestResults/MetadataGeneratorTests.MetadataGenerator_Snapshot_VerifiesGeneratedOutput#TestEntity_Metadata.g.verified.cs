@@ -18,7 +18,9 @@ internal class TestEntity_Metadata
             var instance = new global::MetadataTest.TestMetadataType(
 
             );
-            metadata[global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestEntity>()] = instance;
+            var id = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestEntity>();
+            if (id != default)
+                metadata[id] = instance;
         }
     }
 }

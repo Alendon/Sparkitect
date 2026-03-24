@@ -35,7 +35,9 @@ internal class TestModule_TestRegistryScheduling
 
             );
             scheduling.OwnerId = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule>();
-            metadata[global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule.InitFunc>()] = scheduling;
+            var id = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule.InitFunc>();
+            if (id != default)
+                metadata[id] = scheduling;
         }
 
         {
@@ -62,7 +64,9 @@ internal class TestModule_TestRegistryScheduling
 
             );
             scheduling.OwnerId = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule>();
-            metadata[global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule.UpdateFunc>()] = scheduling;
+            var id = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule.UpdateFunc>();
+            if (id != default)
+                metadata[id] = scheduling;
         }
 
     }

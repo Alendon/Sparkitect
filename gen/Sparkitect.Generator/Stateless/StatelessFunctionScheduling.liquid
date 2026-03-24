@@ -35,7 +35,9 @@ internal class {{ ClassName }}
 {% endfor %}
             );
             scheduling.OwnerId = global::Sparkitect.Modding.IdentificationHelper.Read<{{ func.ParentIdentificationTypeName }}>();
-            metadata[global::Sparkitect.Modding.IdentificationHelper.Read<{{ func.WrapperFullTypeName }}>()] = scheduling;
+            var id = global::Sparkitect.Modding.IdentificationHelper.Read<{{ func.WrapperFullTypeName }}>();
+            if (id != default)
+                metadata[id] = scheduling;
         }
 {% endfor %}
     }

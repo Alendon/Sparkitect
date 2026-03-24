@@ -134,6 +134,12 @@ public static partial class TestData
         using Sparkitect.DI.GeneratorAttributes;
         using Sparkitect.GameState;
 
+        namespace Sparkitect.DI.GeneratorAttributes
+        {
+            [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+            public sealed class AllowConcreteResolutionAttribute : Attribute;
+        }
+
         namespace StatelessTest
         {
             /// <summary>

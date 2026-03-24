@@ -1,4 +1,5 @@
 using System.Collections;
+using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Storage;
 using Sparkitect.Modding;
@@ -10,6 +11,7 @@ namespace Sparkitect.ECS.Queries;
 /// Storage and chunk boundaries are hidden from the consumer -- iteration yields
 /// one <see cref="EntityAccessor"/> per entity across all matching storages.
 /// </summary>
+[AllowConcreteResolution]
 public class ComponentQuery : IEnumerable<EntityAccessor>, IDisposable
 {
     private readonly IWorld _world;
@@ -167,6 +169,7 @@ public class ComponentQuery : IEnumerable<EntityAccessor>, IDisposable
 /// Yields <see cref="KeyedEntityAccessor{TKey}"/> per entity, enabling systems to
 /// access entity keys (e.g., EntityId) during iteration for command buffer operations.
 /// </summary>
+[AllowConcreteResolution]
 public class ComponentQuery<TKey> : IEnumerable<KeyedEntityAccessor<TKey>>, IDisposable
     where TKey : unmanaged
 {

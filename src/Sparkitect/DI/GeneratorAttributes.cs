@@ -29,3 +29,10 @@ public sealed class FacadeForAttribute<TService> : Attribute where TService : cl
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class FacadeCategoryMappingAttribute<TFacadeCategory> : Attribute
     where TFacadeCategory : Attribute;
+
+/// <summary>
+/// Marks a concrete type as intentionally DI-resolvable, suppressing
+/// SPARK0403 warnings when used as a stateless function parameter.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+public sealed class AllowConcreteResolutionAttribute : Attribute;

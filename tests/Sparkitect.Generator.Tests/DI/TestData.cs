@@ -11,6 +11,9 @@ public static partial class TestData
         /// Base marker attribute for facade types
         /// </summary>
         public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;
+
+        [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+        public sealed class AllowConcreteResolutionAttribute : Attribute;
         """);
 
     public static (string, object) DiPipelineAttributes => ("DiPipelineAttributes.cs",

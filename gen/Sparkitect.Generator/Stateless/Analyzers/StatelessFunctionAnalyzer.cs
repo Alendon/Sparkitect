@@ -15,6 +15,7 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
     private const string ParentIdAttributeBase = "Sparkitect.Stateless.ParentIdAttribute";
     private const string OrderBeforeAttributeBase = "Sparkitect.Stateless.OrderBeforeAttribute";
     private const string OrderAfterAttributeBase = "Sparkitect.Stateless.OrderAfterAttribute";
+    private const string AllowConcreteResolutionAttributeFqn = "Sparkitect.DI.GeneratorAttributes.AllowConcreteResolutionAttribute";
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
     [
@@ -142,6 +143,11 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
 
             // Skip if parameter has NullableAnnotation.Annotated
             if (parameter.NullableAnnotation == NullableAnnotation.Annotated)
+                continue;
+
+            // Skip if parameter type has [AllowConcreteResolution]
+            if (paramType.GetAttributes().Any(a =>
+                a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) == AllowConcreteResolutionAttributeFqn))
                 continue;
 
             // Otherwise warn

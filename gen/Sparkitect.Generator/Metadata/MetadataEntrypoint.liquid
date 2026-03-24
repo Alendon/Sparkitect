@@ -34,7 +34,9 @@ internal class {{ ClassName }}
                 param_{{ forloop.index0 }}{% unless forloop.last %},{% endunless %}
 {% endfor %}
             );
-            metadata[global::Sparkitect.Modding.IdentificationHelper.Read<{{ TypeFullName }}>()] = instance;
+            var id = global::Sparkitect.Modding.IdentificationHelper.Read<{{ TypeFullName }}>();
+            if (id != default)
+                metadata[id] = instance;
         }
     }
 }
