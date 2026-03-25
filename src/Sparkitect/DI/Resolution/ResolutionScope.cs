@@ -39,10 +39,12 @@ internal class ResolutionScope : IResolutionScope
     /// <inheritdoc />
     public bool TryResolve(Type wrapperType, Type serviceType, out object? service)
     {
-        if (_metadata.TryGetValue(wrapperType, out var deps) &&
-            deps.TryGetValue(serviceType, out var entries) &&
-            _provider is not null &&
-            _provider.TryResolve(serviceType, _container, entries, out service))
+        _metadata.TryGetValue(wrapperType, out var deps);
+        List<object>? entries = [];
+        deps?.TryGetValue(serviceType, out entries);
+        
+        if (_provider is not null &&
+            _provider.TryResolve(serviceType, _container, entries ?? [], out service))
         {
             return true;
         }

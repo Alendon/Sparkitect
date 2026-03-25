@@ -97,3 +97,21 @@ public record FacadeMetadataModel(string DependencyType, string FacadedType) : I
         $"dependencies[typeof({DependencyType})].Add(new global::Sparkitect.DI.Resolution.FacadeMapping(typeof({FacadedType})));"
     ];
 }
+
+/// <summary>
+/// Metadata model representing an ECS query parameter's resolution metadata.
+/// Generates <c>SgQueryMetadata&lt;T&gt;</c> entries that reference the query type's
+/// static <c>ReadComponentIds</c>/<c>WriteComponentIds</c> members and a factory lambda.
+/// </summary>
+public record EcsQueryMetadataModel(string QueryTypeFullyQualified) : IMetadataModel
+{
+    public IReadOnlyList<string> RenderCodeLines() =>
+    [
+        $"dependencies.TryAdd(typeof({QueryTypeFullyQualified}), new());",
+        $"dependencies[typeof({QueryTypeFullyQualified})].Add(",
+        $"    new global::Sparkitect.ECS.Queries.SgQueryMetadata<{QueryTypeFullyQualified}>(",
+        $"        {QueryTypeFullyQualified}.ReadComponentIds,",
+        $"        {QueryTypeFullyQualified}.WriteComponentIds,",
+        $"        world => new {QueryTypeFullyQualified}(world)));"
+    ];
+}

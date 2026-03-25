@@ -1,3 +1,5 @@
+using Sparkitect.DI.GeneratorAttributes;
+
 namespace Sparkitect.ECS.Systems;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Sparkitect.ECS.Systems;
 /// every <see cref="ISystemManager.ExecuteSystems"/> call before any system executes.
 /// Systems access timing via the delegated properties on this holder instance.
 /// </summary>
+[AllowConcreteResolution]
 public class FrameTimingHolder
 {
     private FrameTiming _current;

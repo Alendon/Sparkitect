@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sparkitect.Generator.DI.Pipeline;
+using Sparkitect.Generator.Modding;
 
 namespace Sparkitect.Generator.ECS;
 
@@ -13,6 +16,8 @@ public class EcsQueryGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        // Pipeline 1: Query class generation (Phase 42)
+        // Scans ClassDeclarationSyntax for [ComponentQuery] partial classes.
         var queriesProvider = context.SyntaxProvider.CreateSyntaxProvider(
             predicate: (node, _) => node is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
             transform: EcsQueryExtraction.TryExtractQueryModel
@@ -20,6 +25,35 @@ public class EcsQueryGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(queriesProvider,
             static (ctx, model) => GenerateQueryClass(ctx, model!));
+
+        // Pipeline 2: Resolution metadata generation (Phase 43)
+        // Scans MethodDeclarationSyntax for SF-attributed methods with ComponentQuery parameters.
+        // Standalone pipeline per D-04 -- no Combine with Pipeline 1.
+        var buildSettings = context.GetModBuildSettings();
+
+        var metadataProvider = context.SyntaxProvider.CreateSyntaxProvider(
+            predicate: (node, _) => node is MethodDeclarationSyntax { AttributeLists.Count: > 0 },
+            transform: EcsMetadataExtraction.TryExtractEcsSystemMetadata
+        ).Where(m => m is not null);
+
+        context.RegisterSourceOutput(metadataProvider.Combine(buildSettings),
+            static (ctx, pair) => GenerateMetadataEntrypoint(ctx, pair.Left!, pair.Right));
+    }
+
+    private static void GenerateMetadataEntrypoint(
+        SourceProductionContext ctx, EcsSystemMetadataModel model, ModBuildSettings settings)
+    {
+        var models = model.QueryParameters
+            .Select(qp => new EcsQueryMetadataModel(qp.QueryTypeFullyQualified))
+            .Cast<IMetadataModel>()
+            .ToList();
+
+        if (DiPipeline.RenderMetadataEntrypoint(
+                model.WrapperFullTypeName, model.WrapperTypeNamespace, models, settings,
+                out var code, out var fileName))
+        {
+            ctx.AddSource(fileName, code);
+        }
     }
 
     private static void GenerateQueryClass(

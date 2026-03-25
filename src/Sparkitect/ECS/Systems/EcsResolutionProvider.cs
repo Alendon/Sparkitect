@@ -7,12 +7,8 @@ namespace Sparkitect.ECS.Systems;
 
 /// <summary>
 /// Resolution provider for ECS query parameters, command buffer accessors, and frame timing.
-/// Reads <see cref="QueryParameterMetadata"/> entries from the metadata list, creates
-/// query instances via the metadata's CreateQuery, and tracks them for lifecycle cleanup.
-/// Reads <see cref="CommandBufferAccessorMetadata"/> entries and returns the shared
-/// accessor set via <see cref="SetCommandBufferAccessor"/>.
-/// Reads <see cref="FrameTimingMetadata"/> entries and returns the cached
-/// holder set via <see cref="SetFrameTimingHolder"/>.
+/// Resolves FrameTimingHolder and ICommandBufferAccessor by direct type check.
+/// Reads <see cref="QueryParameterMetadata"/> entries from the metadata list for query parameters.
 /// </summary>
 internal class EcsResolutionProvider : IResolutionProvider
 {
@@ -48,6 +44,24 @@ internal class EcsResolutionProvider : IResolutionProvider
     /// <inheritdoc/>
     public bool TryResolve(Type serviceType, ICoreContainer container, List<object> metadataEntries, out object? service)
     {
+        // Direct type checks -- no metadata entries needed (D-08, D-09, D-10)
+        if (serviceType == typeof(FrameTimingHolder))
+        {
+            service = _frameTimingHolder
+                ?? throw new InvalidOperationException(
+                    "FrameTimingHolder not set on EcsResolutionProvider.");
+            return true;
+        }
+
+        if (serviceType == typeof(ICommandBufferAccessor))
+        {
+            service = _commandBufferAccessor
+                ?? throw new InvalidOperationException(
+                    "CommandBufferAccessor not set on EcsResolutionProvider.");
+            return true;
+        }
+
+        // Query parameter resolution via metadata entries
         foreach (var entry in metadataEntries)
         {
             if (entry is QueryParameterMetadata queryMeta)
@@ -56,22 +70,6 @@ internal class EcsResolutionProvider : IResolutionProvider
                 _trackedMetadata.Add(queryMeta);
                 _trackedQueries.Add(query);
                 service = query;
-                return true;
-            }
-
-            if (entry is CommandBufferAccessorMetadata)
-            {
-                service = _commandBufferAccessor
-                    ?? throw new InvalidOperationException(
-                        "CommandBufferAccessor not set on EcsResolutionProvider.");
-                return true;
-            }
-
-            if (entry is FrameTimingMetadata)
-            {
-                service = _frameTimingHolder
-                    ?? throw new InvalidOperationException(
-                        "FrameTimingHolder not set on EcsResolutionProvider.");
                 return true;
             }
         }

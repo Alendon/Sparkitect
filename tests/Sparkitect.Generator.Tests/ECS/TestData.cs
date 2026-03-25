@@ -154,6 +154,75 @@ public static partial class TestData
             }
             """);
 
+        public static (string, object) EcsSystemStubs => ("EcsSystemStubs.cs",
+            """
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace Sparkitect.DI.Resolution
+            {
+                public interface IResolutionMetadataEntrypoint
+                {
+                    void ConfigureResolutionMetadata(Dictionary<Type, List<object>> dependencies);
+                }
+                public interface IResolutionMetadataEntrypoint<TWrapperType> : IResolutionMetadataEntrypoint;
+
+                [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+                public sealed class ResolutionMetadataEntrypointAttribute<TWrapperType> : Attribute;
+            }
+
+            namespace Sparkitect.ECS.Queries
+            {
+                public abstract class QueryParameterMetadata
+                {
+                    public abstract object CreateQuery(Sparkitect.ECS.IWorld world);
+                    public abstract void DisposeQuery(object query);
+                }
+
+                public class SgQueryMetadata<TQuery> : QueryParameterMetadata where TQuery : IDisposable
+                {
+                    public SgQueryMetadata(
+                        IReadOnlyList<Identification> readComponentIds,
+                        IReadOnlyList<Identification> writeComponentIds,
+                        Func<Sparkitect.ECS.IWorld, TQuery> factory) { }
+                    public override object CreateQuery(Sparkitect.ECS.IWorld world) => null!;
+                    public override void DisposeQuery(object query) { }
+                }
+            }
+
+            namespace Sparkitect.ECS.Systems
+            {
+                public sealed class EcsSystemContext { }
+
+                [Registry(Identifier = "ecs_system")]
+                public sealed partial class SystemRegistry : IRegistry
+                {
+                    public static string Identifier => "ecs_system";
+                    public void Unregister(Identification id) { }
+                }
+
+                [AttributeUsage(AttributeTargets.Method, Inherited = false)]
+                public sealed class EcsSystemFunctionAttribute(string identifier)
+                    : StatelessFunctionAttribute<EcsSystemContext, SystemRegistry>(identifier);
+
+                public sealed class EcsSystemScheduling : IScheduling
+                {
+                    public Identification OwnerId { get; set; }
+                }
+
+                [AttributeUsage(AttributeTargets.Method, Inherited = false)]
+                public sealed class EcsSystemSchedulingAttribute
+                    : SchedulingAttribute<EcsSystemScheduling>;
+
+                public class FrameTimingHolder { }
+            }
+
+            namespace Sparkitect.ECS.Commands
+            {
+                public interface ICommandBufferAccessor { }
+            }
+            """);
+
         public static (string, object) SampleComponents => ("SampleComponents.cs",
             """
             using Sparkitect.Modding;

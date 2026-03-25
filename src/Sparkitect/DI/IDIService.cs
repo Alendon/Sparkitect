@@ -66,8 +66,6 @@ public interface IDIService
 
     /// <summary>
     /// Builds a resolution scope with additional metadata injected into every wrapper type.
-    /// Used by ECS to automatically provide FrameTimingMetadata without requiring
-    /// per-system hand-written metadata entrypoints.
     /// </summary>
     /// <param name="container">The core container for fallback resolution.</param>
     /// <param name="provider">Optional resolution provider for metadata-driven resolution.</param>

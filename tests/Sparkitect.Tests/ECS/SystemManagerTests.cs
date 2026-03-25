@@ -567,9 +567,9 @@ public class SystemManagerTests
         var holder = new FrameTimingHolder();
         provider.SetFrameTimingHolder(holder);
 
-        // Verify TryResolve returns the holder for FrameTimingMetadata
+        // Verify TryResolve returns the holder via direct type check (no metadata needed)
         var resolved = provider.TryResolve(
-            typeof(FrameTimingHolder), null!, [new FrameTimingMetadata()], out var service);
+            typeof(FrameTimingHolder), null!, [], out var service);
 
         await Assert.That(resolved).IsTrue();
         await Assert.That(service).IsNotNull();
@@ -600,7 +600,7 @@ public class SystemManagerTests
         // Do NOT set holder -- should throw
         await Assert.That(() =>
         {
-            provider.TryResolve(typeof(FrameTimingHolder), null!, [new FrameTimingMetadata()], out _);
+            provider.TryResolve(typeof(FrameTimingHolder), null!, [], out _);
         }).Throws<InvalidOperationException>().WithMessageMatching("*FrameTimingHolder*");
     }
 

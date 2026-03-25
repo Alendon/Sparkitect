@@ -202,16 +202,11 @@ internal class SystemManager(
         var frameTimingHolder = new FrameTimingHolder();
         provider.SetFrameTimingHolder(frameTimingHolder);
 
-        var supplementalMetadata = new Dictionary<Type, List<object>>
-        {
-            [typeof(FrameTimingHolder)] = [new FrameTimingMetadata()]
-        };
         var scope = diService.BuildScope(
             gameStateManager.CurrentCoreContainer,
             provider,
             loadedMods,
-            wrapperTypes,
-            supplementalMetadata);
+            wrapperTypes);
 
         // Only instantiate wrappers for systems (not groups)
         var wrappers = sfManager.InstantiateWrappers(graph.SortedSystems, scope);
