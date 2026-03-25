@@ -212,6 +212,127 @@ public class EcsMetadataExtractionTests : SourceGeneratorTestBase<EcsQueryGenera
     }
 
     [Test]
+    public async Task SingleQueryParam_EmitsResourceAccessEntrypoint(CancellationToken token)
+    {
+        TestSources.Add(("TestSystem.cs",
+            """
+            using Sparkitect.ECS.Queries;
+            using Sparkitect.ECS.Systems;
+            using Sparkitect.Modding;
+
+            namespace TestMod;
+
+            [ComponentQuery]
+            [ReadComponents<Position>]
+            partial class SimpleQuery;
+
+            public class TestGroup : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 100);
+
+                [EcsSystemFunction("movement")]
+                [EcsSystemScheduling]
+                public static void MovementSystem(SimpleQuery query) { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var resourceAccessFiles = driverRunResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("ResourceAccess"))
+            .ToList();
+
+        await Assert.That(resourceAccessFiles.Count).IsEqualTo(1);
+
+        var code = resourceAccessFiles[0].GetText().ToString();
+        await Assert.That(code).Contains("ApplyMetadataEntrypoint<global::Sparkitect.ECS.Systems.EcsSystemResourceAccess>");
+        await Assert.That(code).Contains("ReadComponentIds");
+        await Assert.That(code).Contains("WriteComponentIds");
+        await Assert.That(code).Contains("SimpleQuery");
+    }
+
+    [Test]
+    public async Task MultipleQueryParams_AggregatesResourceAccess(CancellationToken token)
+    {
+        TestSources.Add(("TestSystem.cs",
+            """
+            using Sparkitect.ECS.Queries;
+            using Sparkitect.ECS.Systems;
+            using Sparkitect.Modding;
+
+            namespace TestMod;
+
+            [ComponentQuery]
+            [ReadComponents<Position>]
+            partial class QueryA;
+
+            [ComponentQuery]
+            [ReadComponents<Velocity>]
+            partial class QueryB;
+
+            [ComponentQuery]
+            [WriteComponents<Health>]
+            partial class QueryC;
+
+            public class TestGroup : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 100);
+
+                [EcsSystemFunction("render_data")]
+                [EcsSystemScheduling]
+                public static void RenderDataSystem(QueryA a, QueryB b, QueryC c) { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var resourceAccessFiles = driverRunResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("ResourceAccess"))
+            .ToList();
+
+        await Assert.That(resourceAccessFiles.Count).IsEqualTo(1);
+
+        var code = resourceAccessFiles[0].GetText().ToString();
+        await Assert.That(code).Contains("QueryA");
+        await Assert.That(code).Contains("QueryB");
+        await Assert.That(code).Contains("QueryC");
+        await Assert.That(code).Contains("UnionWith");
+    }
+
+    [Test]
+    public async Task NonEcsSfMethod_WithQueryParam_ProducesNoMetadata(CancellationToken token)
+    {
+        TestSources.Add(("TestSystem.cs",
+            """
+            using Sparkitect.ECS.Queries;
+            using Sparkitect.Stateless;
+            using Sparkitect.Modding;
+
+            namespace TestMod;
+
+            [ComponentQuery]
+            [ReadComponents<Position>]
+            partial class SimpleQuery;
+
+            public class TestGroup : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 100);
+
+                [PerFrameFunction("test")]
+                public static void SomeFrameFunction(SimpleQuery query) { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var metadataFiles = driverRunResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("ResolutionMetadata"))
+            .ToList();
+
+        await Assert.That(metadataFiles).IsEmpty();
+    }
+
+    [Test]
     public async Task EcsQueryMetadataModel_RenderCodeLines_ProducesCorrectOutput(CancellationToken token)
     {
         var model = new EcsQueryMetadataModel("global::TestMod.SimpleQuery");

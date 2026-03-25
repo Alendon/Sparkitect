@@ -205,6 +205,9 @@ public static partial class TestData
 
             namespace Sparkitect.ECS.Systems
             {
+                [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+                public sealed class EcsSystemCategoryAttribute : Attribute;
+
                 public sealed class EcsSystemContext { }
 
                 [Registry(Identifier = "ecs_system")]
@@ -214,6 +217,7 @@ public static partial class TestData
                     public void Unregister(Identification id) { }
                 }
 
+                [EcsSystemCategory]
                 [AttributeUsage(AttributeTargets.Method, Inherited = false)]
                 public sealed class EcsSystemFunctionAttribute(string identifier)
                     : StatelessFunctionAttribute<EcsSystemContext, SystemRegistry>(identifier);
@@ -230,9 +234,59 @@ public static partial class TestData
                 public class FrameTimingHolder { }
             }
 
+            namespace Sparkitect.ECS.Systems
+            {
+                public sealed class EcsSystemResourceAccess
+                {
+                    public IReadOnlySet<Identification> ReadComponentIds { get; }
+                    public IReadOnlySet<Identification> WriteComponentIds { get; }
+                    public EcsSystemResourceAccess(
+                        IReadOnlySet<Identification> readComponentIds,
+                        IReadOnlySet<Identification> writeComponentIds)
+                    {
+                        ReadComponentIds = readComponentIds;
+                        WriteComponentIds = writeComponentIds;
+                    }
+                }
+            }
+
+            namespace Sparkitect.Metadata
+            {
+                public class ApplyMetadataEntrypointAttribute<TMetadata> : Attribute;
+
+                public abstract class ApplyMetadataEntrypoint<TMetadata>
+                {
+                    public abstract void CollectMetadata(Dictionary<Identification, TMetadata> metadata);
+                }
+            }
+
+            namespace Sparkitect.Modding
+            {
+                public static class IdentificationHelper
+                {
+                    public static Identification Read<T>() where T : IHasIdentification => T.Identification;
+                }
+            }
+
             namespace Sparkitect.ECS.Commands
             {
                 public interface ICommandBufferAccessor { }
+            }
+
+            namespace Sparkitect.Stateless
+            {
+                public sealed class GameStateContext { }
+
+                [Registry(Identifier = "per_frame")]
+                public sealed partial class PerFrameRegistry : IRegistry
+                {
+                    public static string Identifier => "per_frame";
+                    public void Unregister(Identification id) { }
+                }
+
+                [AttributeUsage(AttributeTargets.Method, Inherited = false)]
+                public sealed class PerFrameFunctionAttribute(string identifier)
+                    : StatelessFunctionAttribute<GameStateContext, PerFrameRegistry>(identifier);
             }
             """);
 

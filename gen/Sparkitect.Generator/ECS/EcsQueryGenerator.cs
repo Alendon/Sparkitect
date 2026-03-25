@@ -43,6 +43,7 @@ public class EcsQueryGenerator : IIncrementalGenerator
     private static void GenerateMetadataEntrypoint(
         SourceProductionContext ctx, EcsSystemMetadataModel model, ModBuildSettings settings)
     {
+        // Existing: Resolution metadata entrypoint
         var models = model.QueryParameters
             .Select(qp => new EcsQueryMetadataModel(qp.QueryTypeFullyQualified))
             .Cast<IMetadataModel>()
@@ -53,6 +54,31 @@ public class EcsQueryGenerator : IIncrementalGenerator
                 out var code, out var fileName))
         {
             ctx.AddSource(fileName, code);
+        }
+
+        // Resource access entrypoint (per D-06, D-07)
+        var outputNamespace = settings.ComputeOutputNamespace();
+        var wrapperSimpleName = model.WrapperFullTypeName;
+        var lastDot = wrapperSimpleName.LastIndexOf('.');
+        if (lastDot >= 0)
+            wrapperSimpleName = wrapperSimpleName.Substring(lastDot + 1);
+
+        var raClassName = $"{wrapperSimpleName}_ResourceAccess";
+        var queryParams = model.QueryParameters
+            .Select(qp => new { qp.QueryTypeFullyQualified })
+            .ToArray();
+
+        var raTemplateModel = new
+        {
+            Namespace = outputNamespace,
+            ClassName = raClassName,
+            WrapperFullTypeName = model.WrapperFullTypeName,
+            QueryParameters = queryParams
+        };
+
+        if (FluidHelper.TryRenderTemplate("ECS.ResourceAccessEntrypoint.liquid", raTemplateModel, out var raCode))
+        {
+            ctx.AddSource($"{raClassName}.g.cs", raCode);
         }
     }
 

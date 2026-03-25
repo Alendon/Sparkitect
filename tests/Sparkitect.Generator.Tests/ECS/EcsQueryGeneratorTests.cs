@@ -454,6 +454,48 @@ public class EcsQueryGeneratorTests : SourceGeneratorTestBase<EcsQueryGenerator>
     }
 
     [Test]
+    public async Task SingleQueryParam_ResourceAccessEntrypoint_Snapshot(CancellationToken token)
+    {
+        TestSources.Add(("TestSystem.cs",
+            """
+            using Sparkitect.ECS.Queries;
+            using Sparkitect.ECS.Systems;
+            using Sparkitect.Modding;
+
+            namespace TestMod;
+
+            [ComponentQuery]
+            [ReadComponents<Position>]
+            [WriteComponents<Velocity>]
+            partial class MoveQuery;
+
+            public class TestGroup : IHasIdentification
+            {
+                public static Identification Identification => Identification.Create(1, 1, 100);
+
+                [EcsSystemFunction("movement")]
+                [EcsSystemScheduling]
+                public static void MovementSystem(MoveQuery query) { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var resourceAccessFiles = driverRunResult.GeneratedTrees
+            .Where(t => t.FilePath.Contains("ResourceAccess"))
+            .ToList();
+
+        await Assert.That(resourceAccessFiles.Count).IsEqualTo(1);
+
+        var code = resourceAccessFiles[0].GetText().ToString();
+        await Assert.That(code).Contains("EcsSystemResourceAccess");
+        await Assert.That(code).Contains("MoveQuery.ReadComponentIds");
+        await Assert.That(code).Contains("MoveQuery.WriteComponentIds");
+
+        await Verifier.Verify(driverRunResult, verifySettings);
+    }
+
+    [Test]
     public async Task MethodWithNoQueryParameters_NoMetadataOutput(CancellationToken token)
     {
         TestSources.Add(("TestSystem.cs",

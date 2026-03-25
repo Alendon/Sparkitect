@@ -31,6 +31,9 @@ public class SystemManagerTests
     private static readonly Identification System3 = Identification.Create(1, 2, 3);
     private static readonly Identification System4 = Identification.Create(1, 2, 4);
 
+    private static readonly Identification CompA = Identification.Create(1, 3, 1);
+    private static readonly Identification CompB = Identification.Create(1, 3, 2);
+
     // --- Registration Tests ---
 
     [Test]
@@ -627,6 +630,29 @@ public class SystemManagerTests
         await Assert.That(tree.Children[0].Id).IsEqualTo(System1);
     }
 
+    [Test]
+    public async Task FetchMetadata_CollectsResourceAccessMetadata()
+    {
+        var systemEntrypoint = new TestSchedulingEntrypoint(
+            [(System1, GroupA)], []);
+        var groupEntrypoint = new TestGroupMetadataEntrypoint(
+            [(GroupA, null)]);
+        var resourceEntrypoint = new TestResourceAccessEntrypoint(
+            [(System1, new HashSet<Identification> { CompA }, new HashSet<Identification> { CompB })]);
+
+        var manager = CreateManagerWithAllMetadata(
+            systemEntrypoint, groupEntrypoint, resourceEntrypoint);
+
+        manager.RegisterSystem(System1);
+        manager.RegisterSystemGroup(GroupA);
+        manager.FetchMetadata();
+
+        await Assert.That(manager.ResourceAccess).IsNotNull();
+        await Assert.That(manager.ResourceAccess!.ContainsKey(System1)).IsTrue();
+        await Assert.That(manager.ResourceAccess![System1].ReadComponentIds).Contains(CompA);
+        await Assert.That(manager.ResourceAccess![System1].WriteComponentIds).Contains(CompB);
+    }
+
     // --- BuildTree Tests ---
 
     [Test]
@@ -854,6 +880,15 @@ public class SystemManagerTests
         TestSchedulingEntrypoint systemEntrypoint,
         TestGroupMetadataEntrypoint groupEntrypoint)
     {
+        var emptyResourceEntrypoint = new TestResourceAccessEntrypoint([]);
+        return CreateManagerWithAllMetadata(systemEntrypoint, groupEntrypoint, emptyResourceEntrypoint);
+    }
+
+    private static SystemManager CreateManagerWithAllMetadata(
+        TestSchedulingEntrypoint systemEntrypoint,
+        TestGroupMetadataEntrypoint groupEntrypoint,
+        TestResourceAccessEntrypoint resourceEntrypoint)
+    {
         var sfManagerImposter = new IStatelessFunctionManagerImposter(ImposterMode.Implicit);
         var diServiceImposter = new IDIServiceImposter(ImposterMode.Implicit);
         var gsmImposter = new IGameStateManagerImposter(ImposterMode.Implicit);
@@ -874,6 +909,13 @@ public class SystemManagerTests
                 Arg<IEnumerable<string>>.Any())
             .Returns(groupContainer);
 
+        var resourceContainer = new TestEntrypointContainer<
+            ApplyMetadataEntrypoint<EcsSystemResourceAccess>>(resourceEntrypoint);
+        diServiceImposter.CreateEntrypointContainer<
+                ApplyMetadataEntrypoint<EcsSystemResourceAccess>>(
+                Arg<IEnumerable<string>>.Any())
+            .Returns(resourceContainer);
+
         return new SystemManager(
             sfManagerImposter.Instance(),
             diServiceImposter.Instance(),
@@ -885,6 +927,17 @@ public class SystemManagerTests
         var scheduling = new EcsSystemScheduling([], []);
         scheduling.OwnerId = groupId;
         return scheduling;
+    }
+
+    private sealed class TestResourceAccessEntrypoint(
+        (Identification systemId, HashSet<Identification> reads, HashSet<Identification> writes)[] entries)
+        : ApplyMetadataEntrypoint<EcsSystemResourceAccess>
+    {
+        public override void CollectMetadata(Dictionary<Identification, EcsSystemResourceAccess> metadata)
+        {
+            foreach (var (systemId, reads, writes) in entries)
+                metadata[systemId] = new EcsSystemResourceAccess(reads, writes);
+        }
     }
 
     private sealed class TestSchedulingEntrypoint(

@@ -16,6 +16,7 @@ namespace Sparkitect.Generator.ECS;
 public static class EcsMetadataExtraction
 {
     private const string StatelessFunctionAttributeBase = "Sparkitect.Stateless.StatelessFunctionAttribute";
+    private const string EcsSystemCategoryAttributeFqn = "Sparkitect.ECS.Systems.EcsSystemCategoryAttribute";
     private const string ComponentQueryAttributeFqn = "Sparkitect.ECS.Queries.ComponentQueryAttribute";
 
     /// <summary>
@@ -39,6 +40,14 @@ public static class EcsMetadataExtraction
         {
             if (MetadataExtractionPipeline.InheritsFrom(attr.AttributeClass, StatelessFunctionAttributeBase))
             {
+                // D-04: Check for ECS system category marker on the SF attribute class
+                bool hasEcsMarker = attr.AttributeClass!.GetAttributes().Any(a =>
+                    a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType)
+                    == EcsSystemCategoryAttributeFqn);
+
+                if (!hasEcsMarker)
+                    return null;
+
                 if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string id)
                 {
                     identifier = id;

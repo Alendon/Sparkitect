@@ -19,6 +19,9 @@ internal class SystemManager(
 
     private Dictionary<Identification, IScheduling>? _systemMetadata;
     private Dictionary<Identification, SystemGroupScheduling>? _groupMetadata;
+    private Dictionary<Identification, EcsSystemResourceAccess>? _resourceAccess;
+
+    internal IReadOnlyDictionary<Identification, EcsSystemResourceAccess>? ResourceAccess => _resourceAccess;
 
     internal IReadOnlySet<Identification> RegisteredSystems => _registeredSystems;
     internal IReadOnlySet<Identification> RegisteredGroups => _registeredGroups;
@@ -46,6 +49,11 @@ internal class SystemManager(
         using var groupContainer = diService.CreateEntrypointContainer<
             ApplyMetadataEntrypoint<SystemGroupScheduling>>(loadedMods);
         groupContainer.ProcessMany(ep => ep.CollectMetadata(_groupMetadata));
+
+        _resourceAccess = new Dictionary<Identification, EcsSystemResourceAccess>();
+        using var resourceContainer = diService.CreateEntrypointContainer<
+            ApplyMetadataEntrypoint<EcsSystemResourceAccess>>(loadedMods);
+        resourceContainer.ProcessMany(ep => ep.CollectMetadata(_resourceAccess));
     }
 
     public SystemTreeNode BuildTree(Identification rootGroupId)
@@ -174,10 +182,12 @@ internal class SystemManager(
 
     internal void InjectMetadata(
         Dictionary<Identification, IScheduling> systems,
-        Dictionary<Identification, SystemGroupScheduling> groups)
+        Dictionary<Identification, SystemGroupScheduling> groups,
+        Dictionary<Identification, EcsSystemResourceAccess>? resourceAccess = null)
     {
         _systemMetadata = systems;
         _groupMetadata = groups;
+        _resourceAccess = resourceAccess;
     }
 
     internal CachedWorldState BuildWorldCache(IWorld world)

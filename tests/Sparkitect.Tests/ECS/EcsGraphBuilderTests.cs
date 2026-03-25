@@ -131,6 +131,56 @@ public class EcsGraphBuilderTests
         await Assert.That(graph.GroupSkipRanges[groupAIndex]).IsGreaterThan(groupAIndex);
     }
 
+    [Test]
+    public async Task CrossGroupOrderAfter_ThrowsInvalidOperationException()
+    {
+        // System2 is in GroupB (walked after GroupA), references System1 in GroupA via OrderAfter
+        var builder = new EcsGraphBuilder();
+        var root = new SystemTreeNode(GroupA, isGroup: true);
+        root.Children.Add(new SystemTreeNode(System1, isGroup: false));
+        var groupB = new SystemTreeNode(GroupB, isGroup: true);
+        groupB.Children.Add(new SystemTreeNode(System2, isGroup: false));
+        root.Children.Add(groupB);
+
+        var systemMeta = new Dictionary<Identification, IScheduling>
+        {
+            [System1] = MakeScheduling(System1, GroupA, [], []),
+            [System2] = MakeScheduling(System2, GroupB,
+                [new TestOrderAfterAttribute(System1)], [])
+        };
+
+        await Assert.That(() =>
+            builder.BuildFromTree(root, systemMeta,
+                CreateGroupMeta([(GroupA, null), (GroupB, GroupA)])))
+            .Throws<InvalidOperationException>()
+            .WithMessageMatching("*Cross-group*");
+    }
+
+    [Test]
+    public async Task CrossGroupOrderBefore_ThrowsInvalidOperationException()
+    {
+        // System2 is in GroupB (walked after GroupA), references System1 in GroupA via OrderBefore
+        var builder = new EcsGraphBuilder();
+        var root = new SystemTreeNode(GroupA, isGroup: true);
+        root.Children.Add(new SystemTreeNode(System1, isGroup: false));
+        var groupB = new SystemTreeNode(GroupB, isGroup: true);
+        groupB.Children.Add(new SystemTreeNode(System2, isGroup: false));
+        root.Children.Add(groupB);
+
+        var systemMeta = new Dictionary<Identification, IScheduling>
+        {
+            [System1] = MakeScheduling(System1, GroupA, [], []),
+            [System2] = MakeScheduling(System2, GroupB,
+                [], [new TestOrderBeforeAttribute(System1)])
+        };
+
+        await Assert.That(() =>
+            builder.BuildFromTree(root, systemMeta,
+                CreateGroupMeta([(GroupA, null), (GroupB, GroupA)])))
+            .Throws<InvalidOperationException>()
+            .WithMessageMatching("*Cross-group*");
+    }
+
     // --- Helpers ---
 
     private static Dictionary<Identification, IScheduling> CreateSystemMeta(

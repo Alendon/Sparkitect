@@ -1,4 +1,3 @@
-using Serilog;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
@@ -75,13 +74,10 @@ internal class EcsGraphBuilder : IEcsGraphBuilder
     {
         foreach (var after in orderAfter)
         {
-            // Cross-group check: warn and drop
             if (IsCrossGroupEdge(nodeId, after.Other, parentGroupId))
             {
-                Log.Warning(
-                    "Cross-group ordering constraint dropped: {NodeId} OrderAfter {OtherId} - nodes are not siblings",
-                    nodeId, after.Other);
-                continue;
+                throw new InvalidOperationException(
+                    $"Cross-group ordering constraint: {nodeId} OrderAfter {after.Other} - nodes are not siblings in the same group.");
             }
             _inner.AddEdge(after.Other, nodeId, after.Optional);
         }
@@ -90,10 +86,8 @@ internal class EcsGraphBuilder : IEcsGraphBuilder
         {
             if (IsCrossGroupEdge(nodeId, before.Other, parentGroupId))
             {
-                Log.Warning(
-                    "Cross-group ordering constraint dropped: {NodeId} OrderBefore {OtherId} - nodes are not siblings",
-                    nodeId, before.Other);
-                continue;
+                throw new InvalidOperationException(
+                    $"Cross-group ordering constraint: {nodeId} OrderBefore {before.Other} - nodes are not siblings in the same group.");
             }
             _inner.AddEdge(nodeId, before.Other, before.Optional);
         }
