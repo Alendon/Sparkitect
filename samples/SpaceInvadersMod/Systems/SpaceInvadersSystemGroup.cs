@@ -3,7 +3,7 @@ using Sparkitect.ECS.Systems;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 
-namespace SpaceInvadersMod;
+namespace SpaceInvadersMod.Systems;
 
 [SystemGroupRegistry.RegisterSystemGroup("space_invaders")]
 [SystemGroupScheduling]

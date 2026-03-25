@@ -1,7 +1,7 @@
 using Sparkitect.ECS.Systems;
 using Sparkitect.Stateless;
 
-namespace SpaceInvadersMod;
+namespace SpaceInvadersMod.Systems;
 
 public partial class SpaceInvadersSystemGroup
 {

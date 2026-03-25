@@ -8,7 +8,7 @@ using Sparkitect.ECS.Queries;
 using Sparkitect.ECS.Systems;
 using Sparkitect.Modding.IDs;
 
-namespace SpaceInvadersMod;
+namespace SpaceInvadersMod.Systems;
 
 public partial class GameplayGroup
 {

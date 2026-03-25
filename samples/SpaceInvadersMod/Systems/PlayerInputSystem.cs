@@ -9,7 +9,7 @@ using Sparkitect.ECS.Systems;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
 
-namespace SpaceInvadersMod;
+namespace SpaceInvadersMod.Systems;
 
 public partial class SpaceInvadersSystemGroup
 {

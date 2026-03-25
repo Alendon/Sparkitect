@@ -4,7 +4,7 @@ using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
 
-namespace SpaceInvadersMod;
+namespace SpaceInvadersMod.Systems;
 
 [SystemGroupRegistry.RegisterSystemGroup("gameplay")]
 [SystemGroupScheduling]

@@ -3,7 +3,7 @@ using Sparkitect.ECS.Commands;
 using Sparkitect.ECS.Queries;
 using Sparkitect.ECS.Systems;
 
-namespace SpaceInvadersMod;
+namespace SpaceInvadersMod.Systems;
 
 // Hand-written metadata entrypoints for ECS system DI parameter resolution (v1.4).
 // v1.5 will automate this via the source generator.

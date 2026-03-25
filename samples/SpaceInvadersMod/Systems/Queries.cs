@@ -2,7 +2,7 @@ using SpaceInvadersMod.Components;
 using Sparkitect.ECS;
 using Sparkitect.ECS.Queries;
 
-namespace SpaceInvadersMod;
+namespace SpaceInvadersMod.Systems;
 
 [ComponentQuery]
 [ReadComponents<Position, Velocity, BulletData>]

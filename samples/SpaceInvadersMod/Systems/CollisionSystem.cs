@@ -5,7 +5,7 @@ using Sparkitect.ECS.Commands;
 using Sparkitect.ECS.Systems;
 using Sparkitect.Stateless;
 
-namespace SpaceInvadersMod;
+namespace SpaceInvadersMod.Systems;
 
 public partial class GameplayGroup
 {
