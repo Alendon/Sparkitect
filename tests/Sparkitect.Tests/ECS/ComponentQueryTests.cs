@@ -10,6 +10,7 @@ public class ComponentQueryTests
 {
     private static readonly Identification PositionId = TestPosition.Identification;
     private static readonly Identification VelocityId = TestVelocity.Identification;
+    private static readonly Identification EnemyTagId = TestEnemyTag.Identification;
 
     // --- Iteration Tests ---
 
@@ -248,6 +249,90 @@ public class ComponentQueryTests
         var result = requirement.Matches(metadata);
 
         await Assert.That(result).IsFalse();
+    }
+
+    // --- ComponentExclusionRequirement Tests ---
+
+    [Test]
+    public async Task ComponentExclusionRequirement_Matches_WhenNoExcludedComponentPresent()
+    {
+        var requirement = new ComponentExclusionRequirement([EnemyTagId]);
+        var metadata = new ComponentSetMetadata(new HashSet<Identification> { PositionId, VelocityId });
+
+        var result = requirement.Matches(metadata);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task ComponentExclusionRequirement_DoesNotMatch_WhenExcludedComponentPresent()
+    {
+        var requirement = new ComponentExclusionRequirement([EnemyTagId]);
+        var metadata = new ComponentSetMetadata(new HashSet<Identification> { PositionId, VelocityId, EnemyTagId });
+
+        var result = requirement.Matches(metadata);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task ComponentExclusionRequirement_Matches_WhenEmptyExcludeList()
+    {
+        var requirement = new ComponentExclusionRequirement(Array.Empty<Identification>());
+        var metadata = new ComponentSetMetadata(new HashSet<Identification> { PositionId });
+
+        var result = requirement.Matches(metadata);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task ComponentQuery_WithExclude_RejectsStorageContainingExcludedComponent()
+    {
+        using var world = IWorld.Create();
+        var tracker = new FakeObjectTracker();
+
+        // Storage with Position + Velocity (should match)
+        using var matchingStorage = CreateStorage(tracker, world, [PositionId, VelocityId]);
+        var h1 = world.AddStorage(matchingStorage, matchingStorage.CreateCapabilityRegistrations());
+        matchingStorage.SetHandle(h1);
+
+        // Storage with Position + Velocity + EnemyTag (should be excluded)
+        using var excludedStorage = CreateStorage(tracker, world, [PositionId, VelocityId, EnemyTagId]);
+        var h2 = world.AddStorage(excludedStorage, excludedStorage.CreateCapabilityRegistrations());
+        excludedStorage.SetHandle(h2);
+
+        // Query requires Position+Velocity, excludes EnemyTag
+        ICapabilityRequirement[] filter =
+        [
+            new ComponentSetRequirement([PositionId, VelocityId]),
+            new ComponentExclusionRequirement([EnemyTagId])
+        ];
+        var matches = world.Resolve(filter);
+
+        await Assert.That(matches).HasCount().EqualTo(1);
+    }
+
+    [Test]
+    public async Task ComponentQuery_WithExclude_AcceptsStorageWithoutExcludedComponent()
+    {
+        using var world = IWorld.Create();
+        var tracker = new FakeObjectTracker();
+
+        // Storage with Position + Velocity (should match)
+        using var matchingStorage = CreateStorage(tracker, world, [PositionId, VelocityId]);
+        var h1 = world.AddStorage(matchingStorage, matchingStorage.CreateCapabilityRegistrations());
+        matchingStorage.SetHandle(h1);
+
+        // Query requires Position+Velocity, excludes EnemyTag
+        ICapabilityRequirement[] filter =
+        [
+            new ComponentSetRequirement([PositionId, VelocityId]),
+            new ComponentExclusionRequirement([EnemyTagId])
+        ];
+        var matches = world.Resolve(filter);
+
+        await Assert.That(matches).HasCount().EqualTo(1);
     }
 
     // --- Helpers ---

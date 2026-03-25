@@ -37,8 +37,9 @@ partial class KeyedQuery : global::System.IDisposable
     {
         _world = world;
         global::Sparkitect.ECS.Capabilities.ICapabilityRequirement[] filter =
+        [
         
-            [new global::Sparkitect.ECS.Queries.ComponentSetRequirement<global::TestMod.EntityId>(
+            new global::Sparkitect.ECS.Queries.ComponentSetRequirement<global::TestMod.EntityId>(
         
                 new global::Sparkitect.Modding.Identification[]
                 {
@@ -47,7 +48,8 @@ partial class KeyedQuery : global::System.IDisposable
                     
                     global::TestMod.Velocity.Identification,
                     
-                })];
+                })
+        ];
         _matchedStorages = new();
         _filterHandle = world.RegisterFilter(filter, storages =>
         {

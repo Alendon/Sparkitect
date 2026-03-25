@@ -48,17 +48,30 @@ partial class {{ ClassName }} : global::System.IDisposable
     {
         _world = world;
         global::Sparkitect.ECS.Capabilities.ICapabilityRequirement[] filter =
+        [
         {% if IsKeyed and KeyRequired %}
-            [new global::Sparkitect.ECS.Queries.ComponentSetRequirement<{{ KeyTypeFullyQualified }}>(
+            new global::Sparkitect.ECS.Queries.ComponentSetRequirement<{{ KeyTypeFullyQualified }}>(
         {% else %}
-            [new global::Sparkitect.ECS.Queries.ComponentSetRequirement(
+            new global::Sparkitect.ECS.Queries.ComponentSetRequirement(
         {% endif %}
                 new global::Sparkitect.Modding.Identification[]
                 {
                     {% for c in AllComponents %}
                     {{ c.FullyQualifiedName }}.Identification,
                     {% endfor %}
-                })];
+                }){% if ExcludeComponents.size > 0 %},
+        {% if IsKeyed and KeyRequired %}
+            new global::Sparkitect.ECS.Queries.ComponentExclusionRequirement<{{ KeyTypeFullyQualified }}>(
+        {% else %}
+            new global::Sparkitect.ECS.Queries.ComponentExclusionRequirement(
+        {% endif %}
+                new global::Sparkitect.Modding.Identification[]
+                {
+                    {% for c in ExcludeComponents %}
+                    {{ c.FullyQualifiedName }}.Identification,
+                    {% endfor %}
+                }){% endif %}
+        ];
         _matchedStorages = new();
         _filterHandle = world.RegisterFilter(filter, storages =>
         {

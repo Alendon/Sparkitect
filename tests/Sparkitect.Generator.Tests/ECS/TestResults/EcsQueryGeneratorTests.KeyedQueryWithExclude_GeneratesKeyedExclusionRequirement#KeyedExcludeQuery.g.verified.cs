@@ -1,4 +1,4 @@
-﻿//HintName: ReadWriteQuery.g.cs
+﻿//HintName: KeyedExcludeQuery.g.cs
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 #nullable enable
@@ -6,7 +6,7 @@
 namespace TestMod;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-partial class ReadWriteQuery : global::System.IDisposable
+partial class KeyedExcludeQuery : global::System.IDisposable
 {
     private readonly global::Sparkitect.ECS.IWorld _world;
     private readonly global::System.Collections.Generic.List<global::Sparkitect.ECS.StorageHandle> _matchedStorages;
@@ -23,32 +23,39 @@ partial class ReadWriteQuery : global::System.IDisposable
 
     public static global::System.Collections.Generic.IReadOnlyList<global::Sparkitect.Modding.Identification> WriteComponentIds { get; } =
     
-    [
-        
-        global::TestMod.Velocity.Identification,
-        
-    ];
+        global::System.Array.Empty<global::Sparkitect.Modding.Identification>();
     
 
     public static global::System.Collections.Generic.IReadOnlyList<global::Sparkitect.Modding.Identification> ExcludeComponentIds { get; } =
     
-        global::System.Array.Empty<global::Sparkitect.Modding.Identification>();
+    [
+        
+        global::TestMod.EnemyTag.Identification,
+        
+    ];
     
 
-    public ReadWriteQuery(global::Sparkitect.ECS.IWorld world)
+    public KeyedExcludeQuery(global::Sparkitect.ECS.IWorld world)
     {
         _world = world;
         global::Sparkitect.ECS.Capabilities.ICapabilityRequirement[] filter =
         [
         
-            new global::Sparkitect.ECS.Queries.ComponentSetRequirement(
+            new global::Sparkitect.ECS.Queries.ComponentSetRequirement<global::TestMod.EntityId>(
         
                 new global::Sparkitect.Modding.Identification[]
                 {
                     
                     global::TestMod.Position.Identification,
                     
-                    global::TestMod.Velocity.Identification,
+                }),
+        
+            new global::Sparkitect.ECS.Queries.ComponentExclusionRequirement<global::TestMod.EntityId>(
+        
+                new global::Sparkitect.Modding.Identification[]
+                {
+                    
+                    global::TestMod.EnemyTag.Identification,
                     
                 })
         ];
@@ -69,28 +76,32 @@ partial class ReadWriteQuery : global::System.IDisposable
         
         private readonly nint _positionPtr;
         
-        private readonly nint _velocityPtr;
-        
         private readonly int _index;
+        
+        private readonly global::Sparkitect.ECS.Capabilities.IChunkedIteration<global::TestMod.EntityId> _keySource;
+        private readonly global::Sparkitect.ECS.Storage.ChunkHandle _chunkHandle;
         
 
         internal Entity(
             
             nint positionPtr,
             
-            nint velocityPtr,
-            
-            int index)
+            int index,
+            global::Sparkitect.ECS.Capabilities.IChunkedIteration<global::TestMod.EntityId> keySource,
+            global::Sparkitect.ECS.Storage.ChunkHandle chunkHandle)
         {
             
             _positionPtr = positionPtr;
             
-            _velocityPtr = velocityPtr;
-            
             _index = index;
+            
+            _keySource = keySource;
+            _chunkHandle = chunkHandle;
             
         }
 
+        
+        public global::TestMod.EntityId Key => _keySource.GetKey(ref global::System.Runtime.CompilerServices.Unsafe.AsRef(in _chunkHandle), _index);
         
 
         
@@ -102,12 +113,6 @@ partial class ReadWriteQuery : global::System.IDisposable
         
 
         
-        public ref global::TestMod.Velocity GetVelocity()
-        {
-            return ref global::System.Runtime.CompilerServices.Unsafe.AsRef<global::TestMod.Velocity>(
-                (void*)(_velocityPtr + _index * sizeof(global::TestMod.Velocity)));
-        }
-        
     }
 
     public unsafe struct Enumerator : global::System.Collections.Generic.IEnumerator<Entity>
@@ -117,7 +122,7 @@ partial class ReadWriteQuery : global::System.IDisposable
 
         private int _storageIndex;
         
-        private global::Sparkitect.ECS.Capabilities.IChunkedIteration? _currentIteration;
+        private global::Sparkitect.ECS.Capabilities.IChunkedIteration<global::TestMod.EntityId>? _currentIteration;
         
         private global::Sparkitect.ECS.Storage.ChunkHandle _chunkHandle;
         private int _chunkLength;
@@ -127,8 +132,6 @@ partial class ReadWriteQuery : global::System.IDisposable
 
         
         private nint _positionPtr;
-        
-        private nint _velocityPtr;
         
 
         internal Enumerator(
@@ -147,8 +150,6 @@ partial class ReadWriteQuery : global::System.IDisposable
             
             _positionPtr = default;
             
-            _velocityPtr = default;
-            
         }
 
         public Entity Current => _current;
@@ -164,9 +165,9 @@ partial class ReadWriteQuery : global::System.IDisposable
                         
                         _positionPtr,
                         
-                        _velocityPtr,
-                        
-                        _entityIndex);
+                        _entityIndex,
+                        _currentIteration!,
+                        _chunkHandle);
                     _entityIndex++;
                     return true;
                 }
@@ -189,7 +190,7 @@ partial class ReadWriteQuery : global::System.IDisposable
                 var handle = _matchedStorages[_storageIndex];
                 
                 _currentIteration = _world.GetStorage(handle)
-                    .As<global::Sparkitect.ECS.Capabilities.IChunkedIteration>();
+                    .As<global::Sparkitect.ECS.Capabilities.IChunkedIteration<global::TestMod.EntityId>>();
                 
                 _chunkHandle = default; // Fresh per storage (pitfall 3)
                 _hasChunk = false;
@@ -213,9 +214,6 @@ partial class ReadWriteQuery : global::System.IDisposable
             _positionPtr = (nint)_currentIteration!.GetChunkComponentData(
                 ref _chunkHandle, global::TestMod.Position.Identification);
             
-            _velocityPtr = (nint)_currentIteration!.GetChunkComponentData(
-                ref _chunkHandle, global::TestMod.Velocity.Identification);
-            
         }
 
         public void Reset()
@@ -229,8 +227,6 @@ partial class ReadWriteQuery : global::System.IDisposable
             _current = default;
             
             _positionPtr = default;
-            
-            _velocityPtr = default;
             
         }
 

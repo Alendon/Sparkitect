@@ -102,6 +102,19 @@ public static partial class TestData
                     public ComponentSetRequirement(IReadOnlyList<Identification> componentIds) { }
                     public bool Matches(ComponentSetMetadata metadata) => true;
                 }
+
+                public struct ComponentExclusionRequirement : Sparkitect.ECS.Capabilities.ICapabilityRequirement<Sparkitect.ECS.Capabilities.IChunkedIteration, ComponentSetMetadata>
+                {
+                    public ComponentExclusionRequirement(IReadOnlyList<Identification> componentIds) { }
+                    public bool Matches(ComponentSetMetadata metadata) => true;
+                }
+
+                public struct ComponentExclusionRequirement<TKey> : Sparkitect.ECS.Capabilities.ICapabilityRequirement<Sparkitect.ECS.Capabilities.IChunkedIteration<TKey>, ComponentSetMetadata>
+                    where TKey : unmanaged
+                {
+                    public ComponentExclusionRequirement(IReadOnlyList<Identification> componentIds) { }
+                    public bool Matches(ComponentSetMetadata metadata) => true;
+                }
             }
             """);
 

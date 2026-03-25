@@ -43,8 +43,9 @@ partial class FullQuery : global::System.IDisposable
     {
         _world = world;
         global::Sparkitect.ECS.Capabilities.ICapabilityRequirement[] filter =
+        [
         
-            [new global::Sparkitect.ECS.Queries.ComponentSetRequirement(
+            new global::Sparkitect.ECS.Queries.ComponentSetRequirement(
         
                 new global::Sparkitect.Modding.Identification[]
                 {
@@ -53,7 +54,17 @@ partial class FullQuery : global::System.IDisposable
                     
                     global::TestMod.Velocity.Identification,
                     
-                })];
+                }),
+        
+            new global::Sparkitect.ECS.Queries.ComponentExclusionRequirement(
+        
+                new global::Sparkitect.Modding.Identification[]
+                {
+                    
+                    global::TestMod.EnemyTag.Identification,
+                    
+                })
+        ];
         _matchedStorages = new();
         _filterHandle = world.RegisterFilter(filter, storages =>
         {

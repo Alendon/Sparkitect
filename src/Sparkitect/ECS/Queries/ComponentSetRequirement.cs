@@ -25,7 +25,7 @@ public struct ComponentSetRequirement : ICapabilityRequirement<IChunkedIteration
     /// </summary>
     public bool Matches(ComponentSetMetadata metadata)
     {
-        return _requiredComponents.IsSubsetOf(metadata.Components);
+        return ComponentSetMatcher.ContainsAll(_requiredComponents, metadata.Components);
     }
 }
 
@@ -53,6 +53,6 @@ public struct ComponentSetRequirement<TKey> : ICapabilityRequirement<IChunkedIte
     /// </summary>
     public bool Matches(ComponentSetMetadata metadata)
     {
-        return _requiredComponents.IsSubsetOf(metadata.Components);
+        return ComponentSetMatcher.ContainsAll(_requiredComponents, metadata.Components);
     }
 }

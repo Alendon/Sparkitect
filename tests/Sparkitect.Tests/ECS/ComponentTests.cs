@@ -20,6 +20,11 @@ public struct TestVelocity : IHasIdentification
     public static Identification Identification { get; } = Identification.Create(1, 1, 2);
 }
 
+public struct TestEnemyTag : IHasIdentification
+{
+    public static Identification Identification { get; } = Identification.Create(1, 1, 100);
+}
+
 public class ComponentManagerTests
 {
     [Test]

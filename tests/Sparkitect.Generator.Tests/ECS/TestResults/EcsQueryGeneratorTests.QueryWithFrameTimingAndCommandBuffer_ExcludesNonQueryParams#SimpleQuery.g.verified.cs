@@ -35,15 +35,17 @@ partial class SimpleQuery : global::System.IDisposable
     {
         _world = world;
         global::Sparkitect.ECS.Capabilities.ICapabilityRequirement[] filter =
+        [
         
-            [new global::Sparkitect.ECS.Queries.ComponentSetRequirement(
+            new global::Sparkitect.ECS.Queries.ComponentSetRequirement(
         
                 new global::Sparkitect.Modding.Identification[]
                 {
                     
                     global::TestMod.Position.Identification,
                     
-                })];
+                })
+        ];
         _matchedStorages = new();
         _filterHandle = world.RegisterFilter(filter, storages =>
         {

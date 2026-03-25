@@ -183,6 +183,38 @@ public class EcsQueryGeneratorTests : SourceGeneratorTestBase<EcsQueryGenerator>
     }
 
     [Test]
+    public async Task KeyedQueryWithExclude_GeneratesKeyedExclusionRequirement(CancellationToken token)
+    {
+        TestSources.Add(("TestQuery.cs",
+            """
+            using Sparkitect.ECS.Queries;
+            using Sparkitect.Modding;
+
+            namespace TestMod;
+
+            [ComponentQuery]
+            [ReadComponents<Position>]
+            [ExcludeComponents<EnemyTag>]
+            [ExposeKey<EntityId>(true)]
+            partial class KeyedExcludeQuery;
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var generatedTree = driverRunResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("KeyedExcludeQuery.g.cs"));
+
+        await Assert.That(generatedTree).IsNotNull();
+
+        var code = generatedTree!.GetText().ToString();
+        await Assert.That(code).Contains("ComponentExclusionRequirement<");
+        await Assert.That(code).Contains("ComponentSetRequirement<");
+        await Assert.That(code).Contains("EnemyTag.Identification");
+
+        await Verifier.Verify(driverRunResult, verifySettings);
+    }
+
+    [Test]
     public async Task NoComponentQueryAttribute_NoOutput(CancellationToken token)
     {
         TestSources.Add(("TestQuery.cs",
