@@ -30,8 +30,8 @@ public partial class GameplayGroup
                     if (!AabbOverlap(bulletPos, SpaceInvadersConstants.BulletHalfW, SpaceInvadersConstants.BulletHalfH,
                             pos, SpaceInvadersConstants.EnemyHalfW, SpaceInvadersConstants.EnemyHalfH)) continue;
 
-                    commandBufferAccessor.Modify<int>(bullet.Key).DestroyEntity();
-                    commandBufferAccessor.Modify<int>(enemy.Key).DestroyEntity();
+                    bullet.Modify(commandBufferAccessor).DestroyEntity();
+                    enemy.Modify(commandBufferAccessor).DestroyEntity();
                 }
             }
             else
@@ -42,8 +42,8 @@ public partial class GameplayGroup
                     if (!AabbOverlap(bulletPos, SpaceInvadersConstants.BulletHalfW, SpaceInvadersConstants.BulletHalfH,
                             pos, SpaceInvadersConstants.EnemyHalfW, SpaceInvadersConstants.EnemyHalfH)) continue;
 
-                    commandBufferAccessor.Modify<int>(bullet.Key).DestroyEntity();
-                    commandBufferAccessor.Modify<int>(player.Key).DestroyEntity();
+                    bullet.Modify(commandBufferAccessor).DestroyEntity();
+                    player.Modify(commandBufferAccessor).DestroyEntity();
                 }
             }
         }

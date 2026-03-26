@@ -1,16 +1,22 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using Sparkitect.ECS.Capabilities;
 
 namespace Sparkitect.ECS.Commands;
 
 /// <summary>
 /// Concrete command buffer accessor implementation.
-/// Manages buffer lifecycle: Create allocates EntityId immediately,
-/// Modify validates entity state, Playback executes all buffers in FIFO order.
+/// Uses IStorage.KeyType + MakeGenericType to create typed CommandBuffer&lt;TKey&gt;
+/// instances without exposing TKey to callers.
 /// </summary>
 public class CommandBufferAccessor : ICommandBufferAccessor
 {
     private readonly IWorld _world;
-    private readonly List<IPlaybackBuffer> _buffers = new();
+    private readonly List<CommandBuffer> _buffers = new();
+
+    // Cache: KeyType -> constructor. Avoids repeated MakeGenericType + reflection.
+    // Key space is tiny (typically 1 distinct TKey: int). Thread-safe for parallel access.
+    private static readonly ConcurrentDictionary<Type, ConstructorInfo> ConstructorCache = new();
 
     public CommandBufferAccessor(IWorld world)
     {
@@ -18,16 +24,15 @@ public class CommandBufferAccessor : ICommandBufferAccessor
     }
 
     /// <inheritdoc/>
-    public ICommandBuffer<TKey> Create<TKey>(StorageHandle storageHandle) where TKey : unmanaged
+    public ICommandBuffer Create(StorageHandle storageHandle)
     {
         var entityId = _world.AllocateEntityId();
-        var buffer = new CommandBuffer<TKey>(entityId, storageHandle, isCreate: true);
-        _buffers.Add(buffer);
+        var buffer = CreateBuffer(storageHandle, entityId, isCreate: true);
         return buffer;
     }
 
     /// <inheritdoc/>
-    public ICommandBuffer<TKey> Create<TKey>(IReadOnlyList<ICapabilityRequirement> filter) where TKey : unmanaged
+    public ICommandBuffer Create(IReadOnlyList<ICapabilityRequirement> filter)
     {
         var handles = _world.Resolve(filter);
         if (handles.Count == 0)
@@ -35,11 +40,11 @@ public class CommandBufferAccessor : ICommandBufferAccessor
             throw new InvalidOperationException(
                 "No storage matched the provided filter. Cannot create entity without a target storage.");
         }
-        return Create<TKey>(handles[0]);
+        return Create(handles[0]);
     }
 
     /// <inheritdoc/>
-    public ICommandBuffer<TKey> Modify<TKey>(EntityId entityId) where TKey : unmanaged
+    public ICommandBuffer Modify(EntityId entityId)
     {
         var state = _world.GetEntityState(entityId);
         if (state != EntityState.Bound)
@@ -49,8 +54,7 @@ public class CommandBufferAccessor : ICommandBufferAccessor
         }
 
         var storageHandle = _world.GetStorageHandle(entityId);
-        var buffer = new CommandBuffer<TKey>(entityId, storageHandle, isCreate: false);
-        _buffers.Add(buffer);
+        var buffer = CreateBuffer(storageHandle, entityId, isCreate: false);
         return buffer;
     }
 
@@ -62,5 +66,27 @@ public class CommandBufferAccessor : ICommandBufferAccessor
             buffer.PlaybackCommands(_world);
         }
         _buffers.Clear();
+    }
+
+    private CommandBuffer CreateBuffer(StorageHandle storageHandle, EntityId entityId, bool isCreate)
+    {
+        // Resolve TKey at runtime via IStorage.KeyType (D-16)
+        var storageAccessor = _world.GetStorage(storageHandle);
+        var keyType = storageAccessor.KeyType;
+
+        var ctor = ConstructorCache.GetOrAdd(keyType, static kt =>
+        {
+            // MakeGenericType -- used once per distinct TKey (D-15)
+            var bufferType = typeof(CommandBuffer<>).MakeGenericType(kt);
+            return bufferType.GetConstructor(
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                null,
+                [typeof(EntityId), typeof(StorageHandle), typeof(bool)],
+                null)!;
+        });
+
+        var buffer = (CommandBuffer)ctor.Invoke([entityId, storageHandle, isCreate]);
+        _buffers.Add(buffer);
+        return buffer;
     }
 }

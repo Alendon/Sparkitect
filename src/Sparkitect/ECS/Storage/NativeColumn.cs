@@ -50,7 +50,11 @@ public sealed unsafe class NativeColumn : IDisposable
     /// <summary>
     /// Returns a pointer to the element at the given index.
     /// </summary>
-    internal byte* GetElementPtr(int index) => _data + (index * _elementSize);
+    internal byte* GetElementPtr(int index)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _data + (index * _elementSize);
+    }
 
     /// <summary>
     /// Returns a typed reference to the element at the given index.

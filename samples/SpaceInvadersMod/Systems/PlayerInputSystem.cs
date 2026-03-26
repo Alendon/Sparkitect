@@ -53,7 +53,7 @@ public partial class SpaceInvadersSystemGroup
                 // Create bullet via command buffer with filter matching bullet archetype
                 ICapabilityRequirement[] bulletFilter =
                     [new ComponentSetRequirement([UnmanagedComponentID.SpaceInvadersMod.Position, UnmanagedComponentID.SpaceInvadersMod.Velocity, UnmanagedComponentID.SpaceInvadersMod.BulletData])];
-                var bulletBuffer = commandBufferAccessor.Create<int>(bulletFilter);
+                var bulletBuffer = commandBufferAccessor.Create(bulletFilter);
                 bulletBuffer.SetComponent(new Position { Value = new Vector2(pos.Value.X, pos.Value.Y - 0.02f) });
                 bulletBuffer.SetComponent(new Velocity { Value = new Vector2(0f, -SpaceInvadersConstants.BulletSpeed) });
                 bulletBuffer.SetComponent(new BulletData { Direction = 1f });

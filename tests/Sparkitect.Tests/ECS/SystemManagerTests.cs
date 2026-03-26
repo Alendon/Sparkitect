@@ -418,6 +418,69 @@ public class SystemManagerTests
         await Assert.That(manager.HasCachedWorld(world2)).IsTrue();
     }
 
+    // --- NodeLookup Tests ---
+
+    [Test]
+    public async Task BuildWorldCache_PopulatesNodeLookupWithAllIds()
+    {
+        var wrapper1 = new TrackingWrapper(System1, GroupA);
+        var wrapper2 = new TrackingWrapper(System2, GroupB);
+        var manager = CreateManager(
+            [(System1, GroupA), (System2, GroupB)],
+            [wrapper1, wrapper2],
+            childGroups: [(GroupB, GroupA)]);
+        var world = IWorld.Create();
+
+        var root = new SystemTreeNode(GroupA, isGroup: true);
+        var groupB = new SystemTreeNode(GroupB, isGroup: true);
+        groupB.Children.Add(new SystemTreeNode(System2, isGroup: false));
+        root.Children.Add(new SystemTreeNode(System1, isGroup: false));
+        root.Children.Add(groupB);
+        world.SetSystemTree(root);
+
+        var cached = manager.BuildWorldCache(world);
+
+        // NodeLookup should contain all nodes: GroupA, GroupB, System1, System2
+        await Assert.That(cached.NodeLookup).IsNotNull();
+        await Assert.That(cached.NodeLookup.ContainsKey(GroupA)).IsTrue();
+        await Assert.That(cached.NodeLookup.ContainsKey(GroupB)).IsTrue();
+        await Assert.That(cached.NodeLookup.ContainsKey(System1)).IsTrue();
+        await Assert.That(cached.NodeLookup.ContainsKey(System2)).IsTrue();
+    }
+
+    [Test]
+    public async Task ExecuteSystems_DictionaryLookupProducesSameResultsAsTreeSearch()
+    {
+        // Verify that with dictionary lookup, ordering and gate/skip still work correctly
+        var executionOrder = new List<Identification>();
+        var wrapper1 = new TrackingWrapper(System1, GroupA, executionOrder);
+        var wrapper2 = new TrackingWrapper(System2, GroupB, executionOrder);
+        var wrapper3 = new TrackingWrapper(System3, GroupB, executionOrder);
+        var manager = CreateManager(
+            [(System1, GroupA), (System2, GroupB), (System3, GroupB)],
+            [wrapper1, wrapper2, wrapper3],
+            childGroups: [(GroupB, GroupA)],
+            edges: [(System2, System3)]);
+        var world = IWorld.Create();
+
+        var root = new SystemTreeNode(GroupA, isGroup: true);
+        root.Children.Add(new SystemTreeNode(System1, isGroup: false));
+        var groupB = new SystemTreeNode(GroupB, isGroup: true);
+        groupB.Children.Add(new SystemTreeNode(System2, isGroup: false));
+        groupB.Children.Add(new SystemTreeNode(System3, isGroup: false));
+        root.Children.Add(groupB);
+        world.SetSystemTree(root);
+
+        manager.ExecuteSystems(world, default);
+
+        // All three systems should execute
+        await Assert.That(executionOrder).HasCount().EqualTo(3);
+        // System2 before System3 (ordering edge)
+        var idx2 = executionOrder.IndexOf(System2);
+        var idx3 = executionOrder.IndexOf(System3);
+        await Assert.That(idx2).IsLessThan(idx3);
+    }
+
     // --- BuildWorldCache Integration Tests ---
 
     [Test]

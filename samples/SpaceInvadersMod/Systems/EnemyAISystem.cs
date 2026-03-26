@@ -56,7 +56,7 @@ public partial class GameplayGroup
         if (shooterCandidate != EntityId.None)
         {
             // Reset shooter cooldown
-            var modifyBuffer = commandBufferAccessor.Modify<int>(shooterCandidate);
+            var modifyBuffer = commandBufferAccessor.Modify(shooterCandidate);
             modifyBuffer.SetComponent(new ShootCooldown
             {
                 Remaining = SpaceInvadersConstants.EnemyRefireCooldownMin +
@@ -66,7 +66,7 @@ public partial class GameplayGroup
             // Spawn enemy bullet (per D-08: BulletData.Direction = -1)
             ICapabilityRequirement[] bulletFilter =
                 [new ComponentSetRequirement([UnmanagedComponentID.SpaceInvadersMod.Position, UnmanagedComponentID.SpaceInvadersMod.Velocity, UnmanagedComponentID.SpaceInvadersMod.BulletData])];
-            var bulletBuffer = commandBufferAccessor.Create<int>(bulletFilter);
+            var bulletBuffer = commandBufferAccessor.Create(bulletFilter);
             bulletBuffer.SetComponent(new Position { Value = new Vector2(shooterPosition.X, shooterPosition.Y + 0.02f) });
             bulletBuffer.SetComponent(new Velocity { Value = new Vector2(0f, SpaceInvadersConstants.BulletSpeed) });
             bulletBuffer.SetComponent(new BulletData { Direction = -1f });

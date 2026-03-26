@@ -4,20 +4,20 @@ namespace Sparkitect.ECS.Commands;
 
 /// <summary>
 /// Command that destroys an entity at playback time.
-/// Unassigns the entity identity, removes it from storage, and reclaims the EntityId.
+/// Receives the pre-resolved slot from the buffer -- unassign, remove, and reclaim.
 /// </summary>
-/// <typeparam name="TKey">The unmanaged storage key type.</typeparam>
-public class DestroyEntityCommand<TKey> : ICommand where TKey : unmanaged
+public class DestroyEntityCommand : ICommand
 {
     /// <inheritdoc/>
-    public void Execute(IWorld world, StorageHandle storageHandle, EntityId entityId)
+    public void Execute<TKey>(IWorld world, StorageHandle storageHandle, TKey resolvedSlot)
+        where TKey : unmanaged
     {
         var accessor = world.GetStorage(storageHandle);
         var identity = accessor.As<IEntityIdentity<TKey>>()!;
-        identity.TryResolve(entityId, out var slot);
+        var entityId = identity.GetEntityId(resolvedSlot);
         identity.Unassign(entityId);
         var mutation = accessor.As<IEntityMutation<TKey>>()!;
-        mutation.RemoveEntity(slot);
+        mutation.RemoveEntity(resolvedSlot);
         world.ReclaimEntityId(entityId);
     }
 }

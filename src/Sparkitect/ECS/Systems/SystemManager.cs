@@ -112,9 +112,6 @@ internal class SystemManager(
 
         cached.FrameTimingHolder.Update(frameTiming);
 
-        var tree = world.GetSystemTree();
-        if (tree is null) return;
-
         var sortedAll = cached.Graph.SortedAll;
         var skipRanges = cached.Graph.GroupSkipRanges;
         var groupIds = cached.Graph.GroupIds;
@@ -127,7 +124,7 @@ internal class SystemManager(
             if (groupIds.Contains(id))
             {
                 // Group gate node: check state in tree
-                var groupNode = FindNodeInTree(tree, id);
+                cached.NodeLookup.TryGetValue(id, out var groupNode);
                 if (groupNode is null || groupNode.State != SystemState.Active)
                 {
                     // Skip entire subtree
@@ -142,7 +139,7 @@ internal class SystemManager(
             }
 
             // System node: check own state in tree
-            var systemNode = FindNodeInTree(tree, id);
+            cached.NodeLookup.TryGetValue(id, out var systemNode);
             if (systemNode is not null && systemNode.State == SystemState.Active)
             {
                 if (cached.Wrappers.TryGetValue(id, out var wrapper))
@@ -198,6 +195,7 @@ internal class SystemManager(
         var tree = world.GetSystemTree()
             ?? throw new InvalidOperationException("World must have a system tree set before building cache.");
 
+        var nodeLookup = BuildNodeLookup(tree);
         var loadedMods = gameStateManager.LoadedMods;
 
         // Build graph by walking the tree
@@ -227,7 +225,7 @@ internal class SystemManager(
             wrapperMap[wrapper.Identification] = wrapper;
         }
 
-        return new CachedWorldState(graph, wrapperMap, provider, commandBufferAccessor, frameTimingHolder);
+        return new CachedWorldState(graph, wrapperMap, provider, commandBufferAccessor, frameTimingHolder, nodeLookup);
     }
 
     private SystemTreeNode BuildNode(
@@ -256,15 +254,18 @@ internal class SystemManager(
         return node;
     }
 
-    private static SystemTreeNode? FindNodeInTree(SystemTreeNode root, Identification id)
+    private static Dictionary<Identification, SystemTreeNode> BuildNodeLookup(SystemTreeNode root)
     {
-        if (root.Id == id) return root;
-        foreach (var child in root.Children)
-        {
-            var found = FindNodeInTree(child, id);
-            if (found is not null) return found;
-        }
-        return null;
+        var lookup = new Dictionary<Identification, SystemTreeNode>();
+        PopulateLookup(root, lookup);
+        return lookup;
+    }
+
+    private static void PopulateLookup(SystemTreeNode node, Dictionary<Identification, SystemTreeNode> lookup)
+    {
+        lookup[node.Id] = node;
+        foreach (var child in node.Children)
+            PopulateLookup(child, lookup);
     }
 
     internal sealed class CachedWorldState(
@@ -272,12 +273,14 @@ internal class SystemManager(
         Dictionary<Identification, IStatelessFunction> wrappers,
         EcsResolutionProvider provider,
         CommandBufferAccessor commandBufferAccessor,
-        FrameTimingHolder frameTimingHolder)
+        FrameTimingHolder frameTimingHolder,
+        Dictionary<Identification, SystemTreeNode> nodeLookup)
     {
         public EcsExecutionGraph Graph { get; } = graph;
         public Dictionary<Identification, IStatelessFunction> Wrappers { get; } = wrappers;
         public EcsResolutionProvider Provider { get; } = provider;
         public CommandBufferAccessor CommandBufferAccessor { get; } = commandBufferAccessor;
         public FrameTimingHolder FrameTimingHolder { get; } = frameTimingHolder;
+        public Dictionary<Identification, SystemTreeNode> NodeLookup { get; } = nodeLookup;
     }
 }

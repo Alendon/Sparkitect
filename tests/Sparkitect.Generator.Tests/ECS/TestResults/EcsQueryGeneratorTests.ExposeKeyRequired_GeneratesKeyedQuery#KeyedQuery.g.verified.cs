@@ -101,6 +101,13 @@ partial class KeyedQuery : global::System.IDisposable
         public global::TestMod.EntityId Key => _keySource.GetKey(ref global::System.Runtime.CompilerServices.Unsafe.AsRef(in _chunkHandle), _index);
         
 
+        /// <summary>
+        /// Creates a modify command buffer for this entity.
+        /// </summary>
+        public global::Sparkitect.ECS.Commands.ICommandBuffer Modify(
+            global::Sparkitect.ECS.Commands.ICommandBufferAccessor accessor)
+            => accessor.Modify(Key);
+
         
         public ref readonly global::TestMod.Position GetPosition()
         {

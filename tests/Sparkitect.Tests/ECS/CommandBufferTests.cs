@@ -15,25 +15,25 @@ public class CommandBufferTests
     // --- Recording Tests ---
 
     [Test]
-    public async Task SetComponent_Extension_AddsSetComponentCommandToBuffer()
+    public async Task SetComponent_AddsSetComponentCommandToBuffer()
     {
         var buffer = new CommandBuffer<int>(EntityId.None, default, isCreate: false);
 
         buffer.SetComponent(new TestPosition { X = 1f, Y = 2f });
 
         await Assert.That(buffer.Commands).HasCount().EqualTo(1);
-        await Assert.That(buffer.Commands[0]).IsAssignableTo<SetComponentCommand<int, TestPosition>>();
+        await Assert.That(buffer.Commands[0]).IsAssignableTo<SetComponentCommand<TestPosition>>();
     }
 
     [Test]
-    public async Task DestroyEntity_Extension_AddsDestroyEntityCommandToBuffer()
+    public async Task DestroyEntity_AddsDestroyEntityCommandToBuffer()
     {
         var buffer = new CommandBuffer<int>(EntityId.None, default, isCreate: false);
 
         buffer.DestroyEntity();
 
         await Assert.That(buffer.Commands).HasCount().EqualTo(1);
-        await Assert.That(buffer.Commands[0]).IsAssignableTo<DestroyEntityCommand<int>>();
+        await Assert.That(buffer.Commands[0]).IsAssignableTo<DestroyEntityCommand>();
     }
 
     [Test]
@@ -41,14 +41,14 @@ public class CommandBufferTests
     {
         var executed = false;
         IWorld? capturedWorld = null;
-        var cmd = new DelegateCommand((world, handle, entityId) =>
+        var cmd = new DelegateCommand((world, handle) =>
         {
             executed = true;
             capturedWorld = world;
         });
 
         using var world = IWorld.Create();
-        cmd.Execute(world, default, EntityId.None);
+        cmd.Execute<int>(world, default, 0);
 
         await Assert.That(executed).IsTrue();
         await Assert.That(capturedWorld).IsNotNull();
@@ -67,7 +67,7 @@ public class CommandBufferTests
         var handle = world.AddStorage(storage, storage.CreateCapabilityRegistrations());
         storage.SetHandle(handle);
 
-        var buffer = accessor.Create<int>(handle);
+        var buffer = accessor.Create(handle);
 
         await Assert.That(buffer.EntityId.IsNone).IsFalse();
         await Assert.That(buffer.EntityId.Generation).IsGreaterThanOrEqualTo((uint)1);
@@ -85,7 +85,7 @@ public class CommandBufferTests
         storage.SetHandle(handle);
 
         ICapabilityRequirement[] filter = [new ComponentSetRequirement([PositionId, VelocityId])];
-        var buffer = accessor.Create<int>(filter);
+        var buffer = accessor.Create(filter);
 
         await Assert.That(buffer.EntityId.IsNone).IsFalse();
         await Assert.That(buffer.StorageHandle).IsEqualTo(handle);
@@ -104,7 +104,7 @@ public class CommandBufferTests
 
         await Assert.That(() =>
         {
-            accessor.Modify<int>(entityId);
+            accessor.Modify(entityId);
         }).Throws<InvalidOperationException>();
     }
 
@@ -124,7 +124,7 @@ public class CommandBufferTests
         var slot = storage.AllocateEntity();
         storage.Assign(entityId, slot);
 
-        var buffer = accessor.Modify<int>(entityId);
+        var buffer = accessor.Modify(entityId);
 
         await Assert.That(buffer.EntityId).IsEqualTo(entityId);
         await Assert.That(buffer.StorageHandle).IsEqualTo(handle);
@@ -143,7 +143,7 @@ public class CommandBufferTests
         var handle = world.AddStorage(storage, storage.CreateCapabilityRegistrations());
         storage.SetHandle(handle);
 
-        var buffer = accessor.Create<int>(handle);
+        var buffer = accessor.Create(handle);
         buffer.SetComponent(new TestPosition { X = 42f, Y = 99f });
 
         accessor.Playback();
@@ -175,7 +175,7 @@ public class CommandBufferTests
         storage.Assign(entityId, slot);
 
         // Modify via command buffer
-        var buffer = accessor.Modify<int>(entityId);
+        var buffer = accessor.Modify(entityId);
         buffer.SetComponent(new TestPosition { X = 100f, Y = 200f });
 
         accessor.Playback();
@@ -204,7 +204,7 @@ public class CommandBufferTests
         storage.Assign(entityId, slot);
 
         // Destroy via command buffer
-        var buffer = accessor.Modify<int>(entityId);
+        var buffer = accessor.Modify(entityId);
         buffer.DestroyEntity();
 
         accessor.Playback();
@@ -212,6 +212,41 @@ public class CommandBufferTests
         // Entity should be reclaimed (Null state)
         await Assert.That(world.GetEntityState(entityId)).IsEqualTo(EntityState.Null);
         await Assert.That(world.IsValid(entityId)).IsFalse();
+    }
+
+    // --- Buffer-Level Entity Resolution Failure (D-17) ---
+
+    [Test]
+    public async Task Playback_ModifyBuffer_EntityDestroyed_BufferDropped()
+    {
+        using var world = IWorld.Create();
+        var accessor = new CommandBufferAccessor(world);
+
+        var tracker = new FakeObjectTracker();
+        using var storage = CreateStorage(tracker, world, [PositionId]);
+        var handle = world.AddStorage(storage, storage.CreateCapabilityRegistrations());
+        storage.SetHandle(handle);
+
+        // Create and bind an entity
+        var entityId = world.AllocateEntityId();
+        var slot = storage.AllocateEntity();
+        storage.Set(slot, new TestPosition { X = 1f, Y = 2f });
+        storage.Assign(entityId, slot);
+
+        // Create a modify buffer for the entity
+        var buffer = accessor.Modify(entityId);
+        buffer.SetComponent(new TestPosition { X = 999f, Y = 999f });
+
+        // Destroy entity directly before playback
+        storage.Unassign(entityId);
+        storage.RemoveEntity(slot);
+        world.ReclaimEntityId(entityId);
+
+        // Playback should drop the buffer silently (D-17)
+        accessor.Playback(); // Should not throw
+
+        // Entity remains reclaimed -- no ghost writes occurred
+        await Assert.That(world.GetEntityState(entityId)).IsEqualTo(EntityState.Null);
     }
 
     // --- FIFO Ordering Test ---
@@ -228,10 +263,10 @@ public class CommandBufferTests
         storage.SetHandle(handle);
 
         // Create two entities via command buffers
-        var buffer1 = accessor.Create<int>(handle);
+        var buffer1 = accessor.Create(handle);
         buffer1.SetComponent(new TestPosition { X = 1f, Y = 10f });
 
-        var buffer2 = accessor.Create<int>(handle);
+        var buffer2 = accessor.Create(handle);
         buffer2.SetComponent(new TestPosition { X = 2f, Y = 20f });
 
         accessor.Playback();
@@ -259,14 +294,14 @@ public class CommandBufferTests
         var handle = world.AddStorage(storage, storage.CreateCapabilityRegistrations());
         storage.SetHandle(handle);
 
-        var buffer = accessor.Create<int>(handle);
+        var buffer = accessor.Create(handle);
         buffer.SetComponent(new TestPosition { X = 1f, Y = 2f });
 
         accessor.Playback();
 
         // Second playback should be a no-op (auto-cleared)
         // Create another entity to verify accessor works fresh
-        var buffer2 = accessor.Create<int>(handle);
+        var buffer2 = accessor.Create(handle);
         buffer2.SetComponent(new TestPosition { X = 99f, Y = 99f });
 
         accessor.Playback();
@@ -294,7 +329,7 @@ public class CommandBufferTests
         // Create 3 entities via command buffer
         for (int i = 0; i < 3; i++)
         {
-            var buffer = accessor.Create<int>(handle);
+            var buffer = accessor.Create(handle);
             buffer.SetComponent(new TestPosition { X = i * 10f, Y = i * 20f });
             buffer.SetComponent(new TestVelocity { Dx = i * 1f, Dy = i * 2f });
         }

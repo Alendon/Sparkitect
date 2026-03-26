@@ -83,6 +83,9 @@ public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, IChunk
     /// <inheritdoc/>
     public void RemoveEntity(int key)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(key);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(key, _count);
+
         int lastIndex = _count - 1;
         if (key != lastIndex)
         {

@@ -1,24 +1,26 @@
+using Sparkitect.Modding;
+
 namespace Sparkitect.ECS.Commands;
 
 /// <summary>
-/// Buffer interface for recording deferred mutations against a single entity.
-/// Each buffer targets exactly one entity (new or existing) per D-02.
+/// Non-generic buffer interface for recording deferred mutations against a single entity.
+/// System authors interact with this interface -- TKey is never exposed.
 /// </summary>
-/// <typeparam name="TKey">The unmanaged storage key type.</typeparam>
-public interface ICommandBuffer<TKey> where TKey : unmanaged
+public interface ICommandBuffer
 {
-    /// <summary>
-    /// The entity this buffer targets. Available immediately after creation (D-15).
-    /// </summary>
+    /// <summary>The entity this buffer targets.</summary>
     EntityId EntityId { get; }
 
-    /// <summary>
-    /// The storage handle this buffer targets for playback.
-    /// </summary>
+    /// <summary>The storage handle this buffer targets for playback.</summary>
     StorageHandle StorageHandle { get; }
 
     /// <summary>
-    /// The list of recorded commands to be executed at playback.
+    /// Records a SetComponent command to set a component value at playback.
     /// </summary>
-    List<ICommand> Commands { get; }
+    void SetComponent<T>(T value) where T : unmanaged, IHasIdentification;
+
+    /// <summary>
+    /// Records a DestroyEntity command to destroy this entity at playback.
+    /// </summary>
+    void DestroyEntity();
 }

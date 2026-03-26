@@ -56,6 +56,10 @@ public class EntityIdentityMap<TKey>
     /// </summary>
     public void Unassign(EntityId id)
     {
+        if (id.Index >= (uint)_assigned.Length || !_assigned[id.Index])
+            throw new InvalidOperationException(
+                $"Cannot unassign entity {id}: not currently assigned.");
+
         var key = _entityToKey[id.Index];
         _keyToEntity.Remove(key);
         _assigned[id.Index] = false;

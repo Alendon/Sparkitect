@@ -20,7 +20,7 @@ public partial class GameplayGroup
             // Remove bullets that have left the screen (0-1 normalized space)
             if (pos.Value.Y < 0f || pos.Value.Y > 1f)
             {
-                commandBufferAccessor.Modify<int>(entity.Key).DestroyEntity();
+                entity.Modify(commandBufferAccessor).DestroyEntity();
             }
         }
     }

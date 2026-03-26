@@ -29,6 +29,12 @@ public readonly ref struct StorageAccessor
     public int Count => _storage.Count;
 
     /// <summary>
+    /// The runtime key type used by this storage (e.g., <c>typeof(int)</c>).
+    /// Delegates to <see cref="IStorage.KeyType"/>.
+    /// </summary>
+    public Type KeyType => _storage.KeyType;
+
+    /// <summary>
     /// Attempts to cast the underlying storage to a capability interface.
     /// Returns <c>null</c> if the storage does not implement the requested capability.
     /// </summary>

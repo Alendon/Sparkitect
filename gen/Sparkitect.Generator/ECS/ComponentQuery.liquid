@@ -117,6 +117,16 @@ partial class {{ ClassName }} : global::System.IDisposable
         public {{ KeyTypeFullyQualified }} Key => _keySource.GetKey(ref global::System.Runtime.CompilerServices.Unsafe.AsRef(in _chunkHandle), _index);
         {% endif %}
 
+        {%- if IsKeyed %}
+
+        /// <summary>
+        /// Creates a modify command buffer for this entity.
+        /// </summary>
+        public global::Sparkitect.ECS.Commands.ICommandBuffer Modify(
+            global::Sparkitect.ECS.Commands.ICommandBufferAccessor accessor)
+            => accessor.Modify(Key);
+        {%- endif %}
+
         {% for c in ReadComponents %}
         public ref readonly {{ c.FullyQualifiedName }} Get{{ c.ShortName }}()
         {
