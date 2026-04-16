@@ -16,6 +16,9 @@
 - name: ECS
   href: ecs/toc.yml
   topicHref: ecs/index.md
+- name: Render Graph
+  href: rendergraph/toc.yml
+  topicHref: rendergraph/index.md
 # Tooling
 - name: Tooling
   href: tooling/toc.yml
