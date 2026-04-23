@@ -14,9 +14,6 @@ internal class TestRegistry_KeyedFactory : global::Sparkitect.DI.IKeyedFactory<S
 
     public Type ImplementationType => typeof(TestRegistry);
 
-    public string Key => "test_key";
-    
-
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
     
         (typeof(TestNamespace.ILogger), false) 

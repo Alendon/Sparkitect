@@ -1,4 +1,4 @@
-﻿using JetBrains.Annotations;
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.DI;
@@ -9,10 +9,12 @@ namespace Sparkitect.DI;
 /// are annotated with [Registry] attribute. Manual implementations are possible but rare.
 /// </summary>
 /// <remarks>
-/// The <see cref="IFactoryConfigurator{TBase, TDiscoveryAttribute}.Configure"/> method inherited from
-/// <see cref="IFactoryConfigurator{TBase, TDiscoveryAttribute}"/> registers keyed registry factories.
+/// The <see cref="IFactoryConfigurator{TKey,TBase,TDiscoveryAttribute}.Configure"/> method inherited from
+/// <see cref="IFactoryConfigurator{TKey,TBase,TDiscoveryAttribute}"/> writes registry factory entries
+/// directly into the aggregate registration map owned by <see cref="IDIService.BuildFactoryContainer{TKey,TBase}"/>.
 /// </remarks>
-public interface IRegistryConfigurator : IFactoryConfigurator<IRegistryBase, RegistryConfiguratorAttribute>;
+public interface IRegistryConfigurator
+    : IFactoryConfigurator<string, IRegistryBase, RegistryConfiguratorAttribute>;
 
 /// <summary>
 /// Marks a class as a registry configurator entrypoint. Automatically applied by source generators

@@ -752,14 +752,14 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
     public async Task RenderConfigurator_KeyedKind_Complete_SingleUnconditional(CancellationToken token)
     {
         var registrations = ImmutableValueArray.From(
-            new RegistrationModel("global::TestNamespace.TestRegistry_KeyedFactory", []));
+            new RegistrationModel("global::TestNamespace.TestRegistry_KeyedFactory", [], "\"test_key\""));
 
         var options = new ConfiguratorOptions(
             ClassName: "KeyedConfigurator",
             Namespace: "TestNamespace",
             BaseType: "Sparkitect.Modding.IRegistryConfigurator",
             EntrypointAttribute: "Sparkitect.Modding.RegistryConfiguratorEntrypointAttribute",
-            Kind: new ConfiguratorKind.Keyed("Sparkitect.Modding.IRegistryBase"),
+            Kind: new ConfiguratorKind.Keyed("string", "Sparkitect.Modding.IRegistryBase"),
             IsPartial: false);
 
         var success = DiPipeline.RenderConfigurator(registrations, options, out var code, out var fileName);
@@ -880,14 +880,14 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
     {
         var registrations = ImmutableValueArray.From(
             new RegistrationModel("global::TestNamespace.OptRegistry_KeyedFactory",
-                ImmutableValueArray.From("ext_mod")));
+                ImmutableValueArray.From("ext_mod"), "\"opt_registry\""));
 
         var options = new ConfiguratorOptions(
             ClassName: "KeyedPartialCondConfigurator",
             Namespace: "TestNamespace",
             BaseType: "Sparkitect.Modding.IRegistryConfigurator",
             EntrypointAttribute: "Sparkitect.Modding.RegistryConfiguratorEntrypointAttribute",
-            Kind: new ConfiguratorKind.Keyed("Sparkitect.Modding.IRegistryBase"),
+            Kind: new ConfiguratorKind.Keyed("string", "Sparkitect.Modding.IRegistryBase"),
             IsPartial: true);
 
         var success = DiPipeline.RenderConfigurator(registrations, options, out var code, out var fileName);

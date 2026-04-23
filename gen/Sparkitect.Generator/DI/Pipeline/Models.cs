@@ -21,7 +21,7 @@ public abstract record ConfiguratorKind
     private ConfiguratorKind() { }
 
     public sealed record Service : ConfiguratorKind;
-    public sealed record Keyed(string BaseType) : ConfiguratorKind;
+    public sealed record Keyed(string KeyExpression, string BaseType) : ConfiguratorKind;
 }
 
 /// <summary>
@@ -39,10 +39,12 @@ public record FactoryModel(
 /// <summary>
 /// Registration model for a factory in a configurator.
 /// Empty ConditionalModIds means unconditional registration.
+/// KeyExpression is populated for keyed registrations and holds the C# expression emitted as the dictionary key.
 /// </summary>
 public record RegistrationModel(
     string FactoryTypeName,
-    ImmutableValueArray<string> ConditionalModIds);
+    ImmutableValueArray<string> ConditionalModIds,
+    string KeyExpression = "");
 
 /// <summary>
 /// Combined factory and registration for pipeline boundary crossing.

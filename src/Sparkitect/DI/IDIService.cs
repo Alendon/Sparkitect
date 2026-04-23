@@ -81,20 +81,23 @@ public interface IDIService
         Dictionary<Type, List<object>>? supplementalMetadata);
 
     /// <summary>
-    /// Builds a complete factory container, owning the full pipeline:
-    /// discovers configurator entrypoints, collects factory registrations,
-    /// extracts wrapper types, builds resolution scope, prepares factories, and returns the container.
+    /// Builds a complete factory container, owning the full pipeline: discovers configurator entrypoints,
+    /// accumulates factory registrations from every configurator into a single aggregate map, extracts
+    /// wrapper types, builds resolution scope, hands the finalized map to the stateless builder once, and
+    /// returns the container.
     /// </summary>
+    /// <typeparam name="TKey">The key type used to identify factories.</typeparam>
     /// <typeparam name="TBase">The base type for objects created by the factories.</typeparam>
     /// <param name="container">The core container for dependency resolution.</param>
     /// <param name="provider">Optional resolution provider for metadata-driven resolution.</param>
     /// <param name="modIds">Mod IDs to scan for configurator entrypoints.</param>
     /// <param name="configuratorEntrypointAttribute">The attribute type marking factory configurator entrypoints.</param>
     /// <returns>A built factory container with all registered and prepared factories.</returns>
-    IFactoryContainer<TBase> BuildFactoryContainer<TBase>(
+    IFactoryContainer<TKey, TBase> BuildFactoryContainer<TKey, TBase>(
         ICoreContainer container,
         IResolutionProvider? provider,
         IEnumerable<string> modIds,
         Type configuratorEntrypointAttribute)
-        where TBase : class;
+        where TBase : class
+        where TKey : notnull;
 }

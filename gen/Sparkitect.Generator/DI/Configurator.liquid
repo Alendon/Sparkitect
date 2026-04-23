@@ -17,21 +17,21 @@ internal class {{ ClassName }} : global::{{ BaseType }}
 partial class {{ ClassName }}
 {
 {% endif -%}
-    {{ MethodVisibility }} void {{ MethodName }}({{ BuilderType }} builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {{ MethodVisibility }} void {{ MethodName }}({{ ConfigureParameterType }} {{ ConfigureParameterName }}, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
     {
 {% for reg in UnconditionalRegistrations -%}
         {{ reg.RegistrationCode }}
 {% endfor -%}
 {% for guard in ConditionalRegistrations %}
         if ({{ guard.Condition }})
-            {{ guard.GuardMethodName }}(builder);
+            {{ guard.GuardMethodName }}({{ ConfigureParameterName }});
 {% endfor -%}
     }
 {% for guard in ConditionalRegistrations %}
 {% for modId in guard.ModIds -%}
     [global::Sparkitect.Modding.ModLoadedGuard("{{ modId }}")]
 {% endfor -%}
-    private void {{ guard.GuardMethodName }}({{ BuilderType }} builder)
+    private void {{ guard.GuardMethodName }}({{ ConfigureParameterType }} {{ ConfigureParameterName }})
     {
         {{ guard.RegistrationCode }}
     }

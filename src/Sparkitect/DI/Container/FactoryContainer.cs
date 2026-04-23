@@ -6,18 +6,20 @@ namespace Sparkitect.DI.Container;
 /// <summary>
 /// Implementation of a factory container that stores and provides access to keyed factories
 /// </summary>
+/// <typeparam name="TKey">The key type used to look up factories</typeparam>
 /// <typeparam name="TBase">The base type for objects created by the factories</typeparam>
-internal sealed class FactoryContainer<TBase> : IFactoryContainer<TBase>
+internal sealed class FactoryContainer<TKey, TBase> : IFactoryContainer<TKey, TBase>
     where TBase : class
+    where TKey : notnull
 {
-    private readonly Dictionary<string, IKeyedFactory<TBase>> _factories;
+    private readonly Dictionary<TKey, IKeyedFactory<TBase>> _factories;
     private bool _disposed;
 
     /// <summary>
     /// Creates a new factory container with the given prepared factories
     /// </summary>
     /// <param name="factories">The dictionary of prepared keyed factories</param>
-    public FactoryContainer(Dictionary<string, IKeyedFactory<TBase>> factories)
+    public FactoryContainer(Dictionary<TKey, IKeyedFactory<TBase>> factories)
     {
         _factories = factories ?? throw new ArgumentNullException(nameof(factories));
         _disposed = false;
@@ -27,12 +29,12 @@ internal sealed class FactoryContainer<TBase> : IFactoryContainer<TBase>
     /// Resolves all factories and creates new instances for each
     /// </summary>
     /// <returns>A read-only dictionary of all factory keys and their created instances</returns>
-    public IReadOnlyDictionary<string, TBase> ResolveAll()
+    public IReadOnlyDictionary<TKey, TBase> ResolveAll()
     {
         if (_disposed)
-            throw new ObjectDisposedException(nameof(FactoryContainer<TBase>));
+            throw new ObjectDisposedException(nameof(FactoryContainer<TKey, TBase>));
 
-        var result = new Dictionary<string, TBase>();
+        var result = new Dictionary<TKey, TBase>();
 
         foreach (var (key, factory) in _factories)
         {
@@ -46,10 +48,10 @@ internal sealed class FactoryContainer<TBase> : IFactoryContainer<TBase>
     /// <summary>
     /// Attempts to resolve a factory by key and create an instance
     /// </summary>
-    /// <param name="key">The string key to look up the factory</param>
+    /// <param name="key">The key to look up the factory</param>
     /// <param name="instance">The created instance if found</param>
     /// <returns>True if the factory was found and instance created successfully</returns>
-    public bool TryResolve(string key, [NotNullWhen(true)] out TBase? instance)
+    public bool TryResolve(TKey key, [NotNullWhen(true)] out TBase? instance)
     {
         if (_disposed)
         {
@@ -66,7 +68,6 @@ internal sealed class FactoryContainer<TBase> : IFactoryContainer<TBase>
         instance = null;
         return false;
     }
-
 
     /// <summary>
     /// Disposes the container and all disposable factory instances

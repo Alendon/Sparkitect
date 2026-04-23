@@ -7,10 +7,10 @@ namespace SampleTest.Generated;
 
 partial class RegistryConfigurator
 {
-private void RegisterRegistries(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+private void RegisterRegistries(global::System.Collections.Generic.IDictionary<string, global::Sparkitect.DI.IKeyedFactory<global::Sparkitect.Modding.IRegistryBase>> registrations, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
     {
-builder.Register(new global::DiTest.TestRegistry1_KeyedFactory());
-builder.Register(new global::DiTest.Nested.TestRegistry2_KeyedFactory());
+registrations["test1"] = new global::DiTest.TestRegistry1_KeyedFactory();
+registrations["test2"] = new global::DiTest.Nested.TestRegistry2_KeyedFactory();
 }
 }
 ,
@@ -24,9 +24,11 @@ namespace SampleTest.Generated;
 [global::Sparkitect.DI.RegistryConfigurator]
 internal partial class RegistryConfigurator : global::Sparkitect.DI.IRegistryConfigurator
 {
-    public void Configure(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    public void Configure(
+        global::System.Collections.Generic.IDictionary<string, global::Sparkitect.DI.IKeyedFactory<global::Sparkitect.Modding.IRegistryBase>> registrations,
+        global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
     {
-        RegisterRegistries(builder, loadedMods);
+        RegisterRegistries(registrations, loadedMods);
     }
 }
 }

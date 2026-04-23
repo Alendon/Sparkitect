@@ -139,32 +139,35 @@ internal class DIService : IDIService
         return new ResolutionScope(container, provider, metadata);
     }
 
-    public IFactoryContainer<TBase> BuildFactoryContainer<TBase>(
+    public IFactoryContainer<TKey, TBase> BuildFactoryContainer<TKey, TBase>(
         ICoreContainer container,
         IResolutionProvider? provider,
         IEnumerable<string> modIds,
         Type configuratorEntrypointAttribute)
         where TBase : class
+        where TKey : notnull
     {
         var modIdList = modIds as IReadOnlyList<string> ?? modIds.ToList();
         var modIdSet = modIdList.ToHashSet() as IReadOnlySet<string>;
 
-        // Step 1: Discover configurator entrypoints and collect factory registrations
-        var factoryBuilder = new FactoryContainerBuilder<TBase>(container);
+        // Step 1: Accumulate every configurator's registrations into a single aggregate map
+        //         (later-wins across the whole execution set — D-14).
+        var registrations = new Dictionary<TKey, IKeyedFactory<TBase>>();
 
         using var configuratorContainer =
-            CreateEntrypointContainer<IFactoryConfiguratorBase<TBase>>(modIdList, configuratorEntrypointAttribute);
+            CreateEntrypointContainer<IFactoryConfiguratorBase<TKey, TBase>>(modIdList, configuratorEntrypointAttribute);
 
-        configuratorContainer.ProcessMany(configurator => configurator.Configure(factoryBuilder, modIdSet));
+        configuratorContainer.ProcessMany(configurator => configurator.Configure(registrations, modIdSet));
 
-        // Step 2: Extract wrapper types from registered factories
-        var wrapperTypes = factoryBuilder.GetRegisteredWrapperTypes();
+        // Step 2: Extract wrapper types from the finalized aggregate
+        var wrapperTypes = registrations.Values.Select(f => f.GetType()).ToList();
 
         // Step 3: Build resolution scope for those wrapper types
         var scope = BuildScope(container, provider, modIdList, wrapperTypes);
 
-        // Step 4: Build factory container (prepares all factories with scope)
-        return factoryBuilder.Build(scope, skipMissing: true);
+        // Step 4: Materialize the container once from the finalized aggregate
+        var builder = new FactoryContainerBuilder<TKey, TBase>();
+        return builder.Build(registrations, scope, skipMissing: true);
     }
 
     private static IReadOnlyList<Type> OrderEntrypoints<T>(IReadOnlyList<Type> allCandidateTypes)

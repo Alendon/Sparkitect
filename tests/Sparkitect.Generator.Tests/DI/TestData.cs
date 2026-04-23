@@ -37,6 +37,8 @@ public static partial class TestData
 
     public static (string, object) DiContainerInterfaces => ("DiContainerInterfaces.cs",
         """
+        using System.Collections.Generic;
+
         namespace Sparkitect.DI.Container;
 
         public interface ICoreContainerBuilder
@@ -44,11 +46,6 @@ public static partial class TestData
             void Register<TFactory>();
             bool TryResolveInternal<T>(out T result) where T : class;
             bool TryResolveInternal(Type type, out object result);
-        }
-
-        public interface IFactoryContainerBuilder<TBase>
-        {
-            void Register(object factory);
         }
         """);
 

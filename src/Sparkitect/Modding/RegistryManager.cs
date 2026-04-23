@@ -24,7 +24,7 @@ internal class RegistryManager : IRegistryManager
     public bool IsMutationExpected => _isMutationExpected;
 
     private HashSet<string>? _lastModSet;
-    private IFactoryContainer<IRegistryBase>? _registryFactory;
+    private IFactoryContainer<string, IRegistryBase>? _registryFactory;
     
     public void AddRegistry<TRegistry>() where TRegistry : class, IRegistry
     {
@@ -61,7 +61,7 @@ internal class RegistryManager : IRegistryManager
         _registryFactory?.Dispose();
 
         var provider = new FacadeResolutionProvider();
-        _registryFactory = DIService.BuildFactoryContainer<IRegistryBase>(
+        _registryFactory = DIService.BuildFactoryContainer<string, IRegistryBase>(
             effectiveContainer, provider, modIds,
             typeof(RegistryConfiguratorAttribute));
         _lastCoreContainer = effectiveContainer;

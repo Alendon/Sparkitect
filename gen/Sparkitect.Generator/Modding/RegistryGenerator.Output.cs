@@ -170,7 +170,7 @@ public partial class RegistryGenerator
             Namespace: settings.ComputeOutputNamespace(),
             BaseType: "Sparkitect.DI.IRegistryConfigurator",
             EntrypointAttribute: "Sparkitect.DI.RegistryConfiguratorAttribute",
-            Kind: new ConfiguratorKind.Keyed("Sparkitect.Modding.IRegistryBase"),
+            Kind: new ConfiguratorKind.Keyed("string", "Sparkitect.Modding.IRegistryBase"),
             IsPartial: true,
             MethodName: "RegisterRegistries");
 
@@ -195,9 +195,11 @@ namespace {settings.ComputeOutputNamespace()};
 [global::Sparkitect.DI.RegistryConfigurator]
 internal partial class RegistryConfigurator : global::Sparkitect.DI.IRegistryConfigurator
 {{
-    public void Configure(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    public void Configure(
+        global::System.Collections.Generic.IDictionary<string, global::Sparkitect.DI.IKeyedFactory<global::Sparkitect.Modding.IRegistryBase>> registrations,
+        global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
     {{
-        RegisterRegistries(builder, loadedMods);
+        RegisterRegistries(registrations, loadedMods);
     }}
 }}";
     }

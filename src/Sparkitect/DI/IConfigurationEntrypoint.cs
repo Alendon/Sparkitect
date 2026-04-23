@@ -1,4 +1,4 @@
-﻿using Sparkitect.DI.Container;
+using Sparkitect.DI.Container;
 
 namespace Sparkitect.DI;
 
@@ -43,27 +43,36 @@ public interface ICoreConfigurator<TDiscoveryAttribute>
 
 /// <summary>
 /// Non-generic bridge interface for factory configurators.
-/// Enables <see cref="IDIService.BuildFactoryContainer{TBase}"/> to discover configurators
+/// Enables <see cref="IDIService.BuildFactoryContainer{TKey,TBase}"/> to discover configurators
 /// with the relaxed <c>CreateEntrypointContainer</c> overload and call Configure through the base interface.
+/// Configurators write directly into the shared aggregate registration map; DIService owns the map and
+/// hands the finalized map to <see cref="IFactoryContainerBuilder{TKey,TBase}.Build"/> once after every
+/// configurator has contributed.
 /// </summary>
+/// <typeparam name="TKey">The key type used to identify factories.</typeparam>
 /// <typeparam name="TBase">The base type for objects created by the factories.</typeparam>
-public interface IFactoryConfiguratorBase<TBase> where TBase : class
+public interface IFactoryConfiguratorBase<TKey, TBase>
+    where TBase : class
+    where TKey : notnull
 {
     /// <summary>
-    /// Configures keyed factories with the factory container builder.
+    /// Writes keyed factory registrations into the shared aggregate map. Later writes silently
+    /// override earlier writes for the same key (later-wins).
     /// </summary>
-    /// <param name="builder">The factory container builder to register factories with.</param>
+    /// <param name="registrations">The shared aggregate map to write factory registrations into.</param>
     /// <param name="loadedMods">The set of currently loaded mod IDs.</param>
-    void Configure(IFactoryContainerBuilder<TBase> builder, IReadOnlySet<string> loadedMods);
+    void Configure(IDictionary<TKey, IKeyedFactory<TBase>> registrations, IReadOnlySet<string> loadedMods);
 }
 
 /// <summary>
-/// Configuration entrypoint for factory registration. Implementations register keyed factories
-/// with an <see cref="IFactoryContainerBuilder{TBase}"/> during initialization.
+/// Configuration entrypoint for factory registration. Implementations write keyed factory registrations
+/// into a shared aggregate map; DIService finalizes the map and builds the container once.
 /// </summary>
+/// <typeparam name="TKey">The key type used to identify factories.</typeparam>
 /// <typeparam name="TBase">The base type for objects created by the factories.</typeparam>
 /// <typeparam name="TDiscoveryAttribute">The attribute type used to discover implementations of this entrypoint.</typeparam>
-public interface IFactoryConfigurator<TBase, TDiscoveryAttribute>
-    : IConfigurationEntrypoint<TDiscoveryAttribute>, IFactoryConfiguratorBase<TBase>
+public interface IFactoryConfigurator<TKey, TBase, TDiscoveryAttribute>
+    : IConfigurationEntrypoint<TDiscoveryAttribute>, IFactoryConfiguratorBase<TKey, TBase>
     where TBase : class
+    where TKey : notnull
     where TDiscoveryAttribute : Attribute;

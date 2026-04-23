@@ -19,10 +19,6 @@ internal class {{ ImplementationTypeName }}_KeyedFactory : global::Sparkitect.DI
 
     public Type ImplementationType => typeof({{ ImplementationTypeName }});
 
-    {% if Intent.Key -%}
-    public string Key => "{{ Intent.Key }}";
-    {% endif %}
-
     public (Type Type, bool IsOptional)[] GetConstructorDependencies() => [
     {% for argument in ConstructorArguments %}
         (typeof({{ argument.Type }}), {{ argument.IsOptional }}) {% unless forloop.last %}, {%- endunless -%}

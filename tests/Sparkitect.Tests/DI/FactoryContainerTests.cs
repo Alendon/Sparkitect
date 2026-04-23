@@ -1,25 +1,24 @@
 using Moq;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
+using Sparkitect.DI.Resolution;
 
 namespace Sparkitect.Tests.DI;
 
 public class FactoryContainerTests
 {
-    private static IKeyedFactory<ITestService> CreateMockFactory(string key, ITestService instance, Type? implementationType = null)
+    private static IKeyedFactory<ITestService> CreateMockFactory(ITestService instance, Type? implementationType = null)
     {
         var mock = new Mock<IKeyedFactory<ITestService>>();
-        mock.Setup(f => f.Key).Returns(key);
         mock.Setup(f => f.CreateInstance()).Returns(instance);
         mock.Setup(f => f.ImplementationType).Returns(implementationType ?? instance.GetType());
         return mock.Object;
     }
 
-    private static IKeyedFactory<ITestService> CreateDisposableMockFactory(string key, ITestService instance, Action onDispose)
+    private static IKeyedFactory<ITestService> CreateDisposableMockFactory(ITestService instance, Action onDispose)
     {
         var mock = new Mock<IKeyedFactory<ITestService>>();
         mock.As<IDisposable>().Setup(d => d.Dispose()).Callback(onDispose);
-        mock.Setup(f => f.Key).Returns(key);
         mock.Setup(f => f.CreateInstance()).Returns(instance);
         mock.Setup(f => f.ImplementationType).Returns(instance.GetType());
         return mock.Object;
@@ -30,12 +29,12 @@ public class FactoryContainerTests
     {
         // Arrange
         var testService = new TestService();
-        var factory = CreateMockFactory("test-key", testService);
+        var factory = CreateMockFactory(testService);
         var factories = new Dictionary<string, IKeyedFactory<ITestService>>
         {
             { "test-key", factory }
         };
-        var container = new FactoryContainer<ITestService>(factories);
+        var container = new FactoryContainer<string, ITestService>(factories);
 
         // Act
         var result = container.TryResolve("test-key", out var instance);
@@ -51,12 +50,12 @@ public class FactoryContainerTests
     {
         // Arrange
         var testService = new TestService();
-        var factory = CreateMockFactory("existing-key", testService);
+        var factory = CreateMockFactory(testService);
         var factories = new Dictionary<string, IKeyedFactory<ITestService>>
         {
             { "existing-key", factory }
         };
-        var container = new FactoryContainer<ITestService>(factories);
+        var container = new FactoryContainer<string, ITestService>(factories);
 
         // Act
         var result = container.TryResolve("non-existent-key", out var instance);
@@ -71,12 +70,12 @@ public class FactoryContainerTests
     {
         // Arrange
         var testService = new TestService();
-        var factory = CreateMockFactory("test-key", testService);
+        var factory = CreateMockFactory(testService);
         var factories = new Dictionary<string, IKeyedFactory<ITestService>>
         {
             { "test-key", factory }
         };
-        var container = new FactoryContainer<ITestService>(factories);
+        var container = new FactoryContainer<string, ITestService>(factories);
         container.Dispose();
 
         // Act
@@ -93,14 +92,14 @@ public class FactoryContainerTests
         // Arrange
         var service1 = new TestService();
         var service2 = new OverrideTestService();
-        var factory1 = CreateMockFactory("key1", service1);
-        var factory2 = CreateMockFactory("key2", service2);
+        var factory1 = CreateMockFactory(service1);
+        var factory2 = CreateMockFactory(service2);
         var factories = new Dictionary<string, IKeyedFactory<ITestService>>
         {
             { "key1", factory1 },
             { "key2", factory2 }
         };
-        var container = new FactoryContainer<ITestService>(factories);
+        var container = new FactoryContainer<string, ITestService>(factories);
 
         // Act
         var result = container.ResolveAll();
@@ -117,12 +116,12 @@ public class FactoryContainerTests
     {
         // Arrange
         var testService = new TestService();
-        var factory = CreateMockFactory("test-key", testService);
+        var factory = CreateMockFactory(testService);
         var factories = new Dictionary<string, IKeyedFactory<ITestService>>
         {
             { "test-key", factory }
         };
-        var container = new FactoryContainer<ITestService>(factories);
+        var container = new FactoryContainer<string, ITestService>(factories);
         container.Dispose();
 
         // Act & Assert
@@ -135,14 +134,14 @@ public class FactoryContainerTests
         // Arrange
         var disposed1 = false;
         var disposed2 = false;
-        var factory1 = CreateDisposableMockFactory("key1", new TestService(), () => disposed1 = true);
-        var factory2 = CreateDisposableMockFactory("key2", new TestService(), () => disposed2 = true);
+        var factory1 = CreateDisposableMockFactory(new TestService(), () => disposed1 = true);
+        var factory2 = CreateDisposableMockFactory(new TestService(), () => disposed2 = true);
         var factories = new Dictionary<string, IKeyedFactory<ITestService>>
         {
             { "key1", factory1 },
             { "key2", factory2 }
         };
-        var container = new FactoryContainer<ITestService>(factories);
+        var container = new FactoryContainer<string, ITestService>(factories);
 
         // Act
         container.Dispose();
@@ -150,5 +149,109 @@ public class FactoryContainerTests
         // Assert
         await Assert.That(disposed1).IsTrue();
         await Assert.That(disposed2).IsTrue();
+    }
+
+    private static IKeyedFactory<ITestService> CreatePreparedMockFactory(ITestService instance)
+    {
+        var mock = new Mock<IKeyedFactory<ITestService>>();
+        mock.Setup(f => f.CreateInstance()).Returns(instance);
+        mock.Setup(f => f.ImplementationType).Returns(instance.GetType());
+        mock.Setup(f => f.TryPrepare(It.IsAny<IResolutionScope>())).Returns(true);
+        return mock.Object;
+    }
+
+    [Test]
+    public async Task Build_PreparesAndReturnsContainer_WithAggregateMap()
+    {
+        // Arrange
+        var service = new TestService();
+        var factory = CreatePreparedMockFactory(service);
+        var registrations = new Dictionary<string, IKeyedFactory<ITestService>>
+        {
+            { "key1", factory }
+        };
+        var scope = new Mock<IResolutionScope>().Object;
+        var builder = new FactoryContainerBuilder<string, ITestService>();
+
+        // Act
+        using var container = builder.Build(registrations, scope);
+
+        // Assert
+        var resolved = container.TryResolve("key1", out var instance);
+        await Assert.That(resolved).IsTrue();
+        await Assert.That(instance).IsEqualTo(service);
+    }
+
+    [Test]
+    public async Task Build_SkipsFactory_WhenPrepareFailsAndSkipMissing()
+    {
+        // Arrange
+        var readyService = new TestService();
+        var readyFactory = CreatePreparedMockFactory(readyService);
+
+        var failingMock = new Mock<IKeyedFactory<ITestService>>();
+        failingMock.Setup(f => f.ImplementationType).Returns(typeof(TestService));
+        failingMock.Setup(f => f.TryPrepare(It.IsAny<IResolutionScope>())).Returns(false);
+
+        var registrations = new Dictionary<string, IKeyedFactory<ITestService>>
+        {
+            { "ready", readyFactory },
+            { "missing", failingMock.Object }
+        };
+        var scope = new Mock<IResolutionScope>().Object;
+        var builder = new FactoryContainerBuilder<string, ITestService>();
+
+        // Act
+        using var container = builder.Build(registrations, scope, skipMissing: true);
+
+        // Assert: ready factory survives, missing factory dropped
+        await Assert.That(container.TryResolve("ready", out _)).IsTrue();
+        await Assert.That(container.TryResolve("missing", out _)).IsFalse();
+    }
+
+    [Test]
+    public async Task Build_Throws_WhenPrepareFailsAndSkipMissingFalse()
+    {
+        // Arrange
+        var failingMock = new Mock<IKeyedFactory<ITestService>>();
+        failingMock.Setup(f => f.ImplementationType).Returns(typeof(TestService));
+        failingMock.Setup(f => f.TryPrepare(It.IsAny<IResolutionScope>())).Returns(false);
+
+        var registrations = new Dictionary<string, IKeyedFactory<ITestService>>
+        {
+            { "missing", failingMock.Object }
+        };
+        var scope = new Mock<IResolutionScope>().Object;
+        var builder = new FactoryContainerBuilder<string, ITestService>();
+
+        // Act & Assert
+        await Assert.That(() => builder.Build(registrations, scope, skipMissing: false))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task AggregateMap_LaterWins_WhenSameKeyWrittenTwice()
+    {
+        // Arrange: DIService-style orchestration — configurators write into a shared aggregate dict,
+        // later writes override earlier writes for the same key.
+        var firstService = new TestService();
+        var secondService = new OverrideTestService();
+        var firstFactory = CreatePreparedMockFactory(firstService);
+        var secondFactory = CreatePreparedMockFactory(secondService);
+
+        var registrations = new Dictionary<string, IKeyedFactory<ITestService>>();
+
+        // Act: two configurators write into the aggregate; second wins on the shared key
+        registrations["shared-key"] = firstFactory;
+        registrations["shared-key"] = secondFactory;
+
+        var scope = new Mock<IResolutionScope>().Object;
+        var builder = new FactoryContainerBuilder<string, ITestService>();
+        using var container = builder.Build(registrations, scope);
+
+        // Assert
+        var resolved = container.TryResolve("shared-key", out var instance);
+        await Assert.That(resolved).IsTrue();
+        await Assert.That(instance).IsEqualTo(secondService);
     }
 }

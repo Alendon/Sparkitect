@@ -5,16 +5,16 @@ namespace TestNamespace;
 
 partial class KeyedPartialCondConfigurator
 {
-private void Configure(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+private void Configure(global::System.Collections.Generic.IDictionary<string, global::Sparkitect.DI.IKeyedFactory<global::Sparkitect.Modding.IRegistryBase>> registrations, global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
     {
 
         if (loadedMods.Contains("ext_mod"))
-            Register_TestNamespace_OptRegistry_KeyedFactory(builder);
+            Register_TestNamespace_OptRegistry_KeyedFactory(registrations);
 }
 
 [global::Sparkitect.Modding.ModLoadedGuard("ext_mod")]
-private void Register_TestNamespace_OptRegistry_KeyedFactory(global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::Sparkitect.Modding.IRegistryBase> builder)
+private void Register_TestNamespace_OptRegistry_KeyedFactory(global::System.Collections.Generic.IDictionary<string, global::Sparkitect.DI.IKeyedFactory<global::Sparkitect.Modding.IRegistryBase>> registrations)
     {
-        builder.Register(new global::TestNamespace.OptRegistry_KeyedFactory());
+        registrations["opt_registry"] = new global::TestNamespace.OptRegistry_KeyedFactory();
     }
 }

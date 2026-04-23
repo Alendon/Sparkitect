@@ -112,12 +112,16 @@ public static class DiPipeline
             _ => $"global::{factory.ImplementationNamespace}.{factory.ImplementationTypeName}_Factory"
         };
 
-        return new RegistrationModel(factoryTypeName, conditionalModIds);
+        var keyExpression = factory.Intent is FactoryIntent.Keyed keyed ? $"\"{keyed.Key}\"" : "";
+
+        return new RegistrationModel(factoryTypeName, conditionalModIds, keyExpression);
     }
 
     /// <summary>
     /// Renders a configurator class from registrations and options.
     /// Handles both complete and partial configurators with conditional registration guard methods.
+    /// For keyed configurators, the emitted Configure method takes the aggregate registration map
+    /// directly and writes entries into it; DIService owns the map across the whole execution set.
     /// </summary>
     public static bool RenderConfigurator(
         ImmutableValueArray<RegistrationModel> registrations,
@@ -130,29 +134,36 @@ public static class DiPipeline
         var methodVisibility = options.IsPartial ? "private" : "public";
         var methodName = options.MethodName ?? "Configure";
 
-        var builderType = options.Kind switch
+        string configureParameterType;
+        string configureParameterName;
+        switch (options.Kind)
         {
-            ConfiguratorKind.Service =>
-                "global::Sparkitect.DI.Container.ICoreContainerBuilder",
-            ConfiguratorKind.Keyed keyed =>
-                $"global::Sparkitect.DI.Container.IFactoryContainerBuilder<global::{keyed.BaseType}>",
-            _ => "global::Sparkitect.DI.Container.ICoreContainerBuilder"
-        };
+            case ConfiguratorKind.Service:
+                configureParameterType = "global::Sparkitect.DI.Container.ICoreContainerBuilder";
+                configureParameterName = "builder";
+                break;
+            case ConfiguratorKind.Keyed keyed:
+                configureParameterType =
+                    $"global::System.Collections.Generic.IDictionary<{keyed.KeyExpression}, global::Sparkitect.DI.IKeyedFactory<global::{keyed.BaseType}>>";
+                configureParameterName = "registrations";
+                break;
+            default:
+                configureParameterType = "global::Sparkitect.DI.Container.ICoreContainerBuilder";
+                configureParameterName = "builder";
+                break;
+        }
 
         var unconditionalRegistrations = new List<object>();
         var conditionalRegistrations = new List<object>();
 
         foreach (var reg in registrations)
         {
+            var registrationCode = options.Kind is ConfiguratorKind.Keyed
+                ? $"{configureParameterName}[{reg.KeyExpression}] = new {reg.FactoryTypeName}();"
+                : $"{configureParameterName}.Register<{reg.FactoryTypeName}>();";
+
             if (reg.ConditionalModIds.Count == 0)
             {
-                var registrationCode = options.Kind switch
-                {
-                    ConfiguratorKind.Service => $"builder.Register<{reg.FactoryTypeName}>();",
-                    ConfiguratorKind.Keyed => $"builder.Register(new {reg.FactoryTypeName}());",
-                    _ => $"builder.Register<{reg.FactoryTypeName}>();"
-                };
-
                 unconditionalRegistrations.Add(new { RegistrationCode = registrationCode });
             }
             else
@@ -162,13 +173,6 @@ public static class DiPipeline
 
                 var sanitizedName = SanitizeForMethodName(reg.FactoryTypeName);
                 var guardMethodName = $"Register_{sanitizedName}";
-
-                var registrationCode = options.Kind switch
-                {
-                    ConfiguratorKind.Service => $"builder.Register<{reg.FactoryTypeName}>();",
-                    ConfiguratorKind.Keyed => $"builder.Register(new {reg.FactoryTypeName}());",
-                    _ => $"builder.Register<{reg.FactoryTypeName}>();"
-                };
 
                 conditionalRegistrations.Add(new
                 {
@@ -190,7 +194,8 @@ public static class DiPipeline
             options.ModuleTypeFullName,
             MethodVisibility = methodVisibility,
             MethodName = methodName,
-            BuilderType = builderType,
+            ConfigureParameterType = configureParameterType,
+            ConfigureParameterName = configureParameterName,
             UnconditionalRegistrations = unconditionalRegistrations.ToArray(),
             ConditionalRegistrations = conditionalRegistrations.ToArray()
         };

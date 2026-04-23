@@ -3,16 +3,13 @@ using Sparkitect.DI.Resolution;
 namespace Sparkitect.DI;
 
 /// <summary>
-/// Interface for factories that create keyed instances with dependencies
+/// Interface for factories that create instances with dependencies.
+/// The key associated with this factory is owned by the configurator that registers it,
+/// not by the factory itself.
 /// </summary>
 /// <typeparam name="TBase">The base type of the object to create</typeparam>
 public interface IKeyedFactory<TBase> : IFactoryBase where TBase : class
 {
-    /// <summary>
-    /// The string key used to identify this factory
-    /// </summary>
-    string Key { get; }
-
     /// <summary>
     /// Attempts to prepare the factory by resolving and caching all dependencies
     /// </summary>
