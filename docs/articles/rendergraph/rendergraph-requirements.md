@@ -78,7 +78,7 @@ The stock layer provides:
 - Pass graph compilation and dependency ordering.
 - Frame-resolved bindings.
 - Render graph lifecycle hook dispatch.
-- Command buffer ownership and recording context.
+- Command-buffer access for pass Execute — implementation-specific payload (wrapper object or direct `VkCommandBuffer`), with raw Vulkan preserved as an escape hatch.
 - Descriptor update/bind orchestration.
 - Stock synchronization, layout transition, transfer, and presentation behavior.
 - Debugging and validation tooling.
@@ -137,12 +137,12 @@ public sealed partial class EntityCopyPass : ComputePass
         _entities = DeclareEntities(...);
     }
 
-    public override void Execute(IRenderGraphCommandContext commandContext)
+    public override void Execute(ExecutePayload payload)
     {
         var storage = _storage.Fetch();
         var entities = _entities.Fetch();
 
-        // Record pass-specific work through Sparkitect's command buffer abstraction.
+        // Record pass-specific work through the payload, or via the raw Vulkan escape hatch.
     }
 }
 ```
@@ -157,9 +157,10 @@ The exact API shape is open. The important requirements are:
   lifecycle behavior.
 - Additional resource behavior is exposed by interfaces implemented by the resource view type
   and wired by generated or manually implemented pass contracts.
-- `Execute` receives Sparkitect's command context abstraction. Pass-specific command recording
-  should target that abstraction, not raw command buffer ownership, even if the abstraction
-  exposes a controlled Vulkan escape hatch.
+- `Execute` receives an implementation-specific payload chosen by the concrete stock graph type
+  for its pass type. The concrete shape is open — it may be a wrapper object or a direct
+  `VkCommandBuffer` pass-through. There is no central named command-context abstraction; earlier
+  design iterations named one and it has been dropped.
 - Stock pass abstractions may use attributes, generated wrappers, generated metadata, generated
   hook dispatchers, and generated binding code to wire resource-dependent logic in place.
 - Anything source generation emits for pass/resource contracts must be implementable manually.
@@ -324,7 +325,6 @@ Vulkan image views:
   outside the resource view contract.
 - **Voxel world composite view:** A view over chunk buffers, world-level acceleration data, and
   CPU metadata. It may expose world/chunk semantics rather than a single raw buffer.
-- **CPU metadata view:** A view for push constants or small per-frame structures.
 - **Multi-resource mapping view:** A view that wraps several existing resources, such as three
   images used together for a custom material or mapping scheme.
 
@@ -491,7 +491,7 @@ The stock Vulkan render graph must cover:
 - Descriptor sets.
 - Push constants.
 - Compute dispatch.
-- Command buffer ownership and recording context.
+- Command-buffer access for pass Execute — implementation-specific payload (wrapper object or direct `VkCommandBuffer`), with raw Vulkan preserved as an escape hatch.
 - Swapchain acquisition, presentation, synchronization, and resize invalidation.
 - VMA allocator integration as a single-per-device engine service.
 - Migration of Space Invaders and Pong from raw per-mod Vulkan orchestration to graph compute
@@ -616,8 +616,6 @@ are later stock or extension-layer concerns.
 - How does the stock graph model entity-derived render data provided by ECS systems?
 - How does the stock graph model composite resources such as voxel chunk buffers plus world BVH
   data?
-- How much command buffer ownership is hidden from pass authors, and what raw Vulkan escape
-  hatches remain?
 - Which validation happens in analyzers, source generators, graph compilation, and frame
   execution?
 

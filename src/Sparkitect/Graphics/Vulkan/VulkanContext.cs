@@ -515,10 +515,18 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         return _queuesByFamily.TryGetValue(familyIndex, out var queues) ? queues : [];
     }
 
+    /// <summary>
+    /// Pre-teardown device-idle checkpoint. <see cref="DestroyDevice"/> and all VMA / render-graph
+    /// teardown transitions order themselves after this method so they see an idle device.
+    /// </summary>
+    public void BeginVulkanTeardown()
+    {
+        VkDevice?.WaitIdle();
+    }
+
     public void DestroyDevice()
     {
         _queuesByFamily.Clear();
-        VkDevice?.WaitIdle();
         VkDevice?.Dispose();
         VkDevice = null!;
     }

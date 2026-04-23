@@ -47,7 +47,6 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     private VkFence? _inFlightFence;
     private uint _graphicsQueueFamily;
     private Queue _graphicsQueue;
-    private VmaAllocator? _vmaAllocator;
     private VmaImage? _storageImage;
     private ImageView _storageImageView;
     private VmaBuffer? _entityBuffer;
@@ -78,6 +77,7 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     public required IVulkanContext VulkanContext { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
     public required IShaderManager ShaderManager { private get; init; }
+    public required IVmaService VmaService { private get; init; }
 
     public IWorld? GetWorld() => _world;
     public RenderEntity[] GetRenderBuffer() => _renderBuffer;
@@ -319,11 +319,6 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         var vk = VulkanContext.VkApi;
         var device = VulkanContext.VkDevice.Handle;
 
-        _vmaAllocator = VmaAllocator.Create(
-            VulkanContext.VkInstance.Handle,
-            VulkanContext.VkPhysicalDevice.PhysicalDevice,
-            device);
-
         var swapchain = _window!.Swapchain;
         var imageInfo = new ImageCreateInfo
         {
@@ -343,7 +338,7 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         {
             Usage = VmaMemoryUsage.GpuOnly
         };
-        _storageImage = _vmaAllocator.CreateImage(imageInfo, allocInfo);
+        _storageImage = VmaService.DefaultAllocator.CreateImage(imageInfo, allocInfo);
 
         var storageViewInfo = new ImageViewCreateInfo
         {
@@ -374,7 +369,7 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             Usage = VmaMemoryUsage.CpuToGpu,
             Flags = VmaAllocationCreateFlags.Mapped
         };
-        _entityBuffer = _vmaAllocator.CreateBuffer(bufferCreateInfo, bufferAllocInfo);
+        _entityBuffer = VmaService.DefaultAllocator.CreateBuffer(bufferCreateInfo, bufferAllocInfo);
 
         CreateComputePipeline();
         CreateDescriptorResources();
@@ -730,7 +725,6 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         VulkanContext.VkApi.DestroyImageView(VulkanContext.VkDevice.Handle, _storageImageView, null);
         _storageImage?.Dispose();
         _entityBuffer?.Dispose();
-        _vmaAllocator?.Dispose();
 
         _descriptorPool?.Dispose();
         _computePipeline?.Dispose();

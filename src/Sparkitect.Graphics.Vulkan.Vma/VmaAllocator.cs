@@ -1,4 +1,3 @@
-using Serilog;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.Vulkan.Vma.Internal;
 using Vortice.Vulkan;
@@ -11,16 +10,9 @@ public sealed class VmaAllocator : IDisposable
     private readonly VorticeAllocator _allocator;
     private bool _disposed;
 
-    /// <summary>
-    /// Resource tracker for debugging VMA memory allocations.
-    /// Tracks VmaBuffer and VmaImage instances to detect memory leaks.
-    /// </summary>
-    public IVmaResourceTracker ResourceTracker { get; }
-
-    private VmaAllocator(VorticeAllocator allocator, IVmaResourceTracker resourceTracker)
+    private VmaAllocator(VorticeAllocator allocator)
     {
         _allocator = allocator;
-        ResourceTracker = resourceTracker;
     }
 
     static VmaAllocator()
@@ -29,28 +21,14 @@ public sealed class VmaAllocator : IDisposable
     }
 
     /// <summary>
-    /// Creates a new VMA allocator with resource tracking enabled.
+    /// Creates a new VMA allocator bound to the given Vulkan instance / physical device / device.
     /// </summary>
     /// <param name="instance">The Vulkan instance.</param>
     /// <param name="physicalDevice">The physical device.</param>
     /// <param name="device">The logical device.</param>
-    /// <param name="vulkanApiVersion">The Vulkan API version.</param>
-    /// <returns>A new VmaAllocator instance with resource tracking enabled.</returns>
+    /// <param name="vulkanApiVersion">The Vulkan API version used at instance creation (pass <c>Silk.NET.Vulkan.Vk.Version13</c> from the caller; 0 is legal for legacy code paths).</param>
+    /// <returns>A new raw VMA allocator wrapper.</returns>
     public static VmaAllocator Create(Instance instance, PhysicalDevice physicalDevice, Device device, uint vulkanApiVersion = 0)
-    {
-        return Create(instance, physicalDevice, device, vulkanApiVersion, enableTracking: true);
-    }
-
-    /// <summary>
-    /// Creates a new VMA allocator with optional resource tracking.
-    /// </summary>
-    /// <param name="instance">The Vulkan instance.</param>
-    /// <param name="physicalDevice">The physical device.</param>
-    /// <param name="device">The logical device.</param>
-    /// <param name="vulkanApiVersion">The Vulkan API version.</param>
-    /// <param name="enableTracking">Whether to enable resource tracking for debugging. When false, uses a no-op tracker.</param>
-    /// <returns>A new VmaAllocator instance.</returns>
-    public static VmaAllocator Create(Instance instance, PhysicalDevice physicalDevice, Device device, uint vulkanApiVersion, bool enableTracking)
     {
         var createInfo = new VmaAllocatorCreateInfo
         {
@@ -62,14 +40,23 @@ public sealed class VmaAllocator : IDisposable
 
         Vortice.Vulkan.Vma.vmaCreateAllocator(in createInfo, out var allocator).CheckResult();
 
-        IVmaResourceTracker tracker = enableTracking
-            ? new VmaResourceTracker()
-            : NullVmaResourceTracker.Instance;
-
-        return new VmaAllocator(allocator, tracker);
+        return new VmaAllocator(allocator);
     }
 
-    public unsafe VmaBuffer CreateBuffer(in BufferCreateInfo bufferInfo, in VmaAllocationCreateInfo allocInfo)
+    /// <summary>
+    /// Creates a VMA-backed Vulkan buffer + allocation pair.
+    /// </summary>
+    /// <remarks>
+    /// Out-params return the raw <see cref="Silk.NET.Vulkan.Buffer"/> handle, the opaque
+    /// <see cref="VmaAllocation"/>, and the <see cref="VmaAllocationInfo"/> describing the allocation.
+    /// The caller (normally a managed wrapper in main Sparkitect) pairs them and owns the lifetime.
+    /// </remarks>
+    public unsafe void CreateBuffer(
+        in BufferCreateInfo bufferInfo,
+        in VmaAllocationCreateInfo allocInfo,
+        out Silk.NET.Vulkan.Buffer buffer,
+        out VmaAllocation allocation,
+        out VmaAllocationInfo allocationInfo)
     {
         ThrowIfDisposed();
 
@@ -80,32 +67,45 @@ public sealed class VmaAllocator : IDisposable
             _allocator,
             &vorticeBufferInfo,
             &vorticeAllocInfo,
-            out var buffer,
-            out var allocation,
-            out var allocInfoOut).CheckResult();
+            out var rawBuffer,
+            out var rawAlloc,
+            out var rawAllocInfo).CheckResult();
 
-        return new VmaBuffer(
-            this,
-            buffer.ToSilk(),
-            new VmaAllocation(allocation.Handle),
-            VmaStructConvert.ToPublic(in allocInfoOut));
+        buffer = rawBuffer.ToSilk();
+        allocation = new VmaAllocation(rawAlloc.Handle);
+        allocationInfo = VmaStructConvert.ToPublic(in rawAllocInfo);
     }
 
-    public unsafe VmaImage CreateImage(in ImageCreateInfo imageInfo, in VmaAllocationCreateInfo allocInfo)
+    /// <summary>
+    /// Creates a VMA-backed Vulkan image + allocation pair.
+    /// </summary>
+    /// <remarks>
+    /// Out-params return the raw <see cref="Silk.NET.Vulkan.Image"/> handle, the opaque
+    /// <see cref="VmaAllocation"/>, and the <see cref="VmaAllocationInfo"/>.
+    /// </remarks>
+    public unsafe void CreateImage(
+        in ImageCreateInfo imageInfo,
+        in VmaAllocationCreateInfo allocInfo,
+        out Image image,
+        out VmaAllocation allocation,
+        out VmaAllocationInfo allocationInfo)
     {
         ThrowIfDisposed();
 
         var vorticeImageInfo = VmaStructConvert.ToVortice(in imageInfo);
         var vorticeAllocInfo = VmaStructConvert.ToVortice(in allocInfo, allocInfo.Pool);
 
-        Vortice.Vulkan.Vma.vmaCreateImage(_allocator, &vorticeImageInfo, &vorticeAllocInfo, out VkImage vkImage,
-            out Vortice.Vulkan.VmaAllocation vmaAllocation, out Vortice.Vulkan.VmaAllocationInfo vmaAllocationInfo).CheckResult();
+        Vortice.Vulkan.Vma.vmaCreateImage(
+            _allocator,
+            &vorticeImageInfo,
+            &vorticeAllocInfo,
+            out var rawImage,
+            out var rawAlloc,
+            out var rawAllocInfo).CheckResult();
 
-        return new VmaImage(
-            this,
-            vkImage.ToSilk(),
-            new VmaAllocation(vmaAllocation.Handle),
-            VmaStructConvert.ToPublic(in vmaAllocationInfo));
+        image = rawImage.ToSilk();
+        allocation = new VmaAllocation(rawAlloc.Handle);
+        allocationInfo = VmaStructConvert.ToPublic(in rawAllocInfo);
     }
 
     public unsafe VmaPool CreatePool(in VmaPoolCreateInfo poolInfo)
@@ -163,16 +163,25 @@ public sealed class VmaAllocator : IDisposable
         return VmaStructConvert.ToPublic(in info);
     }
 
-    internal void DestroyBuffer(VmaBuffer buffer)
+    /// <summary>
+    /// Destroys a VMA-backed buffer + allocation. Idempotent once the allocator itself is disposed.
+    /// Public to allow managed wrappers in main Sparkitect (see <c>ManagedVmaAllocator</c>) to call
+    /// without requiring <c>InternalsVisibleTo</c>.
+    /// </summary>
+    public unsafe void DestroyBuffer(Silk.NET.Vulkan.Buffer buffer, VmaAllocation allocation)
     {
         if (_disposed) return;
-        Vortice.Vulkan.Vma.vmaDestroyBuffer(_allocator, buffer.Buffer.ToVortice(), new Vortice.Vulkan.VmaAllocation(buffer.Allocation.Handle));
+        Vortice.Vulkan.Vma.vmaDestroyBuffer(_allocator, buffer.ToVortice(), new Vortice.Vulkan.VmaAllocation(allocation.Handle));
     }
 
-    internal void DestroyImage(VmaImage image)
+    /// <summary>
+    /// Destroys a VMA-backed image + allocation. Idempotent once the allocator itself is disposed.
+    /// Public for the same reason as <see cref="DestroyBuffer"/>.
+    /// </summary>
+    public unsafe void DestroyImage(Silk.NET.Vulkan.Image image, VmaAllocation allocation)
     {
         if (_disposed) return;
-        Vortice.Vulkan.Vma.vmaDestroyImage(_allocator, image.Image.ToVortice(), new Vortice.Vulkan.VmaAllocation(image.Allocation.Handle));
+        Vortice.Vulkan.Vma.vmaDestroyImage(_allocator, image.ToVortice(), new Vortice.Vulkan.VmaAllocation(allocation.Handle));
     }
 
     internal void DestroyPool(VmaPool pool)
@@ -192,18 +201,6 @@ public sealed class VmaAllocator : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-
-        // Log any unreleased resources for debugging
-        var leakedCount = ResourceTracker.Count;
-        if (leakedCount > 0)
-        {
-            Log.Warning("VMA resource leaks detected: {Count} resource(s) not disposed", leakedCount);
-            foreach (var (resource, callsite) in ResourceTracker.GetTrackingEntries())
-            {
-                Log.Warning("  Leaked {Type} created at {Callsite}",
-                    resource.GetType().Name, callsite);
-            }
-        }
 
         Vortice.Vulkan.Vma.vmaDestroyAllocator(_allocator);
     }

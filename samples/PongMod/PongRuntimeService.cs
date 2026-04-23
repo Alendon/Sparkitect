@@ -32,7 +32,6 @@ internal class PongRuntimeService : IPongRuntimeService
     private Queue _graphicsQueue;
 
     // VMA and storage image
-    private VmaAllocator? _vmaAllocator;
     private VmaImage? _storageImage;
     private ImageView _storageImageView;
 
@@ -47,6 +46,7 @@ internal class PongRuntimeService : IPongRuntimeService
     public required IVulkanContext VulkanContext { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
     public required IShaderManager ShaderManager { private get; init; }
+    public required IVmaService VmaService { private get; init; }
 
     public ref PongGameData GameData => ref _gameData;
     public float DeltaTime { get; private set; }
@@ -107,12 +107,6 @@ internal class PongRuntimeService : IPongRuntimeService
         var vk = VulkanContext.VkApi;
         var device = VulkanContext.VkDevice.Handle;
 
-        // Create VMA allocator
-        _vmaAllocator = VmaAllocator.Create(
-            VulkanContext.VkInstance.Handle,
-            VulkanContext.VkPhysicalDevice.PhysicalDevice,
-            device);
-
         // Create storage image (R8G8B8A8_UNORM supports STORAGE_BIT)
         var swapchain = _window!.Swapchain;
         var imageInfo = new ImageCreateInfo
@@ -133,7 +127,7 @@ internal class PongRuntimeService : IPongRuntimeService
         {
             Usage = VmaMemoryUsage.GpuOnly
         };
-        _storageImage = _vmaAllocator.CreateImage(imageInfo, allocInfo);
+        _storageImage = VmaService.DefaultAllocator.CreateImage(imageInfo, allocInfo);
 
         // Create storage image view
         var storageViewInfo = new ImageViewCreateInfo
@@ -480,7 +474,6 @@ internal class PongRuntimeService : IPongRuntimeService
         // Cleanup storage image resources
         VulkanContext.VkApi.DestroyImageView(VulkanContext.VkDevice.Handle, _storageImageView, null);
         _storageImage?.Dispose();
-        _vmaAllocator?.Dispose();
 
         // Dispose wrappers (pool disposes its descriptor sets automatically)
         _descriptorPool?.Dispose();

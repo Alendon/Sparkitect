@@ -53,6 +53,17 @@ public interface IVulkanContextStateFacade
     void CreateInstance();
     void SelectPhysicalDevice();
     void CreateDevice();
+
+    /// <summary>
+    /// Pre-teardown checkpoint: blocks until the device is idle so all Vulkan-dependent
+    /// subsystems can shut down safely. Called by the <c>begin_vulkan_teardown</c>
+    /// transition function, which carries no ordering attributes of its own — dependents
+    /// reference it via <c>[OrderAfter&lt;BeginVulkanTeardownFunc&gt;]</c> (e.g.
+    /// <c>destroy_device</c>, <c>destroy_vma</c>) or <c>[OrderBefore&lt;BeginVulkanTeardownFunc&gt;]</c>
+    /// (future render-graph shutdown transitions).
+    /// </summary>
+    void BeginVulkanTeardown();
+
     void DestroyDevice();
     void DestroyPhysicalDevice();
     void DestroyInstance();
