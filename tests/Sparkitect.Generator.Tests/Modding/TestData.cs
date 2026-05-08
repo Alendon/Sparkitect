@@ -30,5 +30,11 @@ public static partial class TestData
 
         [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = true)]
         public sealed class RegistryFacadeAttribute<TFacade> : Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute<TFacade> where TFacade : class;
+
+        public struct Identification { }
+        public interface IHasIdentification { }
+
+        [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+        public sealed class KeyedFactoryGenerationMarkerAttribute<TBase> : Attribute where TBase : class { }
         """);
 }

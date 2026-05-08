@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sparkitect.Generator.DI.Pipeline;
 using Sparkitect.Utilities;
 
 namespace Sparkitect.Generator.Modding;
@@ -177,7 +178,19 @@ public partial class RegistryGenerator
             var typeFull = cand.ProviderMethodOrTypeName.StartsWith("global::")
                 ? cand.ProviderMethodOrTypeName
                 : $"global::{cand.ProviderMethodOrTypeName}";
-            entry = new TypeRegistrationEntry(cand.Id, files, cand.MethodName, typeFull);
+
+            KeyedFactoryGenerationInfo? kfg = null;
+            var registerMethod = model.RegisterMethods.FirstOrDefault(m => m.FunctionName == cand.MethodName);
+            if (registerMethod is not null
+                && registerMethod.PrimaryParameterKind == PrimaryParameterKind.Type
+                && registerMethod.KeyedFactoryMarkerTBase is { } tBase)
+            {
+                var configuratorClassName =
+                    $"{model.TypeName}_{registerMethod.FunctionName}_KeyedFactoryConfigurator";
+                kfg = new KeyedFactoryGenerationInfo(tBase, configuratorClassName);
+            }
+
+            entry = new TypeRegistrationEntry(cand.Id, files, cand.MethodName, typeFull, kfg);
         }
         else
         {
@@ -246,5 +259,107 @@ public partial class RegistryGenerator
 
         files = builder.ToImmutableValueArray();
         return true;
+    }
+
+    // ── Task 2b: Branch B — symbol-driven _KeyedFactory.g.cs per marker-flagged concrete ──
+
+    /// <summary>
+    /// Intermediate string-typed candidate record returned by TryBuildMarkerProviderConcrete.
+    /// ALL fields are string-typed or value-typed — NO INamedTypeSymbol fields cross the pipeline boundary.
+    /// FactoryModel is computed inside the lambda (symbol boundary) before being stored here.
+    /// </summary>
+    internal sealed record MarkerCandidate(
+        string ConcreteFullName,
+        string MethodName,
+        string ContainingRegistryTypeName,
+        string? ContainingRegistryNamespace,
+        FactoryModel Factory);
+
+    /// <summary>
+    /// Final value record flowing through markerConcreteProvider after joining with RegistryMap.
+    /// All fields string-typed or value-typed — incremental-cacheable (no ISymbol fields).
+    /// </summary>
+    internal sealed record MarkerProviderConcrete(
+        string ConcreteTypeFullName,
+        string TBaseFullName,
+        FactoryModel Factory);
+
+    /// <summary>
+    /// SyntaxProvider transform: inspects an AttributeSyntax node, determines if it targets a
+    /// class/struct, resolves the concrete type, and calls DiPipeline.ExtractFactory inline
+    /// while the INamedTypeSymbol is in scope (never escapes this method).
+    /// Returns null if this attribute is not a registry-method provider attribute targeting a class.
+    /// </summary>
+    internal static MarkerCandidate? TryBuildMarkerProviderConcrete(
+        SyntaxNode node, SemanticModel semanticModel, CancellationToken cancellationToken)
+    {
+        if (node is not AttributeSyntax attrSyntax) return null;
+
+        // Only care about class/struct declarations (type providers)
+        var decl = attrSyntax.Parent?.Parent;
+        if (decl is not (ClassDeclarationSyntax or StructDeclarationSyntax)) return null;
+
+        ISymbol? targetSymbol = decl switch
+        {
+            ClassDeclarationSyntax cds => semanticModel.GetDeclaredSymbol(cds, cancellationToken),
+            StructDeclarationSyntax sds => semanticModel.GetDeclaredSymbol(sds, cancellationToken),
+            _ => null
+        };
+
+        if (targetSymbol is not INamedTypeSymbol concreteSymbol) return null;
+
+        // Find the attribute data for this attribute syntax
+        var attributeData = targetSymbol.GetAttributes().FirstOrDefault(a =>
+            a.ApplicationSyntaxReference?.Span.Equals(attrSyntax.Span) == true);
+        if (attributeData is null) return null;
+
+        // Attribute must be a provider marker (implements IRegisterMarker or is error type)
+        if (!TryExtractProviderInfo(attributeData, out var registryTypeName, out var registryNamespace,
+                out var methodName, out _))
+            return null;
+
+        // Parse the ID argument syntactically to avoid error-type issues
+        if (!TryParseProviderArguments(attrSyntax, out var id, out _)) return null;
+        if (!StringCase.IsSnakeCase(id)) return null;
+
+        // Derive a placeholder TBase — actual TBase resolved in ResolveMarkerConcrete from RegistryMap
+        // We use a temporary intent; the actual key expression uses IdentificationHelper.Read<T>()
+        var concreteFullName = concreteSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var keyExpr = $"global::Sparkitect.Modding.IdentificationHelper.Read<{concreteFullName}>()";
+
+        // Placeholder TBase — will be resolved in ResolveMarkerConcrete
+        // We still call ExtractFactory here while we have the symbol, with a placeholder baseType.
+        // ResolveMarkerConcrete will discard this if the method isn't marker-flagged.
+        var factory = DiPipeline.ExtractFactory(
+            concreteSymbol,
+            new FactoryIntent.Keyed(keyExpr, IsRawExpression: true),
+            "Sparkitect.Modding.IHasIdentification");  // placeholder; replaced in ResolveMarkerConcrete
+
+        if (factory is null) return null;
+
+        return new MarkerCandidate(concreteFullName, methodName, registryTypeName, registryNamespace, factory);
+    }
+
+    /// <summary>
+    /// Combine-Select step: given a MarkerCandidate and the RegistryMap, checks if the referenced
+    /// registry method is marker-flagged. If yes, rebuilds the FactoryModel with the correct TBase
+    /// and returns a MarkerProviderConcrete. Returns null if not marker-flagged.
+    /// </summary>
+    internal static MarkerProviderConcrete? ResolveMarkerConcrete(
+        MarkerCandidate candidate, RegistryMap registryMap)
+    {
+        if (!registryMap.TryGetByFullName(candidate.ContainingRegistryTypeName, candidate.ContainingRegistryNamespace, out var model) || model is null)
+            return null;
+
+        var registerMethod = model.RegisterMethods.FirstOrDefault(m => m.FunctionName == candidate.MethodName);
+        if (registerMethod is null) return null;
+        if (registerMethod.PrimaryParameterKind != PrimaryParameterKind.Type) return null;
+        if (registerMethod.KeyedFactoryMarkerTBase is not { } tBase) return null;
+
+        // Rebuild FactoryModel with the correct TBase (replacing the placeholder used in TryBuildMarkerProviderConcrete)
+        var tBaseWithoutGlobal = tBase.StartsWith("global::") ? tBase.Substring("global::".Length) : tBase;
+        var factory = candidate.Factory with { BaseType = tBaseWithoutGlobal };
+
+        return new MarkerProviderConcrete(candidate.ConcreteFullName, tBase, factory);
     }
 }

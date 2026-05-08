@@ -16,6 +16,13 @@ public partial class DummyRegistry(IDummyValueManager dummyValueManager) : IRegi
     {
         dummyValueManager.AddDummyValue(id, value);
     }
+    
+    [RegistryMethod]
+    [KeyedFactoryGenerationMarker<IDummyValueProvider>]
+    public void RegisterProvider<TProvider>(Identification id) where TProvider : class, IDummyValueProvider, IHasIdentification
+    {
+        dummyValueManager.AddDummyProvider<TProvider>(id);
+    }
 
     public static string Identifier => "dummy";
     
@@ -23,4 +30,9 @@ public partial class DummyRegistry(IDummyValueManager dummyValueManager) : IRegi
     {
         // Sample implementation placeholder
     }
+}
+
+public interface IDummyValueProvider
+{
+    string Provide();
 }

@@ -435,6 +435,201 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
   
 
     [Test]
+    public async Task ExtractRegisterMethods_RecognizesMarker(CancellationToken token)
+    {
+        TestSources.Add(("MarkerRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            [Registry(Identifier = "r")]
+            public class R : IRegistry
+            {
+                [RegistryMethod]
+                [KeyedFactoryGenerationMarkerAttribute<IFoo>]
+                public void Reg<T>(Identification id) where T : class, IFoo, IHasIdentification { }
+            }
+            public interface IFoo : IHasIdentification { }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var methods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(methods).HasSingleItem();
+        await Assert.That(methods.First().KeyedFactoryMarkerTBase).IsEqualTo("global::N.IFoo");
+    }
+
+    [Test]
+    public async Task ExtractRegisterMethods_UnmarkedMethod_HasNullMarker(CancellationToken token)
+    {
+        TestSources.Add(("UnmarkedRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            [Registry(Identifier = "r")]
+            public class R : IRegistry
+            {
+                [RegistryMethod]
+                public void Reg<T>(Identification id) where T : class { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var methods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(methods).HasSingleItem();
+        await Assert.That(methods.First().KeyedFactoryMarkerTBase).IsNull();
+    }
+
+    [Test]
+    public async Task MapProviderCandidate_PopulatesKeyedFactoryGenerationInfo()
+    {
+        var model = new RegistryModel(
+            "RenderPassRegistry", "render_pass", "DiTest", false,
+            ImmutableValueArray.From(new RegisterMethodModel(
+                "RegisterRenderPass", PrimaryParameterKind.Type,
+                TypeConstraintFlag.ReferenceType,
+                ImmutableValueArray.From("DiTest.IRenderPass", "Sparkitect.Modding.IHasIdentification"),
+                "global::DiTest.IRenderPass")),
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var regMap = RegistryGenerator.RegistryMap.Create((new[] { model }.ToImmutableArray(),
+            ImmutableValueArray.From<RegistryModel>()));
+
+        var cand = new RegistryGenerator.ProviderCandidate(
+            "RenderPassRegistry",
+            "DiTest",
+            "RegisterRenderPass",
+            "clear_color_pass",
+            true,
+            false,
+            "DiTest",
+            "DiTest.ClearColorPass",
+            new ImmutableValueArray<RegistryGenerator.ProviderFileArg>.Builder().ToImmutableValueArray(),
+            []);
+
+        var unit = RegistryGenerator.MapProviderCandidateToUnit(cand, regMap);
+        await Assert.That(unit).IsNotNull();
+        var entry = unit!.Entries.First();
+        await Assert.That(entry).IsTypeOf<TypeRegistrationEntry>();
+
+        var typeEntry = (TypeRegistrationEntry)entry;
+        await Assert.That(typeEntry.KeyedFactoryGeneration).IsNotNull();
+        await Assert.That(typeEntry.KeyedFactoryGeneration!.TBaseFullName).IsEqualTo("global::DiTest.IRenderPass");
+        await Assert.That(typeEntry.KeyedFactoryGeneration!.ConfiguratorClassName)
+            .IsEqualTo("RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator");
+    }
+
+    [Test]
+    public async Task MapProviderCandidate_UnmarkedTypeRegistration_KeyedFactoryGenerationIsNull()
+    {
+        var model = new RegistryModel(
+            "DummyRegistry", "dummy", "DiTest", false,
+            ImmutableValueArray.From(new RegisterMethodModel(
+                "RegisterType", PrimaryParameterKind.Type,
+                TypeConstraintFlag.None,
+                ImmutableValueArray.From<string>())),
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var regMap = RegistryGenerator.RegistryMap.Create((new[] { model }.ToImmutableArray(),
+            ImmutableValueArray.From<RegistryModel>()));
+
+        var cand = new RegistryGenerator.ProviderCandidate(
+            "DummyRegistry",
+            "DiTest",
+            "RegisterType",
+            "hello",
+            true,
+            false,
+            "DiTest",
+            "DiTest.Provided",
+            new ImmutableValueArray<RegistryGenerator.ProviderFileArg>.Builder().ToImmutableValueArray(),
+            []);
+
+        var unit = RegistryGenerator.MapProviderCandidateToUnit(cand, regMap);
+        await Assert.That(unit).IsNotNull();
+        var entry = unit!.Entries.First();
+        await Assert.That(entry).IsTypeOf<TypeRegistrationEntry>();
+
+        var typeEntry = (TypeRegistrationEntry)entry;
+        await Assert.That(typeEntry.KeyedFactoryGeneration).IsNull();
+    }
+
+    [Test]
+    public async Task RegistryMetadata_Roundtrip_PreservesMarker(CancellationToken token)
+    {
+        var model = new RegistryModel(
+            "TestRegistry", "test", "DiTest", false,
+            ImmutableValueArray.From(new RegisterMethodModel(
+                "RegisterRenderPass", PrimaryParameterKind.Type,
+                TypeConstraintFlag.ReferenceType,
+                ImmutableValueArray.From("DiTest.IRenderPass"),
+                "global::DiTest.IRenderPass")),
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var ok = RegistryGenerator.RenderRegistryMetadata(model, BuildSettings, out var code, out _);
+        await Assert.That(ok).IsTrue();
+
+        TestSources.Add(("TestMetadata.cs", code));
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+
+        var metadataType = compilation.GetTypeByMetadataName("SampleTest.Generated.TestRegistry_Metadata")
+            as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(metadataType).IsNotNull();
+
+        var success = RegistryGenerator.TryParseRegisterMethod(metadataType!, "RegisterRenderPass", out var parsed);
+        await Assert.That(success).IsTrue();
+        await Assert.That(parsed!.KeyedFactoryMarkerTBase).IsEqualTo("global::DiTest.IRenderPass");
+    }
+
+    [Test]
+    public async Task RegistryMetadata_Roundtrip_MissingMarkerField_ParsesAsNullPreservesAllValid(CancellationToken token)
+    {
+        // Mirror ExtractFromMetadata_Valid pattern: hand-authored metadata omitting KeyedFactoryMarkerTBase
+        TestSources.Add(("TestService.cs",
+            """
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.Modding;
+
+            namespace DiTest;
+
+            [assembly: RegistryMetadataAttribute<TestMetadata>]
+
+            public class TestMetadata {
+                public const string TypeName = "TestRegistry";
+                public const string Key = "test";
+                public const string ContainingNamespace = "DiTest";
+                public const bool IsExternal = false;
+                public const string RegisterMethods = "RegisterType";
+                public const string ResourceFiles = "";
+
+                public class RegisterType {
+                    public const string FunctionName = "RegisterType";
+                    public const int PrimaryParameterKind = 4; // Type
+                    public const int Constraint = 1; // ReferenceType
+                    public const string TypeConstraint = "DiTest.ISomeBase";
+                    // KeyedFactoryMarkerTBase intentionally OMITTED (pre-49.2 metadata)
+                }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var metadataType = compilation.GetTypeByMetadataName("DiTest.TestMetadata")
+            as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(metadataType).IsNotNull();
+
+        var success = RegistryGenerator.TryParseRegisterMethod(metadataType!, "RegisterType", out var parsed);
+        await Assert.That(success).IsTrue();
+        await Assert.That(parsed).IsNotNull();
+        await Assert.That(parsed!.KeyedFactoryMarkerTBase).IsNull();
+        await Assert.That(parsed.FunctionName).IsEqualTo("RegisterType");
+        await Assert.That(parsed.PrimaryParameterKind).IsEqualTo(PrimaryParameterKind.Type);
+    }
+
+    [Test]
     public async Task Render_IdContainer_Framework_Snapshot()
     {
         var model = new RegistryModel("DummyRegistry", "dummy", "Minimal", false,
@@ -495,5 +690,130 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(okP).IsTrue();
         await Assert.That(fileP).IsEqualTo("DummyRegistry.IdProperties_Resources.g.cs");
         await Verifier.Verify(codeP, verifySettings);
+    }
+
+    // Task 2a tests
+
+    private static RegistrationUnit BuildMarkerFlaggedUnit(
+        string registryName = "RenderPassRegistry",
+        string methodName = "RegisterRenderPass",
+        string tBaseFullName = "global::DiTest.IRenderPass",
+        params (string id, string typeFullName)[] entries)
+    {
+        var configuratorClassName = $"{registryName}_{methodName}_KeyedFactoryConfigurator";
+        var kfg = new KeyedFactoryGenerationInfo(tBaseFullName, configuratorClassName);
+
+        var model = new RegistryModel(
+            registryName, "render_pass", "DiTest", false,
+            ImmutableValueArray.From(new RegisterMethodModel(
+                methodName, PrimaryParameterKind.Type, TypeConstraintFlag.ReferenceType,
+                ImmutableValueArray.From("DiTest.IRenderPass"), tBaseFullName)),
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var registrationEntries = entries.Select(e =>
+            (RegistrationEntry)new TypeRegistrationEntry(
+                e.id,
+                ImmutableValueArray.From<(string, string)>(),
+                methodName,
+                e.typeFullName,
+                kfg)).ToArray();
+
+        return new RegistrationUnit(model, SourceKind.Provider, "Providers",
+            ImmutableValueArray.From(registrationEntries));
+    }
+
+    [Test]
+    public async Task RenderTypeRegistrationKeyedFactory_SingleMarker_Snapshot()
+    {
+        var unit = BuildMarkerFlaggedUnit(
+            entries: [("clear_color_pass", "global::DiTest.ClearColorPass")]);
+
+        var groups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        await Assert.That(groups).HasSingleItem();
+
+        var group = groups[0];
+        await Assert.That(group.ConfiguratorFileName)
+            .IsEqualTo("RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator.g.cs");
+        await Assert.That(group.ShellFileName)
+            .IsEqualTo("RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Shell.g.cs");
+
+        // Substring assertions before snapshot acceptance
+        await Assert.That(group.ConfiguratorCode).Contains("partial class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator");
+        await Assert.That(group.ConfiguratorCode).Contains("registrations[global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()] = new global::DiTest.ClearColorPass_KeyedFactory();");
+        await Assert.That(group.ConfiguratorCode).DoesNotContain("\"global::Sparkitect.Modding.IdentificationHelper.Read");
+        await Assert.That(group.ShellCode).Contains("internal sealed class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfiguratorAttribute : global::System.Attribute");
+        await Assert.That(group.ShellCode).Contains(": global::Sparkitect.DI.IFactoryConfigurator<global::Sparkitect.Modding.Identification, global::DiTest.IRenderPass, RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfiguratorAttribute>");
+        await Assert.That(group.ShellCode).DoesNotContain("IRenderGraph");
+
+        await Verifier.Verify(new { group.ConfiguratorCode, group.ShellCode }, verifySettings);
+    }
+
+    [Test]
+    public async Task RenderTypeRegistrationKeyedFactory_MixedMarkedAndUnmarked()
+    {
+        // Unit with one marker-flagged + one unmarked entry
+        var configuratorClassName = "RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator";
+        var kfg = new KeyedFactoryGenerationInfo("global::DiTest.IRenderPass", configuratorClassName);
+
+        var model = new RegistryModel(
+            "RenderPassRegistry", "render_pass", "DiTest", false,
+            ImmutableValueArray.From(
+                new RegisterMethodModel("RegisterRenderPass", PrimaryParameterKind.Type,
+                    TypeConstraintFlag.ReferenceType, ImmutableValueArray.From("DiTest.IRenderPass"),
+                    "global::DiTest.IRenderPass"),
+                new RegisterMethodModel("RegisterOther", PrimaryParameterKind.Type,
+                    TypeConstraintFlag.ReferenceType, ImmutableValueArray.From<string>())),
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var entries = ImmutableValueArray.From<RegistrationEntry>(
+            new TypeRegistrationEntry("clear_color_pass", ImmutableValueArray.From<(string, string)>(),
+                "RegisterRenderPass", "global::DiTest.ClearColorPass", kfg),
+            new TypeRegistrationEntry("other_entry", ImmutableValueArray.From<(string, string)>(),
+                "RegisterOther", "global::DiTest.OtherType", null));
+
+        var unit = new RegistrationUnit(model, SourceKind.Provider, "Providers", entries);
+
+        var groups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        await Assert.That(groups).HasSingleItem();
+
+        var group = groups[0];
+        await Assert.That(group.ConfiguratorCode).Contains("global::DiTest.ClearColorPass");
+        await Assert.That(group.ConfiguratorCode).DoesNotContain("OtherType");
+
+        await Verifier.Verify(new { group.ConfiguratorCode, group.ShellCode }, verifySettings);
+    }
+
+    [Test]
+    public async Task RenderTypeRegistrationKeyedFactory_MultipleProvidersOneMarkerMethod()
+    {
+        var unit = BuildMarkerFlaggedUnit(
+            entries: [
+                ("clear_color_pass", "global::DiTest.ClearColorPass"),
+                ("blur_pass", "global::DiTest.BlurPass")
+            ]);
+
+        var groups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        await Assert.That(groups).HasSingleItem();
+
+        var group = groups[0];
+        await Assert.That(group.ConfiguratorCode).Contains("global::DiTest.ClearColorPass");
+        await Assert.That(group.ConfiguratorCode).Contains("global::DiTest.BlurPass");
+        await Assert.That(group.ShellCode).Contains("internal partial class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator");
+
+        await Verifier.Verify(new { group.ConfiguratorCode, group.ShellCode }, verifySettings);
+    }
+
+    [Test]
+    public async Task KeyedFactory_Code_Uses_IdentificationHelper_Read()
+    {
+        var unit = BuildMarkerFlaggedUnit(
+            entries: [("clear_color_pass", "global::DiTest.ClearColorPass")]);
+
+        var groups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        await Assert.That(groups).HasSingleItem();
+
+        var configuratorCode = groups[0].ConfiguratorCode;
+        await Assert.That(configuratorCode).Contains(
+            "registrations[global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()] = new global::DiTest.ClearColorPass_KeyedFactory();");
     }
 }

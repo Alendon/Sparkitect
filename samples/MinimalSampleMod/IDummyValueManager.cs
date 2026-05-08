@@ -12,6 +12,7 @@ public interface IDummyValueManager
     string GetDummyValue(Identification id);
     
     IWorld? GetWorld();
+    void AddDummyProvider<TProvider>(Identification id) where TProvider : class, IDummyValueProvider, IHasIdentification;
 }
 
 [FacadeFor<IDummyValueManager>]

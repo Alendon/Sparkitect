@@ -10,7 +10,7 @@ public abstract record FactoryIntent
     private FactoryIntent() { }
 
     public sealed record Service : FactoryIntent;
-    public sealed record Keyed(string Key) : FactoryIntent;
+    public sealed record Keyed(string Key, bool IsRawExpression = false) : FactoryIntent;
 }
 
 /// <summary>

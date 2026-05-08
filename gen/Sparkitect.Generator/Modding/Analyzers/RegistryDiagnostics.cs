@@ -167,4 +167,15 @@ public static class RegistryDiagnostics
         new("SPARK0250", "Duplicate property name after normalization",
             "Entries '{0}' and '{1}' normalize to the same property name '{2}' in registry '{3}'. Rename one entry.",
             Category, DiagnosticSeverity.Error, true, customTags: WellKnownDiagnosticTags.CompilationEnd);
+
+    // Keyed-factory marker validation (60-69)
+    public static readonly DiagnosticDescriptor KeyedFactoryMarkerInvalidPlacement =
+        new("SPARK0260", "[KeyedFactoryGenerationMarker] only on type-registration registry methods",
+            "[KeyedFactoryGenerationMarker<TBase>] on '{0}' is not on a type-registration [RegistryMethod] (shape: void Name<T>(Identification id) where T : class, TBase, IHasIdentification). Apply only to type-registration registry methods or remove the marker.",
+            Category, DiagnosticSeverity.Error, true);
+
+    public static readonly DiagnosticDescriptor KeyedFactoryMarkerMissingConstraints =
+        new("SPARK0261", "Marker-flagged registry method missing required constraints",
+            "Registry method '{0}' marked with [KeyedFactoryGenerationMarker<{1}>] must constrain its type parameter to 'class, {1}, IHasIdentification'. Add the missing constraints.",
+            Category, DiagnosticSeverity.Error, true);
 }

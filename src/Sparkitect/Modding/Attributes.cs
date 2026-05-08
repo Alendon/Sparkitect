@@ -101,6 +101,17 @@ public class RegistryFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> w
 public sealed class RegistryFacadeAttribute : Attribute;
 
 /// <summary>
+/// Opt-in marker for source-generated keyed-factory emission on a type-registration registry method.
+/// Apply alongside [RegistryMethod] on a method of shape
+/// <c>void RegisterX&lt;TConcrete&gt;(Identification id) where TConcrete : class, TBase, IHasIdentification</c>.
+/// The Registry Generator will emit an IFactoryConfigurator&lt;Identification, TBase, …&gt; that registers
+/// each marker-flagged provider's concrete type into the keyed-factory map, keyed by IdentificationHelper.Read&lt;TConcrete&gt;().
+/// </summary>
+/// <typeparam name="TBase">The base interface or class produced by the keyed factory.</typeparam>
+[AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+public sealed class KeyedFactoryGenerationMarkerAttribute<TBase> : Attribute where TBase : class;
+
+/// <summary>
 /// Marks a class as containing code that depends on an optional mod's types.
 /// Isolate optional mod type references to marked classes to prevent TypeLoadException.
 /// </summary>

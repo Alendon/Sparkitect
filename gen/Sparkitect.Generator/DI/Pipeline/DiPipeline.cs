@@ -112,7 +112,12 @@ public static class DiPipeline
             _ => $"global::{factory.ImplementationNamespace}.{factory.ImplementationTypeName}_Factory"
         };
 
-        var keyExpression = factory.Intent is FactoryIntent.Keyed keyed ? $"\"{keyed.Key}\"" : "";
+        var keyExpression = factory.Intent switch
+        {
+            FactoryIntent.Keyed { IsRawExpression: true } keyed => keyed.Key,
+            FactoryIntent.Keyed keyed                            => $"\"{keyed.Key}\"",
+            _                                                    => ""
+        };
 
         return new RegistrationModel(factoryTypeName, conditionalModIds, keyExpression);
     }

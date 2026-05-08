@@ -62,6 +62,17 @@ public partial class SampleEntryState : IStateDescriptor
     {
         Log.Information("Dummy Value fetched for {Id} as: {Value}", DummyID.MinimalSampleMod.Hello1,
             dummyValueManager.GetDummyFacaded(DummyID.MinimalSampleMod.Hello1));
+        
+        Log.Information("Dummy Value from Provider fetched for {Id} as: {Provider}", DummyID.MinimalSampleMod.DummyProvider,
+            dummyValueManager.GetDummyFacaded(DummyID.MinimalSampleMod.DummyProvider));
         Thread.Sleep(1000);
     }
+}
+
+[DummyRegistry.RegisterProvider("dummy_provider")]
+internal partial class DummyValueProvider : IDummyValueProvider, IHasIdentification
+{
+    public string Provide() => "Hello from Provider";
+
+    public static Identification Identification => DummyID.MinimalSampleMod.DummyProvider;
 }

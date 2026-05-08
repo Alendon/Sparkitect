@@ -412,4 +412,197 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(entry.Id).IsEqualTo("entry1");
         await Assert.That(entry.Files).HasCount().EqualTo(0);
     }
+
+    // ── Task 2b: Full-run integration tests ──
+
+    // Shared source snippet for marker-flagged registry + provider used in Tests 5 and 7
+    private const string MarkerFlaggedRegistrySource = """
+        using Sparkitect.DI.GeneratorAttributes;
+        using Sparkitect.Modding;
+
+        namespace Sparkitect.Modding
+        {
+            public interface IRegistryBase { }
+            public interface IRegistry : IRegistryBase { }
+        }
+
+        namespace DiTest
+        {
+            [Registry(Identifier = "render_pass")]
+            public partial class RenderPassRegistry : global::Sparkitect.Modding.IRegistry
+            {
+                [RegistryMethod]
+                [KeyedFactoryGenerationMarkerAttribute<IRenderPass>]
+                public partial void RegisterRenderPass<TRenderPass>(Identification id)
+                    where TRenderPass : class, IRenderPass, IHasIdentification;
+            }
+
+            public interface IRenderPass { }
+
+            [RenderPassRegistry.RegisterRenderPass("clear_color_pass")]
+            public class ClearColorPass : IRenderPass, IHasIdentification { }
+        }
+        """;
+
+    [Test]
+    public async Task RegistryGenerator_FullRun_MarkerFlagged_EmitsKeyedFactoryArtifacts(CancellationToken token)
+    {
+        TestSources.Add(("MarkerRegistry.cs", MarkerFlaggedRegistrySource));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var fileNames = driverRunResult.GeneratedTrees
+            .Select(t => System.IO.Path.GetFileName(t.FilePath))
+            .ToList();
+
+        // Debug: list all generated files
+        var allFiles = string.Join(", ", fileNames.OrderBy(f => f));
+
+        // Test 5: assert artifact presence
+        await Assert.That(fileNames.Any(f => f == "ClearColorPass_KeyedFactory.g.cs"))
+            .IsTrue().Because($"Generated files: {allFiles}");
+        await Assert.That(fileNames.Any(f => f == "RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator.g.cs")).IsTrue();
+        await Assert.That(fileNames.Any(f => f == "RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Shell.g.cs")).IsTrue();
+
+        // Assert the configurator contains IdentificationHelper.Read<>() key expression
+        var configuratorTree = driverRunResult.GeneratedTrees.First(t =>
+            System.IO.Path.GetFileName(t.FilePath) == "RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator.g.cs");
+        var configuratorCode = configuratorTree.GetText().ToString();
+        await Assert.That(configuratorCode).Contains("global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()");
+
+        // Assert the registration line is preserved (D-01)
+        var registrationsTree = driverRunResult.GeneratedTrees.FirstOrDefault(t =>
+            System.IO.Path.GetFileName(t.FilePath).Contains("Registrations_Providers"));
+        await Assert.That(registrationsTree).IsNotNull();
+        var registrationsCode = registrationsTree!.GetText().ToString();
+        await Assert.That(registrationsCode).Contains("RegisterRenderPass<global::DiTest.ClearColorPass>");
+
+        // Assert the factory file contains expected IKeyedFactory<IRenderPass> impl
+        var factoryTree = driverRunResult.GeneratedTrees.First(t =>
+            System.IO.Path.GetFileName(t.FilePath) == "ClearColorPass_KeyedFactory.g.cs");
+        var factoryCode = factoryTree.GetText().ToString();
+        await Assert.That(factoryCode).Contains("IKeyedFactory<");
+
+        await Verifier.Verify(driverRunResult, verifySettings);
+    }
+
+    [Test]
+    public async Task RegistryGenerator_FullRun_Unmarked_NoKeyedFactoryEmission(CancellationToken token)
+    {
+        TestSources.Add(("UnmarkedRegistry.cs",
+            """
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.Modding;
+            namespace DiTest;
+
+            [Registry(Identifier = "dummy")]
+            public partial class DummyRegistry : IRegistry
+            {
+                [RegistryMethod]
+                public partial void RegisterItem<T>(Identification id) where T : class;
+            }
+
+            [DummyRegistry.RegisterItem("my_item")]
+            public class MyItem { }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var fileNames = driverRunResult.GeneratedTrees
+            .Select(t => System.IO.Path.GetFileName(t.FilePath))
+            .ToList();
+
+        // No marker-driven artifacts should be emitted
+        await Assert.That(fileNames.Any(f => f.Contains("KeyedFactoryConfigurator"))).IsFalse();
+        await Assert.That(fileNames.Any(f => f == "MyItem_KeyedFactory.g.cs")).IsFalse();
+    }
+
+    [Test]
+    public async Task MarkerConcreteProvider_IncrementalCacheable(CancellationToken token)
+    {
+        // Test 7 (W3 byte-equality fallback): run generator twice on same compilation,
+        // assert generated file names and contents are byte-identical.
+        TestSources.Add(("MarkerRegistry.cs", MarkerFlaggedRegistrySource));
+
+        var (project, compilation) = await GetInitialCompilationAsync(token);
+        var parseOptions = new Microsoft.CodeAnalysis.CSharp.CSharpParseOptions(Microsoft.CodeAnalysis.CSharp.LanguageVersion.Latest);
+        var optionsProvider = new TestAnalyzerConfigOptionsProvider(AnalyzerConfigFiles);
+
+        var generator = new RegistryGenerator();
+        var driver = Microsoft.CodeAnalysis.CSharp.CSharpGeneratorDriver.Create(
+            generators: [generator.AsSourceGenerator()],
+            parseOptions: parseOptions,
+            optionsProvider: optionsProvider);
+
+        // First run
+        driver = (Microsoft.CodeAnalysis.CSharp.CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
+            compilation, out _, out _, token);
+        var firstRun = driver.GetRunResult().GeneratedTrees
+            .ToDictionary(
+                t => System.IO.Path.GetFileName(t.FilePath),
+                t => t.GetText().ToString());
+
+        // Second run — same driver, same compilation
+        driver = (Microsoft.CodeAnalysis.CSharp.CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
+            compilation, out _, out _, token);
+        var secondRun = driver.GetRunResult().GeneratedTrees
+            .ToDictionary(
+                t => System.IO.Path.GetFileName(t.FilePath),
+                t => t.GetText().ToString());
+
+        // Byte-equality: same files, same contents
+        await Assert.That(firstRun.Keys.OrderBy(k => k).SequenceEqual(secondRun.Keys.OrderBy(k => k))).IsTrue();
+        foreach (var key in firstRun.Keys)
+        {
+            await Assert.That(firstRun[key]).IsEqualTo(secondRun[key]);
+        }
+    }
+
+    // Make TestAnalyzerConfigOptionsProvider accessible for Test 7
+    private class TestAnalyzerConfigOptionsProvider : Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptionsProvider
+    {
+        private readonly System.Collections.Immutable.ImmutableDictionary<string, string> _globalOptions;
+
+        public TestAnalyzerConfigOptionsProvider(List<(string Path, object Content)> analyzerConfigFiles)
+        {
+            var builder = System.Collections.Immutable.ImmutableDictionary.CreateBuilder<string, string>(System.StringComparer.OrdinalIgnoreCase);
+            foreach (var (_, content) in analyzerConfigFiles)
+            {
+                if (content is string text)
+                {
+                    using var reader = new System.IO.StringReader(text);
+                    string? line;
+                    bool isGlobal = false;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        line = line.Trim();
+                        if (line.Contains("is_global = true")) isGlobal = true;
+                        else if (isGlobal && line.Contains('='))
+                        {
+                            var parts = line.Split(['='], 2);
+                            if (parts.Length == 2) builder[parts[0].Trim()] = parts[1].Trim();
+                        }
+                    }
+                }
+            }
+            _globalOptions = builder.ToImmutable();
+        }
+
+        public override Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptions GlobalOptions =>
+            new TestConfigOptions(_globalOptions);
+
+        public override Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptions GetOptions(Microsoft.CodeAnalysis.SyntaxTree tree) =>
+            new TestConfigOptions(System.Collections.Immutable.ImmutableDictionary<string, string>.Empty);
+
+        public override Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptions GetOptions(Microsoft.CodeAnalysis.AdditionalText textFile) =>
+            new TestConfigOptions(System.Collections.Immutable.ImmutableDictionary<string, string>.Empty);
+
+        private class TestConfigOptions : Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptions
+        {
+            private readonly System.Collections.Immutable.ImmutableDictionary<string, string> _options;
+            public TestConfigOptions(System.Collections.Immutable.ImmutableDictionary<string, string> options) => _options = options;
+            public override bool TryGetValue(string key, out string value) => _options.TryGetValue(key, out value!);
+            public override System.Collections.Generic.IEnumerable<string> Keys => _options.Keys;
+        }
+    }
 }

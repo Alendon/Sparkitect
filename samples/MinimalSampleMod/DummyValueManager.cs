@@ -1,6 +1,9 @@
 ﻿using System.Diagnostics;
+using MinimalSampleMod.CompilerGenerated;
 using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Serilog;
+using Sparkitect.DI;
+using Sparkitect.DI.Container;
 using Sparkitect.ECS;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Commands;
@@ -15,9 +18,18 @@ using Sparkitect.Utils;
 namespace MinimalSampleMod;
 
 [StateService<IDummyValueManager, SampleModule>]
-public class DummyValueManager(IComponentManager componentManager, ISystemManager systemManager) : IDummyValueManager, IDummyValueManagerStateFacade
+public class DummyValueManager(
+    IComponentManager componentManager,
+    ISystemManager systemManager,
+    IDIService diService,
+    IGameStateManager gameStateManager,
+    IModManager modManager) : IDummyValueManager, IDummyValueManagerStateFacade
 {
     private readonly Dictionary<Identification, string> _values = [];
+    private readonly HashSet<Identification> _providers = [];
+
+    private IFactoryContainer<Identification, IDummyValueProvider>? _providerContainer;
+    
     private readonly Stopwatch _frameTimer = new();
     private float _lastFrameTime;
 
@@ -34,12 +46,26 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
 
     public string GetDummyValue(Identification id)
     {
-        return _values[id];
+        if (_values.TryGetValue(id, out var value)) return value;
+
+        if (!_providers.Contains(id))
+            new KeyNotFoundException($"Did not find {id}").Throw();
+
+        _providerContainer ??= diService.BuildFactoryContainer<Identification, IDummyValueProvider>(
+            gameStateManager.CurrentCoreContainer,
+            provider: null,
+            modManager.LoadedMods.Select(m => m.Id),
+            typeof(DummyRegistry_RegisterProvider_KeyedFactoryConfiguratorAttribute));
+
+        if (!_providerContainer.TryResolve(id, out var dummyProvider))
+            new KeyNotFoundException($"No provider registered for {id}").Throw();
+
+        return dummyProvider.Provide();
     }
 
     public string GetDummyFacaded(Identification id)
     {
-        return _values[id];
+        return GetDummyValue(id);
     }
 
     private IWorld? _world;
@@ -48,6 +74,10 @@ public class DummyValueManager(IComponentManager componentManager, ISystemManage
 
     public IWorld? GetWorld() => _world;
     
+    public void AddDummyProvider<TProvider>(Identification id) where TProvider : class, IDummyValueProvider, IHasIdentification
+    {
+        _providers.Add(id);
+    }
 
 
     public IWorld BuildWorld()

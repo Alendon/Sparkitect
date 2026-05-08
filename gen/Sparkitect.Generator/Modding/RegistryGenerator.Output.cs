@@ -118,7 +118,8 @@ public partial class RegistryGenerator
             FunctionName = method.FunctionName,
             PrimaryParameterKind = (int)method.PrimaryParameterKind,
             Constraint = (int)method.Constraint,
-            TypeConstraint = string.Join(";", method.TypeConstraint)
+            TypeConstraint = string.Join(";", method.TypeConstraint),
+            KeyedFactoryMarkerTBase = method.KeyedFactoryMarkerTBase ?? string.Empty
         }).ToArray();
         
         var registerMethodsString = string.Join(";", model.RegisterMethods.Select(m => m.FunctionName));
@@ -280,6 +281,144 @@ internal partial class RegistryConfigurator : global::Sparkitect.DI.IRegistryCon
         {
             context.AddSource(file, code);
         }
+    }
+
+    // ── Task 2a: Branch A — string-driven configurator + shell per (registry × marker-flagged-method) ──
+
+    public sealed record KeyedFactoryEmissionGroup(
+        string ConfiguratorFileName, string ConfiguratorCode,
+        string ShellFileName,        string ShellCode);
+
+    /// <summary>
+    /// For each marker-flagged method group in the unit, renders a configurator partial class
+    /// (via DiPipeline.RenderConfigurator) and a shell class implementing
+    /// IFactoryConfigurator&lt;Identification, TBase, …&gt;.
+    /// Zero symbol access — pure string-driven.
+    /// </summary>
+    public static ImmutableArray<KeyedFactoryEmissionGroup> RenderTypeRegistrationKeyedFactory(
+        RegistrationUnit unit, ModBuildSettings settings)
+    {
+        var result = ImmutableArray.CreateBuilder<KeyedFactoryEmissionGroup>();
+
+        var markedEntries = unit.Entries
+            .OfType<TypeRegistrationEntry>()
+            .Where(e => e.KeyedFactoryGeneration is not null)
+            .ToList();
+
+        if (markedEntries.Count == 0)
+            return result.ToImmutable();
+
+        // Group by method name (Shape A — one configurator per registry × method pair)
+        var grouped = markedEntries
+            .GroupBy(e => e.MethodName)
+            .ToList();
+
+        foreach (var group in grouped)
+        {
+            var firstEntry = group.First();
+            var configuratorClassName = firstEntry.KeyedFactoryGeneration!.ConfiguratorClassName;
+            var tBaseFullName = firstEntry.KeyedFactoryGeneration!.TBaseFullName;
+            var tBaseWithoutGlobal = tBaseFullName.StartsWith("global::")
+                ? tBaseFullName.Substring("global::".Length)
+                : tBaseFullName;
+
+            // Build RegistrationModel instances for each entry in this group
+            var registrations = new ImmutableValueArray<RegistrationModel>.Builder();
+            foreach (var entry in group)
+            {
+                var typeFullName = entry.TypeFullName;
+                // Derive namespace + simple name for factory type name
+                var factoryTypeName = DeriveKeyedFactoryTypeName(typeFullName);
+                var keyExpression =
+                    $"global::Sparkitect.Modding.IdentificationHelper.Read<{typeFullName}>()";
+                registrations.Add(new RegistrationModel(factoryTypeName, [], keyExpression));
+            }
+
+            var methodName = $"Register_{configuratorClassName}_Method";
+            var entrypointAttributeName =
+                $"{settings.ComputeOutputNamespace()}.{configuratorClassName}Attribute";
+
+            var options = new ConfiguratorOptions(
+                ClassName: configuratorClassName,
+                Namespace: settings.ComputeOutputNamespace(),
+                BaseType: tBaseWithoutGlobal,
+                EntrypointAttribute: entrypointAttributeName,
+                Kind: new ConfiguratorKind.Keyed("global::Sparkitect.Modding.Identification", tBaseWithoutGlobal),
+                IsPartial: true,
+                MethodName: methodName);
+
+            if (!DiPipeline.RenderConfigurator(registrations.ToImmutableValueArray(), options,
+                    out var configuratorCode, out var configuratorFileName))
+                continue;
+
+            var shellCode = GenerateKeyedFactoryConfiguratorShell(
+                settings.ComputeOutputNamespace(), configuratorClassName, tBaseFullName);
+            var shellFileName = $"{configuratorClassName}_Shell.g.cs";
+
+            result.Add(new KeyedFactoryEmissionGroup(configuratorFileName, configuratorCode, shellFileName, shellCode));
+        }
+
+        return result.ToImmutable();
+    }
+
+    /// <summary>
+    /// Derives the fully-qualified _KeyedFactory type name from a concrete type's full name.
+    /// e.g. "global::DiTest.ClearColorPass" → "global::DiTest.ClearColorPass_KeyedFactory"
+    /// </summary>
+    private static string DeriveKeyedFactoryTypeName(string typeFullName)
+    {
+        // typeFullName is already "global::Ns.TypeName" shaped
+        return $"{typeFullName}_KeyedFactory";
+    }
+
+    private static string GenerateKeyedFactoryConfiguratorShell(
+        string namespaceName, string configuratorClassName, string tBaseFullName)
+    {
+        var attrName = $"{configuratorClassName}Attribute";
+        return $@"#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace {namespaceName};
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::System.AttributeUsage(global::System.AttributeTargets.Class, Inherited = false)]
+internal sealed class {attrName} : global::System.Attribute {{ }}
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[{attrName}]
+internal partial class {configuratorClassName}
+    : global::Sparkitect.DI.IFactoryConfigurator<global::Sparkitect.Modding.Identification, {tBaseFullName}, {attrName}>
+{{
+    public void Configure(
+        global::System.Collections.Generic.IDictionary<global::Sparkitect.Modding.Identification, global::Sparkitect.DI.IKeyedFactory<{tBaseFullName}>> registrations,
+        global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {{
+        Register_{configuratorClassName}_Method(registrations, loadedMods);
+    }}
+}}";
+    }
+
+    internal static void OutputTypeRegistrationKeyedFactory(
+        SourceProductionContext context,
+        (RegistrationUnit unit, ModBuildSettings settings) arg)
+    {
+        foreach (var group in RenderTypeRegistrationKeyedFactory(arg.unit, arg.settings))
+        {
+            context.AddSource(group.ConfiguratorFileName, group.ConfiguratorCode);
+            context.AddSource(group.ShellFileName, group.ShellCode);
+        }
+    }
+
+    /// <summary>
+    /// Branch B callback: emits one _KeyedFactory.g.cs per marker-flagged concrete type.
+    /// The MarkerProviderConcrete carries the pre-computed FactoryModel (symbol-free, incremental-cacheable).
+    /// </summary>
+    internal static void OutputMarkerKeyedFactoryClass(
+        SourceProductionContext context,
+        (MarkerProviderConcrete concrete, ModBuildSettings settings) arg)
+    {
+        if (DiPipeline.RenderFactory(arg.concrete.Factory, out var code, out var fileName))
+            context.AddSource(fileName, code);
     }
 
     internal static void OutputIdPropertiesUnit(SourceProductionContext context, (RegistrationUnit unit, ModBuildSettings settings) arg)

@@ -914,4 +914,86 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         await Assert.That(success).IsTrue();
         await Verifier.Verify(code, verifySettings);
     }
+
+    // ── ToRegistration IsRawExpression Unit Tests ──────────────────────
+
+    [Test]
+    public async Task ToRegistration_KeyedIntent_DefaultPreservesQuoting(CancellationToken token)
+    {
+        TestSources.Add(("TestTypes.cs",
+            """
+            namespace DiTest;
+            public interface IFoo { }
+            public class Bar : IFoo { }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("DiTest.Bar");
+        await Assert.That(type).IsNotNull();
+
+        var factory = DiPipeline.ExtractFactory(type!, new FactoryIntent.Keyed("my_key"), "IFoo");
+        await Assert.That(factory).IsNotNull();
+
+        var registration = DiPipeline.ToRegistration(factory!, type!);
+        await Assert.That(registration.KeyExpression).IsEqualTo("\"my_key\"");
+    }
+
+    [Test]
+    public async Task ToRegistration_KeyedIntent_IsRawExpression_EmitsVerbatim(CancellationToken token)
+    {
+        TestSources.Add(("TestTypes.cs",
+            """
+            namespace DiTest;
+            public interface IFoo { }
+            public class Bar : IFoo { }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("DiTest.Bar");
+        await Assert.That(type).IsNotNull();
+
+        var factory = DiPipeline.ExtractFactory(type!, new FactoryIntent.Keyed("global::X.Y.Z()", IsRawExpression: true), "IFoo");
+        await Assert.That(factory).IsNotNull();
+
+        var registration = DiPipeline.ToRegistration(factory!, type!);
+        await Assert.That(registration.KeyExpression).IsEqualTo("global::X.Y.Z()");
+    }
+
+    [Test]
+    public async Task RenderConfigurator_KeyedKind_RawExpression_EmitsVerbatim(CancellationToken token)
+    {
+        TestSources.Add(("TestTypes.cs",
+            """
+            namespace DiTest;
+            public interface IFoo { }
+            public class Concrete : IFoo { }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var type = compilation.GetTypeByMetadataName("DiTest.Concrete");
+        await Assert.That(type).IsNotNull();
+
+        var factory = DiPipeline.ExtractFactory(
+            type!,
+            new FactoryIntent.Keyed("global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.Concrete>()", IsRawExpression: true),
+            "DiTest.IFoo");
+        await Assert.That(factory).IsNotNull();
+
+        var registration = DiPipeline.ToRegistration(factory!, type!);
+        var registrations = ImmutableValueArray.From(registration);
+
+        var options = new ConfiguratorOptions(
+            ClassName: "RawKeyConfigurator",
+            Namespace: "DiTest",
+            BaseType: "DiTest.IFoo",
+            EntrypointAttribute: "DiTest.FooConfiguratorAttribute",
+            Kind: new ConfiguratorKind.Keyed("global::Sparkitect.Modding.Identification", "DiTest.IFoo"),
+            IsPartial: false);
+
+        var success = DiPipeline.RenderConfigurator(registrations, options, out var code, out var fileName);
+
+        await Assert.That(success).IsTrue();
+        await Assert.That(code).Contains("registrations[global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.Concrete>()] = new global::");
+        await Assert.That(code).DoesNotContain("\"global::Sparkitect.Modding.IdentificationHelper.Read");
+    }
 }

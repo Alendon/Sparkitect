@@ -57,12 +57,17 @@ public sealed record TypeRegistrationEntry(
     string Id,
     ImmutableValueArray<(string fileId, string fileName)> Files,
     string MethodName,
-    string TypeFullName)
+    string TypeFullName,
+    KeyedFactoryGenerationInfo? KeyedFactoryGeneration = null)
     : RegistrationEntry(Id, Files)
 {
     public override string EmitRegistrationEntryCode(string registry, string id)
-        => $"{registry}.{MethodName}<{TypeFullName}>({id});";
+        => $"{registry}.{MethodName}<{TypeFullName}>({id});";   // PRESERVED — D-01
 }
+
+public sealed record KeyedFactoryGenerationInfo(
+    string TBaseFullName,
+    string ConfiguratorClassName);
 
 public sealed record ResourceRegistrationEntry(
     string Id,

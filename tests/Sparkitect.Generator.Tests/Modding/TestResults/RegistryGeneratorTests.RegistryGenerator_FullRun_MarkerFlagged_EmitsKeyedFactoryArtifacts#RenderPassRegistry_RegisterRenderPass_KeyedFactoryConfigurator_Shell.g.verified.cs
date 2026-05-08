@@ -1,0 +1,22 @@
+﻿//HintName: RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Shell.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace SampleTest.Generated;
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[global::System.AttributeUsage(global::System.AttributeTargets.Class, Inherited = false)]
+internal sealed class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfiguratorAttribute : global::System.Attribute { }
+
+[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+[RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfiguratorAttribute]
+internal partial class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator
+    : global::Sparkitect.DI.IFactoryConfigurator<global::Sparkitect.Modding.Identification, global::DiTest.IRenderPass, RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfiguratorAttribute>
+{
+    public void Configure(
+        global::System.Collections.Generic.IDictionary<global::Sparkitect.Modding.Identification, global::Sparkitect.DI.IKeyedFactory<global::DiTest.IRenderPass>> registrations,
+        global::System.Collections.Generic.IReadOnlySet<string> loadedMods)
+    {
+        Register_RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Method(registrations, loadedMods);
+    }
+}

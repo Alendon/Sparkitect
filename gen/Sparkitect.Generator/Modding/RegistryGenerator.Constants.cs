@@ -15,4 +15,11 @@ public partial class RegistryGenerator
     private const string RegistryMetadataAttribute = "Sparkitect.Modding.RegistryMetadataAttribute";
 
     private const string ResourceFileSuffix = ".sparkres.yaml";
+
+    // DisplayFormats.NamespaceAndType uses GenericsOptions.None, so OriginalDefinition.ToDisplayString()
+    // returns the name WITHOUT the type parameter angle-bracket suffix.
+    private const string KeyedFactoryGenerationMarkerOpenName =
+        "Sparkitect.Modding.KeyedFactoryGenerationMarkerAttribute";
+
+    internal const string IHasIdentificationInterface = "Sparkitect.Modding.IHasIdentification";
 }

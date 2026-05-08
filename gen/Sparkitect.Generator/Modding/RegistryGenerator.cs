@@ -159,6 +159,24 @@ public partial class RegistryGenerator : IIncrementalGenerator
             static (spc, pair) => OutputIdPropertiesUnit(spc, (pair.Left, pair.Right)));
         context.RegisterSourceOutput(resourceUnitsProvider.Combine(buildSettings),
             static (spc, pair) => OutputIdPropertiesUnit(spc, (pair.Left, pair.Right)));
+
+        // Branch A — Configurator + shell per (registry × marker-flagged-method) — driven from registration units.
+        context.RegisterSourceOutput(providerUnitsProvider.Combine(buildSettings),
+            static (spc, pair) => OutputTypeRegistrationKeyedFactory(spc, (pair.Left, pair.Right)));
+
+        // Branch B — Per-concrete _KeyedFactory.g.cs — driven from a parallel SyntaxProvider.
+        // INamedTypeSymbol is resolved inside the lambda and does NOT cross the pipeline boundary;
+        // only the string-typed MarkerProviderConcrete value flows through the pipeline.
+        var markerConcreteProvider = context.SyntaxProvider.CreateSyntaxProvider(
+                static (n, _) => n is AttributeSyntax,
+                static (ctx, ct) => TryBuildMarkerProviderConcrete(ctx.Node, ctx.SemanticModel, ct))
+            .NotNull()
+            .Combine(registryMapProvider)
+            .Select(static (pair, _) => ResolveMarkerConcrete(pair.Left, pair.Right))
+            .NotNull();
+
+        context.RegisterSourceOutput(markerConcreteProvider.Combine(buildSettings),
+            static (spc, pair) => OutputMarkerKeyedFactoryClass(spc, (pair.Left, pair.Right)));
     }
 
 
@@ -397,6 +415,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
             if (method.Parameters.First().Type.ToDisplayString(DisplayFormats.NamespaceAndType) !=
                 IdentificationStruct) continue;
 
+            var markerTBase = ExtractKeyedFactoryMarkerTBase(method);
+
             //Method registration
             if (method.Parameters.Length == 2)
             {
@@ -410,13 +430,14 @@ public partial class RegistryGenerator : IIncrementalGenerator
                     ParseTypeParameterConstraints(method.TypeParameters.First(), out var constraintFlag,
                         out var typeConstraints);
                     result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.GenericValue, constraintFlag,
-                        typeConstraints));
+                        typeConstraints, markerTBase));
 
                     continue;
                 }
 
                 result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Value, TypeConstraintFlag.None,
-                    ((string[])[parameter.ToDisplayString(DisplayFormats.NamespaceAndType)]).ToImmutableValueArray()));
+                    ((string[])[parameter.ToDisplayString(DisplayFormats.NamespaceAndType)]).ToImmutableValueArray(),
+                    markerTBase));
 
                 continue;
             }
@@ -427,17 +448,30 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 ParseTypeParameterConstraints(method.TypeParameters.First(), out var constraintFlag,
                     out var typeConstraints);
                 result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Type, constraintFlag,
-                    typeConstraints));
+                    typeConstraints, markerTBase));
 
                 continue;
             }
 
 
             //Resource file registration
-            result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.None, TypeConstraintFlag.None, []));
+            result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.None, TypeConstraintFlag.None, [],
+                markerTBase));
         }
 
         return result.ToImmutableValueArray();
+    }
+
+    private static string? ExtractKeyedFactoryMarkerTBase(IMethodSymbol m)
+    {
+        foreach (var attr in m.GetAttributes())
+        {
+            if (attr.AttributeClass?.OriginalDefinition.ToDisplayString(DisplayFormats.NamespaceAndType)
+                != KeyedFactoryGenerationMarkerOpenName) continue;
+            if (attr.AttributeClass.TypeArguments.FirstOrDefault() is INamedTypeSymbol tBase)
+                return tBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        }
+        return null;
     }
 
     internal static void ParseTypeParameterConstraints(ITypeParameterSymbol parameter,
@@ -577,11 +611,25 @@ public partial class RegistryGenerator : IIncrementalGenerator
             }
         }
 
+        // W1 LOCKED: read optional KeyedFactoryMarkerTBase directly off the symbol,
+        // bypassing reader.Of() so AllValid is never affected by an absent optional field.
+        // Pre-49.2 metadata that omits this field continues to parse cleanly.
+        string? markerTBase = null;
+        var markerField = methodMetadata.GetMembers("KeyedFactoryMarkerTBase")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (markerField is { IsConst: true, HasConstantValue: true, ConstantValue: string markerData }
+            && !string.IsNullOrEmpty(markerData))
+        {
+            markerTBase = markerData;
+        }
+
         model = new RegisterMethodModel(
             Of("FunctionName"),
             parameterKind,
             constraint,
-            typeConstraints.ToImmutableValueArray()
+            typeConstraints.ToImmutableValueArray(),
+            markerTBase
         );
 
         return reader.AllValid;

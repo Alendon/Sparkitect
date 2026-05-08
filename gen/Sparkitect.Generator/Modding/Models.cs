@@ -30,7 +30,12 @@ public record FileRegistrationEntry(string RegistryClass, string MethodName, str
 /// <param name="PrimaryParameterKind">The kind of the primary parameter</param>
 /// <param name="Constraint">Direct constraints</param>
 /// <param name="TypeConstraint">Affecting type constraints. May be empty</param>
-public record RegisterMethodModel(string FunctionName, PrimaryParameterKind PrimaryParameterKind, TypeConstraintFlag Constraint, ImmutableValueArray<string> TypeConstraint);
+public record RegisterMethodModel(
+    string FunctionName,
+    PrimaryParameterKind PrimaryParameterKind,
+    TypeConstraintFlag Constraint,
+    ImmutableValueArray<string> TypeConstraint,
+    string? KeyedFactoryMarkerTBase = null);
 
 /// <summary>
 /// The kind of the primary parameter of a registry method
