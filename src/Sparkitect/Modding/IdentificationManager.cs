@@ -54,24 +54,35 @@ internal class IdentificationManager : IIdentificationManager
         return category;
     }
 
-    public bool TryGetModId(string modId, out ushort id)
+    // Read paths preserve pre-reshape thread-affinity (no AssertMainThread): the previous
+    // TryGet* lookups did not assert and IdentificationDebuggerProxy invokes these from
+    // arbitrary threads under the debugger.
+    public Result<ushort, ResolveError> GetModId(string modName)
     {
-        return _modIds.TryGetValue(modId, out id);
+        if (_modIds.TryGetValue(modName, out var id))
+            return id;
+        return new ResolveError.UnknownMod(modName);
     }
 
-    public bool TryGetCategoryId(string categoryId, out ushort id)
+    public Result<ushort, ResolveError> GetCategoryId(string categoryName)
     {
-        return _categoryIds.TryGetValue(categoryId, out id);
+        if (_categoryIds.TryGetValue(categoryName, out var id))
+            return id;
+        return new ResolveError.UnknownCategory(categoryName);
     }
 
-    public bool TryGetModId(ushort id, out string modId)
+    public Result<string, ResolveError> GetModId(ushort modId)
     {
-        return _modIds.Inverse.TryGetValue(id, out modId);
+        if (_modIds.Inverse.TryGetValue(modId, out var name))
+            return name;
+        return new ResolveError.UnknownMod(modId);
     }
 
-    public bool TryGetCategoryId(ushort id, out string categoryId)
+    public Result<string, ResolveError> GetCategoryId(ushort categoryId)
     {
-        return _categoryIds.Inverse.TryGetValue(id, out categoryId);
+        if (_categoryIds.Inverse.TryGetValue(categoryId, out var name))
+            return name;
+        return new ResolveError.UnknownCategory(categoryId);
     }
 
     public Identification RegisterObject(Variant<string, ushort> modId, Variant<string, ushort> categoryId, string objectId)
@@ -113,38 +124,36 @@ internal class IdentificationManager : IIdentificationManager
         return Identification.Create(resolvedModId, resolvedCategoryId, newItemId);
     }
 
-    public bool TryGetObjectId(Variant<string, ushort> modId, Variant<string, ushort> categoryId, Variant<string, ushort> objectId, out Identification id)
+    public Result<Identification, ResolveError> GetObjectId(
+        Variant<string, ushort> modId,
+        Variant<string, ushort> categoryId,
+        Variant<string, ushort> objectId)
     {
-        ushort resolvedModId = ResolveModId(modId);
-        ushort resolvedCategoryId = ResolveCategoryId(categoryId);
-        
-        if (resolvedModId == 0 || resolvedCategoryId == 0)
-        {
-            id = Identification.Empty;
-            return false;
-        }
-        
-        var key = (resolvedModId, resolvedCategoryId);
-        
-        if (!_objectIds.TryGetValue(key, out var idDictionary))
-        {
-            id = Identification.Empty;
-            return false;
-        }
-        
-        Identification idResult = Identification.Empty;
-        bool result = objectId switch
-        {
-            Variant<string, ushort>.Of1 stringId =>
-                idDictionary.TryGetValue(stringId.Value, out var value)
-                    && (idResult = Identification.Create(resolvedModId, resolvedCategoryId, value)) is var _,
-            Variant<string, ushort>.Of2 numericId =>
-                idDictionary.Inverse.ContainsKey(numericId.Value)
-                    && (idResult = Identification.Create(resolvedModId, resolvedCategoryId, numericId.Value)) is var _,
-        };
+        // Fail-fast order (Lock E): mod → category → object.
+        // Pre-reshape TryGetObjectId did not assert main thread; preserved here.
+        var resolvedModId = ResolveModId(modId);
+        if (resolvedModId == 0)
+            return new ResolveError.UnknownMod(modId);
 
-        id = idResult;
-        return result;
+        var resolvedCategoryId = ResolveCategoryId(categoryId);
+        if (resolvedCategoryId == 0)
+            return new ResolveError.UnknownCategory(categoryId);
+
+        var key = (resolvedModId, resolvedCategoryId);
+        if (!_objectIds.TryGetValue(key, out var idDictionary))
+            return new ResolveError.UnknownObject(objectId);
+
+        return objectId switch
+        {
+            Variant<string, ushort>.Of1 strId
+                => idDictionary.TryGetValue(strId.Value, out var v)
+                    ? Identification.Create(resolvedModId, resolvedCategoryId, v)
+                    : (Result<Identification, ResolveError>)new ResolveError.UnknownObject(objectId),
+            Variant<string, ushort>.Of2 numId
+                => idDictionary.Inverse.ContainsKey(numId.Value)
+                    ? Identification.Create(resolvedModId, resolvedCategoryId, numId.Value)
+                    : (Result<Identification, ResolveError>)new ResolveError.UnknownObject(objectId),
+        };
     }
 
     public IEnumerable<Identification> GetAllObjectIds()
@@ -302,7 +311,7 @@ internal class IdentificationManager : IIdentificationManager
 
     public bool IsObjectRegistered(Variant<string, ushort> modId, Variant<string, ushort> categoryId, Variant<string, ushort> objectId)
     {
-        return TryGetObjectId(modId, categoryId, objectId, out _);
+        return GetObjectId(modId, categoryId, objectId) is Result<Identification, ResolveError>.Ok;
     }
 
     public int GetModCount()
@@ -334,15 +343,16 @@ internal class IdentificationManager : IIdentificationManager
         return _objectIds.TryGetValue(key, out var idDict) ? idDict.Count : 0;
     }
 
+    // Internal helpers stay sentinel-shaped (Lock C): 0 on miss.
     private ushort ResolveModId(Variant<string, ushort> modId) => modId switch
     {
-        Variant<string, ushort>.Of1 strId => TryGetModId(strId.Value, out var resolved) ? resolved : (ushort)0,
+        Variant<string, ushort>.Of1 strId => _modIds.TryGetValue(strId.Value, out var resolved) ? resolved : (ushort)0,
         Variant<string, ushort>.Of2 numericId => _modIds.Inverse.ContainsKey(numericId.Value) ? numericId.Value : (ushort)0,
     };
 
     private ushort ResolveCategoryId(Variant<string, ushort> categoryId) => categoryId switch
     {
-        Variant<string, ushort>.Of1 strId => TryGetCategoryId(strId.Value, out var resolved) ? resolved : (ushort)0,
+        Variant<string, ushort>.Of1 strId => _categoryIds.TryGetValue(strId.Value, out var resolved) ? resolved : (ushort)0,
         Variant<string, ushort>.Of2 numericId => _categoryIds.Inverse.ContainsKey(numericId.Value) ? numericId.Value : (ushort)0,
     };
 

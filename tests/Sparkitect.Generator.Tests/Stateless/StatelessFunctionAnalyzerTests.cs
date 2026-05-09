@@ -21,6 +21,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task NonStaticMethod_WithStatelessAttribute_ReportsError()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -46,6 +47,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task StaticMethod_WithStatelessAttribute_NoDiagnostic_SPARK0401()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -75,6 +77,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task MultipleSchedulingAttributes_ReportsError()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -101,6 +104,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task SingleSchedulingAttribute_NoDiagnostic()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -130,6 +134,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task ConcreteParameter_ReportsWarning()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -157,6 +162,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task InterfaceParameter_NoDiagnostic()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -184,6 +190,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task NullableConcreteParameter_NoDiagnostic()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -211,6 +218,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task AbstractParameter_NoDiagnostic()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -238,6 +246,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task ConcreteParameterWithAllowConcreteResolution_NoDiagnostic()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -294,6 +303,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task TypeWithIHasIdentification_NoDiagnostic()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -319,6 +329,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task TypeWithoutIHasIdentification_WithParentIdAttribute_NoDiagnostic()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -352,6 +363,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task OrderBeforeWithoutScheduling_ReportsWarning()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -386,6 +398,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task OrderAfterWithoutScheduling_ReportsWarning()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -420,6 +433,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task OrderAttributesWithScheduling_NoDiagnostic()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -482,6 +496,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task ValidStatelessFunction_NoDiagnostic()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -509,6 +524,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     public async Task MultipleParameters_OnlyConcreteReportsWarning()
     {
         var code = """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;

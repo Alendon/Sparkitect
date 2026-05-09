@@ -160,6 +160,13 @@ public partial class RegistryGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(resourceUnitsProvider.Combine(buildSettings),
             static (spc, pair) => OutputIdPropertiesUnit(spc, (pair.Left, pair.Right)));
 
+        // Phase 49.3 (D-03/D-04/D-05): auto-emit `: IHasIdentification` + static `Identification` partial
+        // for every TypeRegistrationEntry. Independent of the 49.2 keyed-factory marker (D-04).
+        context.RegisterSourceOutput(providerUnitsProvider.Combine(buildSettings),
+            static (spc, pair) => OutputAutoEmitIdentificationUnit(spc, (pair.Left, pair.Right)));
+        context.RegisterSourceOutput(resourceUnitsProvider.Combine(buildSettings),
+            static (spc, pair) => OutputAutoEmitIdentificationUnit(spc, (pair.Left, pair.Right)));
+
         // Branch A — Configurator + shell per (registry × marker-flagged-method) — driven from registration units.
         context.RegisterSourceOutput(providerUnitsProvider.Combine(buildSettings),
             static (spc, pair) => OutputTypeRegistrationKeyedFactory(spc, (pair.Left, pair.Right)));

@@ -9,5 +9,4 @@ namespace SpaceInvadersMod.Systems;
 [SystemGroupScheduling]
 public partial class SpaceInvadersSystemGroup : IHasIdentification
 {
-    public static Identification Identification => EcsSystemGroupID.SpaceInvadersMod.SpaceInvaders;
 }

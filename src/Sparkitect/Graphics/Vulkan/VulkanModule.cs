@@ -14,7 +14,6 @@ public partial class VulkanModule : IStateModule
 {
     
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
-    public static Identification Identification => StateModuleID.Sparkitect.Vulkan;
 
     [TransitionFunction("vulkan_init")]
     [OnCreateScheduling]

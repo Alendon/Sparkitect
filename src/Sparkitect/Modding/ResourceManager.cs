@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using Sparkitect.GameState;
+using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Modding;
 
@@ -22,10 +23,10 @@ internal class ResourceManager : IResourceManager
         if (!_resourceMappings.TryGetValue((objectId, key), out var filename))
             return null;
 
-        if (!IdentificationManager.TryGetModId(objectId.ModId, out var modId))
+        if (IdentificationManager.GetModId(objectId.ModId) is not Result<string, ResolveError>.Ok(var modId))
             return null;
 
-        if (!IdentificationManager.TryGetCategoryId(objectId.CategoryId, out var registryId))
+        if (IdentificationManager.GetCategoryId(objectId.CategoryId) is not Result<string, ResolveError>.Ok(var registryId))
             return null;
 
         if (!_modArchives.TryGetValue(modId, out var archive) || archive is null)
@@ -55,7 +56,7 @@ internal class ResourceManager : IResourceManager
         _modArchives.Remove(modId);
 
         // Clean up resource mappings for this mod
-        if (!IdentificationManager.TryGetModId(modId, out var numericModId))
+        if (IdentificationManager.GetModId(modId) is not Result<ushort, ResolveError>.Ok(var numericModId))
             return;
 
         var keysToRemove = _resourceMappings.Keys

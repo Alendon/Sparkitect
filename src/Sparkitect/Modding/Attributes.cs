@@ -112,6 +112,25 @@ public sealed class RegistryFacadeAttribute : Attribute;
 public sealed class KeyedFactoryGenerationMarkerAttribute<TBase> : Attribute where TBase : class;
 
 /// <summary>
+/// Marks an interface or base class as a contract used in typed registration. Final concretes that derive from
+/// the marked type are auto-emitted with an <see cref="IHasIdentification"/> implementation by the Registry Generator
+/// (Phase 49.3-01) — the marked type itself never extends or implements <see cref="IHasIdentification"/>.
+/// </summary>
+/// <remarks>
+/// <para>Without this marker, a generator (e.g. <c>StatelessFunctionGenerator</c>) cannot tell at extraction time that
+/// a containing type whose <see cref="IHasIdentification"/> arrives only via auto-emit (a sibling generator's output)
+/// is actually a typed-registration target. Roslyn does not let one <c>[Generator]</c> observe another's output within
+/// the same compilation pass; only attributes on user-source declarations are visible across generators.</para>
+/// <para>Applying this attribute to the contract surface (typically a marker interface or abstract base) provides the
+/// missing signal so dependent generators can opt the type into the same dispatch as a user-source
+/// <c>: IHasIdentification</c> declaration.</para>
+/// <para>The accompanying analyzer (SPARK0263) promotes use of this attribute when a type is referenced as a generic
+/// type argument in a typed-registration registry method.</para>
+/// </remarks>
+[AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+public sealed class TypedRegistrationContractAttribute : Attribute;
+
+/// <summary>
 /// Marks a class as containing code that depends on an optional mod's types.
 /// Isolate optional mod type references to marked classes to prevent TypeLoadException.
 /// </summary>

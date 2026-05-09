@@ -41,10 +41,18 @@ Registries like [`StateRegistry`](xref:Sparkitect.GameState.StateRegistry) and [
 public partial class SampleEntryState : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
-    public static Identification Identification => StateID.MyMod.Sample;
     public static IReadOnlyList<Identification> Modules => [StateModuleID.MyMod.Sample];
 }
 ```
+
+> **Note (49.3+):** The Registry Generator auto-emits a partial declaration making the registered
+> type implement [`IHasIdentification`](xref:Sparkitect.Modding.IHasIdentification) — you do **not**
+> hand-author the `static Identification Identification` property. Authoring the
+> `[Registry.RegisterX("...")]` attribute on a `partial class` (or `partial struct` / `partial record`)
+> is the sole authoring entry point for both registration and identification. Hand-authoring the
+> property on a registered concrete produces a duplicate-member compile error; see
+> [IHasIdentification: Consumption-Side Only](#ihasidentification-consumption-side-only) for the
+> consumption pattern.
 
 The generator embeds the type reference directly in the registration call (`registry.RegisterState<SampleEntryState>(id)`), so the registered class must satisfy whatever generic constraints the registry method declares.
 
@@ -218,6 +226,43 @@ The [`IIdentificationManager`](xref:Sparkitect.Modding.IIdentificationManager) m
 
 Registration attributes only require the item-level key (e.g., `"iron_sword"`). The mod ID and category ID are determined automatically from the declaring mod and target registry.
 
+### Resolving Identifications
+
+Use [`IIdentificationManager`](xref:Sparkitect.Modding.IIdentificationManager) to resolve string or
+numeric keys to a full [`Identification`](xref:Sparkitect.Modding.Identification). Resolve-path
+methods return `Result<TOk, ResolveError>` from `Sparkitect.Utils.DU` (since 49.3):
+
+```csharp
+using Sparkitect.Modding;
+using Sparkitect.Utils.DU;
+
+var result = identificationManager.GetObjectId("my_mod", "blocks", "stone");
+if (result is Result<Identification, ResolveError>.Ok(var id))
+{
+    // use id...
+}
+else if (result is Result<Identification, ResolveError>.Error(ResolveError.UnknownMod _))
+{
+    // mod not registered
+}
+```
+
+`ResolveError` is a discriminated union with three cases:
+
+- `UnknownMod(Variant<string, ushort> Value)`
+- `UnknownCategory(Variant<string, ushort> Value)`
+- `UnknownObject(Variant<string, ushort> Value)`
+
+**Failure check order:** mod → category → object. If both the mod and category are unregistered,
+the returned error is `UnknownMod` (mod is checked first). If the mod is known but the category is
+unregistered, the error is `UnknownCategory`. The `UnknownObject` case fires only after both mod
+and category have been validated.
+
+For the "is this the zero-value identification?" check (e.g., parent-id chain traversal terminating
+at the Root state), use `Identification.IsEmpty()`. The `Identification.Empty` static field is no
+longer used as a missing-result sentinel — it is the struct zero-value only, used to mark the
+absence of a parent in a state descriptor's `ParentId`.
+
 ## Registry Lifecycle
 
 Registries are state-triggered: they are added, processed, and torn down by transition functions rather than a global initialization pass. This makes registration composable across state boundaries.
@@ -252,3 +297,36 @@ The lifecycle within a state transition:
 1. `AddRegistry<T>()` registers the category identifier and resource folder
 2. `ProcessAllMissing<T>()` scans loaded mods for [`IRegisterMarker`](xref:Sparkitect.Modding.IRegisterMarker) attributes targeting this registry, resolves data from providers or resource files, and calls the registry method for each entry
 3. When the state is destroyed, `UnregisterAllRemaining<T>()` calls `Unregister(Identification)` for every tracked object and removes their identification mappings
+
+## IHasIdentification: Consumption-Side Only
+
+[`IHasIdentification`](xref:Sparkitect.Modding.IHasIdentification) is implemented only on **final
+concrete types** registered through the Registry Generator (since 49.3). Do not:
+
+- Extend `IHasIdentification` on an interface or abstract class. Static-abstract members cannot be
+  forwarded through a base; every concrete must implement them. The `HasIdentificationMisuse`
+  analyzer (`SPARK0262`, warning) catches this. Engine-side state contracts such as
+  [`IStateDescriptor`](xref:Sparkitect.GameState.IStateDescriptor) and
+  [`IStateModule`](xref:Sparkitect.GameState.IStateModule) deliberately do **not** carry an
+  `: IHasIdentification` constraint — the constraint belongs at consumption sites instead.
+- Hand-author `static Identification Identification` on a registered concrete. The Registry
+  Generator auto-emits the implementation; a hand-authored declaration produces a duplicate-member
+  compile error.
+
+**Consumption pattern:** add the constraint where the static-abstract dispatch is needed.
+
+```csharp
+public void DispatchByIdentification<T>(T instance)
+    where T : IHasIdentification
+{
+    var id = T.Identification;   // static-abstract dispatch
+    // ...
+}
+```
+
+For framework code that needs a non-generic indirect read, `IdentificationHelper.Read<T>()` is
+available. Cross-generator surfaces that need to discover registration-driving contracts (e.g.,
+`StatelessFunctionGenerator` widening to all registered final types) walk the
+[`TypedRegistrationContractAttribute`](xref:Sparkitect.Modding.TypedRegistrationContractAttribute)
+marker and the `SPARK0263` analyzer (warning) promotes the marker on `TBase` candidates referenced
+by `[RegistryMethod]` generic constraints.

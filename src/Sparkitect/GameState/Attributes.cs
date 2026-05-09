@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using Sparkitect.DI.GeneratorAttributes;
+using Sparkitect.Modding;
 
 namespace Sparkitect.GameState;
 
@@ -29,4 +30,4 @@ public sealed class StateFacadeAttribute : Attribute;
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 public sealed class StateServiceAttribute<TInterface, TModule> : Attribute
     where TInterface : class
-    where TModule : IStateModule;
+    where TModule : IStateModule, IHasIdentification;

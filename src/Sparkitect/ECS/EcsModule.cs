@@ -11,7 +11,6 @@ namespace Sparkitect.ECS;
 [ModuleRegistry.RegisterModule("ecs")]
 public partial class EcsModule : IStateModule
 {
-    public static Identification Identification => StateModuleID.Sparkitect.Ecs;
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
 
     [TransitionFunction("add_ecs_registries")]

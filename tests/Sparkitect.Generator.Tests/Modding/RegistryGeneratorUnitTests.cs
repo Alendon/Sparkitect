@@ -814,4 +814,99 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(configuratorCode).Contains(
             "registrations[global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()] = new global::DiTest.ClearColorPass_KeyedFactory();");
     }
+
+    // ── Phase 49.3 (D-19) — auto-emit IHasIdentification snapshot tests ──
+
+    /// <summary>
+    /// Builds an unmarked TypeRegistrationEntry-only unit (no <see cref="KeyedFactoryGenerationInfo"/>).
+    /// Used for the 49.3 auto-emit snapshot tests where keyed-factory generation does not apply.
+    /// </summary>
+    private static RegistrationUnit BuildTypeRegistrationUnit(
+        string registryName = "RenderPassRegistry",
+        string methodName = "RegisterRenderPass",
+        params (string id, string typeFullName)[] entries)
+    {
+        var model = new RegistryModel(
+            registryName, "render_pass", "DiTest", false,
+            ImmutableValueArray.From(new RegisterMethodModel(
+                methodName, PrimaryParameterKind.Type, TypeConstraintFlag.ReferenceType,
+                ImmutableValueArray.From<string>())),
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var registrationEntries = entries.Select(e =>
+            (RegistrationEntry)new TypeRegistrationEntry(
+                e.id,
+                ImmutableValueArray.From<(string, string)>(),
+                methodName,
+                e.typeFullName)).ToArray();
+
+        return new RegistrationUnit(model, SourceKind.Provider, "Providers",
+            ImmutableValueArray.From(registrationEntries));
+    }
+
+    [Test]
+    public async Task RenderAutoEmitIdentification_SingleTypeRegistration_Snapshot()
+    {
+        var unit = BuildTypeRegistrationUnit(
+            entries: [("clear_color_pass", "global::DiTest.ClearColorPass")]);
+
+        var ok = RegistryGenerator.RenderAutoEmitIdentificationUnit(unit, BuildSettings, out var code, out var file);
+        await Assert.That(ok).IsTrue();
+        await Assert.That(file).IsEqualTo("RenderPassRegistry.AutoEmitIdentification_Providers.g.cs");
+
+        // Substring guards before snapshot acceptance:
+        // Block-style namespace (NOT file-scoped) — multiple per-concrete partial declarations
+        // may live in distinct namespaces in a single emission file, and C# allows only one
+        // file-scoped namespace per .cs file.
+        await Assert.That(code).Contains("namespace DiTest");
+        await Assert.That(code).Contains("partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification");
+        await Assert.That(code).Contains("public static global::Sparkitect.Modding.Identification Identification");
+        await Assert.That(code).Contains("global::SampleTest.Generated.Registrations.RenderPassRegistryRegistrations_Providers.ClearColorPass");
+
+        await Verifier.Verify(code, verifySettings);
+    }
+
+    [Test]
+    public async Task RenderAutoEmitIdentification_NoTypeEntries_ProducesNoOutput()
+    {
+        // Pitfall 5 (RESEARCH): only TypeRegistrationEntry triggers auto-emit; value/method/property
+        // providers are different RegistrationEntry subtypes and never carry IHasIdentification.
+        var model = new RegistryModel(
+            "DummyRegistry", "dummy", "MinimalSampleMod", false,
+            ImmutableValueArray.From(new RegisterMethodModel("RegisterValue", PrimaryParameterKind.Value,
+                TypeConstraintFlag.None, ImmutableValueArray.From("string"))),
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var unit = new RegistrationUnit(model, SourceKind.Provider, "Providers",
+            ImmutableValueArray.From<RegistrationEntry>(
+                new MethodRegistrationEntry(
+                    "hello", ImmutableValueArray.From<(string, string)>(),
+                    "RegisterValue", "global::MinimalSampleMod.DummyValueProvider.GetHello",
+                    ImmutableValueArray.From<(string, bool)>())));
+
+        var ok = RegistryGenerator.RenderAutoEmitIdentificationUnit(unit, BuildSettings, out var code, out _);
+
+        await Assert.That(ok).IsFalse();
+        await Assert.That(code).IsEqualTo(string.Empty);
+    }
+
+    [Test]
+    public async Task RenderAutoEmitIdentification_MarkerFlaggedConcrete_BothArtifactsEmit()
+    {
+        // Layered orthogonality (D-04 + RESEARCH §Architecture Pattern 2): 49.2 keyed-factory marker
+        // and 49.3 auto-emit are independent emission paths that coexist on the same concrete.
+        var unit = BuildMarkerFlaggedUnit(
+            entries: [("clear_color_pass", "global::DiTest.ClearColorPass")]);
+
+        // 49.2 keyed-factory artifact:
+        var kfGroups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        await Assert.That(kfGroups.Length).IsGreaterThanOrEqualTo(1);
+
+        // 49.3 auto-emit artifact:
+        var autoOk = RegistryGenerator.RenderAutoEmitIdentificationUnit(unit, BuildSettings, out var autoCode, out _);
+        await Assert.That(autoOk).IsTrue();
+        await Assert.That(autoCode).Contains("partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification");
+
+        await Verifier.Verify(new { autoCode, kfFirstShell = kfGroups[0].ShellCode }, verifySettings);
+    }
 }

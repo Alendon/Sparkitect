@@ -7,9 +7,7 @@ using Sparkitect.Modding.IDs;
 namespace SpaceInvadersMod.Components;
 
 [UnmanagedComponentRegistry.RegisterComponent("velocity")]
-public struct Velocity : IHasIdentification
+public partial struct Velocity : IHasIdentification
 {
-    public static Identification Identification => UnmanagedComponentID.SpaceInvadersMod.Velocity;
-
     public Vector2 Value;
 }

@@ -11,7 +11,6 @@ namespace SpaceInvadersMod;
 public partial class SpaceInvadersState : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
-    public static Identification Identification => StateID.SpaceInvadersMod.SpaceInvaders;
 
     public static IReadOnlyList<Identification> Modules =>
     [

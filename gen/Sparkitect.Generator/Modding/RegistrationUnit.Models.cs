@@ -58,11 +58,24 @@ public sealed record TypeRegistrationEntry(
     ImmutableValueArray<(string fileId, string fileName)> Files,
     string MethodName,
     string TypeFullName,
-    KeyedFactoryGenerationInfo? KeyedFactoryGeneration = null)
+    KeyedFactoryGenerationInfo? KeyedFactoryGeneration = null,
+    RegistrationTypeKind TypeKind = RegistrationTypeKind.Class)
     : RegistrationEntry(Id, Files)
 {
     public override string EmitRegistrationEntryCode(string registry, string id)
         => $"{registry}.{MethodName}<{TypeFullName}>({id});";   // PRESERVED — D-01
+}
+
+/// <summary>
+/// Concrete-type kind carried on <see cref="TypeRegistrationEntry"/> so that
+/// auto-emit (49.3) can produce a matching <c>partial class</c> or <c>partial struct</c>
+/// extension. Defaults to <see cref="Class"/> for backward compatibility with callers
+/// that have not yet been wired through the kind-aware extraction path.
+/// </summary>
+public enum RegistrationTypeKind
+{
+    Class,
+    Struct
 }
 
 public sealed record KeyedFactoryGenerationInfo(

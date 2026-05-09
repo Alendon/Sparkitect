@@ -6,7 +6,6 @@ using Sparkitect.Modding.IDs;
 namespace SpaceInvadersMod.Components;
 
 [UnmanagedComponentRegistry.RegisterComponent("player_tag")]
-public struct PlayerTag : IHasIdentification
+public partial struct PlayerTag : IHasIdentification
 {
-    public static Identification Identification => UnmanagedComponentID.SpaceInvadersMod.PlayerTag;
 }

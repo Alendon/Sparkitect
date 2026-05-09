@@ -16,7 +16,4 @@ public sealed partial class CoreModule : IStateModule
 {
     /// <inheritdoc />
     public static IReadOnlyList<Identification> RequiredModules => [];
-
-    /// <inheritdoc />
-    public static Identification Identification => StateModuleID.Sparkitect.Core;
 }

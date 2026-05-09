@@ -1,0 +1,13 @@
+﻿//HintName: RenderPassRegistry.AutoEmitIdentification_Providers.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace DiTest
+{
+    partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification
+    {
+        public static global::Sparkitect.Modding.Identification Identification
+            => global::SampleTest.Generated.Registrations.RenderPassRegistryRegistrations_Providers.ClearColorPass;
+    }
+}
+

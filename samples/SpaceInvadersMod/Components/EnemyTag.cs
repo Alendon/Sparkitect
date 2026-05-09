@@ -6,7 +6,6 @@ using Sparkitect.Modding.IDs;
 namespace SpaceInvadersMod.Components;
 
 [UnmanagedComponentRegistry.RegisterComponent("enemy_tag")]
-public struct EnemyTag : IHasIdentification
+public partial struct EnemyTag : IHasIdentification
 {
-    public static Identification Identification => UnmanagedComponentID.SpaceInvadersMod.EnemyTag;
 }

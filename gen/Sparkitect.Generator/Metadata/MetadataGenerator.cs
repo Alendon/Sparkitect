@@ -12,7 +12,6 @@ public class MetadataGenerator : IIncrementalGenerator
 {
     private const string MetadataCategoryMarkerFqn = "Sparkitect.Metadata.MetadataCategoryMarkerAttribute";
     private const string MetadataAttributeBaseFqn = "Sparkitect.Metadata.MetadataAttribute";
-    private const string IHasIdentificationFqn = "Sparkitect.Modding.IHasIdentification";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -42,9 +41,11 @@ public class MetadataGenerator : IIncrementalGenerator
                 "System.Runtime.CompilerServices.CompilerGeneratedAttribute"))
             return null;
 
-        // Check implements IHasIdentification
-        if (!symbol.AllInterfaces.Any(i =>
-                i.ToDisplayString(DisplayFormats.NamespaceAndType) == IHasIdentificationFqn))
+        // Check identification on the type. Sibling-generator auto-emit of IHasIdentification
+        // is invisible to this SG within the same compilation pass, so widen the check via
+        // IdentificationContract — accepts user-source `: IHasIdentification` AND
+        // [TypedRegistrationContract] on a base/interface.
+        if (!IdentificationContract.IsIdentified(symbol))
             return null;
 
         // Scan attributes for MetadataCategoryMarker

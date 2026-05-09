@@ -4,6 +4,7 @@ using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.Resolution;
 using Sparkitect.GameState;
+using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Modding;
 
@@ -154,7 +155,7 @@ internal class RegistryManager : IRegistryManager
             return;
         }
 
-        if (!IdentificationManager.TryGetCategoryId(registryIdentifier, out var registryCategoryId))
+        if (IdentificationManager.GetCategoryId(registryIdentifier) is not Result<ushort, ResolveError>.Ok(var registryCategoryId))
         {
             throw new InvalidOperationException($"Registry identifier '{registryIdentifier}' not found in identification manager");
         }
@@ -167,7 +168,7 @@ internal class RegistryManager : IRegistryManager
         var modsToUnregister = processedMods.ToArray(); // Copy to avoid modification during iteration
         foreach (var modId in modsToUnregister)
         {
-            if (!IdentificationManager.TryGetModId(modId, out var numericModId))
+            if (IdentificationManager.GetModId(modId) is not Result<ushort, ResolveError>.Ok(var numericModId))
             {
                 Log.Warning("Mod ID {ModId} not found in identification manager during unregister", modId);
                 continue;

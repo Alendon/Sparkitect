@@ -15,6 +15,4 @@ public partial class PongModule : IStateModule
         StateModuleID.Sparkitect.Vulkan,
         StateModuleID.Sparkitect.Windowing
     ];
-
-    public static Identification Identification => StateModuleID.PongMod.Pong;
 }

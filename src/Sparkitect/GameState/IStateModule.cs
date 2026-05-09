@@ -6,7 +6,8 @@ namespace Sparkitect.GameState;
 /// Defines a state module - a reusable unit of functionality composed into states.
 /// Modules contain state functions and declare dependencies on other modules.
 /// </summary>
-public interface IStateModule : IHasIdentification
+[TypedRegistrationContract]
+public interface IStateModule
 {
     /// <summary>
     /// Gets the list of modules this module depends on. Dependencies must be present in the active state.

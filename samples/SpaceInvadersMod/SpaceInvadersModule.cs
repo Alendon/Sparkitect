@@ -15,6 +15,4 @@ public partial class SpaceInvadersModule : IStateModule
         StateModuleID.Sparkitect.Vulkan,
         StateModuleID.Sparkitect.Windowing
     ];
-
-    public static Identification Identification => StateModuleID.SpaceInvadersMod.SpaceInvaders;
 }

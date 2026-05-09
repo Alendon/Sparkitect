@@ -9,6 +9,4 @@ namespace Sparkitect.Windowing;
 public partial class WindowingModule : IStateModule
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
-
-    public static Identification Identification => StateModuleID.Sparkitect.Windowing;
 }

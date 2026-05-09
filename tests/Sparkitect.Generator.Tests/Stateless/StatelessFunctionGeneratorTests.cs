@@ -37,6 +37,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     public async Task TryExtractStatelessFunction_ValidMethod_GeneratesWrapper(CancellationToken token)
     {
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -70,6 +71,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     public async Task TryExtractStatelessFunction_MethodWithDIParams_GeneratesWrapperWithParams(CancellationToken token)
     {
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -105,6 +107,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     public async Task TryExtractStatelessFunction_MethodWithOrderingAttrs_GeneratesSchedulingWithOrdering(CancellationToken token)
     {
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -144,6 +147,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     public async Task StatelessFunctionGenerator_SingleFunction_GeneratesWrapperAndRegistration(CancellationToken token)
     {
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -168,6 +172,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     public async Task StatelessFunctionGenerator_MultipleFunctionsInClass_GeneratesAll(CancellationToken token)
     {
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -197,6 +202,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     public async Task StatelessFunctionGenerator_FunctionWithDIParams_GeneratesCorrectWrapper(CancellationToken token)
     {
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -229,6 +235,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     {
         // Method has scheduling attribute but no StatelessFunction attribute
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -260,6 +267,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     {
         // Method has StatelessFunction attribute but no scheduling attribute
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -291,6 +299,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     {
         // Class doesn't implement IHasIdentification
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -317,10 +326,57 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     }
 
     [Test]
+    public async Task TryExtractStatelessFunction_TypeOnlyTypedRegistrationContract_GeneratesWrapper(CancellationToken token)
+    {
+        // Phase 49.3-04 Rule-4 expansion: containing types that acquire IHasIdentification ONLY
+        // through RegistryGenerator auto-emit (a sibling generator) are invisible to this
+        // generator within the same compilation pass. Marking the base interface with
+        // [TypedRegistrationContract] restores discovery.
+        TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            namespace TestMod;
+
+            // The "production" base interface — does NOT extend IHasIdentification (post-D-09).
+            [TypedRegistrationContract]
+            public interface IFakeStateModule
+            {
+            }
+
+            // The user-source partial declaration: derives from the contract interface, but
+            // does NOT itself list ': IHasIdentification'. The auto-emit partial that would
+            // add IHasIdentification is invisible here (would come from RegistryGenerator
+            // in a real compilation; we don't run RegistryGenerator in this test).
+            public partial class TestModule : IFakeStateModule
+            {
+                [TestFunction("init")]
+                [TestScheduling]
+                public static void Initialize() { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        // The SF generator should still emit the *Func wrapper for the method, because the
+        // containing type derives from a [TypedRegistrationContract]-annotated interface.
+        var wrapperFiles = driverRunResult.GeneratedTrees
+            .Select(t => System.IO.Path.GetFileName(t.FilePath))
+            .Where(f => f.Contains("Wrapper"))
+            .ToList();
+
+        await Assert.That(wrapperFiles).IsNotEmpty();
+        await Assert.That(wrapperFiles.Any(f => f.Contains("TestModule") && f.Contains("init"))).IsTrue();
+    }
+
+    [Test]
     public async Task TryExtractStatelessFunction_PrivateMethod_GeneratesNothing(CancellationToken token)
     {
         // Private methods should be ignored by the generator
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -350,6 +406,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     {
         // Instance methods should be ignored (analyzer catches this, but generator should handle gracefully)
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -393,6 +450,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
             }
             """));
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -446,6 +504,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
             }
             """));
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -487,6 +546,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     public async Task StatelessFunction_MultipleParentsForSameRegistry_ProducesUniqueHintNames(CancellationToken token)
     {
         TestSources.Add(("TestModules.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -534,6 +594,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     public async Task StatelessFunctionGenerator_WithParentIdAttribute_UsesOverriddenParent(CancellationToken token)
     {
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
@@ -573,6 +634,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     public async Task StatelessFunctionGenerator_WithParentIdAttributeAndIHasIdentification_UsesOverriddenParent(CancellationToken token)
     {
         TestSources.Add(("TestModule.cs", """
+            #pragma warning disable SPARK0262
             using StatelessTest;
             using Sparkitect.Modding;
             using Sparkitect.Stateless;

@@ -253,7 +253,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         _shutdownRequested = true;
     }
 
-    public void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule
+    public void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule, IHasIdentification
     {
         _pendingModules.Add(() =>
         {
@@ -271,7 +271,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
     }
 
-    public void AddStateDescriptor<TStateDescriptor>(Identification id) where TStateDescriptor : class, IStateDescriptor
+    public void AddStateDescriptor<TStateDescriptor>(Identification id) where TStateDescriptor : class, IStateDescriptor, IHasIdentification
     {
         _pendingStates.Add(() =>
         {
@@ -362,7 +362,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         var current = metadata;
 
         // Walk up the parent chain
-        while (!current.ParentId.Equals(Identification.Empty))
+        while (!current.ParentId.IsEmpty())
         {
             if (!visited.Add(current.Id))
             {
@@ -396,7 +396,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         var modules = new HashSet<Identification>();
         var current = parentId;
 
-        while (!current.Equals(Identification.Empty))
+        while (!current.IsEmpty())
         {
             if (!allStates.TryGetValue(current, out var state))
                 break;
@@ -439,7 +439,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         var modules = new List<Identification>();
         var current = stateId;
 
-        while (!current.Equals(Identification.Empty))
+        while (!current.IsEmpty())
         {
             if (!_registeredStates.TryGetValue(current, out var state))
                 break;

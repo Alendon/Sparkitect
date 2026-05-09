@@ -24,7 +24,8 @@ public partial class RegistryGenerator
         string ProviderContainingTypeFullName,
         string ProviderMethodOrTypeName,
         ImmutableValueArray<ProviderFileArg> Files,
-        ImmutableValueArray<(string paramType, bool isNullable)> DiParameters);
+        ImmutableValueArray<(string paramType, bool isNullable)> DiParameters,
+        bool IsValueTypeProvider = false);
 
     internal static bool TryExtractProviderInfo(AttributeData attribute,
         out string registryTypeName, out string? registryNamespace, out string methodName, out bool isRegisterMarker)
@@ -98,6 +99,7 @@ public partial class RegistryGenerator
 
         bool isTypeProvider = targetSymbol is INamedTypeSymbol;
         bool isPropertyProvider = targetSymbol is IPropertySymbol;
+        bool isValueTypeProvider = targetSymbol is INamedTypeSymbol nameSym && nameSym.IsValueType;
         string containerFullName;
         string methodOrTypeName;
         var diParamsBuilder = new ImmutableValueArray<(string paramType, bool isNullable)>.Builder();
@@ -141,7 +143,8 @@ public partial class RegistryGenerator
             containerFullName,
             methodOrTypeName,
             files,
-            diParamsBuilder.ToImmutableValueArray());
+            diParamsBuilder.ToImmutableValueArray(),
+            isValueTypeProvider);
     }
 
     internal static RegistrationUnit? MapProviderCandidateToUnit(ProviderCandidate cand, RegistryMap regMap)
@@ -190,7 +193,8 @@ public partial class RegistryGenerator
                 kfg = new KeyedFactoryGenerationInfo(tBase, configuratorClassName);
             }
 
-            entry = new TypeRegistrationEntry(cand.Id, files, cand.MethodName, typeFull, kfg);
+            entry = new TypeRegistrationEntry(cand.Id, files, cand.MethodName, typeFull, kfg,
+                cand.IsValueTypeProvider ? RegistrationTypeKind.Struct : RegistrationTypeKind.Class);
         }
         else
         {

@@ -285,6 +285,7 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
     {
         TestSources.Add(("SchedulingTest.cs",
             """
+            #pragma warning disable SPARK0262
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
             using StatelessTest;
@@ -322,6 +323,7 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
     {
         TestSources.Add(("SchedulingTest.cs",
             """
+            #pragma warning disable SPARK0262
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
             using StatelessTest;
@@ -366,6 +368,7 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
     {
         TestSources.Add(("SchedulingTest.cs",
             """
+            #pragma warning disable SPARK0262
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
             using StatelessTest;
@@ -413,6 +416,7 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
     {
         TestSources.Add(("SchedulingTest.cs",
             """
+            #pragma warning disable SPARK0262
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
             using StatelessTest;
@@ -464,6 +468,7 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
     {
         TestSources.Add(("SchedulingTest.cs",
             """
+            #pragma warning disable SPARK0262
             using Sparkitect.Modding;
             using Sparkitect.Stateless;
             using StatelessTest;

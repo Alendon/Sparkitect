@@ -14,7 +14,7 @@ public partial class ModuleRegistry(IGameStateManagerRegistryFacade gameStateMan
     /// <typeparam name="TStateModule">The module type to register.</typeparam>
     /// <param name="id">The module identification.</param>
     [RegistryMethod]
-    public void RegisterModule<TStateModule>(Identification id) where TStateModule : class, IStateModule
+    public void RegisterModule<TStateModule>(Identification id) where TStateModule : class, IStateModule, IHasIdentification
     {
         gameStateManager.AddStateModule<TStateModule>(id);
     }

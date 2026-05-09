@@ -17,7 +17,7 @@ public partial class StateRegistry(IGameStateManagerRegistryFacade gameStateMana
     /// <typeparam name="TStateDescriptor">The state descriptor type to register.</typeparam>
     /// <param name="id">The state identification.</param>
     [RegistryMethod]
-    public void RegisterState<TStateDescriptor>(Identification id) where TStateDescriptor : class, IStateDescriptor
+    public void RegisterState<TStateDescriptor>(Identification id) where TStateDescriptor : class, IStateDescriptor, IHasIdentification
     {
         gameStateManager.AddStateDescriptor<TStateDescriptor>(id);
     }

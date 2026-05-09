@@ -11,7 +11,6 @@ namespace MinimalSampleMod;
 public partial class SampleModule : IStateModule
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
-    public static Identification Identification => StateModuleID.MinimalSampleMod.Sample;
 
     [TransitionFunction("process_registry")]
     [OnCreateScheduling]

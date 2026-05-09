@@ -13,7 +13,6 @@ namespace PongMod;
 public partial class PongState : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
-    public static Identification Identification => StateID.PongMod.Pong;
 
     public static IReadOnlyList<Identification> Modules =>
     [

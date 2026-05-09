@@ -16,7 +16,6 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
 {
     private const string StatelessFunctionAttributeBase = "Sparkitect.Stateless.StatelessFunctionAttribute";
     private const string SchedulingAttributeBase = "Sparkitect.Stateless.SchedulingAttribute";
-    private const string IHasIdentificationInterface = "Sparkitect.Modding.IHasIdentification";
     private const string ParentIdAttributeBase = "Sparkitect.Stateless.ParentIdAttribute";
     private const string FacadeCategoryMappingBaseName =
         "Sparkitect.DI.GeneratorAttributes.FacadeCategoryMappingAttribute";
@@ -123,12 +122,14 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             }
         }
 
-        // Check IHasIdentification on containing type
-        var hasIHasIdentification = containingType.AllInterfaces.Any(i =>
-            i.ToDisplayString(DisplayFormats.NamespaceAndType) == IHasIdentificationInterface);
+        // Check identification on containing type. Cross-generator visibility forces us to
+        // accept both direct `: IHasIdentification` and `[TypedRegistrationContract]` on a
+        // base/interface — see <see cref="IdentificationContract"/> for the full rationale.
+        var isIdentified = IdentificationContract.IsIdentified(containingType);
 
-        // Either containing type implements IHasIdentification OR method has ParentIdAttribute
-        if (!hasIHasIdentification && parentIdType is null)
+        // Either containing type is identified (directly or via auto-emit contract), OR method
+        // has ParentIdAttribute.
+        if (!isIdentified && parentIdType is null)
             return null;
 
         // Determine the parent identification type (use ParentIdAttribute type if present, else containingType)

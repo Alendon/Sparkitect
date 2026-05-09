@@ -11,5 +11,4 @@ namespace SpaceInvadersMod.Systems;
 [ParentId<SpaceInvadersSystemGroup>]
 public partial class GameplayGroup : IHasIdentification
 {
-    public static Identification Identification => EcsSystemGroupID.SpaceInvadersMod.Gameplay;
 }

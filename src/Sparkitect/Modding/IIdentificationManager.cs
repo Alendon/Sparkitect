@@ -27,36 +27,44 @@ public interface IIdentificationManager
     ushort RegisterCategory(string categoryId);
 
     /// <summary>
-    /// Attempts to resolve a string mod identifier to its numeric ID.
+    /// Resolves a string mod identifier to its numeric ID.
     /// </summary>
-    /// <param name="modId">The string identifier to resolve.</param>
-    /// <param name="id">The numeric mod ID if found, 0 otherwise.</param>
-    /// <returns><c>true</c> if the mod is registered; otherwise, <c>false</c>.</returns>
-    bool TryGetModId(string modId, out ushort id);
+    /// <param name="modName">The string identifier to resolve.</param>
+    /// <returns>
+    ///   <see cref="Result{TOk,TError}.Ok"/> with the numeric mod ID on success;
+    ///   <see cref="Result{TOk,TError}.Error"/> with <see cref="ResolveError.UnknownMod"/> if not registered.
+    /// </returns>
+    Result<ushort, ResolveError> GetModId(string modName);
 
     /// <summary>
-    /// Attempts to resolve a string category identifier to its numeric ID.
+    /// Resolves a string category identifier to its numeric ID.
     /// </summary>
-    /// <param name="categoryId">The string identifier to resolve.</param>
-    /// <param name="id">The numeric category ID if found, 0 otherwise.</param>
-    /// <returns><c>true</c> if the category is registered; otherwise, <c>false</c>.</returns>
-    bool TryGetCategoryId(string categoryId, out ushort id);
+    /// <param name="categoryName">The string identifier to resolve.</param>
+    /// <returns>
+    ///   <see cref="Result{TOk,TError}.Ok"/> with the numeric category ID on success;
+    ///   <see cref="Result{TOk,TError}.Error"/> with <see cref="ResolveError.UnknownCategory"/> if not registered.
+    /// </returns>
+    Result<ushort, ResolveError> GetCategoryId(string categoryName);
 
     /// <summary>
-    /// Attempts to resolve a numeric mod ID to its string identifier.
+    /// Resolves a numeric mod ID to its string identifier.
     /// </summary>
-    /// <param name="id">The numeric mod ID.</param>
-    /// <param name="modId">The string identifier if found, null otherwise.</param>
-    /// <returns><c>true</c> if the numeric ID is registered; otherwise, <c>false</c>.</returns>
-    bool TryGetModId(ushort id, out string modId);
+    /// <param name="modId">The numeric mod ID.</param>
+    /// <returns>
+    ///   <see cref="Result{TOk,TError}.Ok"/> with the string identifier on success;
+    ///   <see cref="Result{TOk,TError}.Error"/> with <see cref="ResolveError.UnknownMod"/> if not registered.
+    /// </returns>
+    Result<string, ResolveError> GetModId(ushort modId);
 
     /// <summary>
-    /// Attempts to resolve a numeric category ID to its string identifier.
+    /// Resolves a numeric category ID to its string identifier.
     /// </summary>
-    /// <param name="id">The numeric category ID.</param>
-    /// <param name="categoryId">The string identifier if found, null otherwise.</param>
-    /// <returns><c>true</c> if the numeric ID is registered; otherwise, <c>false</c>.</returns>
-    bool TryGetCategoryId(ushort id, out string categoryId);
+    /// <param name="categoryId">The numeric category ID.</param>
+    /// <returns>
+    ///   <see cref="Result{TOk,TError}.Ok"/> with the string identifier on success;
+    ///   <see cref="Result{TOk,TError}.Error"/> with <see cref="ResolveError.UnknownCategory"/> if not registered.
+    /// </returns>
+    Result<string, ResolveError> GetCategoryId(ushort categoryId);
 
     /// <summary>
     /// Registers an object within a mod:category combination and returns its full identification.
@@ -73,15 +81,21 @@ public interface IIdentificationManager
     Identification RegisterObject(Variant<string, ushort> modId, Variant<string, ushort> categoryId, string objectId);
 
     /// <summary>
-    /// Attempts to resolve an object identifier to its full identification.
+    /// Resolves mod/category/object keys to an <see cref="Identification"/>.
     /// </summary>
     /// <param name="modId">The mod ID (string or numeric).</param>
     /// <param name="categoryId">The category ID (string or numeric).</param>
     /// <param name="objectId">The object ID (string or numeric).</param>
-    /// <param name="id">The full <see cref="Identification"/> if found, <see cref="Identification.Empty"/> otherwise.</param>
-    /// <returns><c>true</c> if the object is registered; otherwise, <c>false</c>.</returns>
-    bool TryGetObjectId(Variant<string, ushort> modId, Variant<string, ushort> categoryId, Variant<string, ushort> objectId,
-        out Identification id);
+    /// <returns>
+    ///   <see cref="Result{TOk,TError}.Ok"/> with the resolved <see cref="Identification"/> on success;
+    ///   <see cref="Result{TOk,TError}.Error"/> with the failing component as
+    ///   <see cref="ResolveError.UnknownMod"/>, <see cref="ResolveError.UnknownCategory"/>,
+    ///   or <see cref="ResolveError.UnknownObject"/>. Failure check order: mod → category → object.
+    /// </returns>
+    Result<Identification, ResolveError> GetObjectId(
+        Variant<string, ushort> modId,
+        Variant<string, ushort> categoryId,
+        Variant<string, ushort> objectId);
 
     /// <summary>
     /// Retrieves all registered object identifications across all mods and categories.
@@ -135,13 +149,13 @@ public interface IIdentificationManager
     /// <summary>
     /// Retrieves the numeric IDs of all registered mods.
     /// </summary>
-    /// <returns>An enumerable of numeric mod IDs (ushort). Use <see cref="TryGetModId(ushort, out string)"/> to convert to string.</returns>
+    /// <returns>An enumerable of numeric mod IDs (ushort). Use <see cref="GetModId(ushort)"/> to convert to string.</returns>
     IEnumerable<ushort> GetRegisteredMods();
 
     /// <summary>
     /// Retrieves the numeric IDs of all registered categories.
     /// </summary>
-    /// <returns>An enumerable of numeric category IDs (ushort). Use <see cref="TryGetCategoryId(ushort, out string)"/> to convert to string.</returns>
+    /// <returns>An enumerable of numeric category IDs (ushort). Use <see cref="GetCategoryId(ushort)"/> to convert to string.</returns>
     IEnumerable<ushort> GetRegisteredCategories();
 
     /// <summary>

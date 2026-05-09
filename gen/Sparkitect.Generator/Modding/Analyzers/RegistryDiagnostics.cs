@@ -178,4 +178,21 @@ public static class RegistryDiagnostics
         new("SPARK0261", "Marker-flagged registry method missing required constraints",
             "Registry method '{0}' marked with [KeyedFactoryGenerationMarker<{1}>] must constrain its type parameter to 'class, {1}, IHasIdentification'. Add the missing constraints.",
             Category, DiagnosticSeverity.Error, true);
+
+    public static readonly DiagnosticDescriptor HasIdentificationMisuse =
+        new("SPARK0262",
+            "Hand-authored ': IHasIdentification' without a registration attribute",
+            "Type '{0}' declares ': IHasIdentification' but has no registration attribute. " +
+            "Either add a [RegistryX.RegisterY(\"id\")] attribute (the Registry Generator will auto-emit IHasIdentification) " +
+            "or remove the ': IHasIdentification' declaration. Test fixtures may suppress with #pragma warning disable SPARK0262.",
+            Category, DiagnosticSeverity.Warning, true);
+
+    public static readonly DiagnosticDescriptor TypedRegistrationContractMissing =
+        new("SPARK0263",
+            "Typed-registration contract base type missing [TypedRegistrationContract]",
+            "Type '{0}' is constrained as the base of a typed-registration registry method ('{1}') " +
+            "but does not carry [TypedRegistrationContract]. Add [TypedRegistrationContract] to '{0}' so " +
+            "sibling source generators (e.g. StatelessFunctionGenerator) can discover derived types whose " +
+            "IHasIdentification implementation arrives only through Registry-Generator auto-emit.",
+            Category, DiagnosticSeverity.Warning, true);
 }

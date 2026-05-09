@@ -82,6 +82,82 @@ public partial class RegistryGenerator
         return FluidHelper.TryRenderTemplate("Modding.RegistryIdExtensions.Framework.liquid", tpl, out code);
     }
 
+    /// <summary>
+    /// Renders one <c>partial class … : IHasIdentification</c> declaration per <see cref="TypeRegistrationEntry"/>
+    /// in the unit. Each declaration lives in the concrete's own namespace and forwards its static
+    /// <c>Identification</c> property to the matching <c>Registrations.{Registry}_{Source}.{ItemId}</c>
+    /// static field already populated at boot via <c>IdentificationManager.RegisterObject(...)</c>.
+    /// </summary>
+    /// <remarks>
+    /// Per D-04: filter is <see cref="System.Linq.Enumerable.OfType{TResult}(System.Collections.IEnumerable)"/>
+    /// of <see cref="TypeRegistrationEntry"/> only — no <c>KeyedFactoryGeneration</c> filter. Auto-emit applies
+    /// to ALL type-registered concretes, not only marker-flagged ones.
+    /// </remarks>
+    public static bool RenderAutoEmitIdentificationUnit(RegistrationUnit unit, ModBuildSettings settings,
+        out string code, out string fileName)
+    {
+        var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
+        fileName = $"{unit.Model.TypeName}.AutoEmitIdentification_{suffix}.g.cs";
+
+        var typeEntries = unit.Entries
+            .OfType<TypeRegistrationEntry>()
+            .OrderBy(e => e.Id)
+            .ToList();
+
+        if (typeEntries.Count == 0)
+        {
+            code = string.Empty;
+            return false;
+        }
+
+        var registrationsNs = settings.ComputeOutputNamespace("Registrations");
+
+        var entries = typeEntries
+            .Select(e =>
+            {
+                SplitTypeFullName(e.TypeFullName, out var ns, out var simpleName);
+                return new
+                {
+                    TypeSimpleName = simpleName,
+                    ContainingNamespace = ns,
+                    TypeKindKeyword = e.TypeKind == RegistrationTypeKind.Struct ? "struct" : "class",
+                    PropertyName = StringCase.ToPascalCase(e.Id)
+                };
+            })
+            .ToArray();
+
+        var tpl = new
+        {
+            RegistrationsNamespace = registrationsNs,
+            TypePrefix = string.Empty,
+            RegistryName = unit.Model.TypeName,
+            SourceTag = suffix,
+            Entries = entries
+        };
+
+        return FluidHelper.TryRenderTemplate("Modding.RegistryAutoEmitIdentification.Unit.liquid", tpl, out code);
+    }
+
+    /// <summary>
+    /// Splits a fully-qualified type name (e.g. <c>"global::Ns.Sub.TypeName"</c>) into its containing
+    /// namespace and simple type name. The leading <c>global::</c> prefix is stripped.
+    /// </summary>
+    private static void SplitTypeFullName(string typeFullName, out string containingNamespace,
+        out string typeSimpleName)
+    {
+        var name = typeFullName.StartsWith("global::") ? typeFullName.Substring("global::".Length) : typeFullName;
+        var lastDot = name.LastIndexOf('.');
+        if (lastDot < 0)
+        {
+            containingNamespace = string.Empty;
+            typeSimpleName = name;
+            return;
+        }
+
+        containingNamespace = name.Substring(0, lastDot);
+        typeSimpleName = name.Substring(lastDot + 1);
+    }
+
     public static bool RenderRegistryIdPropertiesUnit(RegistrationUnit unit, ModBuildSettings settings, out string code, out string fileName, string hintPrefix = "")
     {
         var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
@@ -424,6 +500,19 @@ internal partial class {configuratorClassName}
     internal static void OutputIdPropertiesUnit(SourceProductionContext context, (RegistrationUnit unit, ModBuildSettings settings) arg)
     {
         if (RenderRegistryIdPropertiesUnit(arg.unit, arg.settings, out var code, out var file))
+        {
+            context.AddSource(file, code);
+        }
+    }
+
+    /// <summary>
+    /// Output handler that emits one auto-emitted <c>IHasIdentification</c> partial-class file per
+    /// <see cref="RegistrationUnit"/>. No-op when the unit contains no <see cref="TypeRegistrationEntry"/>
+    /// (e.g. value/method/property providers).
+    /// </summary>
+    internal static void OutputAutoEmitIdentificationUnit(SourceProductionContext context, (RegistrationUnit unit, ModBuildSettings settings) arg)
+    {
+        if (RenderAutoEmitIdentificationUnit(arg.unit, arg.settings, out var code, out var file))
         {
             context.AddSource(file, code);
         }

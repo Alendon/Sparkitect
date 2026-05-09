@@ -68,6 +68,19 @@ public readonly struct Identification : IEquatable<Identification>
         return ModId == other.ModId && CategoryId == other.CategoryId && ItemId == other.ItemId;
     }
 
+    /// <summary>
+    /// Returns true if this is the zero-value identification (0:0:0).
+    /// </summary>
+    /// <remarks>
+    /// As of phase 49.3, <see cref="IIdentificationManager"/> Resolve-path methods no longer return
+    /// <see cref="Empty"/> as a missing-result sentinel — they return
+    /// <see cref="Sparkitect.Utils.DU.Result{TOk, TError}"/> with
+    /// <see cref="ResolveError"/> as the error case. This helper exists for the remaining
+    /// "is this the zero-value?" call sites (e.g., parent-id chain traversal terminating at
+    /// the Root state, whose <c>ParentId</c> is <see cref="Empty"/>).
+    /// </remarks>
+    public bool IsEmpty() => ModId == 0 && CategoryId == 0 && ItemId == 0;
+
     /// <inheritdoc/>
     public override bool Equals(object? obj)
     {

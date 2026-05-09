@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Sparkitect.Modding;
+using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Utils;
 
@@ -51,13 +52,13 @@ internal sealed class IdentificationDebuggerProxy
     private string? ResolveModString()
     {
         if (_instance is null) return null;
-        return _instance.TryGetModId(_id.ModId, out var mod) ? mod : null;
+        return _instance.GetModId(_id.ModId) is Result<string, ResolveError>.Ok(var mod) ? mod : null;
     }
 
     private string? ResolveCategoryString()
     {
         if (_instance is null) return null;
-        return _instance.TryGetCategoryId(_id.CategoryId, out var cat) ? cat : null;
+        return _instance.GetCategoryId(_id.CategoryId) is Result<string, ResolveError>.Ok(var cat) ? cat : null;
     }
 
     private string? ResolveItemString()

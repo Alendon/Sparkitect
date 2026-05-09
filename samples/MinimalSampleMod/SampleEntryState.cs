@@ -17,7 +17,6 @@ namespace MinimalSampleMod;
 public partial class SampleEntryState : IStateDescriptor
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
-    public static Identification Identification => StateID.MinimalSampleMod.Sample;
 
     public static IReadOnlyList<Identification> Modules =>
     [
@@ -72,9 +71,7 @@ public partial class SampleEntryState : IStateDescriptor
 }
 
 [DummyRegistry.RegisterProvider("dummy_provider")]
-internal partial class DummyValueProvider : IDummyValueProvider, IHasIdentification
+internal partial class DummyValueProvider : IDummyValueProvider
 {
     public string Provide() => "Hello from Provider";
-
-    public static Identification Identification => DummyID.MinimalSampleMod.DummyProvider;
 }

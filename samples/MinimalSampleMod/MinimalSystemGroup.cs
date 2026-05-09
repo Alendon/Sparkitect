@@ -10,8 +10,6 @@ namespace MinimalSampleMod;
 [SystemGroupScheduling]
 public partial class MinimalSystemGroup : IHasIdentification
 {
-    public static Identification Identification => EcsSystemGroupID.MinimalSampleMod.Minimal;
-
     [EcsSystemFunction("sample")]
     [EcsSystemScheduling]
     private static void SampleSystem(SampleQuery query)

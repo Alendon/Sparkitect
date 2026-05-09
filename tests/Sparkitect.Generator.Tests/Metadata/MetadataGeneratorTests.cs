@@ -33,6 +33,7 @@ public class MetadataGeneratorTests : SourceGeneratorTestBase<MetadataGenerator>
     public async Task MetadataGenerator_TypeWithMetadataAttribute_GeneratesEntrypoint(CancellationToken token)
     {
         TestSources.Add(("TestTarget.cs", """
+            #pragma warning disable SPARK0262
             using MetadataTest;
             using Sparkitect.Modding;
 
@@ -58,6 +59,7 @@ public class MetadataGeneratorTests : SourceGeneratorTestBase<MetadataGenerator>
     public async Task MetadataGenerator_TypeWithMetadataAttribute_GeneratesCorrectContent(CancellationToken token)
     {
         TestSources.Add(("TestTarget.cs", """
+            #pragma warning disable SPARK0262
             using MetadataTest;
             using Sparkitect.Modding;
 
@@ -112,6 +114,7 @@ public class MetadataGeneratorTests : SourceGeneratorTestBase<MetadataGenerator>
     public async Task MetadataGenerator_CompilerGeneratedType_IsExcluded(CancellationToken token)
     {
         TestSources.Add(("TestTarget.cs", """
+            #pragma warning disable SPARK0262
             using MetadataTest;
             using Sparkitect.Modding;
             using System.Runtime.CompilerServices;
@@ -139,6 +142,7 @@ public class MetadataGeneratorTests : SourceGeneratorTestBase<MetadataGenerator>
     public async Task MetadataGenerator_TypeWithNonMetadataAttribute_GeneratesNothing(CancellationToken token)
     {
         TestSources.Add(("TestTarget.cs", """
+            #pragma warning disable SPARK0262
             using Sparkitect.Modding;
 
             namespace TestMod;
@@ -160,9 +164,58 @@ public class MetadataGeneratorTests : SourceGeneratorTestBase<MetadataGenerator>
     }
 
     [Test]
+    public async Task MetadataGenerator_AutoEmitOnlyType_GeneratesEntrypoint(CancellationToken token)
+    {
+        // Auto-emit-only: the user source declares NO ': IHasIdentification', but the contract
+        // interface IFooContract carries [TypedRegistrationContract] — IdentificationContract
+        // recognises this as identified at SG time, so MetadataGenerator must still emit
+        // metadata for the type. Mirrors the post-49.3-04 IStateModule/IStateDescriptor shape.
+        // The base TestData.Sparkitect fixture omits TypedRegistrationContractAttribute (it
+        // lives in ModdingCode, which the metadata fixture doesn't pull in to keep its surface
+        // minimal). Declare it inline for this test only.
+        TestSources.Add(("TypedRegistrationContractAttr.cs", """
+            namespace Sparkitect.Modding
+            {
+                [System.AttributeUsage(System.AttributeTargets.Interface | System.AttributeTargets.Class,
+                    Inherited = true, AllowMultiple = false)]
+                public sealed class TypedRegistrationContractAttribute : System.Attribute { }
+            }
+            """));
+
+        TestSources.Add(("AutoEmitTarget.cs", """
+            #pragma warning disable SPARK0262
+            #pragma warning disable SPARK0263
+            using MetadataTest;
+            using Sparkitect.Modding;
+
+            namespace TestMod;
+
+            [TypedRegistrationContract]
+            public interface IFooContract { }
+
+            [TestMetadata]
+            public partial class AutoEmitOnlyEntity : IFooContract
+            {
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var metadataTree = driverRunResult.GeneratedTrees
+            .FirstOrDefault(t => t.FilePath.Contains("AutoEmitOnlyEntity_Metadata"));
+
+        await Assert.That(metadataTree).IsNotNull();
+
+        var code = metadataTree!.GetText().ToString();
+        await Assert.That(code).Contains("ApplyMetadataEntrypoint<global::MetadataTest.TestMetadataType>");
+        await Assert.That(code).Contains("IdentificationHelper.Read<global::TestMod.AutoEmitOnlyEntity>");
+    }
+
+    [Test]
     public async Task MetadataGenerator_Snapshot_VerifiesGeneratedOutput(CancellationToken token)
     {
         TestSources.Add(("TestTarget.cs", """
+            #pragma warning disable SPARK0262
             using MetadataTest;
             using Sparkitect.Modding;
 

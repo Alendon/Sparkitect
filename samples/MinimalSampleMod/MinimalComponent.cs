@@ -7,9 +7,7 @@ using Sparkitect.Modding.IDs;
 namespace MinimalSampleMod;
 
 [UnmanagedComponentRegistry.RegisterComponent("minimal")]
-public struct MinimalComponent : IHasIdentification
+public partial struct MinimalComponent : IHasIdentification
 {
-    public static Identification Identification => UnmanagedComponentID.MinimalSampleMod.Minimal;
-
     public int Value;
 }

@@ -1,4 +1,5 @@
 using Sparkitect.Modding;
+using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Tests.Modding;
 
@@ -130,65 +131,69 @@ public class IdentificationManagerTests
     #region Lookup Tests
 
     [Test]
-    public async Task TryGetModId_RegisteredMod_ReturnsTrue()
+    public async Task GetModId_RegisteredMod_ReturnsOk()
     {
         // Arrange
         var manager = new IdentificationManager();
         var expectedId = manager.RegisterMod("test_mod");
 
         // Act
-        var result = manager.TryGetModId("test_mod", out var id);
+        var result = manager.GetModId("test_mod");
 
         // Assert
-        await Assert.That(result).IsTrue();
-        await Assert.That(id).IsEqualTo(expectedId);
+        await Assert.That(result).IsTypeOf<Result<ushort, ResolveError>.Ok>();
+        if (result is Result<ushort, ResolveError>.Ok(var id))
+            await Assert.That(id).IsEqualTo(expectedId);
     }
 
     [Test]
-    public async Task TryGetModId_UnregisteredMod_ReturnsFalse()
+    public async Task GetModId_UnregisteredMod_ReturnsErrorUnknownMod()
     {
         // Arrange
         var manager = new IdentificationManager();
 
         // Act
-        var result = manager.TryGetModId("nonexistent", out var id);
+        var result = manager.GetModId("nonexistent");
 
         // Assert
-        await Assert.That(result).IsFalse();
-        await Assert.That(id).IsEqualTo((ushort)0);
+        await Assert.That(result).IsTypeOf<Result<ushort, ResolveError>.Error>();
+        if (result is Result<ushort, ResolveError>.Error(ResolveError.UnknownMod(var key)))
+            await Assert.That(key).IsEqualTo((Variant<string, ushort>)"nonexistent");
     }
 
     [Test]
-    public async Task TryGetCategoryId_RegisteredCategory_ReturnsTrue()
+    public async Task GetCategoryId_RegisteredCategory_ReturnsOk()
     {
         // Arrange
         var manager = new IdentificationManager();
         var expectedId = manager.RegisterCategory("blocks");
 
         // Act
-        var result = manager.TryGetCategoryId("blocks", out var id);
+        var result = manager.GetCategoryId("blocks");
 
         // Assert
-        await Assert.That(result).IsTrue();
-        await Assert.That(id).IsEqualTo(expectedId);
+        await Assert.That(result).IsTypeOf<Result<ushort, ResolveError>.Ok>();
+        if (result is Result<ushort, ResolveError>.Ok(var id))
+            await Assert.That(id).IsEqualTo(expectedId);
     }
 
     [Test]
-    public async Task TryGetCategoryId_UnregisteredCategory_ReturnsFalse()
+    public async Task GetCategoryId_UnregisteredCategory_ReturnsErrorUnknownCategory()
     {
         // Arrange
         var manager = new IdentificationManager();
 
         // Act
-        var result = manager.TryGetCategoryId("nonexistent", out var id);
+        var result = manager.GetCategoryId("nonexistent");
 
         // Assert
-        await Assert.That(result).IsFalse();
-        await Assert.That(id).IsEqualTo((ushort)0);
+        await Assert.That(result).IsTypeOf<Result<ushort, ResolveError>.Error>();
+        if (result is Result<ushort, ResolveError>.Error(ResolveError.UnknownCategory(var key)))
+            await Assert.That(key).IsEqualTo((Variant<string, ushort>)"nonexistent");
     }
 
     [Test]
-    public async Task TryGetObjectId_RegisteredObject_ReturnsTrue()
+    public async Task GetObjectId_RegisteredObject_ReturnsOk()
     {
         // Arrange
         var manager = new IdentificationManager();
@@ -197,11 +202,29 @@ public class IdentificationManagerTests
         var expectedId = manager.RegisterObject(modId, catId, "stone");
 
         // Act
-        var result = manager.TryGetObjectId(modId, catId, "stone", out var id);
+        var result = manager.GetObjectId(modId, catId, "stone");
 
         // Assert
-        await Assert.That(result).IsTrue();
-        await Assert.That(id).IsEqualTo(expectedId);
+        await Assert.That(result).IsTypeOf<Result<Identification, ResolveError>.Ok>();
+        if (result is Result<Identification, ResolveError>.Ok(var id))
+            await Assert.That(id).IsEqualTo(expectedId);
+    }
+
+    [Test]
+    public async Task GetObjectId_UnregisteredObject_ReturnsErrorUnknownObject()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
+        var modId = manager.RegisterMod("test_mod");
+        var catId = manager.RegisterCategory("blocks");
+
+        // Act - mod and category exist, but no objects ever registered under them
+        var result = manager.GetObjectId(modId, catId, "stone");
+
+        // Assert
+        await Assert.That(result).IsTypeOf<Result<Identification, ResolveError>.Error>();
+        if (result is Result<Identification, ResolveError>.Error(ResolveError.UnknownObject(var key)))
+            await Assert.That(key).IsEqualTo((Variant<string, ushort>)"stone");
     }
 
     #endregion
@@ -209,33 +232,123 @@ public class IdentificationManagerTests
     #region Reverse Lookup Tests
 
     [Test]
-    public async Task TryGetModId_ByNumericId_ReturnsString()
+    public async Task GetModId_ByNumericId_ReturnsOk()
     {
         // Arrange
         var manager = new IdentificationManager();
         var modNumericId = manager.RegisterMod("test_mod");
 
         // Act
-        var result = manager.TryGetModId(modNumericId, out var modString);
+        var result = manager.GetModId(modNumericId);
 
         // Assert
-        await Assert.That(result).IsTrue();
-        await Assert.That(modString).IsEqualTo("test_mod");
+        await Assert.That(result).IsTypeOf<Result<string, ResolveError>.Ok>();
+        if (result is Result<string, ResolveError>.Ok(var modString))
+            await Assert.That(modString).IsEqualTo("test_mod");
     }
 
     [Test]
-    public async Task TryGetCategoryId_ByNumericId_ReturnsString()
+    public async Task GetModId_ByUnregisteredNumericId_ReturnsErrorUnknownMod()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
+
+        // Act
+        var result = manager.GetModId((ushort)999);
+
+        // Assert
+        await Assert.That(result).IsTypeOf<Result<string, ResolveError>.Error>();
+        if (result is Result<string, ResolveError>.Error(ResolveError.UnknownMod(var key)))
+            await Assert.That(key).IsEqualTo((Variant<string, ushort>)(ushort)999);
+    }
+
+    [Test]
+    public async Task GetCategoryId_ByNumericId_ReturnsOk()
     {
         // Arrange
         var manager = new IdentificationManager();
         var catNumericId = manager.RegisterCategory("blocks");
 
         // Act
-        var result = manager.TryGetCategoryId(catNumericId, out var catString);
+        var result = manager.GetCategoryId(catNumericId);
 
         // Assert
-        await Assert.That(result).IsTrue();
-        await Assert.That(catString).IsEqualTo("blocks");
+        await Assert.That(result).IsTypeOf<Result<string, ResolveError>.Ok>();
+        if (result is Result<string, ResolveError>.Ok(var catString))
+            await Assert.That(catString).IsEqualTo("blocks");
+    }
+
+    [Test]
+    public async Task GetCategoryId_ByUnregisteredNumericId_ReturnsErrorUnknownCategory()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
+
+        // Act
+        var result = manager.GetCategoryId((ushort)999);
+
+        // Assert
+        await Assert.That(result).IsTypeOf<Result<string, ResolveError>.Error>();
+        if (result is Result<string, ResolveError>.Error(ResolveError.UnknownCategory(var key)))
+            await Assert.That(key).IsEqualTo((Variant<string, ushort>)(ushort)999);
+    }
+
+    #endregion
+
+    #region Resolution-Order Tests (Lock E: mod -> category -> object)
+
+    [Test]
+    public async Task GetObjectId_BothModAndCategoryUnknown_FailsFastWithUnknownMod()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
+
+        // Act - mod 999 not registered, category 999 not registered
+        var result = manager.GetObjectId((ushort)999, (ushort)999, "stone");
+
+        // Assert - mod is checked first; UnknownMod wins
+        await Assert.That(result).IsTypeOf<Result<Identification, ResolveError>.Error>();
+        await Assert.That(result is Result<Identification, ResolveError>.Error(ResolveError.UnknownMod _))
+            .IsTrue();
+        if (result is Result<Identification, ResolveError>.Error(ResolveError.UnknownMod(var key)))
+            await Assert.That(key).IsEqualTo((Variant<string, ushort>)(ushort)999);
+    }
+
+    [Test]
+    public async Task GetObjectId_KnownModUnknownCategoryUnknownObject_ReturnsUnknownCategory()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
+        var modId = manager.RegisterMod("test_mod");
+
+        // Act
+        var result = manager.GetObjectId(modId, (ushort)999, "stone");
+
+        // Assert
+        await Assert.That(result).IsTypeOf<Result<Identification, ResolveError>.Error>();
+        await Assert.That(result is Result<Identification, ResolveError>.Error(ResolveError.UnknownCategory _))
+            .IsTrue();
+        if (result is Result<Identification, ResolveError>.Error(ResolveError.UnknownCategory(var key)))
+            await Assert.That(key).IsEqualTo((Variant<string, ushort>)(ushort)999);
+    }
+
+    [Test]
+    public async Task GetObjectId_KnownModKnownCategoryUnknownObject_ReturnsUnknownObject()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
+        var modId = manager.RegisterMod("test_mod");
+        var catId = manager.RegisterCategory("blocks");
+
+        // Act
+        var result = manager.GetObjectId(modId, catId, "nonexistent");
+
+        // Assert
+        await Assert.That(result).IsTypeOf<Result<Identification, ResolveError>.Error>();
+        await Assert.That(result is Result<Identification, ResolveError>.Error(ResolveError.UnknownObject _))
+            .IsTrue();
+        if (result is Result<Identification, ResolveError>.Error(ResolveError.UnknownObject(var key)))
+            await Assert.That(key).IsEqualTo((Variant<string, ushort>)"nonexistent");
     }
 
     #endregion
@@ -518,6 +631,40 @@ public class IdentificationManagerTests
 
         // Assert
         await Assert.That(count).IsEqualTo(4);
+    }
+
+    #endregion
+
+    #region IsEmpty Tests (49.3-05; Lock F: instance method on Identification)
+
+    [Test]
+    public async Task IsEmpty_ZeroValue_ReturnsTrue()
+    {
+        // Arrange
+        var id = Identification.Empty;
+
+        // Act + Assert
+        await Assert.That(id.IsEmpty()).IsTrue();
+    }
+
+    [Test]
+    public async Task IsEmpty_NonZeroValue_ReturnsFalse()
+    {
+        // Arrange
+        var id = Identification.Create(1, 2, 3);
+
+        // Act + Assert
+        await Assert.That(id.IsEmpty()).IsFalse();
+    }
+
+    [Test]
+    public async Task IsEmpty_PartialZeroValue_ReturnsFalse()
+    {
+        // Edge: only mod-id zero, others non-zero — NOT empty (matches the strict 0:0:0 contract).
+        var partialZero = Identification.Create(0, 1, 1);
+
+        // Act + Assert
+        await Assert.That(partialZero.IsEmpty()).IsFalse();
     }
 
     #endregion
