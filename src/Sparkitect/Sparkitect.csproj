@@ -56,11 +56,10 @@
         <PackageReference Include="Silk.NET.Vulkan.Extensions.KHR" Version="2.22.0" />
         <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.22.0" />
         <PackageReference Include="Slangc.NET" Version="2025.22.1" />
-        <PackageReference Include="Sundew.DiscriminatedUnions" Version="5.3.11" />
+        <PackageReference Include="Sundew.DiscriminatedUnions" Version="6.0.1" />
         <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" SetTargetFramework="TargetFramework=netstandard2.0" />
 
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.2" />
-        <PackageReference Include="OneOf" Version="3.0.271"/>
         <PackageReference Include="Serilog" Version="4.3.0" />
         <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
         <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />

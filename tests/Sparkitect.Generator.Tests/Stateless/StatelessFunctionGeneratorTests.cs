@@ -12,8 +12,6 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     [Before(Test)]
     public void Setup()
     {
-        ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OneOf", "3.0.271")]);
-
         TestSources.Add(TestData.GlobalUsings);
         TestSources.Add(TestData.DiAttributes);
         TestSources.Add(TestData.Sparkitect);

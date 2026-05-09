@@ -1,7 +1,6 @@
-using OneOf;
-using OneOf.Types;
 using Serilog;
 using Sparkitect.GameState;
+using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Utils;
 
@@ -11,7 +10,7 @@ namespace Sparkitect.Utils;
 [StateService<ICliArgumentHandler, CoreModule>]
 internal class CliArgumentHandler : ICliArgumentHandler
 {
-    private readonly Dictionary<string, OneOf<None, string, List<string>>> _arguments = 
+    private readonly Dictionary<string, CliArgValue> _arguments =
         new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -47,33 +46,37 @@ internal class CliArgumentHandler : ICliArgumentHandler
                 if (_arguments.TryGetValue(key, out var existingValue))
                 {
                     Log.Debug("Updating existing CLI argument: {Key}", key);
-                    // Update existing entry based on its current type
-                    existingValue.Switch(
-                        none => _arguments[key] = valueList.Count == 1 ? valueList[0] : valueList,
-                        str => 
-                        {
-                            var newList = new List<string> { str };
+                    switch (existingValue)
+                    {
+                        case CliArgValue.Flag:
+                            _arguments[key] = valueList.Count == 1
+                                ? new CliArgValue.Single(valueList[0])
+                                : new CliArgValue.Multi(valueList);
+                            break;
+                        case CliArgValue.Single single:
+                            var newList = new List<string> { single.Value };
                             newList.AddRange(valueList);
-                            _arguments[key] = newList;
-                        },
-                        list => 
-                        {
-                            list.AddRange(valueList);
-                            // No need to update dictionary as the list reference is the same
-                        }
-                    );
+                            _arguments[key] = new CliArgValue.Multi(newList);
+                            break;
+                        case CliArgValue.Multi multi:
+                            ((List<string>)multi.Values).AddRange(valueList);
+                            // No dictionary update needed: the list reference is the same.
+                            break;
+                    }
                 }
                 else
                 {
                     // Create new entry
-                    _arguments[key] = valueList.Count == 1 ? valueList[0] : valueList;
+                    _arguments[key] = valueList.Count == 1
+                        ? new CliArgValue.Single(valueList[0])
+                        : new CliArgValue.Multi(valueList);
                     Log.Debug("Added CLI argument: {Key} with {ValueCount} values", key, valueList.Count);
                 }
             }
             else
             {
                 // Handle flag arguments (without values)
-                _arguments[trimmedArg] = new None();
+                _arguments[trimmedArg] = new CliArgValue.Flag();
                 Log.Debug("Added CLI flag argument: {Key}", trimmedArg);
             }
         }
@@ -99,11 +102,12 @@ internal class CliArgumentHandler : ICliArgumentHandler
     /// <returns>True if the argument exists and has a value; otherwise, false.</returns>
     public bool TryGetArgumentValue(string key, out string? value)
     {
-        if (_arguments.TryGetValue(key, out var oneOfValue))
+        if (_arguments.TryGetValue(key, out var argValue) && argValue is CliArgValue.Single single)
         {
-            return oneOfValue.TryPickT1(out value, out _);
+            value = single.Value;
+            return true;
         }
-        
+
         value = null;
         return false;
     }
@@ -116,30 +120,22 @@ internal class CliArgumentHandler : ICliArgumentHandler
     /// <returns>True if the argument exists and has at least one value; otherwise, false.</returns>
     public bool TryGetArgumentValues(string key, out IReadOnlyList<string> values)
     {
-        if (_arguments.TryGetValue(key, out var oneOfValue))
+        if (_arguments.TryGetValue(key, out var argValue))
         {
-            IReadOnlyList<string> resultValues = [];
-            var success = oneOfValue.Match(
-                none => 
-                {
-                    resultValues = Array.Empty<string>();
+            switch (argValue)
+            {
+                case CliArgValue.Flag:
+                    values = Array.Empty<string>();
                     return false;
-                },
-                str => 
-                {
-                    resultValues = new[] { str };
+                case CliArgValue.Single single:
+                    values = new[] { single.Value };
                     return true;
-                },
-                list => 
-                {
-                    resultValues = list;
-                    return list.Count > 0;
-                }
-            );
-            values = resultValues;
-            return success;
+                case CliArgValue.Multi multi:
+                    values = multi.Values;
+                    return multi.Values.Count > 0;
+            }
         }
-        
+
         values = Array.Empty<string>();
         return false;
     }

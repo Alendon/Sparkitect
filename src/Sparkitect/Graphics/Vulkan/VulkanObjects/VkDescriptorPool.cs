@@ -1,6 +1,8 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Utils;
+using Sparkitect.Utils.DU;
+using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
@@ -17,7 +19,7 @@ public class VkDescriptorPool : VulkanObject
 
     public DescriptorPool Handle { get; }
 
-    public unsafe VkResult<VkDescriptorSet> AllocateDescriptorSet(
+    public unsafe Result<VkDescriptorSet, VkApiResult> AllocateDescriptorSet(
         DescriptorSetLayout layout,
         [InjectCallerContext] CallerContext callerContext = default)
     {
@@ -30,18 +32,18 @@ public class VkDescriptorPool : VulkanObject
         };
 
         var result = Vk.AllocateDescriptorSets(Device, allocInfo, out var descriptorSet);
-        if (result != Result.Success) return VkResult<VkDescriptorSet>._Error(result);
+        if (result != VkApiResult.Success) return result;
 
         var set = new VkDescriptorSet(descriptorSet, VulkanContext, this, callerContext);
         _allocatedSets.Add(set);
-        return VkResult<VkDescriptorSet>._Success(set);
+        return set;
     }
 
-    public unsafe VkResult<VkDescriptorSet[]> AllocateDescriptorSets(
+    public unsafe Result<VkDescriptorSet[], VkApiResult> AllocateDescriptorSets(
         ReadOnlySpan<DescriptorSetLayout> layouts,
         [InjectCallerContext] CallerContext callerContext = default)
     {
-        if (layouts.Length == 0) return VkResult<VkDescriptorSet[]>._Success([]);
+        if (layouts.Length == 0) return Array.Empty<VkDescriptorSet>();
 
         fixed (DescriptorSetLayout* layoutsPtr = layouts)
         {
@@ -60,7 +62,7 @@ public class VkDescriptorPool : VulkanObject
             fixed (DescriptorSet* handlesPtr = handles)
             {
                 var result = Vk.AllocateDescriptorSets(Device, allocInfo, handlesPtr);
-                if (result != Result.Success) return VkResult<VkDescriptorSet[]>._Error(result);
+                if (result != VkApiResult.Success) return result;
             }
 
             var sets = new VkDescriptorSet[layouts.Length];
@@ -70,11 +72,11 @@ public class VkDescriptorPool : VulkanObject
                 _allocatedSets.Add(sets[i]);
             }
 
-            return VkResult<VkDescriptorSet[]>._Success(sets);
+            return sets;
         }
     }
 
-    public Result Reset(uint flags = 0)
+    public VkApiResult Reset(uint flags = 0)
     {
         foreach (var set in _allocatedSets)
             set.MarkDisposed();

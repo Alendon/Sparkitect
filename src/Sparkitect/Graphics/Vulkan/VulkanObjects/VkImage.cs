@@ -1,5 +1,7 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
+using Sparkitect.Utils.DU;
+using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
@@ -34,7 +36,7 @@ public class VkImage : VulkanObject
     /// Creates an image view for this image with inferred defaults.
     /// </summary>
     /// <param name="aspectMask">Aspect mask. Defaults to Color for color formats, Depth/Stencil for depth formats.</param>
-    public VkResult<VkImageView> CreateView(ImageAspectFlags? aspectMask = null)
+    public Result<VkImageView, VkApiResult> CreateView(ImageAspectFlags? aspectMask = null)
     {
         var aspect = aspectMask ?? InferAspectMask(Format);
         var viewType = InferViewType(ImageType, ArrayLayers);
@@ -67,12 +69,12 @@ public class VkImage : VulkanObject
         unsafe
         {
             var result = Vk.CreateImageView(Device, createInfo, AllocationCallbacks, out var imageView);
-            if (result != Result.Success)
-                return VkResult<VkImageView>._Error(result);
+            if (result != VkApiResult.Success)
+                return result;
 
-            return VkResult<VkImageView>._Success(new VkImageView(
+            return new VkImageView(
                 imageView, this, Format, viewType, aspect,
-                0, MipLevels, 0, ArrayLayers, VulkanContext));
+                0, MipLevels, 0, ArrayLayers, VulkanContext);
         }
     }
 

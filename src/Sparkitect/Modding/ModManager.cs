@@ -2,14 +2,13 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using OneOf.Types;
 using Sparkitect.DI;
 using Sparkitect.Utils;
-using OneOf;
 using Semver;
 using Serilog;
 using Sparkitect.DI.Container;
 using Sparkitect.GameState;
+using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Modding;
 
@@ -173,7 +172,7 @@ internal class ModManager : IModManager
         }
     }
 
-    private ValidationResult ValidateModDependencies(ReadOnlySpan<string> modIdsToLoad)
+    private Result<IReadOnlyList<ValidationError>> ValidateModDependencies(ReadOnlySpan<string> modIdsToLoad)
     {
         var errors = new List<ValidationError>();
 
@@ -243,11 +242,11 @@ internal class ModManager : IModManager
         if (errors.Count > 0)
         {
             Log.Debug("Mod dependency validation found {ErrorCount} errors for {Count} mods", errors.Count, modIdsToLoad.Length);
-            return ValidationResult.Failure(errors);
+            return errors;
         }
 
         Log.Debug("Mod dependency validation completed successfully for {Count} mods", modIdsToLoad.Length);
-        return ValidationResult.Success;
+        return new Result<IReadOnlyList<ValidationError>>.Ok();
     }
 
     /// <summary>
@@ -281,9 +280,9 @@ internal class ModManager : IModManager
         var modIds = identifiers.ToArray().Select(x => x.Id).ToArray();
         var validationResult = ValidateModDependencies(modIds);
 
-        if (!validationResult.IsValid)
+        if (validationResult is Result<IReadOnlyList<ValidationError>>.Error validationError)
         {
-            var errorMessages = string.Join(Environment.NewLine, validationResult.Errors.Select(e => $"  - {e.Message}"));
+            var errorMessages = string.Join(Environment.NewLine, validationError.Value.Select(e => $"  - {e.Message}"));
             throw new InvalidOperationException($"Mod dependency validation failed:{Environment.NewLine}{errorMessages}");
         }
 

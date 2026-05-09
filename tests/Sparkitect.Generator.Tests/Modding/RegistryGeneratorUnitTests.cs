@@ -16,8 +16,6 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
     [Before(Test)]
     public void Setup()
     {
-        ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OneOf", "3.0.271")]);
-
         TestSources.Add(GlobalUsings);
         TestSources.Add(DiAttributes);
         TestSources.Add(ModdingCode);

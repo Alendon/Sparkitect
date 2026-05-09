@@ -18,7 +18,9 @@ using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Utils;
+using Sparkitect.Utils.DU;
 using Sparkitect.Windowing;
+using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace SpaceInvadersMod;
 
@@ -292,29 +294,29 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         var poolResult = VulkanContext.CreateCommandPool(
             CommandPoolCreateFlags.ResetCommandBufferBit,
             _graphicsQueueFamily);
-        if (poolResult is VkResult<VkCommandPool>.Error poolError)
-            throw new InvalidOperationException($"Failed to create command pool: {poolError.errorResult}");
-        _commandPool = ((VkResult<VkCommandPool>.Success)poolResult).value;
+        if (poolResult is Result<VkCommandPool, VkApiResult>.Error poolError)
+            throw new InvalidOperationException($"Failed to create command pool: {poolError.Value}");
+        _commandPool = ((Result<VkCommandPool, VkApiResult>.Ok)poolResult).Value;
 
         var bufferResult = _commandPool.AllocateCommandBuffer(CommandBufferLevel.Primary);
-        if (bufferResult is VkResult<VkCommandBuffer>.Error bufferError)
-            throw new InvalidOperationException($"Failed to allocate command buffer: {bufferError.errorResult}");
-        _commandBuffer = ((VkResult<VkCommandBuffer>.Success)bufferResult).value;
+        if (bufferResult is Result<VkCommandBuffer, VkApiResult>.Error bufferError)
+            throw new InvalidOperationException($"Failed to allocate command buffer: {bufferError.Value}");
+        _commandBuffer = ((Result<VkCommandBuffer, VkApiResult>.Ok)bufferResult).Value;
 
         var semaphoreResult1 = VulkanContext.CreateSemaphore();
-        if (semaphoreResult1 is VkResult<VkSemaphore>.Error semaphoreError1)
-            throw new InvalidOperationException($"Failed to create semaphore: {semaphoreError1.errorResult}");
-        _imageAvailableSemaphore = ((VkResult<VkSemaphore>.Success)semaphoreResult1).value;
+        if (semaphoreResult1 is Result<VkSemaphore, VkApiResult>.Error semaphoreError1)
+            throw new InvalidOperationException($"Failed to create semaphore: {semaphoreError1.Value}");
+        _imageAvailableSemaphore = ((Result<VkSemaphore, VkApiResult>.Ok)semaphoreResult1).Value;
 
         var semaphoreResult2 = VulkanContext.CreateSemaphore();
-        if (semaphoreResult2 is VkResult<VkSemaphore>.Error semaphoreError2)
-            throw new InvalidOperationException($"Failed to create semaphore: {semaphoreError2.errorResult}");
-        _renderFinishedSemaphore = ((VkResult<VkSemaphore>.Success)semaphoreResult2).value;
+        if (semaphoreResult2 is Result<VkSemaphore, VkApiResult>.Error semaphoreError2)
+            throw new InvalidOperationException($"Failed to create semaphore: {semaphoreError2.Value}");
+        _renderFinishedSemaphore = ((Result<VkSemaphore, VkApiResult>.Ok)semaphoreResult2).Value;
 
         var fenceResult = VulkanContext.CreateFence(FenceCreateFlags.SignaledBit);
-        if (fenceResult is VkResult<VkFence>.Error fenceError)
-            throw new InvalidOperationException($"Failed to create fence: {fenceError.errorResult}");
-        _inFlightFence = ((VkResult<VkFence>.Success)fenceResult).value;
+        if (fenceResult is Result<VkFence, VkApiResult>.Error fenceError)
+            throw new InvalidOperationException($"Failed to create fence: {fenceError.Value}");
+        _inFlightFence = ((Result<VkFence, VkApiResult>.Ok)fenceResult).Value;
 
         var vk = VulkanContext.VkApi;
         var device = VulkanContext.VkDevice.Handle;
@@ -404,9 +406,9 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             PBindings = bindings
         };
         var layoutResult = VulkanContext.CreateDescriptorSetLayout(layoutInfo);
-        if (layoutResult is VkResult<VkDescriptorSetLayout>.Error layoutError)
-            throw new InvalidOperationException($"Failed to create descriptor set layout: {layoutError.errorResult}");
-        _descriptorSetLayout = ((VkResult<VkDescriptorSetLayout>.Success)layoutResult).value;
+        if (layoutResult is Result<VkDescriptorSetLayout, VkApiResult>.Error layoutError)
+            throw new InvalidOperationException($"Failed to create descriptor set layout: {layoutError.Value}");
+        _descriptorSetLayout = ((Result<VkDescriptorSetLayout, VkApiResult>.Ok)layoutResult).Value;
 
         var pushConstantRange = new PushConstantRange
         {
@@ -424,9 +426,9 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             PPushConstantRanges = &pushConstantRange
         };
         var pipelineLayoutResult = VulkanContext.CreatePipelineLayout(pipelineLayoutInfo);
-        if (pipelineLayoutResult is VkResult<VkPipelineLayout>.Error pipelineLayoutError)
-            throw new InvalidOperationException($"Failed to create pipeline layout: {pipelineLayoutError.errorResult}");
-        _pipelineLayout = ((VkResult<VkPipelineLayout>.Success)pipelineLayoutResult).value;
+        if (pipelineLayoutResult is Result<VkPipelineLayout, VkApiResult>.Error pipelineLayoutError)
+            throw new InvalidOperationException($"Failed to create pipeline layout: {pipelineLayoutError.Value}");
+        _pipelineLayout = ((Result<VkPipelineLayout, VkApiResult>.Ok)pipelineLayoutResult).Value;
 
         var entryPoint = "main"u8;
         fixed (byte* entryPointPtr = entryPoint)
@@ -445,9 +447,9 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
                 Layout = _pipelineLayout.Handle
             };
             var pipelineResult = VulkanContext.CreateComputePipeline(computePipelineInfo);
-            if (pipelineResult is VkResult<VkPipeline>.Error pipelineError)
-                throw new InvalidOperationException($"Failed to create compute pipeline: {pipelineError.errorResult}");
-            _computePipeline = ((VkResult<VkPipeline>.Success)pipelineResult).value;
+            if (pipelineResult is Result<VkPipeline, VkApiResult>.Error pipelineError)
+                throw new InvalidOperationException($"Failed to create compute pipeline: {pipelineError.Value}");
+            _computePipeline = ((Result<VkPipeline, VkApiResult>.Ok)pipelineResult).Value;
         }
     }
 
@@ -472,14 +474,14 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             PPoolSizes = poolSizes
         };
         var poolResult = VulkanContext.CreateDescriptorPool(poolInfo);
-        if (poolResult is VkResult<VkDescriptorPool>.Error descriptorPoolError)
-            throw new InvalidOperationException($"Failed to create descriptor pool: {descriptorPoolError.errorResult}");
-        _descriptorPool = ((VkResult<VkDescriptorPool>.Success)poolResult).value;
+        if (poolResult is Result<VkDescriptorPool, VkApiResult>.Error descriptorPoolError)
+            throw new InvalidOperationException($"Failed to create descriptor pool: {descriptorPoolError.Value}");
+        _descriptorPool = ((Result<VkDescriptorPool, VkApiResult>.Ok)poolResult).Value;
 
         var setResult = _descriptorPool.AllocateDescriptorSet(_descriptorSetLayout!.Handle);
-        if (setResult is VkResult<VkDescriptorSet>.Error setError)
-            throw new InvalidOperationException($"Failed to allocate descriptor set: {setError.errorResult}");
-        _descriptorSet = ((VkResult<VkDescriptorSet>.Success)setResult).value;
+        if (setResult is Result<VkDescriptorSet, VkApiResult>.Error setError)
+            throw new InvalidOperationException($"Failed to allocate descriptor set: {setError.Value}");
+        _descriptorSet = ((Result<VkDescriptorSet, VkApiResult>.Ok)setResult).Value;
 
         var imageInfo = new DescriptorImageInfo
         {
@@ -558,9 +560,9 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         _inFlightFence.Reset();
 
         var acquireResult = swapchain.AcquireNextImage(_imageAvailableSemaphore!, autoRecreate: true);
-        if (acquireResult is VkResult<uint>.Error)
+        if (acquireResult is Result<uint, VkApiResult>.Error)
             return;
-        var imageIndex = ((VkResult<uint>.Success)acquireResult).value;
+        var imageIndex = ((Result<uint, VkApiResult>.Ok)acquireResult).Value;
 
         var cmd = _commandBuffer!.Handle;
         vk.ResetCommandBuffer(cmd, 0);

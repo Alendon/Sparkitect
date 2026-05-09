@@ -8,6 +8,8 @@ using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
+using Sparkitect.Utils.DU;
+using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace MinimalSampleMod;
 
@@ -34,18 +36,18 @@ public partial class SampleEntryState : IStateDescriptor
 
         var poolResult = vulkanContext.CreateCommandPool(CommandPoolCreateFlags.ResetCommandBufferBit, 0);
 
-        if (poolResult is not VkResult<VkCommandPool>.Success(var pool))
+        if (poolResult is not Result<VkCommandPool, VkApiResult>.Ok(var pool))
         {
             Log.Error("Failed to create command pool");
             return;
         }
 
         var singleResult = pool.AllocateCommandBuffer(CommandBufferLevel.Primary);
-        if (singleResult is VkResult<VkCommandBuffer>.Success(var singleBuffer))
+        if (singleResult is Result<VkCommandBuffer, VkApiResult>.Ok(var singleBuffer))
             Log.Information("Allocated single command buffer: {Handle}", singleBuffer.Handle.Handle);
 
         var batchResult = pool.AllocateCommandBuffers(CommandBufferLevel.Primary, 3);
-        if (batchResult is VkResult<VkCommandBuffer[]>.Success(var batchBuffers))
+        if (batchResult is Result<VkCommandBuffer[], VkApiResult>.Ok(var batchBuffers))
         {
             Log.Information("Allocated batch of {Count} command buffers", batchBuffers.Length);
             pool.FreeCommandBuffers(batchBuffers);

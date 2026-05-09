@@ -2,6 +2,8 @@ using JetBrains.Annotations;
 using Serilog;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
+using Sparkitect.Utils.DU;
+using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
@@ -46,7 +48,7 @@ public class VkSwapchain : VulkanObject
     /// <param name="timeout">Timeout in nanoseconds. Default is infinite.</param>
     /// <param name="autoRecreate">If true, automatically recreates swapchain on OUT_OF_DATE.</param>
     /// <returns>The image index, or error result.</returns>
-    public unsafe VkResult<uint> AcquireNextImage(
+    public unsafe Result<uint, VkApiResult> AcquireNextImage(
         VkSemaphore signalSemaphore,
         ulong timeout = ulong.MaxValue,
         bool autoRecreate = false)
@@ -56,7 +58,7 @@ public class VkSwapchain : VulkanObject
         var result = _khrSwapchain.AcquireNextImage(
             Device, _handle, timeout, semaphoreHandle, (Fence)default, ref imageIndex);
 
-        if (result == Result.ErrorOutOfDateKhr)
+        if (result == VkApiResult.ErrorOutOfDateKhr)
         {
             if (autoRecreate)
             {
@@ -66,14 +68,14 @@ public class VkSwapchain : VulkanObject
             }
             else
             {
-                return VkResult<uint>._Error(result);
+                return result;
             }
         }
 
-        if (result != Result.Success && result != Result.SuboptimalKhr)
-            return VkResult<uint>._Error(result);
+        if (result != VkApiResult.Success && result != VkApiResult.SuboptimalKhr)
+            return result;
 
-        return VkResult<uint>._Success(imageIndex);
+        return imageIndex;
     }
 
     /// <summary>
@@ -83,7 +85,7 @@ public class VkSwapchain : VulkanObject
     /// <param name="waitSemaphore">Semaphore to wait on before presenting.</param>
     /// <param name="presentQueue">Queue to present on.</param>
     /// <returns>Result code. Check for OUT_OF_DATE/SUBOPTIMAL.</returns>
-    public unsafe Result Present(uint imageIndex, VkSemaphore waitSemaphore, Queue presentQueue)
+    public unsafe VkApiResult Present(uint imageIndex, VkSemaphore waitSemaphore, Queue presentQueue)
     {
         var swapchain = _handle;
         var semaphoreHandle = waitSemaphore.Handle;
@@ -144,7 +146,7 @@ public class VkSwapchain : VulkanObject
         };
 
         var result = _khrSwapchain.CreateSwapchain(Device, createInfo, AllocationCallbacks, out var newSwapchain);
-        if (result != Result.Success)
+        if (result != VkApiResult.Success)
             throw new InvalidOperationException($"Failed to create swapchain: {result}");
 
         // Cleanup old resources
@@ -194,10 +196,11 @@ public class VkSwapchain : VulkanObject
         for (var i = 0; i < _images.Length; i++)
         {
             var viewResult = _images[i].CreateView(ImageAspectFlags.ColorBit);
-            if (viewResult is VkResult<VkImageView>.Error error)
-                throw new InvalidOperationException($"Failed to create image view: {error.errorResult}");
+            if (viewResult is not Result<VkImageView, VkApiResult>.Ok(var view))
+                throw new InvalidOperationException(
+                    $"Failed to create image view: {((Result<VkImageView, VkApiResult>.Error)viewResult).Value}");
 
-            _imageViews[i] = ((VkResult<VkImageView>.Success)viewResult).value;
+            _imageViews[i] = view;
         }
     }
 

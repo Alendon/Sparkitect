@@ -1,4 +1,4 @@
-﻿using OneOf;
+﻿using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Modding;
 
@@ -70,7 +70,7 @@ public interface IIdentificationManager
     /// or <see cref="Identification.Empty"/> if mod or category is not registered.
     /// </returns>
     /// <exception cref="InvalidOperationException">Thrown when the maximum number of objects (~4.3 billion) for a mod:category combination is reached.</exception>
-    Identification RegisterObject(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId, string objectId);
+    Identification RegisterObject(Variant<string, ushort> modId, Variant<string, ushort> categoryId, string objectId);
 
     /// <summary>
     /// Attempts to resolve an object identifier to its full identification.
@@ -80,7 +80,7 @@ public interface IIdentificationManager
     /// <param name="objectId">The object ID (string or numeric).</param>
     /// <param name="id">The full <see cref="Identification"/> if found, <see cref="Identification.Empty"/> otherwise.</param>
     /// <returns><c>true</c> if the object is registered; otherwise, <c>false</c>.</returns>
-    bool TryGetObjectId(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId, OneOf<string, ushort> objectId,
+    bool TryGetObjectId(Variant<string, ushort> modId, Variant<string, ushort> categoryId, Variant<string, ushort> objectId,
         out Identification id);
 
     /// <summary>
@@ -94,14 +94,14 @@ public interface IIdentificationManager
     /// </summary>
     /// <param name="modId">The mod ID (string or numeric) to filter by.</param>
     /// <returns>An enumerable of <see cref="Identification"/> instances for the specified mod, or empty if mod not found.</returns>
-    IEnumerable<Identification> GetAllObjectIdsOfMod(OneOf<string, ushort> modId);
+    IEnumerable<Identification> GetAllObjectIdsOfMod(Variant<string, ushort> modId);
 
     /// <summary>
     /// Retrieves all object identifications registered under a specific category, across all mods.
     /// </summary>
     /// <param name="categoryId">The category ID (string or numeric) to filter by.</param>
     /// <returns>An enumerable of <see cref="Identification"/> instances for the specified category, or empty if category not found.</returns>
-    IEnumerable<Identification> GetAllObjectIdsOfCategory(OneOf<string, ushort> categoryId);
+    IEnumerable<Identification> GetAllObjectIdsOfCategory(Variant<string, ushort> categoryId);
 
     /// <summary>
     /// Retrieves all object identifications registered under a specific mod and category combination.
@@ -109,7 +109,7 @@ public interface IIdentificationManager
     /// <param name="modId">The mod ID (string or numeric).</param>
     /// <param name="categoryId">The category ID (string or numeric).</param>
     /// <returns>An enumerable of <see cref="Identification"/> instances for the specified combination, or empty if not found.</returns>
-    IEnumerable<Identification> GetAllObjectIdsOfModAndCategory(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId);
+    IEnumerable<Identification> GetAllObjectIdsOfModAndCategory(Variant<string, ushort> modId, Variant<string, ushort> categoryId);
 
     /// <summary>
     /// Unregisters a mod by its numeric ID. Fails if any objects are still registered under this mod.
@@ -149,14 +149,14 @@ public interface IIdentificationManager
     /// </summary>
     /// <param name="modId">The mod ID (string or numeric) to check.</param>
     /// <returns><c>true</c> if the mod is registered; otherwise, <c>false</c>.</returns>
-    bool IsModRegistered(OneOf<string, ushort> modId);
+    bool IsModRegistered(Variant<string, ushort> modId);
 
     /// <summary>
     /// Checks if a category is registered.
     /// </summary>
     /// <param name="categoryId">The category ID (string or numeric) to check.</param>
     /// <returns><c>true</c> if the category is registered; otherwise, <c>false</c>.</returns>
-    bool IsCategoryRegistered(OneOf<string, ushort> categoryId);
+    bool IsCategoryRegistered(Variant<string, ushort> categoryId);
 
     /// <summary>
     /// Checks if an object is registered within a specific mod and category combination.
@@ -165,7 +165,7 @@ public interface IIdentificationManager
     /// <param name="categoryId">The category ID (string or numeric).</param>
     /// <param name="objectId">The object ID (string or numeric).</param>
     /// <returns><c>true</c> if the object is registered; otherwise, <c>false</c>.</returns>
-    bool IsObjectRegistered(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId, OneOf<string, ushort> objectId);
+    bool IsObjectRegistered(Variant<string, ushort> modId, Variant<string, ushort> categoryId, Variant<string, ushort> objectId);
 
     /// <summary>
     /// Gets the total number of registered mods.
@@ -191,7 +191,7 @@ public interface IIdentificationManager
     /// <param name="modId">The mod ID (string or numeric).</param>
     /// <param name="categoryId">The category ID (string or numeric).</param>
     /// <returns>The count of objects in the specified mod:category combination, or 0 if not found.</returns>
-    int GetObjectCountForCategory(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId);
+    int GetObjectCountForCategory(Variant<string, ushort> modId, Variant<string, ushort> categoryId);
 
     /// <summary>
     /// Attempts to resolve an <see cref="Identification"/> to its string components.

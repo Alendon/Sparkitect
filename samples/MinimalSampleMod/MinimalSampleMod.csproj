@@ -30,7 +30,6 @@
 
     <ItemGroup>
         <PackageReference Include="Humanizer.Core" Version="3.0.1" />
-        <PackageReference Include="OneOf" Version="3.0.271" />
     </ItemGroup>
 
     <!-- Import Sparkitect SDK targets directly -->

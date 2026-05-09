@@ -1,6 +1,8 @@
 using Serilog;
 using Silk.NET.Vulkan;
 using Sparkitect.Utils;
+using Sparkitect.Utils.DU;
+using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
@@ -17,7 +19,7 @@ public class VkCommandPool : VulkanObject
     public CommandPool Handle { get; }
     
 
-    public VkResult<VkCommandBuffer> AllocateCommandBuffer(CommandBufferLevel level,
+    public Result<VkCommandBuffer, VkApiResult> AllocateCommandBuffer(CommandBufferLevel level,
         [InjectCallerContext] CallerContext callerContext = default)
     {
         CommandBufferAllocateInfo allocInfo = new()
@@ -30,24 +32,24 @@ public class VkCommandPool : VulkanObject
 
         var result = Vk.AllocateCommandBuffers(Device, allocInfo, out var commandBuffer);
 
-        if(result != Result.Success) return VkResult<VkCommandBuffer>._Error(result);
+        if (result != VkApiResult.Success) return result;
 
         var buffer = new VkCommandBuffer(commandBuffer, VulkanContext, this, callerContext);
         _allocatedBuffers.Add(buffer);
-        return VkResult<VkCommandBuffer>._Success(buffer);
+        return buffer;
     }
 
-    public VkResult<VkCommandBuffer[]> AllocateCommandBuffers(CommandBufferLevel level, int amount,
+    public Result<VkCommandBuffer[], VkApiResult> AllocateCommandBuffers(CommandBufferLevel level, int amount,
         [InjectCallerContext] CallerContext callerContext = default)
     {
         VkCommandBuffer[] buffers = new VkCommandBuffer[amount];
         var result = AllocateCommandBuffers(level, buffers, callerContext);
-        if(result != Result.Success) return VkResult<VkCommandBuffer[]>._Error(result);
+        if (result != VkApiResult.Success) return result;
 
-        return VkResult<VkCommandBuffer[]>._Success(buffers);
+        return buffers;
     }
-    
-    public Result AllocateCommandBuffers(CommandBufferLevel level, Span<VkCommandBuffer> target,
+
+    public VkApiResult AllocateCommandBuffers(CommandBufferLevel level, Span<VkCommandBuffer> target,
         CallerContext callerContext = default)
     {
         CommandBufferAllocateInfo allocInfo = new()
@@ -64,7 +66,7 @@ public class VkCommandPool : VulkanObject
 
         var result = Vk.AllocateCommandBuffers(Device, allocInfo, out buffers[0]);
 
-        if (result != Result.Success) return result;
+        if (result != VkApiResult.Success) return result;
 
         for (var i = 0; i < target.Length; i++)
         {
@@ -76,7 +78,7 @@ public class VkCommandPool : VulkanObject
         return result;
     }
 
-    public Result Reset(CommandPoolResetFlags flags)
+    public VkApiResult Reset(CommandPoolResetFlags flags)
     {
         return Vk.ResetCommandPool(Device, Handle, flags);
     }

@@ -1,5 +1,5 @@
-﻿using OneOf;
-using Sparkitect.GameState;
+﻿using Sparkitect.GameState;
+using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Modding;
 
@@ -74,7 +74,7 @@ internal class IdentificationManager : IIdentificationManager
         return _categoryIds.Inverse.TryGetValue(id, out categoryId);
     }
 
-    public Identification RegisterObject(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId, string objectId)
+    public Identification RegisterObject(Variant<string, ushort> modId, Variant<string, ushort> categoryId, string objectId)
     {
         AssertMainThread();
         ushort resolvedModId = ResolveModId(modId);
@@ -113,7 +113,7 @@ internal class IdentificationManager : IIdentificationManager
         return Identification.Create(resolvedModId, resolvedCategoryId, newItemId);
     }
 
-    public bool TryGetObjectId(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId, OneOf<string, ushort> objectId, out Identification id)
+    public bool TryGetObjectId(Variant<string, ushort> modId, Variant<string, ushort> categoryId, Variant<string, ushort> objectId, out Identification id)
     {
         ushort resolvedModId = ResolveModId(modId);
         ushort resolvedCategoryId = ResolveCategoryId(categoryId);
@@ -133,25 +133,16 @@ internal class IdentificationManager : IIdentificationManager
         }
         
         Identification idResult = Identification.Empty;
-        bool result = objectId.Match(
-            stringId =>
-            {
-                if (!idDictionary.TryGetValue(stringId, out var value)) return false;
-                
-                idResult = Identification.Create(resolvedModId, resolvedCategoryId, value);
-                return true;
+        bool result = objectId switch
+        {
+            Variant<string, ushort>.Of1 stringId =>
+                idDictionary.TryGetValue(stringId.Value, out var value)
+                    && (idResult = Identification.Create(resolvedModId, resolvedCategoryId, value)) is var _,
+            Variant<string, ushort>.Of2 numericId =>
+                idDictionary.Inverse.ContainsKey(numericId.Value)
+                    && (idResult = Identification.Create(resolvedModId, resolvedCategoryId, numericId.Value)) is var _,
+        };
 
-            },
-            numericId =>
-            {
-                if (!idDictionary.Inverse.ContainsKey(numericId)) return false;
-                
-                idResult = Identification.Create(resolvedModId, resolvedCategoryId, numericId);
-                return true;
-
-            }
-        );
-        
         id = idResult;
         return result;
     }
@@ -167,7 +158,7 @@ internal class IdentificationManager : IIdentificationManager
         }
     }
 
-    public IEnumerable<Identification> GetAllObjectIdsOfMod(OneOf<string, ushort> modId)
+    public IEnumerable<Identification> GetAllObjectIdsOfMod(Variant<string, ushort> modId)
     {
         ushort resolvedModId = ResolveModId(modId);
         
@@ -190,7 +181,7 @@ internal class IdentificationManager : IIdentificationManager
         }
     }
 
-    public IEnumerable<Identification> GetAllObjectIdsOfCategory(OneOf<string, ushort> categoryId)
+    public IEnumerable<Identification> GetAllObjectIdsOfCategory(Variant<string, ushort> categoryId)
     {
         ushort resolvedCategoryId = ResolveCategoryId(categoryId);
         
@@ -213,7 +204,7 @@ internal class IdentificationManager : IIdentificationManager
         }
     }
 
-    public IEnumerable<Identification> GetAllObjectIdsOfModAndCategory(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId)
+    public IEnumerable<Identification> GetAllObjectIdsOfModAndCategory(Variant<string, ushort> modId, Variant<string, ushort> categoryId)
     {
         ushort resolvedModId = ResolveModId(modId);
         ushort resolvedCategoryId = ResolveCategoryId(categoryId);
@@ -297,19 +288,19 @@ internal class IdentificationManager : IIdentificationManager
         return _categoryIds.Values;
     }
 
-    public bool IsModRegistered(OneOf<string, ushort> modId)
+    public bool IsModRegistered(Variant<string, ushort> modId)
     {
         ushort resolvedModId = ResolveModId(modId);
         return resolvedModId != 0;
     }
 
-    public bool IsCategoryRegistered(OneOf<string, ushort> categoryId)
+    public bool IsCategoryRegistered(Variant<string, ushort> categoryId)
     {
         ushort resolvedCategoryId = ResolveCategoryId(categoryId);
         return resolvedCategoryId != 0;
     }
 
-    public bool IsObjectRegistered(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId, OneOf<string, ushort> objectId)
+    public bool IsObjectRegistered(Variant<string, ushort> modId, Variant<string, ushort> categoryId, Variant<string, ushort> objectId)
     {
         return TryGetObjectId(modId, categoryId, objectId, out _);
     }
@@ -329,7 +320,7 @@ internal class IdentificationManager : IIdentificationManager
         return _objectIds.Values.Sum(dict => dict.Count);
     }
 
-    public int GetObjectCountForCategory(OneOf<string, ushort> modId, OneOf<string, ushort> categoryId)
+    public int GetObjectCountForCategory(Variant<string, ushort> modId, Variant<string, ushort> categoryId)
     {
         ushort resolvedModId = ResolveModId(modId);
         ushort resolvedCategoryId = ResolveCategoryId(categoryId);
@@ -343,21 +334,17 @@ internal class IdentificationManager : IIdentificationManager
         return _objectIds.TryGetValue(key, out var idDict) ? idDict.Count : 0;
     }
 
-    private ushort ResolveModId(OneOf<string, ushort> modId)
+    private ushort ResolveModId(Variant<string, ushort> modId) => modId switch
     {
-        return modId.Match(
-            strId => TryGetModId(strId, out var id) ? id : (ushort)0,
-            id => _modIds.Inverse.ContainsKey(id) ? id : (ushort)0
-        );
-    }
-    
-    private ushort ResolveCategoryId(OneOf<string, ushort> categoryId)
+        Variant<string, ushort>.Of1 strId => TryGetModId(strId.Value, out var resolved) ? resolved : (ushort)0,
+        Variant<string, ushort>.Of2 numericId => _modIds.Inverse.ContainsKey(numericId.Value) ? numericId.Value : (ushort)0,
+    };
+
+    private ushort ResolveCategoryId(Variant<string, ushort> categoryId) => categoryId switch
     {
-        return categoryId.Match(
-            strId => TryGetCategoryId(strId, out var id) ? id : (ushort)0,
-            id => _categoryIds.Inverse.ContainsKey(id) ? id : (ushort)0
-        );
-    }
+        Variant<string, ushort>.Of1 strId => TryGetCategoryId(strId.Value, out var resolved) ? resolved : (ushort)0,
+        Variant<string, ushort>.Of2 numericId => _categoryIds.Inverse.ContainsKey(numericId.Value) ? numericId.Value : (ushort)0,
+    };
 
     public bool TryResolveIdentification(Identification id, out string? modId, out string? categoryId, out string? objectId)
     {

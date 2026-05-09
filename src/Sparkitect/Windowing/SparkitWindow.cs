@@ -5,7 +5,9 @@ using Silk.NET.Vulkan;
 using Silk.NET.Windowing;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Utils.DU;
 using Sparkitect.Windowing.Input;
+using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Windowing;
 
@@ -67,7 +69,7 @@ internal class SparkitWindow : ISparkitWindow
         _mouse.UpdateDelta();
     }
 
-    public VkResult<uint> AcquireNextImage(
+    public Result<uint, VkApiResult> AcquireNextImage(
         VkSemaphore signalSemaphore,
         ulong timeout = ulong.MaxValue,
         bool autoRecreate = false)
@@ -75,7 +77,7 @@ internal class SparkitWindow : ISparkitWindow
         return _swapchain.AcquireNextImage(signalSemaphore, timeout, autoRecreate);
     }
 
-    public Result Present(uint imageIndex, VkSemaphore waitSemaphore, Queue presentQueue)
+    public VkApiResult Present(uint imageIndex, VkSemaphore waitSemaphore, Queue presentQueue)
     {
         return _swapchain.Present(imageIndex, waitSemaphore, presentQueue);
     }
