@@ -20,7 +20,10 @@ public partial class SampleEntryState : IStateDescriptor
 
     public static IReadOnlyList<Identification> Modules =>
     [
-        StateModuleID.MinimalSampleMod.Sample, StateModuleID.Sparkitect.Vulkan, StateModuleID.Sparkitect.Ecs
+        StateModuleID.MinimalSampleMod.Sample,
+        StateModuleID.Sparkitect.Vulkan,
+        StateModuleID.Sparkitect.Ecs,
+        StateModuleID.Sparkitect.RenderGraph,
     ];
 
     [DummyRegistry.RegisterValue("hello1")]
