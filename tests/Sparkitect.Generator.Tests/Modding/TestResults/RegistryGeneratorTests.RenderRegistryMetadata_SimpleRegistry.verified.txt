@@ -25,6 +25,7 @@ public class TestRegistry_Metadata
         public const int Constraint = 0;
         public const string TypeConstraint = "global::System.String";
         public const string KeyedFactoryMarkerTBase = "";
+        public const string KeyedFactoryMarkerTKey = "";
     }
 
 
@@ -36,6 +37,7 @@ public class TestRegistry_Metadata
         public const int Constraint = 1;
         public const string TypeConstraint = "global::System.IDisposable";
         public const string KeyedFactoryMarkerTBase = "";
+        public const string KeyedFactoryMarkerTKey = "";
     }
 
 

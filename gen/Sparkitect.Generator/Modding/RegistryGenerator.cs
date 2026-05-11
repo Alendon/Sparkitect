@@ -167,9 +167,20 @@ public partial class RegistryGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(resourceUnitsProvider.Combine(buildSettings),
             static (spc, pair) => OutputAutoEmitIdentificationUnit(spc, (pair.Left, pair.Right)));
 
-        // Branch A — Configurator + shell per (registry × marker-flagged-method) — driven from registration units.
+        // Branch A — Configurator shell + matching attribute + C# 14 extension accessors
+        // emitted ONCE in the registry's declaring assembly. Re-rooted onto
+        // symbolRegistryWithFactoryProvider (same provider OutputRegistryConfigurator uses)
+        // so the attribute Type exists in the declaring assembly — consumers can typeof() it
+        // and the runtime no longer needs simple-name reflection.
+        context.RegisterSourceOutput(symbolRegistryWithFactoryProvider.Combine(buildSettings),
+            static (spc, pair) => OutputKeyedFactoryShellAndAccessors(spc, (pair.Left, pair.Right)));
+
+        // Branch A (per-consumer split) — non-partial registrations class carrying the
+        // now-public attribute, implementing IFactoryConfiguratorBase<TKey,TBase>.
+        // Stays rooted on providerUnitsProvider because the registration *body* needs
+        // the consumer's concretes.
         context.RegisterSourceOutput(providerUnitsProvider.Combine(buildSettings),
-            static (spc, pair) => OutputTypeRegistrationKeyedFactory(spc, (pair.Left, pair.Right)));
+            static (spc, pair) => OutputKeyedFactoryRegistrations(spc, (pair.Left, pair.Right)));
 
         // Branch B — Per-concrete _KeyedFactory.g.cs — driven from a parallel SyntaxProvider.
         // INamedTypeSymbol is resolved inside the lambda and does NOT cross the pipeline boundary;
@@ -423,6 +434,11 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 IdentificationStruct) continue;
 
             var markerTBase = ExtractKeyedFactoryMarkerTBase(method);
+            // TKey = the marker-flagged method's first parameter type (e.g. `Identification`).
+            // Captured even when the marker is absent so the model is symmetric with TBase; only
+            // emission paths that gate on markerTBase actually consume the TKey field.
+            var markerTKey = method.Parameters.First().Type
+                .ToDisplayString(DisplayFormats.NamespaceAndType);
 
             //Method registration
             if (method.Parameters.Length == 2)
@@ -437,14 +453,14 @@ public partial class RegistryGenerator : IIncrementalGenerator
                     ParseTypeParameterConstraints(method.TypeParameters.First(), out var constraintFlag,
                         out var typeConstraints);
                     result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.GenericValue, constraintFlag,
-                        typeConstraints, markerTBase));
+                        typeConstraints, markerTBase, markerTKey));
 
                     continue;
                 }
 
                 result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Value, TypeConstraintFlag.None,
                     ((string[])[parameter.ToDisplayString(DisplayFormats.NamespaceAndType)]).ToImmutableValueArray(),
-                    markerTBase));
+                    markerTBase, markerTKey));
 
                 continue;
             }
@@ -455,7 +471,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 ParseTypeParameterConstraints(method.TypeParameters.First(), out var constraintFlag,
                     out var typeConstraints);
                 result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Type, constraintFlag,
-                    typeConstraints, markerTBase));
+                    typeConstraints, markerTBase, markerTKey));
 
                 continue;
             }
@@ -463,7 +479,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
             //Resource file registration
             result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.None, TypeConstraintFlag.None, [],
-                markerTBase));
+                markerTBase, markerTKey));
         }
 
         return result.ToImmutableValueArray();
@@ -568,13 +584,18 @@ public partial class RegistryGenerator : IIncrementalGenerator
             }
         }
 
+        // The metadata class itself lives in the declaring assembly's SG output namespace —
+        // capture it so cross-assembly consumers can reference the configurator attribute by FQN.
+        var declaringSgNamespace = ((INamedTypeSymbol)metadata).ContainingNamespace?.ToDisplayString();
+
         model = new RegistryModel(
             Of("TypeName"),
             Of("Key"),
             Of("ContainingNamespace"),
             reader.OfBool("IsExternal"),
             methodModels.ToImmutableValueArray(),
-            resourceFiles.ToImmutableValueArray());
+            resourceFiles.ToImmutableValueArray(),
+            declaringSgNamespace);
 
         allValid &= reader.AllValid;
 
@@ -631,12 +652,24 @@ public partial class RegistryGenerator : IIncrementalGenerator
             markerTBase = markerData;
         }
 
+        // Optional KeyedFactoryMarkerTKey — same roundtrip shape. Absent on pre-260511-lio metadata.
+        string? markerTKey = null;
+        var markerTKeyField = methodMetadata.GetMembers("KeyedFactoryMarkerTKey")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (markerTKeyField is { IsConst: true, HasConstantValue: true, ConstantValue: string markerTKeyData }
+            && !string.IsNullOrEmpty(markerTKeyData))
+        {
+            markerTKey = markerTKeyData;
+        }
+
         model = new RegisterMethodModel(
             Of("FunctionName"),
             parameterKind,
             constraint,
             typeConstraints.ToImmutableValueArray(),
-            markerTBase
+            markerTBase,
+            markerTKey
         );
 
         return reader.AllValid;

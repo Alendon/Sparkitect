@@ -456,16 +456,26 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         // Debug: list all generated files
         var allFiles = string.Join(", ", fileNames.OrderBy(f => f));
 
-        // Test 5: assert artifact presence
+        // Artifact presence:
+        //  - {Concrete}_KeyedFactory.g.cs   — Branch B, per-consumer (unchanged).
+        //  - {Registry}_{Method}_KeyedFactoryConfigurator_Shell.g.cs   — Branch A, declaring
+        //    assembly (here SAME compilation, so shell + registrations both land here).
+        //  - {ModNs}_{Configurator}_Registrations.g.cs                  — per-consumer registrations
+        //    class implementing IFactoryConfiguratorBase, carrying the now-public attribute.
+        //  - {Registry}_KeyedFactoryExtensions.g.cs                     — C# 14 extension(TRegistry).
         await Assert.That(fileNames.Any(f => f == "ClearColorPass_KeyedFactory.g.cs"))
             .IsTrue().Because($"Generated files: {allFiles}");
-        await Assert.That(fileNames.Any(f => f == "RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator.g.cs")).IsTrue();
+        await Assert.That(fileNames.Any(f =>
+            f == "SampleTest_RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Registrations.g.cs"))
+            .IsTrue().Because($"Generated files: {allFiles}");
         await Assert.That(fileNames.Any(f => f == "RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Shell.g.cs")).IsTrue();
+        await Assert.That(fileNames.Any(f => f == "RenderPassRegistry_KeyedFactoryExtensions.g.cs")).IsTrue();
 
-        // Assert the configurator contains IdentificationHelper.Read<>() key expression
-        var configuratorTree = driverRunResult.GeneratedTrees.First(t =>
-            System.IO.Path.GetFileName(t.FilePath) == "RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator.g.cs");
-        var configuratorCode = configuratorTree.GetText().ToString();
+        // Per-consumer registrations carries the IdentificationHelper.Read<>() key expression.
+        var registrationsTree2 = driverRunResult.GeneratedTrees.First(t =>
+            System.IO.Path.GetFileName(t.FilePath) ==
+            "SampleTest_RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Registrations.g.cs");
+        var configuratorCode = registrationsTree2.GetText().ToString();
         await Assert.That(configuratorCode).Contains("global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()");
 
         // Assert the registration line is preserved (D-01)

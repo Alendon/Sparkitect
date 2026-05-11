@@ -721,35 +721,35 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
     }
 
     [Test]
-    public async Task RenderTypeRegistrationKeyedFactory_SingleMarker_Snapshot()
+    public async Task RenderKeyedFactoryRegistrations_SingleMarker_Snapshot()
     {
         var unit = BuildMarkerFlaggedUnit(
             entries: [("clear_color_pass", "global::DiTest.ClearColorPass")]);
 
-        var groups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        var groups = RegistryGenerator.RenderKeyedFactoryRegistrations(unit, BuildSettings);
         await Assert.That(groups).HasSingleItem();
 
         var group = groups[0];
-        await Assert.That(group.ConfiguratorFileName)
-            .IsEqualTo("RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator.g.cs");
-        await Assert.That(group.ShellFileName)
-            .IsEqualTo("RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Shell.g.cs");
+        // Per-consumer registrations class — non-partial, internal sealed, prefixed with {ModId}Pascal.
+        await Assert.That(group.FileName)
+            .IsEqualTo("SampleTest_RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Registrations.g.cs");
+        await Assert.That(group.Code).Contains(
+            "internal sealed class SampleTest_RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Registrations");
+        await Assert.That(group.Code).Contains(
+            ": global::Sparkitect.DI.IFactoryConfiguratorBase<global::Sparkitect.Modding.Identification, global::DiTest.IRenderPass>");
+        await Assert.That(group.Code).Contains(
+            "[global::SampleTest.Generated.RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfiguratorAttribute]");
+        await Assert.That(group.Code).Contains(
+            "registrations[global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()] = new global::DiTest.ClearColorPass_KeyedFactory();");
 
-        // Substring assertions before snapshot acceptance
-        await Assert.That(group.ConfiguratorCode).Contains("partial class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator");
-        await Assert.That(group.ConfiguratorCode).Contains("registrations[global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()] = new global::DiTest.ClearColorPass_KeyedFactory();");
-        await Assert.That(group.ConfiguratorCode).DoesNotContain("\"global::Sparkitect.Modding.IdentificationHelper.Read");
-        await Assert.That(group.ShellCode).Contains("internal sealed class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfiguratorAttribute : global::System.Attribute");
-        await Assert.That(group.ShellCode).Contains(": global::Sparkitect.DI.IFactoryConfigurator<global::Sparkitect.Modding.Identification, global::DiTest.IRenderPass, RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfiguratorAttribute>");
-        await Assert.That(group.ShellCode).DoesNotContain("IRenderGraph");
-
-        await Verifier.Verify(new { group.ConfiguratorCode, group.ShellCode }, verifySettings);
+        await Verifier.Verify(group.Code, verifySettings);
     }
 
     [Test]
-    public async Task RenderTypeRegistrationKeyedFactory_MixedMarkedAndUnmarked()
+    public async Task RenderKeyedFactoryRegistrations_MixedMarkedAndUnmarked()
     {
-        // Unit with one marker-flagged + one unmarked entry
+        // Unit with one marker-flagged + one unmarked entry — only the marked entry should
+        // contribute to per-consumer registrations emission.
         var configuratorClassName = "RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator";
         var kfg = new KeyedFactoryGenerationInfo("global::DiTest.IRenderPass", configuratorClassName);
 
@@ -771,18 +771,18 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
 
         var unit = new RegistrationUnit(model, SourceKind.Provider, "Providers", entries);
 
-        var groups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        var groups = RegistryGenerator.RenderKeyedFactoryRegistrations(unit, BuildSettings);
         await Assert.That(groups).HasSingleItem();
 
         var group = groups[0];
-        await Assert.That(group.ConfiguratorCode).Contains("global::DiTest.ClearColorPass");
-        await Assert.That(group.ConfiguratorCode).DoesNotContain("OtherType");
+        await Assert.That(group.Code).Contains("global::DiTest.ClearColorPass");
+        await Assert.That(group.Code).DoesNotContain("OtherType");
 
-        await Verifier.Verify(new { group.ConfiguratorCode, group.ShellCode }, verifySettings);
+        await Verifier.Verify(group.Code, verifySettings);
     }
 
     [Test]
-    public async Task RenderTypeRegistrationKeyedFactory_MultipleProvidersOneMarkerMethod()
+    public async Task RenderKeyedFactoryRegistrations_MultipleProvidersOneMarkerMethod()
     {
         var unit = BuildMarkerFlaggedUnit(
             entries: [
@@ -790,15 +790,16 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
                 ("blur_pass", "global::DiTest.BlurPass")
             ]);
 
-        var groups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        var groups = RegistryGenerator.RenderKeyedFactoryRegistrations(unit, BuildSettings);
         await Assert.That(groups).HasSingleItem();
 
         var group = groups[0];
-        await Assert.That(group.ConfiguratorCode).Contains("global::DiTest.ClearColorPass");
-        await Assert.That(group.ConfiguratorCode).Contains("global::DiTest.BlurPass");
-        await Assert.That(group.ShellCode).Contains("internal partial class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator");
+        await Assert.That(group.Code).Contains("global::DiTest.ClearColorPass");
+        await Assert.That(group.Code).Contains("global::DiTest.BlurPass");
+        await Assert.That(group.Code).Contains(
+            "internal sealed class SampleTest_RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Registrations");
 
-        await Verifier.Verify(new { group.ConfiguratorCode, group.ShellCode }, verifySettings);
+        await Verifier.Verify(group.Code, verifySettings);
     }
 
     [Test]
@@ -807,12 +808,61 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         var unit = BuildMarkerFlaggedUnit(
             entries: [("clear_color_pass", "global::DiTest.ClearColorPass")]);
 
-        var groups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        var groups = RegistryGenerator.RenderKeyedFactoryRegistrations(unit, BuildSettings);
         await Assert.That(groups).HasSingleItem();
 
-        var configuratorCode = groups[0].ConfiguratorCode;
-        await Assert.That(configuratorCode).Contains(
+        var registrationsCode = groups[0].Code;
+        await Assert.That(registrationsCode).Contains(
             "registrations[global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()] = new global::DiTest.ClearColorPass_KeyedFactory();");
+    }
+
+    [Test]
+    public async Task GenerateKeyedFactoryConfiguratorShell_PublicSealed_Snapshot()
+    {
+        var code = RegistryGenerator.GenerateKeyedFactoryConfiguratorShell(
+            "SampleTest.Generated",
+            "RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator");
+
+        // Shell + attribute must be `public sealed` so consumers across assemblies can typeof() the attribute.
+        await Assert.That(code).Contains(
+            "public sealed class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfiguratorAttribute : global::System.Attribute");
+        await Assert.That(code).Contains(
+            "public sealed class RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator");
+        // Shell no longer carries a Configure body or IFactoryConfigurator interface — that lives
+        // on the per-consumer registrations class.
+        await Assert.That(code).DoesNotContain("IFactoryConfigurator");
+        await Assert.That(code).DoesNotContain("Configure(");
+
+        await Verifier.Verify(code, verifySettings);
+    }
+
+    [Test]
+    public async Task GenerateKeyedFactoryExtensions_TypeGetterAndBuilder_Snapshot()
+    {
+        var registry = new RegistryModel(
+            "RenderPassRegistry", "render_pass", "DiTest", false,
+            ImmutableValueArray.From(new RegisterMethodModel(
+                "RegisterRenderPass", PrimaryParameterKind.Type, TypeConstraintFlag.ReferenceType,
+                ImmutableValueArray.From("DiTest.IRenderPass"),
+                "global::DiTest.IRenderPass",
+                "global::Sparkitect.Modding.Identification")),
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var code = RegistryGenerator.GenerateKeyedFactoryExtensions(
+            "SampleTest.Generated", registry,
+            registry.RegisterMethods.ToArray());
+
+        await Assert.That(code).Contains("namespace SampleTest.Generated.KeyedFactoryExtensions");
+        await Assert.That(code).Contains(
+            "public static class RenderPassRegistryKeyedFactoryExtensions");
+        await Assert.That(code).Contains(
+            "extension(global::DiTest.RenderPassRegistry)");
+        await Assert.That(code).Contains(
+            "public static global::System.Type RegisterRenderPassConfiguratorAttribute");
+        await Assert.That(code).Contains(
+            "public static global::Sparkitect.DI.Container.IFactoryContainer<global::Sparkitect.Modding.Identification, global::DiTest.IRenderPass> BuildRegisterRenderPassContainer(");
+
+        await Verifier.Verify(code, verifySettings);
     }
 
     // ── Phase 49.3 (D-19) — auto-emit IHasIdentification snapshot tests ──
@@ -893,20 +943,20 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
     [Test]
     public async Task RenderAutoEmitIdentification_MarkerFlaggedConcrete_BothArtifactsEmit()
     {
-        // Layered orthogonality (D-04 + RESEARCH §Architecture Pattern 2): 49.2 keyed-factory marker
-        // and 49.3 auto-emit are independent emission paths that coexist on the same concrete.
+        // Two orthogonal emission paths (auto-emit `: IHasIdentification` and keyed-factory
+        // per-consumer registrations) coexist on the same marker-flagged concrete.
         var unit = BuildMarkerFlaggedUnit(
             entries: [("clear_color_pass", "global::DiTest.ClearColorPass")]);
 
-        // 49.2 keyed-factory artifact:
-        var kfGroups = RegistryGenerator.RenderTypeRegistrationKeyedFactory(unit, BuildSettings);
+        // Keyed-factory per-consumer registrations artifact:
+        var kfGroups = RegistryGenerator.RenderKeyedFactoryRegistrations(unit, BuildSettings);
         await Assert.That(kfGroups.Length).IsGreaterThanOrEqualTo(1);
 
-        // 49.3 auto-emit artifact:
+        // Auto-emit `: IHasIdentification` artifact:
         var autoOk = RegistryGenerator.RenderAutoEmitIdentificationUnit(unit, BuildSettings, out var autoCode, out _);
         await Assert.That(autoOk).IsTrue();
         await Assert.That(autoCode).Contains("partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification");
 
-        await Verifier.Verify(new { autoCode, kfFirstShell = kfGroups[0].ShellCode }, verifySettings);
+        await Verifier.Verify(new { autoCode, kfFirstRegistrations = kfGroups[0].Code }, verifySettings);
     }
 }

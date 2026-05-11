@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
-using MinimalSampleMod.CompilerGenerated;
 using MinimalSampleMod.CompilerGenerated.IdExtensions;
+using MinimalSampleMod.CompilerGenerated.KeyedFactoryExtensions;
 using Serilog;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
@@ -51,11 +51,11 @@ public class DummyValueManager(
         if (!_providers.Contains(id))
             new KeyNotFoundException($"Did not find {id}").Throw();
 
-        _providerContainer ??= diService.BuildFactoryContainer<Identification, IDummyValueProvider>(
+        _providerContainer ??= DummyRegistry.BuildRegisterProviderContainer(
+            diService,
             gameStateManager.CurrentCoreContainer,
             provider: null,
-            modManager.LoadedMods.Select(m => m.Id),
-            typeof(DummyRegistry_RegisterProvider_KeyedFactoryConfiguratorAttribute));
+            modManager.LoadedMods.Select(m => m.Id));
 
         if (!_providerContainer.TryResolve(id, out var dummyProvider))
             new KeyNotFoundException($"No provider registered for {id}").Throw();

@@ -1,5 +1,4 @@
-﻿//HintName: RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Shell.g.cs
-#pragma warning disable CS9113
+﻿#pragma warning disable CS9113
 #pragma warning disable CS1591
 
 namespace SampleTest.Generated;

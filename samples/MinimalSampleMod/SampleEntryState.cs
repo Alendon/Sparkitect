@@ -24,6 +24,7 @@ public partial class SampleEntryState : IStateDescriptor
         StateModuleID.Sparkitect.Vulkan,
         StateModuleID.Sparkitect.Ecs,
         StateModuleID.Sparkitect.RenderGraph,
+        StateModuleID.Sparkitect.Windowing
     ];
 
     [DummyRegistry.RegisterValue("hello1")]

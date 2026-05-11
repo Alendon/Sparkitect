@@ -1,19 +1,4 @@
-﻿{
-  autoCode:
-#pragma warning disable CS9113
-#pragma warning disable CS1591
-
-namespace DiTest
-{
-    partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification
-    {
-        public static global::Sparkitect.Modding.Identification Identification
-            => global::SampleTest.Generated.Registrations.RenderPassRegistryRegistrations_Providers.ClearColorPass;
-    }
-}
-
-,
-  kfFirstRegistrations:
+﻿//HintName: SampleTest_RenderPassRegistry_RegisterRenderPass_KeyedFactoryConfigurator_Registrations.g.cs
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
@@ -30,5 +15,4 @@ internal sealed class SampleTest_RenderPassRegistry_RegisterRenderPass_KeyedFact
     {
         registrations[global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()] = new global::DiTest.ClearColorPass_KeyedFactory();
     }
-}
 }

@@ -8,22 +8,9 @@ namespace Sparkitect.RenderGraph;
 
 /// <summary>
 /// Shared render-graph infrastructure module. Registers the <see cref="RenderPassRegistry"/>
-/// into the per-state registry pipeline (RG-31 initial form per D-C9).
+/// into the per-state registry pipeline. Does not own <see cref="RenderGraph"/> instances —
+/// consumers create those via <see cref="RenderGraph.Initialize"/> and own them themselves.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Per D-C9 / D-E4 this module ships shared infrastructure ONLY — pass registry add/process/remove
-/// transitions. It does not own <see cref="RenderGraph"/> instances; consumers create those
-/// themselves via the <see cref="RenderGraph.Initialize"/> static factory and own them as
-/// per-state fields (mirrors the <c>IWorld.Create()</c> + per-state ownership pattern).
-/// </para>
-/// <para>
-/// <see cref="RequiredModules"/> declares <c>StateModuleID.Sparkitect.Vulkan</c> so a graph
-/// state cannot activate this module without <see cref="Sparkitect.Graphics.Vulkan.VulkanModule"/>
-/// being active first — the <see cref="RenderGraph.Initialize"/> factory needs
-/// <see cref="Sparkitect.Graphics.Vulkan.IVulkanContext"/> available at resolve time.
-/// </para>
-/// </remarks>
 [ModuleRegistry.RegisterModule("render_graph")]
 public partial class RenderGraphModule : IStateModule
 {

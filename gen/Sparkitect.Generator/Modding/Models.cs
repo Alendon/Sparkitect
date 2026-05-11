@@ -18,7 +18,8 @@ public record RegistryModel(
     string ContainingNamespace,
     bool IsExternal,
     ImmutableValueArray<RegisterMethodModel> RegisterMethods,
-    ImmutableValueArray<(string Key, bool Required, bool Primary)> ResourceFiles);
+    ImmutableValueArray<(string Key, bool Required, bool Primary)> ResourceFiles,
+    string? DeclaringSgNamespace = null);
 
 public record FileRegistrationEntry(string RegistryClass, string MethodName, string Id, ImmutableValueArray<(string fileId, string fileName)> Files);
 
@@ -35,7 +36,8 @@ public record RegisterMethodModel(
     PrimaryParameterKind PrimaryParameterKind,
     TypeConstraintFlag Constraint,
     ImmutableValueArray<string> TypeConstraint,
-    string? KeyedFactoryMarkerTBase = null);
+    string? KeyedFactoryMarkerTBase = null,
+    string? KeyedFactoryMarkerTKey = null);
 
 /// <summary>
 /// The kind of the primary parameter of a registry method
