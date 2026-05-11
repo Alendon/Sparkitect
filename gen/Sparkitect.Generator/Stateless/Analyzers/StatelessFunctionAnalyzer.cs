@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Operations;
 using static Sparkitect.Generator.Stateless.Analyzers.StatelessDiagnostics;
 
 namespace Sparkitect.Generator.Stateless.Analyzers;
@@ -23,7 +24,8 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
         MultipleSchedulingAttributes,
         ParameterNotDiResolvable,
         MissingIHasIdentification,
-        OrphanOrderingAttribute
+        OrphanOrderingAttribute,
+        NonPublicStaticAccess
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -32,6 +34,8 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
 
         context.RegisterSymbolAction(ValidateStatelessFunction, SymbolKind.Method);
+        context.RegisterOperationAction(ValidateFieldAccess, OperationKind.FieldReference);
+        context.RegisterOperationAction(ValidatePropertyAccess, OperationKind.PropertyReference);
     }
 
     private static Location? GetAttributeLocation(AttributeData attr)
@@ -157,6 +161,82 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
                 parameter.Name,
                 paramType.ToDisplayString()));
         }
+    }
+
+    private static void ValidateFieldAccess(OperationAnalysisContext context)
+    {
+        if (context.Operation is not IFieldReferenceOperation op)
+            return;
+
+        var field = op.Field;
+        if (!field.IsStatic) return;
+        if (field.IsConst) return; // Decision 5: only const is exempt
+        if (!IsInScopeAccessibility(field)) return;
+        if (!IsInStatelessFunctionBody(context.ContainingSymbol, out var method)) return;
+
+        context.ReportDiagnostic(Diagnostic.Create(
+            NonPublicStaticAccess,
+            context.Operation.Syntax.GetLocation(),
+            method.Name,
+            "field",
+            field.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+    }
+
+    private static void ValidatePropertyAccess(OperationAnalysisContext context)
+    {
+        if (context.Operation is not IPropertyReferenceOperation op)
+            return;
+
+        var property = op.Property;
+        if (!property.IsStatic) return;
+        if (!IsInScopeAccessibility(property)) return;
+        if (!IsInStatelessFunctionBody(context.ContainingSymbol, out var method)) return;
+
+        context.ReportDiagnostic(Diagnostic.Create(
+            NonPublicStaticAccess,
+            context.Operation.Syntax.GetLocation(),
+            method.Name,
+            "property",
+            property.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+    }
+
+    private static bool IsInScopeAccessibility(ISymbol symbol)
+    {
+        // Decision 3: in-scope = private, internal, private protected, file-scoped containing type.
+        // Out-of-scope = public, protected, protected internal.
+        if (symbol.ContainingType?.IsFileLocal == true) return true;
+        return symbol.DeclaredAccessibility switch
+        {
+            Accessibility.Private => true,
+            Accessibility.Internal => true,
+            Accessibility.ProtectedAndInternal => true, // C# "private protected"
+            Accessibility.Public => false,
+            Accessibility.Protected => false,
+            Accessibility.ProtectedOrInternal => false, // C# "protected internal"
+            _ => false,
+        };
+    }
+
+    private static bool IsInStatelessFunctionBody(ISymbol? containingSymbol, out IMethodSymbol method)
+    {
+        method = null!;
+        ISymbol? current = containingSymbol;
+        while (current is not null)
+        {
+            if (current is IMethodSymbol m && m.MethodKind == MethodKind.Ordinary)
+            {
+                method = m;
+                break;
+            }
+            current = current.ContainingSymbol;
+        }
+        if (method is null) return false;
+        foreach (var attr in method.GetAttributes())
+        {
+            if (InheritsFrom(attr.AttributeClass, StatelessFunctionAttributeBase))
+                return true;
+        }
+        return false;
     }
 
     private static bool InheritsFrom(INamedTypeSymbol? type, string baseTypeName)

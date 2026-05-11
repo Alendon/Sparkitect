@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using Sparkitect.Generator.Stateless.Analyzers;
 
@@ -464,6 +465,366 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         var diagnostics = await RunAnalyzerAsync();
 
         await AssertNoDiagnostics(diagnostics);
+    }
+
+    #endregion
+
+    #region SPARK0406 - Non-public static access
+
+    [Test]
+    public async Task PrivateStaticField_Read_FromStateless_ReportsError()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                private static int _x;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { var y = _x; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 1);
+    }
+
+    [Test]
+    public async Task PrivateStaticField_Write_FromStateless_ReportsError()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                private static int _x;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { _x = 42; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 1);
+    }
+
+    [Test]
+    public async Task InternalStaticProperty_Read_FromStateless_ReportsError()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                internal static int X { get; set; }
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { var y = X; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 1);
+    }
+
+    [Test]
+    public async Task ConstField_FromStateless_NoDiagnostic()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                private const int X = 5;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { var y = X; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 0);
+    }
+
+    [Test]
+    public async Task PublicStaticField_FromStateless_NoDiagnostic()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                public static int X;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { var y = X; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 0);
+    }
+
+    [Test]
+    public async Task ProtectedStaticField_FromStateless_NoDiagnostic()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class BaseOwner
+            {
+                protected static int X;
+            }
+
+            public class TestOwner : BaseOwner, IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { var y = X; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 0);
+    }
+
+    [Test]
+    public async Task PrivateStaticField_FromNonStatelessMethod_NoDiagnostic()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                private static int _x;
+
+                public static void RegularMethod() { var y = _x; _x = 42; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 0);
+    }
+
+    [Test]
+    public async Task RenderGraphShape_PrivateStaticNullableRefField_FromStateless_ReportsError()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class FakeRg { public void Frame() { } public void Dispose() { } public static FakeRg Create() => new(); }
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                private static FakeRg? _renderGraph;
+
+                [TestFunction("create")]
+                [TestScheduling]
+                public static void Create() { _renderGraph = FakeRg.Create(); }
+
+                [TestFunction("frame")]
+                [TestScheduling]
+                public static void Frame() { _renderGraph?.Frame(); }
+
+                [TestFunction("destroy")]
+                [TestScheduling]
+                public static void Destroy() { _renderGraph?.Dispose(); _renderGraph = null; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        // Expected baseline is 4 distinct reference sites: Create assignment-write,
+        // Frame null-conditional read, Destroy null-conditional read, Destroy assignment-write.
+        // Per plan, accept any count >= 3; pin to observed if Roslyn lowers null-conditional differently.
+        var observed = diagnostics.Count(d => d.Id == "SPARK0406");
+        await Assert.That(observed).IsGreaterThanOrEqualTo(3)
+            .Because($"Expected at least 3 SPARK0406 reports for the _renderGraph shape, observed {observed}");
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 4);
+    }
+
+    [Test]
+    public async Task PrivateProtectedStaticField_FromStateless_ReportsError()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class BaseOwner
+            {
+                private protected static int X;
+            }
+
+            public class TestOwner : BaseOwner, IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { var y = X; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 1);
+    }
+
+    [Test]
+    public async Task FileStaticField_FromStateless_ReportsError()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            file class FileLocal { internal static int X; }
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { var y = FileLocal.X; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 1);
+    }
+
+    [Test]
+    public async Task StaticMethodCall_FromStateless_NoDiagnostic()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                private static int Compute() => 1;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { Compute(); }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 0);
+    }
+
+    [Test]
+    public async Task StaticReadonlyField_NonPublic_FromStateless_ReportsError()
+    {
+        var code = """
+            #pragma warning disable SPARK0262
+            using StatelessTest;
+            using Sparkitect.Modding;
+            using Sparkitect.Stateless;
+
+            public class TestOwner : IHasIdentification
+            {
+                public static Identification Identification => Identification.Empty;
+
+                private static readonly int X = 5;
+
+                [TestFunction("my_func")]
+                [TestScheduling]
+                public static void MyMethod() { var y = X; }
+            }
+            """;
+
+        TestSources.Add(("Test.cs", code));
+
+        var diagnostics = await RunAnalyzerAsync();
+
+        await AssertDiagnosticCount(diagnostics, "SPARK0406", 1);
     }
 
     #endregion

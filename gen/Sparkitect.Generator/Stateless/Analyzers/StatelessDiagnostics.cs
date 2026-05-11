@@ -8,6 +8,7 @@ namespace Sparkitect.Generator.Stateless.Analyzers;
 // - DI-resolvable parameters (03)
 // - IHasIdentification container (04)
 // - Orphan ordering attributes (05)
+// - Non-public static field/property access (06)
 
 public static class StatelessDiagnostics
 {
@@ -37,4 +38,9 @@ public static class StatelessDiagnostics
         new("SPARK0405", "Ordering attribute without scheduling",
             "Method '{0}' has {1} but no scheduling attribute. Add a scheduling attribute or remove the ordering attribute.",
             Category, DiagnosticSeverity.Warning, true);
+
+    public static readonly DiagnosticDescriptor NonPublicStaticAccess =
+        new("SPARK0406", "Stateless function must not access non-public static state",
+            "Stateless function '{0}' directly accesses non-public static {1} '{2}'. Pass it via a method parameter (DI-resolved) or local variable instead. Use #pragma warning disable SPARK0406 if this access is intentional.",
+            Category, DiagnosticSeverity.Error, true);
 }
