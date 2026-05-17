@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Systems;
@@ -7,6 +8,7 @@ namespace Sparkitect.ECS.Systems;
 /// Populated by SG from query parameter component IDs. Consumed by debug tooling and
 /// future concurrent graph builder.
 /// </summary>
+[PublicAPI]
 public sealed class EcsSystemResourceAccess
 {
     public IReadOnlySet<Identification> ReadComponentIds { get; }

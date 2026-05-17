@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Capabilities;
 
 namespace Sparkitect.ECS.Commands;
@@ -7,6 +8,7 @@ namespace Sparkitect.ECS.Commands;
 /// One accessor instance is shared per world, resolved via EcsResolutionProvider.
 /// All methods are non-generic -- TKey is resolved at runtime via IStorage.KeyType.
 /// </summary>
+[PublicAPI]
 public interface ICommandBufferAccessor
 {
     /// <summary>

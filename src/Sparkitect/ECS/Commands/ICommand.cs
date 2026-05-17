@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Commands;
 
 /// <summary>
@@ -5,6 +7,7 @@ namespace Sparkitect.ECS.Commands;
 /// Commands encode deferred mutations that execute at playback time.
 /// TKey is provided at method level by the buffer during playback.
 /// </summary>
+[PublicAPI]
 public interface ICommand
 {
     /// <summary>

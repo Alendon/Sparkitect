@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
@@ -7,6 +8,7 @@ using Sparkitect.Stateless;
 namespace Sparkitect.Graphics.Vulkan;
 
 [ModuleRegistry.RegisterModule("vulkan")]
+[PublicAPI]
 public partial class VulkanModule : IStateModule
 {
     

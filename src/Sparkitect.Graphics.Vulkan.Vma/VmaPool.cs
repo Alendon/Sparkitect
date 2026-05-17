@@ -1,5 +1,8 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Graphics.Vulkan.Vma;
 
+[PublicAPI]
 public sealed class VmaPool : IDisposable
 {
     private readonly VmaAllocator _allocator;

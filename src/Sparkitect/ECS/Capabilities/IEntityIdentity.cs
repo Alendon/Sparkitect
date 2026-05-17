@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Capabilities;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Sparkitect.ECS.Capabilities;
 /// enabling external code to reference entities by generational ID.
 /// </summary>
 /// <typeparam name="TKey">The storage-internal key type (e.g., int for SoA slot index).</typeparam>
+[PublicAPI]
 public interface IEntityIdentity<TKey> : ICapability
     where TKey : unmanaged
 {

@@ -1,8 +1,11 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS;
 
 /// <summary>
 /// Three-state lifecycle for an entity within a <see cref="World"/>.
 /// </summary>
+[PublicAPI]
 public enum EntityState
 {
     /// <summary>

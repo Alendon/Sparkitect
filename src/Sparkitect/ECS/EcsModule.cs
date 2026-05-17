@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.ECS.Components;
 using Sparkitect.ECS.Systems;
@@ -9,6 +10,7 @@ using Sparkitect.Stateless;
 namespace Sparkitect.ECS;
 
 [ModuleRegistry.RegisterModule("ecs")]
+[PublicAPI]
 public partial class EcsModule : IStateModule
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];

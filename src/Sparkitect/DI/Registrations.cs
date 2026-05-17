@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI.Container;
 using Sparkitect.Modding;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.DI;
 /// when registration attributes (generated from [RegistryMethod]) are used on static methods/properties.
 /// </summary>
 /// <typeparam name="TRegistry">The registry type that registrations will be processed against.</typeparam>
+[PublicAPI]
 public abstract class Registrations<TRegistry> : IConfigurationEntrypoint<RegistrationsEntrypointAttribute<TRegistry>>
     where TRegistry : class, IRegistry
 {

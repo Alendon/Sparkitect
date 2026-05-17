@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Commands;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Sparkitect.ECS.Commands;
 /// The delegate receives world and storage handle; the resolved slot is available
 /// but type-erased (the delegate operates at the entity level, not slot level).
 /// </summary>
+[PublicAPI]
 public class DelegateCommand(Action<IWorld, StorageHandle> action) : ICommand
 {
     /// <inheritdoc/>

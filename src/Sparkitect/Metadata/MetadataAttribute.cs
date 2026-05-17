@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Metadata;
 
 /// <summary>
@@ -5,6 +7,8 @@ namespace Sparkitect.Metadata;
 /// Source generators scan for this marker to discover metadata categories.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
+[MeansImplicitUse]
 public sealed class MetadataCategoryMarkerAttribute : Attribute;
 
 /// <summary>
@@ -12,4 +16,5 @@ public sealed class MetadataCategoryMarkerAttribute : Attribute;
 /// Source generators walk the base type chain to extract TMetadata.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
 public abstract class MetadataAttribute<TMetadata> : Attribute;

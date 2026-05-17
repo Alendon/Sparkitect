@@ -55,6 +55,7 @@ public interface IGameStateManager
 /// Registry-exclusive facade for IGameStateManager. Accessible only within registry contexts.
 /// </summary>
 [FacadeFor<IGameStateManager>]
+[PublicAPI]
 public interface IGameStateManagerRegistryFacade
 {
     /// <summary>
@@ -88,6 +89,7 @@ public interface IGameStateManagerRegistryFacade
 /// State-function-exclusive facade for IGameStateManager. Currently empty - reserved for future state-specific APIs.
 /// </summary>
 [FacadeFor<IGameStateManager>]
+[PublicAPI]
 public interface IGameStateManagerStateFacade
 {
 

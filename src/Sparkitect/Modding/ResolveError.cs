@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Utils.DU;
 using Sundew.DiscriminatedUnions;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.Modding;
 /// Payload mirrors the failed input key (string or numeric).
 /// </summary>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record ResolveError
 {
     /// <summary>The mod-id was not registered.</summary>

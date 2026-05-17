@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.Vulkan.Vma.Internal;
 using Vortice.Vulkan;
@@ -5,6 +6,7 @@ using VmaAllocation = Sparkitect.Graphics.Vulkan.Vma.VmaAllocation;
 
 namespace Sparkitect.Graphics.Vulkan.Vma;
 
+[PublicAPI]
 public sealed class VmaAllocator : IDisposable
 {
     private readonly VorticeAllocator _allocator;

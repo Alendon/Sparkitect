@@ -10,6 +10,7 @@ namespace Sparkitect.GameState;
 /// </summary>
 /// <typeparam name="TFacade">The exclusive facade interface type for state functions.</typeparam>
 [PublicAPI]
+[MeansImplicitUse]
 [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
 public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
 
@@ -17,6 +18,7 @@ public sealed class StateFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacad
 /// Non-generic marker attribute for StateFacade entrypoint discovery. Applied by source generators.
 /// </summary>
 [PublicAPI]
+[MeansImplicitUse]
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class StateFacadeAttribute : Attribute;
 
@@ -27,6 +29,7 @@ public sealed class StateFacadeAttribute : Attribute;
 /// <typeparam name="TInterface">The interface type this service implements.</typeparam>
 /// <typeparam name="TModule">The module this service belongs to.</typeparam>
 [PublicAPI]
+[MeansImplicitUse]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 public sealed class StateServiceAttribute<TInterface, TModule> : Attribute
     where TInterface : class

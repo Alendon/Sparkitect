@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.DI.Ordering;
 
 /// <summary>
@@ -5,6 +7,7 @@ namespace Sparkitect.DI.Ordering;
 /// </summary>
 /// <typeparam name="T">The entrypoint type that should execute after the annotated class.</typeparam>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+[PublicAPI]
 public sealed class EntrypointOrderBeforeAttribute<T> : Attribute, IEntrypointOrdering
 {
     public void ApplyOrdering(IEntrypointOrderingBuilder builder)
@@ -18,6 +21,7 @@ public sealed class EntrypointOrderBeforeAttribute<T> : Attribute, IEntrypointOr
 /// Declares that the annotated entrypoint class should execute before the named type.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+[PublicAPI]
 public sealed class EntrypointOrderBeforeAttribute : Attribute, IEntrypointOrdering
 {
     private readonly string _targetTypeName;

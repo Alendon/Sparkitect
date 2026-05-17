@@ -1,8 +1,10 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Commands;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Systems;
 
+[PublicAPI]
 public interface ISystemManager
 {
     /// <summary>

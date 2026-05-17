@@ -1,5 +1,7 @@
 ﻿using JetBrains.Annotations;
 
+using JetBrains.Annotations;
+
 namespace Sparkitect.DI;
 
 /// <summary>
@@ -7,6 +9,7 @@ namespace Sparkitect.DI;
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 [MeansImplicitUse]
+[PublicAPI]
 public class CoreContainerConfiguratorEntrypointAttribute : Attribute
 {
 }

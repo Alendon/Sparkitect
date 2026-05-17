@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI;
 
 namespace Sparkitect.GameState;
@@ -6,6 +7,8 @@ namespace Sparkitect.GameState;
 /// Marks state module service configurators for source generator discovery.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
+[PublicAPI]
+[MeansImplicitUse]
 public sealed class StateModuleServiceConfiguratorEntrypointAttribute : Attribute;
 
 /// <summary>
@@ -16,6 +19,7 @@ public sealed class StateModuleServiceConfiguratorEntrypointAttribute : Attribut
 /// The <see cref="ICoreConfigurator{TDiscoveryAttribute}.Configure"/> method inherited from
 /// <see cref="ICoreConfigurator{TDiscoveryAttribute}"/> registers module services.
 /// </remarks>
+[PublicAPI]
 public interface IStateModuleServiceConfigurator : ICoreConfigurator<StateModuleServiceConfiguratorEntrypointAttribute>
 {
     /// <summary>

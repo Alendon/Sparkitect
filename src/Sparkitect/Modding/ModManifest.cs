@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Text.Json.Serialization;
 using Semver;
 using Sparkitect.Utils;
@@ -17,6 +18,7 @@ namespace Sparkitect.Modding;
 /// <param name="ModAssembly">Primary mod assembly file name.</param>
 /// <param name="RequiredAssemblies">Additional required assembly file names.</param>
 /// <param name="IsRootMod">Whether this mod can be loaded as a root mod at engine startup. Default is false.</param>
+[PublicAPI]
 public record ModManifest(
     string Id,
     string Name,
@@ -45,6 +47,7 @@ public record ModManifest(
 /// <param name="VersionRange">Acceptable version range using semantic versioning.</param>
 /// <param name="IsOptional">Whether this dependency is optional. Default is false (required).</param>
 /// <param name="IsIncompatible">Whether this marks an incompatibility. Default is false.</param>
+[PublicAPI]
 public record struct ModRelationship(
     string Id,
     [property: JsonConverter(typeof(SemVersionRangeJsonConverter))]

@@ -1,10 +1,13 @@
 ﻿using System.IO.Compression;
 
+using JetBrains.Annotations;
+
 namespace Sparkitect.Modding;
 
 /// <summary>
 /// Manages resource loading from mod archives.
 /// </summary>
+[PublicAPI]
 public interface IResourceManager
 {
     /// <summary>

@@ -1,9 +1,12 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Capabilities;
 
 /// <summary>
 /// Non-generic base for capability requirements, enabling heterogeneous collections
 /// (e.g., <c>IReadOnlyList&lt;ICapabilityRequirement&gt;</c>) of typed requirements.
 /// </summary>
+[PublicAPI]
 public interface ICapabilityRequirement
 {
     /// <summary>
@@ -25,6 +28,7 @@ public interface ICapabilityRequirement
 /// The metadata type this requirement matches against. Contravariant to allow
 /// a requirement accepting a base metadata type to match derived metadata.
 /// </typeparam>
+[PublicAPI]
 public interface ICapabilityRequirement<TCapability, in TMeta> : ICapabilityRequirement
     where TCapability : ICapability
     where TMeta : ICapabilityMetadata

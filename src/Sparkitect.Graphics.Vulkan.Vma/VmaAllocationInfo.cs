@@ -1,7 +1,9 @@
+using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 
 namespace Sparkitect.Graphics.Vulkan.Vma;
 
+[PublicAPI]
 public readonly struct VmaAllocationInfo
 {
     public uint MemoryType { get; }

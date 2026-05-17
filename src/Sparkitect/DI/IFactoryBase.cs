@@ -1,8 +1,11 @@
+using JetBrains.Annotations;
+
 ﻿namespace Sparkitect.DI;
 
 /// <summary>
 /// Base interface for all factory implementations that create instances with dependencies
 /// </summary>
+[PublicAPI]
 public interface IFactoryBase
 {
     /// <summary>

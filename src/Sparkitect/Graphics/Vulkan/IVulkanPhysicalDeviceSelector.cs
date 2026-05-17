@@ -8,6 +8,8 @@ namespace Sparkitect.Graphics.Vulkan;
 /// Marks a class as a Vulkan physical device selector entrypoint for automatic discovery.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
+[PublicAPI]
+[MeansImplicitUse]
 public class VulkanPhysicalDeviceSelectorEntrypointAttribute : Attribute;
 
 /// <summary>

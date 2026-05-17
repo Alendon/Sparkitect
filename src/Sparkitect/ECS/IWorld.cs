@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Storage;
 using Sparkitect.ECS.Systems;
@@ -9,6 +10,7 @@ namespace Sparkitect.ECS;
 /// Public contract for the ECS world coordinator.
 /// Manages storage lifecycle, capability-based discovery, and reactive filters.
 /// </summary>
+[PublicAPI]
 public interface IWorld : IDisposable
 {
     /// <summary>

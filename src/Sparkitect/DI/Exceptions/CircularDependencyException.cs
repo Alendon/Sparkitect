@@ -1,9 +1,12 @@
+using JetBrains.Annotations;
+
 ﻿namespace Sparkitect.DI.Exceptions;
 
 /// <summary>
 /// Thrown when a circular dependency is detected during container construction.
 /// Circular dependencies occur when two or more services depend on each other directly or through a chain.
 /// </summary>
+[PublicAPI]
 public class CircularDependencyException : Exception
 {
     /// <summary>

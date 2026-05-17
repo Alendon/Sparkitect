@@ -1,8 +1,11 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Modding;
 
 /// <summary>
 /// Interface for managing mods, including discovery, loading, and entrypoint resolution
 /// </summary>
+[PublicAPI]
 public interface IModManager
 {
     /// <summary>

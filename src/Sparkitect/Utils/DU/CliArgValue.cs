@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sundew.DiscriminatedUnions;
 
 namespace Sparkitect.Utils.DU;
@@ -7,6 +8,7 @@ namespace Sparkitect.Utils.DU;
 /// a single string value, or a list of string values.
 /// </summary>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record CliArgValue
 {
     public sealed partial record Flag() : CliArgValue;

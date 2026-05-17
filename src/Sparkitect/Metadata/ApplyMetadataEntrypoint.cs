@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI;
 using Sparkitect.Modding;
 
@@ -6,6 +7,8 @@ namespace Sparkitect.Metadata;
 /// <summary>
 /// Discovery attribute for metadata entrypoints -- one per TMetadata type.
 /// </summary>
+[PublicAPI]
+[MeansImplicitUse]
 public class ApplyMetadataEntrypointAttribute<TMetadata> : Attribute;
 
 /// <summary>
@@ -13,6 +16,7 @@ public class ApplyMetadataEntrypointAttribute<TMetadata> : Attribute;
 /// Plugs into EntrypointContainer&lt;ApplyMetadataEntrypoint&lt;TMetadata&gt;&gt; unchanged.
 /// </summary>
 /// <typeparam name="TMetadata">The metadata type collected by this entrypoint.</typeparam>
+[PublicAPI]
 public abstract class ApplyMetadataEntrypoint<TMetadata>
     : IConfigurationEntrypoint<ApplyMetadataEntrypointAttribute<TMetadata>>
 {

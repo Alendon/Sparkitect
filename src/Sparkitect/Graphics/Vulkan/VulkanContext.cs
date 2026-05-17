@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Runtime.InteropServices;
 using System.Text;
 using Serilog;
@@ -19,6 +20,7 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 namespace Sparkitect.Graphics.Vulkan;
 
 [StateService<IVulkanContext, VulkanModule>]
+[PublicAPI]
 public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
 {
     private const string ValidationLayerName = "VK_LAYER_KHRONOS_validation";

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
@@ -6,6 +7,7 @@ namespace Sparkitect.Stateless;
 /// Base class for stateless function registries. Provides common registration logic.
 /// Actual registries (PerFrameRegistry, TransitionRegistry) are shallow wrappers.
 /// </summary>
+[PublicAPI]
 public abstract class StatelessFunctionRegistryBase : IRegistryBase
 {
     private readonly Dictionary<Identification, Type> _wrapperTypes = new();

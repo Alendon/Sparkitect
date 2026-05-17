@@ -1,9 +1,11 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Graphics.Vulkan;
 
 [Registry(Identifier = "shader_module")]
 [UseResourceFile(Key = "module", Required = true, Primary = true)]
+[PublicAPI]
 public partial class ShaderModuleRegistry(IShaderManager shaderManager) : IRegistry
 {
     [RegistryMethod]

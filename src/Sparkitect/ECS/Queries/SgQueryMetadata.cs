@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Queries;
@@ -8,6 +9,7 @@ namespace Sparkitect.ECS.Queries;
 /// <c>IResolutionMetadataEntrypoint</c> implementations until Phase 43 auto-generates
 /// resolution metadata.
 /// </summary>
+[PublicAPI]
 public class SgQueryMetadata<TQuery> : QueryParameterMetadata
     where TQuery : IDisposable
 {

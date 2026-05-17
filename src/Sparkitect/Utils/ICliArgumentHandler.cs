@@ -1,8 +1,11 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Utils;
 
 /// <summary>
 /// Interface for handling command-line arguments passed to the application.
 /// </summary>
+[PublicAPI]
 public interface ICliArgumentHandler
 {
     /// <summary>

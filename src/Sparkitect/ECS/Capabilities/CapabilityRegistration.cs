@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Capabilities;
 
 /// <summary>
@@ -5,6 +7,7 @@ namespace Sparkitect.ECS.Capabilities;
 /// and supports polymorphic matching against <see cref="ICapabilityRequirement"/> instances
 /// without reflection.
 /// </summary>
+[PublicAPI]
 public abstract class CapabilityRegistration
 {
     /// <summary>
@@ -24,6 +27,7 @@ public abstract class CapabilityRegistration
 /// </summary>
 /// <typeparam name="TCapability">The capability interface type this registration is for.</typeparam>
 /// <typeparam name="TMeta">The capability metadata type this registration carries.</typeparam>
+[PublicAPI]
 public sealed class CapabilityRegistration<TCapability, TMeta> : CapabilityRegistration
     where TCapability : ICapability
     where TMeta : ICapabilityMetadata

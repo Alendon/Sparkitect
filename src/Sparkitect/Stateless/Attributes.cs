@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
@@ -6,6 +7,7 @@ namespace Sparkitect.Stateless;
 
 
 //Non generic base class, to be able to pass a generic type without the sub types, when only SG or non CLR compliant usage is  required
+[PublicAPI]
 public abstract class StatelessFunctionAttribute : Attribute
 {
     public abstract string Identifier { get; }
@@ -18,6 +20,7 @@ public abstract class StatelessFunctionAttribute : Attribute
 /// <typeparam name="TContext">The contextual data type used by scheduling implementations.</typeparam>
 /// <typeparam name="TRegistry">The registry this function belongs to (for SG association).</typeparam>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
 public abstract class StatelessFunctionAttribute<TContext, TRegistry> : StatelessFunctionAttribute
     where TContext : class
     where TRegistry : IRegistry
@@ -34,6 +37,8 @@ public abstract class StatelessFunctionAttribute<TContext, TRegistry> : Stateles
 /// </summary>
 [FacadeCategoryMapping<StateFacadeAttribute>]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
+[MeansImplicitUse]
 public sealed class PerFrameFunctionAttribute(string identifier)
     : StatelessFunctionAttribute<PerFrameContext, PerFrameRegistry>(identifier);
 
@@ -43,12 +48,15 @@ public sealed class PerFrameFunctionAttribute(string identifier)
 /// </summary>
 [FacadeCategoryMapping<StateFacadeAttribute>]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
+[MeansImplicitUse]
 public sealed class TransitionFunctionAttribute(string identifier)
     : StatelessFunctionAttribute<TransitionContext, TransitionRegistry>(identifier);
 
 /// <summary>
 /// Abstract base for parent ID attributes. Carries the resolved Identification of the parent.
 /// </summary>
+[PublicAPI]
 public abstract class ParentIdAttribute : Attribute
 {
     public abstract Identification Other { get; }
@@ -61,6 +69,7 @@ public abstract class ParentIdAttribute : Attribute
 /// </summary>
 /// <typeparam name="TOwner">The owner type implementing IHasIdentification.</typeparam>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
 public sealed class ParentIdAttribute<TOwner> : ParentIdAttribute
     where TOwner : IHasIdentification
 {
@@ -72,4 +81,5 @@ public sealed class ParentIdAttribute<TOwner> : ParentIdAttribute
 /// that these attributes are only applied to stateless function methods.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
+[PublicAPI]
 public abstract class SchedulingParameterAttribute : Attribute;

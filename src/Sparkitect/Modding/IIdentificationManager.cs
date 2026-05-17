@@ -1,5 +1,7 @@
 ﻿using Sparkitect.Utils.DU;
 
+using JetBrains.Annotations;
+
 namespace Sparkitect.Modding;
 
 /// <summary>
@@ -8,6 +10,7 @@ namespace Sparkitect.Modding;
 /// </summary>
 /// <remarks>
 /// </remarks>
+[PublicAPI]
 public interface IIdentificationManager
 {
     /// <summary>

@@ -1,9 +1,12 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Storage;
 
 /// <summary>
 /// Iteration state for chunk-based traversal of storage entities.
 /// Default-constructed starts at offset 0, not complete.
 /// </summary>
+[PublicAPI]
 public struct ChunkHandle
 {
     /// <summary>

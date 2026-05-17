@@ -1,5 +1,8 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Graphics.Vulkan.Vma;
 
+[PublicAPI]
 public enum VmaMemoryUsage
 {
     Unknown = 0,

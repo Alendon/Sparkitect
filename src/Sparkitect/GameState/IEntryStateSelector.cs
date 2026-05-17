@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.Modding;
@@ -8,12 +9,15 @@ namespace Sparkitect.GameState;
 /// Marks a class as an entry state selector entrypoint for automatic discovery.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
+[PublicAPI]
+[MeansImplicitUse]
 public class EntryStateSelectorEntrypointAttribute : Attribute;
 
 /// <summary>
 /// Configuration entrypoint for selecting the initial active state after engine initialization.
 /// Implementations are discovered and invoked to determine which state to enter first.
 /// </summary>
+[PublicAPI]
 public interface IEntryStateSelector : IConfigurationEntrypoint<EntryStateSelectorEntrypointAttribute>
 {
     /// <summary>

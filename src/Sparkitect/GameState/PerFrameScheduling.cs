@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.GameState;
 /// <summary>
 /// Default scheduling for PerFrame functions. Functions execute in dependency order every frame.
 /// </summary>
+[PublicAPI]
 public sealed class PerFrameSchedulingAttribute : SchedulingAttribute<PerFrameScheduling>;
 
 // ===== Scheduling Implementation =====
@@ -16,6 +18,7 @@ public sealed class PerFrameSchedulingAttribute : SchedulingAttribute<PerFrameSc
 /// Scheduling implementation for per-frame functions.
 /// Included when owner module is loaded in state stack.
 /// </summary>
+[PublicAPI]
 public sealed class PerFrameScheduling : IScheduling
 {
     private readonly OrderAfterAttribute[] _orderAfter;

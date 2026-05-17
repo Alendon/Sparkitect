@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
@@ -8,21 +9,25 @@ namespace Sparkitect.GameState;
 /// <summary>
 /// Execute once when the module/state is first created.
 /// </summary>
+[PublicAPI]
 public sealed class OnCreateSchedulingAttribute : SchedulingAttribute<OnCreateScheduling>;
 
 /// <summary>
 /// Execute once when the module/state is destroyed.
 /// </summary>
+[PublicAPI]
 public sealed class OnDestroySchedulingAttribute : SchedulingAttribute<OnDestroyScheduling>;
 
 /// <summary>
 /// Execute when the state becomes the active leaf.
 /// </summary>
+[PublicAPI]
 public sealed class OnFrameEnterSchedulingAttribute : SchedulingAttribute<OnFrameEnterScheduling>;
 
 /// <summary>
 /// Execute when the state stops being the active leaf.
 /// </summary>
+[PublicAPI]
 public sealed class OnFrameExitSchedulingAttribute : SchedulingAttribute<OnFrameExitScheduling>;
 
 // ===== Scheduling Implementations =====
@@ -31,6 +36,7 @@ public sealed class OnFrameExitSchedulingAttribute : SchedulingAttribute<OnFrame
 /// Scheduling for functions that execute once when module/state is created.
 /// Included when IsEnterTransition AND owner is in DeltaModules.
 /// </summary>
+[PublicAPI]
 public sealed class OnCreateScheduling : IScheduling
 {
     private readonly OrderAfterAttribute[] _orderAfter;
@@ -63,6 +69,7 @@ public sealed class OnCreateScheduling : IScheduling
 /// Scheduling for functions that execute once when module/state is destroyed.
 /// Included when !IsEnterTransition AND owner is in DeltaModules.
 /// </summary>
+[PublicAPI]
 public sealed class OnDestroyScheduling : IScheduling
 {
     private readonly OrderAfterAttribute[] _orderAfter;
@@ -95,6 +102,7 @@ public sealed class OnDestroyScheduling : IScheduling
 /// Scheduling for functions that execute when state becomes active leaf.
 /// Included when IsEnterTransition AND owner is loaded in state stack.
 /// </summary>
+[PublicAPI]
 public sealed class OnFrameEnterScheduling : IScheduling
 {
     private readonly OrderAfterAttribute[] _orderAfter;
@@ -127,6 +135,7 @@ public sealed class OnFrameEnterScheduling : IScheduling
 /// Scheduling for functions that execute when state stops being active leaf.
 /// Included when !IsEnterTransition AND owner is loaded in state stack.
 /// </summary>
+[PublicAPI]
 public sealed class OnFrameExitScheduling : IScheduling
 {
     private readonly OrderAfterAttribute[] _orderAfter;

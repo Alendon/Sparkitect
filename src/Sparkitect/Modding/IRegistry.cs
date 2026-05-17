@@ -1,8 +1,11 @@
+using JetBrains.Annotations;
+
 ﻿namespace Sparkitect.Modding;
 
 /// <summary>
 /// Base interface for all registry types. Provides cleanup functionality.
 /// </summary>
+[PublicAPI]
 public interface IRegistryBase
 {
     /// <summary>
@@ -16,6 +19,7 @@ public interface IRegistryBase
 /// Base interface for registry declarations. Implementing classes must be partial and annotated with <see cref="RegistryAttribute"/>.
 /// Source generators create registration attributes (from [RegistryMethod]) and configurators for types implementing this interface.
 /// </summary>
+[PublicAPI]
 public interface IRegistry : IRegistryBase
 {
     /// <summary>

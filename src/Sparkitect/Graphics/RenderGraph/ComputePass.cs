@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Graphics.RenderGraph.Hooks;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 /// <see cref="Setup"/> and <see cref="Execute"/>; the base routes hook-interface
 /// invocations through a slot composition seam before invoking the author method.
 /// </summary>
+[PublicAPI]
 public abstract class ComputePass : IPass, ISetupHook, IExecuteHook
 {
     void ISetupHook.Setup()

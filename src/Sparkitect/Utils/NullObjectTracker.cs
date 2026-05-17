@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Utils;
 
 /// <summary>
@@ -5,6 +7,7 @@ namespace Sparkitect.Utils;
 /// Used when object tracking is disabled.
 /// </summary>
 /// <typeparam name="T">The type of objects to track.</typeparam>
+[PublicAPI]
 public sealed class NullObjectTracker<T> : IObjectTracker<T>
 {
     public static NullObjectTracker<T> Instance { get; } = new();

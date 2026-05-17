@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.Modding;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.ECS.Queries;
 /// Uses <c>!Overlaps</c> — the symmetric inverse of <see cref="ComponentSetRequirement"/>'s
 /// <c>IsSubsetOf</c> check.
 /// </summary>
+[PublicAPI]
 public struct ComponentExclusionRequirement : ICapabilityRequirement<IChunkedIteration, ComponentSetMetadata>
 {
     private readonly HashSet<Identification> _excludedComponents;
@@ -27,6 +29,7 @@ public struct ComponentExclusionRequirement : ICapabilityRequirement<IChunkedIte
 /// Generic capability requirement for rejecting storages that implement
 /// <see cref="IChunkedIteration{TKey}"/> and contain any of the excluded components.
 /// </summary>
+[PublicAPI]
 public struct ComponentExclusionRequirement<TKey> : ICapabilityRequirement<IChunkedIteration<TKey>, ComponentSetMetadata>
     where TKey : unmanaged
 {

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Capabilities;
@@ -6,6 +7,7 @@ namespace Sparkitect.ECS.Capabilities;
 /// Capability interface for typed component access, generic on key type.
 /// </summary>
 /// <typeparam name="TKey">The unmanaged entity key type.</typeparam>
+[PublicAPI]
 public interface IComponentAccess<TKey> : ICapability
     where TKey : unmanaged
 {

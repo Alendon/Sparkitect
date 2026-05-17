@@ -1,7 +1,9 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Systems;
 
+[PublicAPI]
 public sealed class EcsExecutionGraph
 {
     /// <summary>

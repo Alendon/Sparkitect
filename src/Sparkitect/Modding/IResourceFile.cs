@@ -1,9 +1,12 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Modding;
 
 /// <summary>
 /// Defines the contract for resource files loaded from mod archives.
 /// Implementations are DI instantiated and receive their stream via <see cref="SetResourceStream"/>.
 /// </summary>
+[PublicAPI]
 public interface IResourceFile
 {
     /// <summary>

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Runtime.InteropServices;
 using Sparkitect.Utils;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.ECS.Storage;
 /// Parameterized by element size and alignment at construction time.
 /// Uses AllocZeroed/Realloc/Free for simplicity.
 /// </summary>
+[PublicAPI]
 public sealed unsafe class NativeColumn : IDisposable
 {
     private byte* _data;

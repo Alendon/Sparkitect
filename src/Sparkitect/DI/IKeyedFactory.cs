@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI.Resolution;
 
 namespace Sparkitect.DI;
@@ -8,6 +9,7 @@ namespace Sparkitect.DI;
 /// not by the factory itself.
 /// </summary>
 /// <typeparam name="TBase">The base type of the object to create</typeparam>
+[PublicAPI]
 public interface IKeyedFactory<TBase> : IFactoryBase where TBase : class
 {
     /// <summary>

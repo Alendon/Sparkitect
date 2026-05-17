@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.Modding;
 using Serilog;
@@ -9,6 +10,7 @@ namespace Sparkitect.ECS.Commands;
 /// and provides user-facing recording methods. Subclassed by CommandBuffer&lt;TKey&gt;
 /// which handles playback with the concrete storage key type.
 /// </summary>
+[PublicAPI]
 public abstract class CommandBuffer : ICommandBuffer
 {
     /// <inheritdoc/>

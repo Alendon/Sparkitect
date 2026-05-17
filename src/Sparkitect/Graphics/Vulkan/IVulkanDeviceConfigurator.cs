@@ -8,6 +8,8 @@ namespace Sparkitect.Graphics.Vulkan;
 /// </summary>
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
+[PublicAPI]
+[MeansImplicitUse]
 public class VulkanDeviceConfiguratorEntrypointAttribute : Attribute;
 
 /// <summary>

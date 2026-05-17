@@ -7,6 +7,8 @@ namespace Sparkitect.Graphics.Vulkan;
 /// Marks a class as a Vulkan instance configurator entrypoint for automatic discovery.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
+[PublicAPI]
+[MeansImplicitUse]
 public class VulkanInstanceConfiguratorEntrypointAttribute : Attribute;
 
 /// <summary>

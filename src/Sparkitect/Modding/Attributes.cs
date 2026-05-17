@@ -1,5 +1,7 @@
 ﻿using Sparkitect.DI.GeneratorAttributes;
 
+using JetBrains.Annotations;
+
 namespace Sparkitect.Modding;
 
 /// <summary>
@@ -8,6 +10,8 @@ namespace Sparkitect.Modding;
 /// </summary>
 /// <remarks> Marker attributes inherited by this class will be treated as specialized Registries and not be
 /// processed by the Registry SG beyond their basic one time setup (eg no registry method parsing)</remarks>
+[PublicAPI]
+[MeansImplicitUse]
 public class RegistryAttribute : Attribute
 {
     /// <summary>
@@ -30,6 +34,7 @@ public class RegistryAttribute : Attribute
 /// </summary>
 /// <typeparam name="TMetadata">The metadata type.</typeparam>
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+[PublicAPI]
 public class RegistryMetadataAttribute<TMetadata> : Attribute where TMetadata : class;
 
 /// <summary>
@@ -37,6 +42,8 @@ public class RegistryMetadataAttribute<TMetadata> : Attribute where TMetadata : 
 /// (e.g., [RegisterItem("key")]) for each marked method, which mods use to register objects.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
+[PublicAPI]
+[MeansImplicitUse]
 public class RegistryMethodAttribute : Attribute;
 
 /// <summary>
@@ -44,6 +51,7 @@ public class RegistryMethodAttribute : Attribute;
 /// Resource files are loaded from mod archives and made available through <see cref="IResourceManager"/>.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+[PublicAPI]
 public class UseResourceFileAttribute : Attribute
 {
     /// <summary>
@@ -68,6 +76,7 @@ public class UseResourceFileAttribute : Attribute
 /// </summary>
 /// <typeparam name="TResource">The resource file type implementing <see cref="IResourceFile"/>.</typeparam>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+[PublicAPI]
 public class UseResourceFileAttribute<TResource> : Attribute where TResource : class, IResourceFile
 {
     /// <summary>
@@ -92,12 +101,16 @@ public class UseResourceFileAttribute<TResource> : Attribute where TResource : c
 /// </summary>
 /// <typeparam name="TFacade">The exclusive facade interface type.</typeparam>
 [AttributeUsage(AttributeTargets.Interface)]
+[PublicAPI]
+[MeansImplicitUse]
 public class RegistryFacadeAttribute<TFacade> : FacadeMarkerAttribute<TFacade> where TFacade : class;
 
 /// <summary>
 /// Non-generic marker attribute for RegistryFacade entrypoint discovery
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+[PublicAPI]
+[MeansImplicitUse]
 public sealed class RegistryFacadeAttribute : Attribute;
 
 /// <summary>
@@ -109,6 +122,7 @@ public sealed class RegistryFacadeAttribute : Attribute;
 /// </summary>
 /// <typeparam name="TBase">The base interface or class produced by the keyed factory.</typeparam>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
 public sealed class KeyedFactoryGenerationMarkerAttribute<TBase> : Attribute where TBase : class;
 
 /// <summary>
@@ -128,6 +142,8 @@ public sealed class KeyedFactoryGenerationMarkerAttribute<TBase> : Attribute whe
 /// type argument in a typed-registration registry method.</para>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+[PublicAPI]
+[MeansImplicitUse]
 public sealed class TypedRegistrationContractAttribute : Attribute;
 
 /// <summary>
@@ -136,6 +152,7 @@ public sealed class TypedRegistrationContractAttribute : Attribute;
 /// </summary>
 /// <seealso cref="ModLoadedGuardAttribute"/>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+[PublicAPI]
 public sealed class OptionalModDependentAttribute : Attribute
 {
     /// <summary>
@@ -156,6 +173,7 @@ public sealed class OptionalModDependentAttribute : Attribute
 /// </summary>
 /// <seealso cref="OptionalModDependentAttribute"/>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
+[PublicAPI]
 public sealed class ModLoadedGuardAttribute : Attribute
 {
     /// <summary>

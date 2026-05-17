@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Systems;
@@ -7,6 +8,7 @@ namespace Sparkitect.ECS.Systems;
 /// Systems are leaves with IsGroup=false and empty children list.
 /// State is mutable -- toggling state does not trigger graph rebuild.
 /// </summary>
+[PublicAPI]
 public class SystemTreeNode
 {
     public Identification Id { get; }

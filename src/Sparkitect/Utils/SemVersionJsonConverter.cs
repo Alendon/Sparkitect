@@ -1,9 +1,11 @@
 ﻿using System.Text.Json;
+using JetBrains.Annotations;
 using System.Text.Json.Serialization;
 using Semver;
 
 namespace Sparkitect.Utils;
 
+[PublicAPI]
 public class SemVersionJsonConverter : JsonConverter<SemVersion>
 {
     public override SemVersion? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -20,6 +22,7 @@ public class SemVersionJsonConverter : JsonConverter<SemVersion>
     }
 }
 
+[PublicAPI]
 public class SemVersionRangeJsonConverter : JsonConverter<SemVersionRange>
 {
     public override SemVersionRange? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

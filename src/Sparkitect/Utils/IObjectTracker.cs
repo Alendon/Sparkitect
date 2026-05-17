@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Utils;
 
 /// <summary>
@@ -5,6 +7,7 @@ namespace Sparkitect.Utils;
 /// Maintains strong references to tracked objects to detect leaks and monitor allocations.
 /// </summary>
 /// <typeparam name="T">The type of objects to track.</typeparam>
+[PublicAPI]
 public interface IObjectTracker<T>
 {
     /// <summary>

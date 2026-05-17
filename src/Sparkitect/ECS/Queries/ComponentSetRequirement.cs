@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.Modding;
 
@@ -7,6 +8,7 @@ namespace Sparkitect.ECS.Queries;
 /// Reusable capability requirement for matching storages that contain a set of components.
 /// Internalizes the pattern from MinimalSampleMod's InteractionCapability.
 /// </summary>
+[PublicAPI]
 public struct ComponentSetRequirement : ICapabilityRequirement<IChunkedIteration, ComponentSetMetadata>
 {
     private readonly HashSet<Identification> _requiredComponents;
@@ -33,6 +35,7 @@ public struct ComponentSetRequirement : ICapabilityRequirement<IChunkedIteration
 /// Generic capability requirement for matching storages that implement
 /// <see cref="Capabilities.IChunkedIteration{TKey}"/> and contain a set of components.
 /// </summary>
+[PublicAPI]
 public struct ComponentSetRequirement<TKey> : ICapabilityRequirement<IChunkedIteration<TKey>, ComponentSetMetadata>
     where TKey : unmanaged
 {

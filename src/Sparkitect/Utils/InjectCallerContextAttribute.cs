@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Utils;
 
 /// <summary>
@@ -5,4 +7,5 @@ namespace Sparkitect.Utils;
 /// The generator intercepts calls to methods with this attribute and injects the call site location.
 /// </summary>
 [AttributeUsage(AttributeTargets.Parameter)]
+[PublicAPI]
 public sealed class InjectCallerContextAttribute : Attribute;

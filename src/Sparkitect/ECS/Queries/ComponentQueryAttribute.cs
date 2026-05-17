@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Queries;
 
 /// <summary>
@@ -5,4 +7,6 @@ namespace Sparkitect.ECS.Queries;
 /// as a component query, generating constructor forwarding and component ID metadata.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
+[MeansImplicitUse]
 public sealed class ComponentQueryAttribute : Attribute;

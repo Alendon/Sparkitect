@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Capabilities;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Sparkitect.ECS.Capabilities;
 /// Phase 29 will extend with generational EntityId key.
 /// </summary>
 /// <typeparam name="TKey">The unmanaged entity key type.</typeparam>
+[PublicAPI]
 public interface IEntityMutation<TKey> : ICapability
     where TKey : unmanaged
 {

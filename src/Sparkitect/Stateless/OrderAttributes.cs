@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
@@ -7,6 +8,7 @@ namespace Sparkitect.Stateless;
 //   - Must be combined with a matching scheduling attribute
 
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
+[PublicAPI]
 public abstract class OrderBeforeAttribute() : Attribute
 {
     public abstract Identification Other { get; }
@@ -23,6 +25,7 @@ public abstract class OrderBeforeAttribute() : Attribute
 }
 
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
+[PublicAPI]
 public abstract class OrderAfterAttribute() : Attribute
 {
     public abstract Identification Other { get; }
@@ -40,6 +43,7 @@ public abstract class OrderAfterAttribute() : Attribute
 
 
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+[PublicAPI]
 public sealed class OrderBeforeAttribute<TOther>() : OrderBeforeAttribute
     where TOther : IHasIdentification
 {
@@ -49,6 +53,7 @@ public sealed class OrderBeforeAttribute<TOther>() : OrderBeforeAttribute
 }
 
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+[PublicAPI]
 public sealed class OrderAfterAttribute<TOther>() : OrderAfterAttribute
     where TOther : IHasIdentification
 {

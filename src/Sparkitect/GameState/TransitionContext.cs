@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.GameState;
@@ -6,6 +7,7 @@ namespace Sparkitect.GameState;
 /// Context for transition stateless functions. Contains transition-specific data
 /// used by scheduling implementations to filter and order functions.
 /// </summary>
+[PublicAPI]
 public sealed record TransitionContext
 {
     /// <summary>

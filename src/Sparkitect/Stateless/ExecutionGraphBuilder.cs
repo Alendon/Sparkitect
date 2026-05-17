@@ -1,9 +1,11 @@
+using JetBrains.Annotations;
 using QuikGraph;
 using QuikGraph.Algorithms.TopologicalSort;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
+[PublicAPI]
 public class ExecutionGraphBuilder : IExecutionGraphBuilder
 {
     private readonly Dictionary<Edge<Identification>, bool> _edgesAndOptional = [];

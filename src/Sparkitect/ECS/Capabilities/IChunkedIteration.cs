@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Storage;
 using Sparkitect.Modding;
 
@@ -7,6 +8,7 @@ namespace Sparkitect.ECS.Capabilities;
 /// Capability interface for chunk-based iteration over storage entities.
 /// Dense SoA storage exposes the entire array as a single chunk.
 /// </summary>
+[PublicAPI]
 public interface IChunkedIteration : ICapability
 {
     /// <summary>
@@ -31,6 +33,7 @@ public interface IChunkedIteration : ICapability
 /// Generic extension of <see cref="IChunkedIteration"/> that provides entity key access during iteration.
 /// Systems needing entity keys for command buffer operations use this via <see cref="Queries.ComponentQuery{TKey}"/>.
 /// </summary>
+[PublicAPI]
 public interface IChunkedIteration<TKey> : IChunkedIteration
     where TKey : unmanaged
 {

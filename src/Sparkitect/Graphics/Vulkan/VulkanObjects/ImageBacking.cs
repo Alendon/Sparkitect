@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Graphics.Vulkan.Vma;
 using Sundew.DiscriminatedUnions;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 /// owned by a swapchain (no per-image destruction) or allocated through VMA.
 /// </summary>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record ImageBacking
 {
     public sealed partial record Swapchain : ImageBacking;

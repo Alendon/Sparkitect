@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sundew.DiscriminatedUnions;
 
 namespace Sparkitect.Modding;
@@ -9,6 +10,7 @@ namespace Sparkitect.Modding;
 /// Uses Sundew.DiscriminatedUnions for future compatibility with native .NET discriminated unions.
 /// </remarks>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record ValidationError
 {
     /// <summary>

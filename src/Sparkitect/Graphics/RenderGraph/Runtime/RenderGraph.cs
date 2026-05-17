@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.CompilerGenerated.KeyedFactoryExtensions;
 using Sparkitect.DI;
@@ -22,6 +23,7 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 /// Passes receive the swapchain through a per-graph
 /// <see cref="RenderGraphResolutionProvider"/>; the host container handles everything else.
 /// </remarks>
+[PublicAPI]
 public sealed partial class RenderGraph : IDisposable
 {
     private readonly IVulkanContext _vulkanContext;

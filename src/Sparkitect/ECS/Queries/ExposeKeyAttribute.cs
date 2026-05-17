@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Queries;
 
 /// <summary>
@@ -8,6 +10,7 @@ namespace Sparkitect.ECS.Queries;
 /// </summary>
 /// <typeparam name="TKey">The unmanaged key type (e.g., EntityId).</typeparam>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
 public sealed class ExposeKeyAttribute<TKey> : Attribute
     where TKey : unmanaged
 {

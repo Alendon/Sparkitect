@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Metadata;
 
 namespace Sparkitect.Stateless;
@@ -8,5 +9,6 @@ namespace Sparkitect.Stateless;
 /// </summary>
 /// <typeparam name="TScheduling">The scheduling implementation type.</typeparam>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
 public abstract class SchedulingAttribute<TScheduling> : MetadataAttribute<TScheduling>
     where TScheduling : IScheduling;

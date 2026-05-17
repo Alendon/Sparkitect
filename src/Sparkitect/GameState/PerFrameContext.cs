@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.GameState;
@@ -6,6 +7,7 @@ namespace Sparkitect.GameState;
 /// Context for per-frame stateless functions.
 /// Contains state stack for module loaded checks.
 /// </summary>
+[PublicAPI]
 public sealed class PerFrameContext
 {
     /// <summary>

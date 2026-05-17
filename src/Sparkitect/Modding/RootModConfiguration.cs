@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Semver;
@@ -9,6 +10,7 @@ namespace Sparkitect.Modding;
 /// Configuration specifying which root mods to load at engine startup.
 /// </summary>
 /// <param name="RootMods">List of root mods to load.</param>
+[PublicAPI]
 public record RootModConfig(IReadOnlyList<RootModEntry> RootMods);
 
 /// <summary>
@@ -16,6 +18,7 @@ public record RootModConfig(IReadOnlyList<RootModEntry> RootMods);
 /// </summary>
 /// <param name="Id">Mod identifier.</param>
 /// <param name="Version">Optional specific version. If null, load newest available version.</param>
+[PublicAPI]
 public record RootModEntry(
     string Id,
     [property: JsonConverter(typeof(SemVersionJsonConverter))]
@@ -37,6 +40,7 @@ public record RootModEntry(
 /// that have IsRootMod = true in their manifest.
 /// </para>
 /// </remarks>
+[PublicAPI]
 public static class RootModConfiguration
 {
     private static readonly JsonSerializerOptions JsonOptions = new()

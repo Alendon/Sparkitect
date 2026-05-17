@@ -1,9 +1,12 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.DI.Ordering;
 
 /// <summary>
 /// Interface for types that apply entrypoint ordering constraints.
 /// Implemented by attributes placed on entrypoint classes.
 /// </summary>
+[PublicAPI]
 public interface IEntrypointOrdering
 {
     /// <summary>

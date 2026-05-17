@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Utilities;
 
 /// <summary>
@@ -13,6 +15,7 @@ namespace Sparkitect.Utilities;
 /// - No dots
 /// </remarks>
 [AttributeUsage(AttributeTargets.Parameter)]
+[PublicAPI]
 public sealed class SnakeCaseAttribute : Attribute
 {
 }

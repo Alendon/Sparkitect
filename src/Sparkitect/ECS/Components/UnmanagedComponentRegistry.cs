@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Components;
@@ -8,6 +9,7 @@ namespace Sparkitect.ECS.Components;
 /// Delegates to <see cref="IComponentManager"/>.
 /// </summary>
 [Registry(Identifier = "unmanaged_component")]
+[PublicAPI]
 public partial class UnmanagedComponentRegistry(IComponentManager componentManager) : IRegistry
 {
     /// <inheritdoc/>

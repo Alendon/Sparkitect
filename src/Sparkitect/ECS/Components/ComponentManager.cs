@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Runtime.CompilerServices;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
@@ -9,6 +10,7 @@ namespace Sparkitect.ECS.Components;
 /// Backing store for <see cref="IComponentManager"/>.
 /// </summary>
 [StateService<IComponentManager, EcsModule>]
+[PublicAPI]
 public class ComponentManager : IComponentManager
 {
     private readonly Dictionary<Identification, int> _components = new();

@@ -9,5 +9,6 @@ namespace Sparkitect.DI.Resolution;
 /// </summary>
 /// <typeparam name="TWrapperType">The wrapper/factory type this entrypoint provides metadata for.</typeparam>
 [PublicAPI]
+[MeansImplicitUse]
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class ResolutionMetadataEntrypointAttribute<TWrapperType> : Attribute;

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Collections.Concurrent;
 using System.Reflection;
 using Sparkitect.ECS.Capabilities;
@@ -9,6 +10,7 @@ namespace Sparkitect.ECS.Commands;
 /// Uses IStorage.KeyType + MakeGenericType to create typed CommandBuffer&lt;TKey&gt;
 /// instances without exposing TKey to callers.
 /// </summary>
+[PublicAPI]
 public class CommandBufferAccessor : ICommandBufferAccessor
 {
     private readonly IWorld _world;

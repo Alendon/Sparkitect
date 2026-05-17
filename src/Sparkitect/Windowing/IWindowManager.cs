@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan;
@@ -5,6 +6,7 @@ using Sparkitect.Graphics.Vulkan;
 namespace Sparkitect.Windowing;
 
 [StateFacade<IWindowManagerStateFacade>]
+[PublicAPI]
 public interface IWindowManager
 {
     ISparkitWindow? MainWindow { get; set; }
@@ -15,4 +17,5 @@ public interface IWindowManager
 }
 
 [FacadeFor<IWindowManager>]
+[PublicAPI]
 public interface IWindowManagerStateFacade;

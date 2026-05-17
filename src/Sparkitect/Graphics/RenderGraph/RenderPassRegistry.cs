@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Graphics.RenderGraph;
@@ -9,6 +10,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 /// <see cref="Sparkitect.DI.IDIService.BuildFactoryContainer{TKey,TBase}"/>.
 /// </summary>
 [Registry(Identifier = "render_pass")]
+[PublicAPI]
 public partial class RenderPassRegistry : IRegistry
 {
     [RegistryMethod]

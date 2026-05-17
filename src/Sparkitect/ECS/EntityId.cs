@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Runtime.InteropServices;
 
 namespace Sparkitect.ECS;
@@ -8,6 +9,7 @@ namespace Sparkitect.ECS;
 /// reused, stale EntityIds will fail validation.
 /// </summary>
 [StructLayout(LayoutKind.Explicit, Size = sizeof(uint) * 2)]
+[PublicAPI]
 public readonly struct EntityId : IEquatable<EntityId>
 {
     /// <summary>

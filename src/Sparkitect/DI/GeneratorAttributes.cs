@@ -1,4 +1,6 @@
 // ReSharper disable once CheckNamespace
+using JetBrains.Annotations;
+
 namespace Sparkitect.DI.GeneratorAttributes;
 
 /// <summary>
@@ -8,6 +10,7 @@ namespace Sparkitect.DI.GeneratorAttributes;
 /// Triggers source generation of facade configurators.
 /// </summary>
 /// <typeparam name="TFacade">The exclusive facade interface type accessible only to the specific subsystem.</typeparam>
+[PublicAPI]
 public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade : class;
 
 /// <summary>
@@ -17,6 +20,7 @@ public abstract class FacadeMarkerAttribute<TFacade> : Attribute where TFacade :
 /// </summary>
 /// <typeparam name="TService">The service interface type this facade belongs to.</typeparam>
 [AttributeUsage(AttributeTargets.Interface, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
 public sealed class FacadeForAttribute<TService> : Attribute where TService : class;
 
 /// <summary>
@@ -27,6 +31,7 @@ public sealed class FacadeForAttribute<TService> : Attribute where TService : cl
 /// <typeparam name="TFacadeCategory">The facade category attribute type
 /// (e.g., StateFacadeAttribute).</typeparam>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+[PublicAPI]
 public sealed class FacadeCategoryMappingAttribute<TFacadeCategory> : Attribute
     where TFacadeCategory : Attribute;
 
@@ -35,4 +40,5 @@ public sealed class FacadeCategoryMappingAttribute<TFacadeCategory> : Attribute
 /// SPARK0403 warnings when used as a stateless function parameter.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+[PublicAPI]
 public sealed class AllowConcreteResolutionAttribute : Attribute;

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Capabilities;
 
 namespace Sparkitect.ECS.Commands;
@@ -6,6 +7,7 @@ namespace Sparkitect.ECS.Commands;
 /// Command that destroys an entity at playback time.
 /// Receives the pre-resolved slot from the buffer -- unassign, remove, and reclaim.
 /// </summary>
+[PublicAPI]
 public class DestroyEntityCommand : ICommand
 {
     /// <inheritdoc/>

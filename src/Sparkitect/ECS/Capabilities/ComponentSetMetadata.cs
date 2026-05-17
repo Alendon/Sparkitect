@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Capabilities;
@@ -8,4 +9,5 @@ namespace Sparkitect.ECS.Capabilities;
 /// for query filter matching.
 /// </summary>
 /// <param name="Components">The set of component identifications present in the storage.</param>
+[PublicAPI]
 public record ComponentSetMetadata(IReadOnlySet<Identification> Components) : ICapabilityMetadata;

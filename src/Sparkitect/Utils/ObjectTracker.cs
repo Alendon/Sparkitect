@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Collections.Concurrent;
 using Serilog;
 
@@ -7,6 +8,7 @@ namespace Sparkitect.Utils;
 /// Thread-safe implementation of <see cref="IObjectTracker{T}"/> that maintains strong references to tracked objects.
 /// </summary>
 /// <typeparam name="T">The type of objects to track.</typeparam>
+[PublicAPI]
 public sealed class ObjectTracker<T> : IObjectTracker<T> where T : notnull
 {
     private readonly ConcurrentDictionary<T, CallerContext> _tracked = new();

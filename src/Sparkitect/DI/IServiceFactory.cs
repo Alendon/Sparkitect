@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI.Resolution;
 
 namespace Sparkitect.DI;
@@ -5,6 +6,7 @@ namespace Sparkitect.DI;
 /// <summary>
 /// Interface for factories that create service instances with dependencies
 /// </summary>
+[PublicAPI]
 public interface IServiceFactory : IFactoryBase
 {
     /// <summary>

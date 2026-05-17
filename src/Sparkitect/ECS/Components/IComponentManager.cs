@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Components;
@@ -6,6 +7,7 @@ namespace Sparkitect.ECS.Components;
 /// Stores component metadata (size) per component <see cref="Identification"/>.
 /// Used by storages to manage raw NativeMemory allocations without needing the CLR type.
 /// </summary>
+[PublicAPI]
 public interface IComponentManager
 {
     /// <summary>

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Diagnostics.CodeAnalysis;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
@@ -10,6 +11,7 @@ namespace Sparkitect.Graphics.Vulkan;
 /// Manages shader module registration and validation.
 /// </summary>
 [StateFacade<IShaderManagerStateFacade>]
+[PublicAPI]
 public interface IShaderManager
 {
     /// <summary>
@@ -29,4 +31,5 @@ public interface IShaderManager
 }
 
 [FacadeFor<IShaderManager>]
+[PublicAPI]
 public interface IShaderManagerStateFacade;

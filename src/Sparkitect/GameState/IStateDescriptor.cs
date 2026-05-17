@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.GameState;
@@ -7,6 +8,7 @@ namespace Sparkitect.GameState;
 /// States form a parent-child hierarchy and define which modules they include.
 /// </summary>
 [TypedRegistrationContract]
+[PublicAPI]
 public interface IStateDescriptor
 {
     /// <summary>

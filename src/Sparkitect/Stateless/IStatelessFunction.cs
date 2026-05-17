@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Diagnostics;
 using Sparkitect.DI.Resolution;
 using Sparkitect.Modding;
@@ -7,6 +8,7 @@ namespace Sparkitect.Stateless;
 /// <summary>
 /// Internal interface for source-generated stateless function wrappers.
 /// </summary>
+[PublicAPI]
 public interface IStatelessFunction
 {
     /// <summary>

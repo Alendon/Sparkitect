@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
@@ -10,6 +11,7 @@ namespace Sparkitect.GameState;
 /// All other states must have a parent chain that terminates at Root.
 /// </summary>
 [StateRegistry.RegisterState("root")]
+[PublicAPI]
 public partial class RootGameStateDescriptor : IStateDescriptor
 {
     /// <inheritdoc />

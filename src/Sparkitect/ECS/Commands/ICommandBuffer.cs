@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Commands;
@@ -6,6 +7,7 @@ namespace Sparkitect.ECS.Commands;
 /// Non-generic buffer interface for recording deferred mutations against a single entity.
 /// System authors interact with this interface -- TKey is never exposed.
 /// </summary>
+[PublicAPI]
 public interface ICommandBuffer
 {
     /// <summary>The entity this buffer targets.</summary>

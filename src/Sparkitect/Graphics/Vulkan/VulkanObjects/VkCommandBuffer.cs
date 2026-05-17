@@ -1,9 +1,11 @@
+using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Utils;
 using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+[PublicAPI]
 public class VkCommandBuffer : VulkanObject
 {
     public VkCommandBuffer(CommandBuffer commandBuffer, IVulkanContext vulkanContext, VkCommandPool pool,

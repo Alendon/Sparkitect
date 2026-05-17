@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Capabilities;
 
 /// <summary>
@@ -5,4 +7,5 @@ namespace Sparkitect.ECS.Capabilities;
 /// Each capability type defines its own concrete metadata shape that describes
 /// how the capability is provided by a particular storage.
 /// </summary>
+[PublicAPI]
 public interface ICapabilityMetadata;

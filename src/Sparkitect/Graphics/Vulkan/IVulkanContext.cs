@@ -1,4 +1,5 @@
 ﻿using Silk.NET.Vulkan;
+using JetBrains.Annotations;
 using Silk.NET.Windowing;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
@@ -11,6 +12,7 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 namespace Sparkitect.Graphics.Vulkan;
 
 [StateFacade<IVulkanContextStateFacade>]
+[PublicAPI]
 public interface IVulkanContext
 {
     Vk VkApi { get; }
@@ -73,6 +75,7 @@ public interface IVulkanContext
 }
 
 [FacadeFor<IVulkanContext>]
+[PublicAPI]
 public interface IVulkanContextStateFacade
 {
     void Initialize();

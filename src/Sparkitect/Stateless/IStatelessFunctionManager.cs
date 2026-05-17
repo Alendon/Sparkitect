@@ -1,8 +1,10 @@
+using JetBrains.Annotations;
 using Sparkitect.DI.Resolution;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
+[PublicAPI]
 public interface IStatelessFunctionManager
 {
     /// <summary>

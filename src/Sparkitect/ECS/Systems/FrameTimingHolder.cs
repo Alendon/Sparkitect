@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI.GeneratorAttributes;
 
 namespace Sparkitect.ECS.Systems;
@@ -9,6 +10,7 @@ namespace Sparkitect.ECS.Systems;
 /// Systems access timing via the delegated properties on this holder instance.
 /// </summary>
 [AllowConcreteResolution]
+[PublicAPI]
 public class FrameTimingHolder
 {
     private FrameTiming _current;

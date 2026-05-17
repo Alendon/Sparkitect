@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Queries;
@@ -6,6 +7,7 @@ namespace Sparkitect.ECS.Queries;
 /// Per-entity accessor wrapping <see cref="EntityAccessor"/> with an associated entity key.
 /// Used by <see cref="ComponentQuery{TKey}"/> to expose keys alongside component data.
 /// </summary>
+[PublicAPI]
 public readonly struct KeyedEntityAccessor<TKey>
     where TKey : unmanaged
 {

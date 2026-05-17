@@ -1,8 +1,11 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Utils;
 
 /// <summary>
 /// Holds caller location information captured at compile time.
 /// </summary>
+[PublicAPI]
 public readonly record struct CallerContext(string FilePath, int LineNumber)
 {
     /// <summary>

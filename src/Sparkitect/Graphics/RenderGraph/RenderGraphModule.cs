@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.RenderGraph.Runtime;
@@ -13,6 +14,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 /// consumers create those via <see cref="RenderGraph.Initialize"/> and own them themselves.
 /// </summary>
 [ModuleRegistry.RegisterModule("render_graph")]
+[PublicAPI]
 public partial class RenderGraphModule : IStateModule
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Vulkan];

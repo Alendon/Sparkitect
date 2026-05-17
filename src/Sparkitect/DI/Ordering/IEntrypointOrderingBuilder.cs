@@ -1,9 +1,12 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.DI.Ordering;
 
 /// <summary>
 /// Builder interface for collecting entrypoint ordering constraints.
 /// Nodes are full type names (<see cref="System.Type.FullName"/>).
 /// </summary>
+[PublicAPI]
 public interface IEntrypointOrderingBuilder
 {
     /// <summary>

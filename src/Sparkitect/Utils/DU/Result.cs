@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sundew.DiscriminatedUnions;
 
 namespace Sparkitect.Utils.DU;
@@ -11,6 +12,7 @@ namespace Sparkitect.Utils.DU;
 /// when that feature stabilises (preview ~.NET 11).
 /// </remarks>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record Result<TOk, TError>
 {
     public static implicit operator Result<TOk, TError>(TOk value) => new Ok(value);
@@ -25,6 +27,7 @@ public abstract partial record Result<TOk, TError>
 /// failure carries a <typeparamref name="TError"/>.
 /// </summary>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record Result<TError>
 {
     public static implicit operator Result<TError>(TError value) => new Error(value);

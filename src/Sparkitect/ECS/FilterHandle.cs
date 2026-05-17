@@ -1,9 +1,12 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS;
 
 /// <summary>
 /// Handle identifying a registered capability filter within a <see cref="World"/>.
 /// Filters are long-lived and do not use generational validation -- they are never removed.
 /// </summary>
+[PublicAPI]
 public readonly struct FilterHandle : IEquatable<FilterHandle>
 {
     /// <summary>

@@ -1,9 +1,12 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Storage;
 
 /// <summary>
 /// Non-generic base interface for all storage implementations.
 /// Extends <see cref="IDisposable"/> for lifecycle management by <see cref="World"/>.
 /// </summary>
+[PublicAPI]
 public interface IStorage : IDisposable
 {
     /// <summary>
@@ -23,6 +26,7 @@ public interface IStorage : IDisposable
 /// Concrete storage implementations provide their own key allocation strategy.
 /// </summary>
 /// <typeparam name="TKey">The unmanaged entity key type allocated by this storage.</typeparam>
+[PublicAPI]
 public interface IStorage<TKey> : IStorage
     where TKey : unmanaged
 {

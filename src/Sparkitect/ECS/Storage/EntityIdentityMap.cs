@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Storage;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Sparkitect.ECS.Storage;
 /// Reverse lookup uses a dictionary since slot keys become sparse after removals.
 /// </summary>
 /// <typeparam name="TKey">The storage-internal key type.</typeparam>
+[PublicAPI]
 public class EntityIdentityMap<TKey>
     where TKey : unmanaged
 {

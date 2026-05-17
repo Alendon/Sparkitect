@@ -1,10 +1,13 @@
 ﻿using Sparkitect.DI.Container;
 
+using JetBrains.Annotations;
+
 namespace Sparkitect.DI;
 
 /// <summary>
 /// Interface for classes that configure the IoC container
 /// </summary>
+[PublicAPI]
 public abstract class CoreConfigurator 
     : IConfigurationEntrypoint<CoreContainerConfiguratorEntrypointAttribute>
 {

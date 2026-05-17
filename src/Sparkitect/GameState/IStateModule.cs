@@ -1,5 +1,7 @@
 ﻿using Sparkitect.Modding;
 
+using JetBrains.Annotations;
+
 namespace Sparkitect.GameState;
 
 /// <summary>
@@ -7,6 +9,7 @@ namespace Sparkitect.GameState;
 /// Modules contain state functions and declare dependencies on other modules.
 /// </summary>
 [TypedRegistrationContract]
+[PublicAPI]
 public interface IStateModule
 {
     /// <summary>

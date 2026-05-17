@@ -1,5 +1,8 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Graphics.Vulkan.Vma;
 
+[PublicAPI]
 public readonly struct VmaAllocation : IEquatable<VmaAllocation>
 {
     internal nint Handle { get; }

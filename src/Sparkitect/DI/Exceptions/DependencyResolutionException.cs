@@ -1,9 +1,12 @@
+using JetBrains.Annotations;
+
 ﻿namespace Sparkitect.DI.Exceptions;
 
 /// <summary>
 /// Thrown when a dependency cannot be resolved from the DI container.
 /// This typically occurs when a required service is not registered or a dependency is missing.
 /// </summary>
+[PublicAPI]
 public class DependencyResolutionException : Exception
 {
     /// <summary>

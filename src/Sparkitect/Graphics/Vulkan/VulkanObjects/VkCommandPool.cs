@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Serilog;
 using Silk.NET.Vulkan;
 using Sparkitect.Utils;
@@ -6,6 +7,7 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+[PublicAPI]
 public class VkCommandPool : VulkanObject
 {
     private readonly HashSet<VkCommandBuffer> _allocatedBuffers = [];

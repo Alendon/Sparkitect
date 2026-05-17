@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Storage;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.ECS;
 /// Obtained from <see cref="World"/>. Cannot be stored in fields or closures --
 /// the <c>ref struct</c> constraint enforces this at the language level.
 /// </summary>
+[PublicAPI]
 public readonly ref struct StorageAccessor
 {
     private readonly IStorage _storage;

@@ -1,6 +1,9 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Graphics.Vulkan.Vma;
 
 [Flags]
+[PublicAPI]
 public enum VmaDefragmentationFlags
 {
     None = 0,

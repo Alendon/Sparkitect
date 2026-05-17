@@ -1,5 +1,8 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Graphics.Vulkan.Vma;
 
+[PublicAPI]
 public record struct VmaPoolCreateInfo
 {
     public uint MemoryTypeIndex { get; init; }

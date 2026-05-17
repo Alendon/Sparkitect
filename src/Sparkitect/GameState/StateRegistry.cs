@@ -1,11 +1,14 @@
 ﻿using Sparkitect.Modding;
 
+using JetBrains.Annotations;
+
 namespace Sparkitect.GameState;
 
 /// <summary>
 /// Registry for state descriptors. States are registered with [StateRegistry.RegisterState("key")] attribute.
 /// </summary>
 [Registry(Identifier = "state")]
+[PublicAPI]
 public partial class StateRegistry(IGameStateManagerRegistryFacade gameStateManager) : IRegistry
 {
     /// <inheritdoc/>

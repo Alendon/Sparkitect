@@ -1,9 +1,11 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
 namespace Sparkitect.ECS.Systems;
 
 [Registry(Identifier = "ecs_system", External = true)]
+[PublicAPI]
 public sealed partial class SystemRegistry : StatelessFunctionRegistryBase, IRegistry
 {
     public static string Identifier => "ecs_system";

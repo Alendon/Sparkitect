@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.DI.Container;
 
 namespace Sparkitect.DI;
@@ -6,6 +7,7 @@ namespace Sparkitect.DI;
 /// Base interface for all configuration entrypoints. Entrypoints are discovered classes that configure
 /// various engine/mod components during initialization.
 /// </summary>
+[PublicAPI]
 public interface IBaseConfigurationEntrypoint
 {
     /// <summary>
@@ -19,6 +21,7 @@ public interface IBaseConfigurationEntrypoint
 /// Implementations must have parameterless constructors and are discovered across all loaded mods.
 /// </summary>
 /// <typeparam name="TDiscoveryAttribute">The attribute type used to discover implementations of this entrypoint.</typeparam>
+[PublicAPI]
 public interface IConfigurationEntrypoint<TDiscoveryAttribute> : IBaseConfigurationEntrypoint where TDiscoveryAttribute : Attribute
 {
     static Type IBaseConfigurationEntrypoint.EntrypointAttributeType => typeof(TDiscoveryAttribute);
@@ -29,6 +32,7 @@ public interface IConfigurationEntrypoint<TDiscoveryAttribute> : IBaseConfigurat
 /// with an <see cref="ICoreContainerBuilder"/> during initialization.
 /// </summary>
 /// <typeparam name="TDiscoveryAttribute">The attribute type used to discover implementations of this entrypoint.</typeparam>
+[PublicAPI]
 public interface ICoreConfigurator<TDiscoveryAttribute>
     : IConfigurationEntrypoint<TDiscoveryAttribute>
     where TDiscoveryAttribute : Attribute
@@ -51,6 +55,7 @@ public interface ICoreConfigurator<TDiscoveryAttribute>
 /// </summary>
 /// <typeparam name="TKey">The key type used to identify factories.</typeparam>
 /// <typeparam name="TBase">The base type for objects created by the factories.</typeparam>
+[PublicAPI]
 public interface IFactoryConfiguratorBase<TKey, TBase>
     where TBase : class
     where TKey : notnull
@@ -71,6 +76,7 @@ public interface IFactoryConfiguratorBase<TKey, TBase>
 /// <typeparam name="TKey">The key type used to identify factories.</typeparam>
 /// <typeparam name="TBase">The base type for objects created by the factories.</typeparam>
 /// <typeparam name="TDiscoveryAttribute">The attribute type used to discover implementations of this entrypoint.</typeparam>
+[PublicAPI]
 public interface IFactoryConfigurator<TKey, TBase, TDiscoveryAttribute>
     : IConfigurationEntrypoint<TDiscoveryAttribute>, IFactoryConfiguratorBase<TKey, TBase>
     where TBase : class

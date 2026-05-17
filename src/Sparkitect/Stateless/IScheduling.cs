@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
@@ -7,6 +8,7 @@ namespace Sparkitect.Stateless;
 /// Scheduling instances are collected via metadata entrypoints and
 /// consumed by managers that build execution graphs.
 /// </summary>
+[PublicAPI]
 public interface IScheduling
 {
     /// <summary>

@@ -1,8 +1,10 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
 namespace Sparkitect.ECS.Systems;
 
+[PublicAPI]
 public interface IEcsGraphBuilder
 {
     /// <summary>

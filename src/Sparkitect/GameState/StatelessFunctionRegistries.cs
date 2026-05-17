@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
@@ -7,6 +8,7 @@ namespace Sparkitect.GameState;
 /// Registry for per-frame stateless functions.
 /// </summary>
 [Registry(Identifier = "perframe_function", External = true)]
+[PublicAPI]
 public sealed partial class PerFrameRegistry : StatelessFunctionRegistryBase, IRegistry
 {
     public static string Identifier => "perframe_function";
@@ -16,6 +18,7 @@ public sealed partial class PerFrameRegistry : StatelessFunctionRegistryBase, IR
 /// Registry for transition stateless functions.
 /// </summary>
 [Registry(Identifier = "transition_function", External = true)]
+[PublicAPI]
 public sealed partial class TransitionRegistry : StatelessFunctionRegistryBase, IRegistry
 {
     public static string Identifier => "transition_function";

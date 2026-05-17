@@ -1,8 +1,10 @@
+using JetBrains.Annotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace Sparkitect.Utils;
 
+[PublicAPI]
 public static class ThrowHelperExtension
 {
     extension(Exception instance)

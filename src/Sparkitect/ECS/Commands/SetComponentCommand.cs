@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.Modding;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.ECS.Commands;
 /// Receives the pre-resolved slot from the buffer -- no per-command TryResolve.
 /// </summary>
 /// <typeparam name="T">The unmanaged component type.</typeparam>
+[PublicAPI]
 public class SetComponentCommand<T> : ICommand
     where T : unmanaged, IHasIdentification
 {

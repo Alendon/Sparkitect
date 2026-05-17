@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Capabilities;
 
 /// <summary>
@@ -6,4 +8,5 @@ namespace Sparkitect.ECS.Capabilities;
 /// Concrete storage types implement capability interfaces alongside <see cref="Storage.IStorage"/>
 /// to expose typed data access.
 /// </summary>
+[PublicAPI]
 public interface ICapability;

@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Systems;
 
 /// <summary>
@@ -6,4 +8,5 @@ namespace Sparkitect.ECS.Systems;
 /// (resolution metadata, resource access metadata).
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+[PublicAPI]
 public sealed class EcsSystemCategoryAttribute : Attribute;

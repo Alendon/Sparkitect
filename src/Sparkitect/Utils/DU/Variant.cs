@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sundew.DiscriminatedUnions;
 
 namespace Sparkitect.Utils.DU;
@@ -11,6 +12,7 @@ namespace Sparkitect.Utils.DU;
 /// Implicit conversions from each arm preserve the OneOf-style ergonomics at call sites.
 /// </remarks>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record Variant<T1, T2>
 {
     public static implicit operator Variant<T1, T2>(T1 value) => new Of1(value);
@@ -25,6 +27,7 @@ public abstract partial record Variant<T1, T2>
 /// </summary>
 /// <remarks>See <see cref="Variant{T1,T2}"/> for migration context.</remarks>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record Variant<T1, T2, T3>
 {
     public static implicit operator Variant<T1, T2, T3>(T1 value) => new Of1(value);
@@ -41,6 +44,7 @@ public abstract partial record Variant<T1, T2, T3>
 /// </summary>
 /// <remarks>See <see cref="Variant{T1,T2}"/> for migration context.</remarks>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record Variant<T1, T2, T3, T4>
 {
     public static implicit operator Variant<T1, T2, T3, T4>(T1 value) => new Of1(value);
@@ -59,6 +63,7 @@ public abstract partial record Variant<T1, T2, T3, T4>
 /// </summary>
 /// <remarks>See <see cref="Variant{T1,T2}"/> for migration context.</remarks>
 [DiscriminatedUnion]
+[PublicAPI]
 public abstract partial record Variant<T1, T2, T3, T4, T5>
 {
     public static implicit operator Variant<T1, T2, T3, T4, T5>(T1 value) => new Of1(value);

@@ -13,6 +13,7 @@ namespace Sparkitect.DI;
 /// <see cref="IFactoryConfigurator{TKey,TBase,TDiscoveryAttribute}"/> writes registry factory entries
 /// directly into the aggregate registration map owned by <see cref="IDIService.BuildFactoryContainer{TKey,TBase}"/>.
 /// </remarks>
+[PublicAPI]
 public interface IRegistryConfigurator
     : IFactoryConfigurator<string, IRegistryBase, RegistryConfiguratorAttribute>;
 
@@ -22,4 +23,5 @@ public interface IRegistryConfigurator
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 [MeansImplicitUse]
+[PublicAPI]
 public class RegistryConfiguratorAttribute : Attribute;

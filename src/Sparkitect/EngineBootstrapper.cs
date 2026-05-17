@@ -1,4 +1,5 @@
 using InterpolatedParsing;
+using JetBrains.Annotations;
 using Serilog;
 using Serilog.Configuration;
 using Serilog.Exceptions;
@@ -14,6 +15,7 @@ namespace Sparkitect;
 /// <summary>
 /// Manages the engine initialization process, from application startup to the transition to the first game state.
 /// </summary>
+[PublicAPI]
 public class EngineBootstrapper
 {
     private ICoreContainer? _coreContainer;

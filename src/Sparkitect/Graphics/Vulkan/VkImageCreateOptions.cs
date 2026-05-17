@@ -1,7 +1,9 @@
+using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 
 namespace Sparkitect.Graphics.Vulkan;
 
+[PublicAPI]
 public sealed record VkImageCreateOptions(
     Extent3D Extent,
     Format Format,

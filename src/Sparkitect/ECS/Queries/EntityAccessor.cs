@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Runtime.CompilerServices;
 using Sparkitect.Modding;
 
@@ -8,6 +9,7 @@ namespace Sparkitect.ECS.Queries;
 /// Holds pointers to component data for the current chunk and the entity's index within it.
 /// The dictionary lookup per Get/GetRef is acceptable for v1.4 -- v1.5 SG eliminates it.
 /// </summary>
+[PublicAPI]
 public readonly unsafe struct EntityAccessor
 {
     private readonly Dictionary<Identification, nint> _componentPointers;

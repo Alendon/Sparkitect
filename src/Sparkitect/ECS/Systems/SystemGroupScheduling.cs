@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Metadata;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
@@ -8,6 +9,7 @@ namespace Sparkitect.ECS.Systems;
 /// Metadata type for system groups. Carries ordering constraints and parent group relationship.
 /// Constructor parameters are matched by MetadataExtractionPipeline against class-level attributes.
 /// </summary>
+[PublicAPI]
 public class SystemGroupScheduling
 {
     private readonly OrderAfterAttribute[] _orderAfter;
@@ -36,4 +38,6 @@ public class SystemGroupScheduling
 /// </summary>
 [MetadataCategoryMarker]
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
+[MeansImplicitUse]
 public sealed class SystemGroupSchedulingAttribute : MetadataAttribute<SystemGroupScheduling>;

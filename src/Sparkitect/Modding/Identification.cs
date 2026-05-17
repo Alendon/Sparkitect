@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using JetBrains.Annotations;
 using System.Runtime.InteropServices;
 using Sparkitect.Utils;
 
@@ -11,6 +12,7 @@ namespace Sparkitect.Modding;
 [StructLayout(LayoutKind.Explicit, Size = sizeof(ulong))]
 [DebuggerTypeProxy(typeof(IdentificationDebuggerProxy))]
 [DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
+[PublicAPI]
 public readonly struct Identification : IEquatable<Identification>
 {
     public static bool operator ==(Identification left, Identification right)

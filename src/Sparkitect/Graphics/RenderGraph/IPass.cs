@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Graphics.RenderGraph;
 
 /// <summary>
@@ -20,4 +22,5 @@ namespace Sparkitect.Graphics.RenderGraph;
 /// (<see cref="Sparkitect.Modding.IRegistry"/>).
 /// </para>
 /// </remarks>
+[PublicAPI]
 public interface IPass;

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Semver;
 
 namespace Sparkitect.Modding;
@@ -15,6 +16,7 @@ namespace Sparkitect.Modding;
 /// a struct with named properties rather than a tuple.
 /// </para>
 /// </remarks>
+[PublicAPI]
 public readonly struct ModFileIdentifier : IEquatable<ModFileIdentifier>
 {
     /// <summary>

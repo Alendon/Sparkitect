@@ -1,8 +1,10 @@
+using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Systems;
 
 [Registry(Identifier = "ecs_system_group")]
+[PublicAPI]
 public sealed partial class SystemGroupRegistry : IRegistry
 {
     public static string Identifier => "ecs_system_group";

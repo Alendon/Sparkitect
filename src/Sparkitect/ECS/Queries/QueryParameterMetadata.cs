@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.ECS.Queries;
 
 /// <summary>
@@ -5,6 +7,7 @@ namespace Sparkitect.ECS.Queries;
 /// against this type -- concrete implementations create the query instance and register
 /// filter callbacks with the World.
 /// </summary>
+[PublicAPI]
 public abstract class QueryParameterMetadata
 {
     /// <summary>
