@@ -8,7 +8,7 @@ public partial class SampleEntryState
 {
     [TransitionFunction("create_render_graph")]
     [OnCreateScheduling]
-    [OrderAfter<VulkanModule.CreateVmaFunc>]
+    [OrderAfter<VulkanModule.CreateDeviceFunc>]
     public static void CreateRenderGraph(IMinimalSampleHost host) => host.Initialize();
 
     [PerFrameFunction("poll_window")]

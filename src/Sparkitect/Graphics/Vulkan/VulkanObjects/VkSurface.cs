@@ -9,7 +9,7 @@ public class VkSurface : VulkanObject
 {
     private readonly KhrSurface _khrSurface;
 
-    internal VkSurface(SurfaceKHR handle, KhrSurface khrSurface, IVulkanContext vulkanContext)
+    public VkSurface(SurfaceKHR handle, KhrSurface khrSurface, IVulkanContext vulkanContext)
         : base(vulkanContext)
     {
         Handle = handle;
@@ -18,7 +18,7 @@ public class VkSurface : VulkanObject
 
     public SurfaceKHR Handle { get; }
 
-    public unsafe SurfaceCapabilitiesKHR GetCapabilities(PhysicalDevice physicalDevice)
+    public SurfaceCapabilitiesKHR GetCapabilities(PhysicalDevice physicalDevice)
     {
         _khrSurface.GetPhysicalDeviceSurfaceCapabilities(physicalDevice, Handle, out var capabilities);
         return capabilities;
@@ -56,7 +56,7 @@ public class VkSurface : VulkanObject
         return modes;
     }
 
-    public unsafe bool GetPhysicalDeviceSurfaceSupport(PhysicalDevice physicalDevice, uint queueFamilyIndex)
+    public bool GetPhysicalDeviceSurfaceSupport(PhysicalDevice physicalDevice, uint queueFamilyIndex)
     {
         _khrSurface.GetPhysicalDeviceSurfaceSupport(physicalDevice, queueFamilyIndex, Handle, out var supported);
         return supported;

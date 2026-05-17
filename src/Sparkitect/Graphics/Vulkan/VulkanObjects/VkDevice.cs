@@ -1,6 +1,5 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
-using Sparkitect.Utils;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
@@ -10,7 +9,7 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkDevice : VulkanObject
 {
-    internal unsafe VkDevice(
+    public VkDevice(
         IVulkanContext vulkanContext, Device device)
         : base(vulkanContext)
     {
@@ -47,7 +46,7 @@ public class VkDevice : VulkanObject
     /// <summary>
     /// Gets the address of a device-level Vulkan function by name.
     /// </summary>
-    public unsafe nint GetDeviceProcAddr(string name)
+    public nint GetDeviceProcAddr(string name)
     {
         return (nint)Vk.GetDeviceProcAddr(Handle, name);
     }

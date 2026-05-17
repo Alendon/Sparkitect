@@ -49,9 +49,10 @@ public sealed class VmaAllocator : IDisposable
     /// <remarks>
     /// Out-params return the raw <see cref="Silk.NET.Vulkan.Buffer"/> handle, the opaque
     /// <see cref="VmaAllocation"/>, and the <see cref="VmaAllocationInfo"/> describing the allocation.
-    /// The caller (normally a managed wrapper in main Sparkitect) pairs them and owns the lifetime.
+    /// On failure the out-params are <c>default</c> and the mapped <see cref="Silk.NET.Vulkan.Result"/>
+    /// is returned; the caller decides how to surface the failure.
     /// </remarks>
-    public unsafe void CreateBuffer(
+    public unsafe Silk.NET.Vulkan.Result CreateBuffer(
         in BufferCreateInfo bufferInfo,
         in VmaAllocationCreateInfo allocInfo,
         out Silk.NET.Vulkan.Buffer buffer,
@@ -63,17 +64,26 @@ public sealed class VmaAllocator : IDisposable
         var vorticeBufferInfo = VmaStructConvert.ToVortice(in bufferInfo);
         var vorticeAllocInfo = VmaStructConvert.ToVortice(in allocInfo, allocInfo.Pool);
 
-        Vortice.Vulkan.Vma.vmaCreateBuffer(
+        var result = Vortice.Vulkan.Vma.vmaCreateBuffer(
             _allocator,
             &vorticeBufferInfo,
             &vorticeAllocInfo,
             out var rawBuffer,
             out var rawAlloc,
-            out var rawAllocInfo).CheckResult();
+            out var rawAllocInfo);
+
+        if (result != Vortice.Vulkan.VkResult.Success)
+        {
+            buffer = default;
+            allocation = default;
+            allocationInfo = default;
+            return (Silk.NET.Vulkan.Result)result;
+        }
 
         buffer = rawBuffer.ToSilk();
         allocation = new VmaAllocation(rawAlloc.Handle);
         allocationInfo = VmaStructConvert.ToPublic(in rawAllocInfo);
+        return Silk.NET.Vulkan.Result.Success;
     }
 
     /// <summary>
@@ -81,9 +91,11 @@ public sealed class VmaAllocator : IDisposable
     /// </summary>
     /// <remarks>
     /// Out-params return the raw <see cref="Silk.NET.Vulkan.Image"/> handle, the opaque
-    /// <see cref="VmaAllocation"/>, and the <see cref="VmaAllocationInfo"/>.
+    /// <see cref="VmaAllocation"/>, and the <see cref="VmaAllocationInfo"/>. On failure the
+    /// out-params are <c>default</c> and the mapped <see cref="Silk.NET.Vulkan.Result"/> is
+    /// returned.
     /// </remarks>
-    public unsafe void CreateImage(
+    public unsafe Silk.NET.Vulkan.Result CreateImage(
         in ImageCreateInfo imageInfo,
         in VmaAllocationCreateInfo allocInfo,
         out Image image,
@@ -95,17 +107,26 @@ public sealed class VmaAllocator : IDisposable
         var vorticeImageInfo = VmaStructConvert.ToVortice(in imageInfo);
         var vorticeAllocInfo = VmaStructConvert.ToVortice(in allocInfo, allocInfo.Pool);
 
-        Vortice.Vulkan.Vma.vmaCreateImage(
+        var result = Vortice.Vulkan.Vma.vmaCreateImage(
             _allocator,
             &vorticeImageInfo,
             &vorticeAllocInfo,
             out var rawImage,
             out var rawAlloc,
-            out var rawAllocInfo).CheckResult();
+            out var rawAllocInfo);
+
+        if (result != Vortice.Vulkan.VkResult.Success)
+        {
+            image = default;
+            allocation = default;
+            allocationInfo = default;
+            return (Silk.NET.Vulkan.Result)result;
+        }
 
         image = rawImage.ToSilk();
         allocation = new VmaAllocation(rawAlloc.Handle);
         allocationInfo = VmaStructConvert.ToPublic(in rawAllocInfo);
+        return Silk.NET.Vulkan.Result.Success;
     }
 
     public unsafe VmaPool CreatePool(in VmaPoolCreateInfo poolInfo)
@@ -165,8 +186,7 @@ public sealed class VmaAllocator : IDisposable
 
     /// <summary>
     /// Destroys a VMA-backed buffer + allocation. Idempotent once the allocator itself is disposed.
-    /// Public to allow managed wrappers in main Sparkitect (see <c>ManagedVmaAllocator</c>) to call
-    /// without requiring <c>InternalsVisibleTo</c>.
+    /// Public so consumers in main Sparkitect can call it without <c>InternalsVisibleTo</c>.
     /// </summary>
     public unsafe void DestroyBuffer(Silk.NET.Vulkan.Buffer buffer, VmaAllocation allocation)
     {

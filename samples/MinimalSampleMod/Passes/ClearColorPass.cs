@@ -1,44 +1,39 @@
+using System.Diagnostics;
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.Vulkan;
-using Sparkitect.RenderGraph;
+using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Windowing;
+using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 
 namespace MinimalSampleMod.Passes;
 
-/// <summary>
-/// Hand-authored render pass that clears the current swapchain image to a cycling
-/// color via <c>vkCmdClearColorImage</c>. The image layout must be
-/// <see cref="ImageLayout.TransferDstOptimal"/> — the surrounding render graph emits
-/// the matching barriers.
-/// </summary>
 [RenderPassRegistry.RegisterPass("clear_color")]
 internal sealed partial class ClearColorPass : ComputePass
 {
-    private readonly IVulkanContext _vulkanContext;
     private readonly ISparkitWindow _window;
-    private readonly IRenderGraphFrameContext _frameContext;
     private uint _frameCounter;
+    private const double MinFrameTimeS = 1 / 120d;
+    private long _lastTime;
 
-    public ClearColorPass(
-        IVulkanContext vulkanContext,
-        ISparkitWindow window,
-        IRenderGraphFrameContext frameContext)
+    public ClearColorPass(ISparkitWindow window)
     {
-        _vulkanContext = vulkanContext;
         _window = window;
-        _frameContext = frameContext;
     }
 
     public override void Setup()
     {
+        _lastTime = Stopwatch.GetTimestamp();
     }
 
-    public override unsafe void Execute(in ComputePassExecutePayload payload)
+    public override void Execute(VkCommandBuffer commandBuffer, uint swapchainImageIndex)
     {
-        var imageIndex = _frameContext.CurrentSwapchainImageIndex;
-        var swapImage = _window.Swapchain.Images[(int)imageIndex];
+        SpinWait.SpinUntil(() =>
+            Stopwatch.GetElapsedTime(_lastTime, Stopwatch.GetTimestamp()).TotalSeconds > MinFrameTimeS);
+        _lastTime = Stopwatch.GetTimestamp();
 
-        var t = (_frameCounter++ % 360u) / 360f;
+        var swapImage = _window.Swapchain.Images[(int)swapchainImageIndex];
+
+        var t = _frameCounter++ % 360u / 360f;
         var clearColor = new ClearColorValue
         {
             Float32_0 = t,
@@ -47,18 +42,6 @@ internal sealed partial class ClearColorPass : ComputePass
             Float32_3 = 1f,
         };
 
-        var range = new ImageSubresourceRange
-        {
-            AspectMask = ImageAspectFlags.ColorBit,
-            BaseMipLevel = 0, LevelCount = 1,
-            BaseArrayLayer = 0, LayerCount = 1,
-        };
-
-        _vulkanContext.VkApi.CmdClearColorImage(
-            payload.CommandBuffer.Handle,
-            swapImage.Handle,
-            ImageLayout.TransferDstOptimal,
-            in clearColor,
-            1, in range);
+        commandBuffer.ClearColorImage(swapImage, ImageLayout.TransferDstOptimal, in clearColor);
     }
 }

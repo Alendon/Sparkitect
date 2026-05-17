@@ -1,7 +1,6 @@
 using InterpolatedParsing;
 using Serilog;
 using Serilog.Configuration;
-using Serilog.Events;
 using Serilog.Exceptions;
 using Serilog.Formatting.Compact;
 using Sparkitect.DI.Container;

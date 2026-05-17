@@ -1,11 +1,8 @@
-using Serilog;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
-using Sparkitect.Graphics.Vulkan.Vma;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
-using Sparkitect.Windowing;
 
 namespace Sparkitect.Graphics.Vulkan;
 
@@ -46,27 +43,11 @@ public partial class VulkanModule : IStateModule
         vulkanContext.CreateDevice();
     }
 
-    [TransitionFunction("create_vma")]
-    [OnCreateScheduling]
-    [OrderAfter<CreateDeviceFunc>]
-    public static void CreateVma(IVmaService vmaService)
-    {
-        vmaService.Initialize();
-    }
-
     [TransitionFunction("begin_vulkan_teardown")]
     [OnDestroyScheduling]
     public static void BeginVulkanTeardown(IVulkanContextStateFacade vulkanContext)
     {
         vulkanContext.BeginVulkanTeardown();
-    }
-
-    [TransitionFunction("destroy_vma")]
-    [OnDestroyScheduling]
-    [OrderAfter<BeginVulkanTeardownFunc>]
-    public static void DestroyVma(IVmaService vmaService)
-    {
-        vmaService.Dispose();
     }
 
     [TransitionFunction("add_registries")]

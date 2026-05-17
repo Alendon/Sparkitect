@@ -3,8 +3,6 @@ using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.Resolution;
 using Sparkitect.ECS;
-using Sparkitect.ECS.Capabilities;
-using Sparkitect.ECS.Queries;
 using Sparkitect.ECS.Storage;
 using Sparkitect.ECS.Systems;
 using Sparkitect.GameState;

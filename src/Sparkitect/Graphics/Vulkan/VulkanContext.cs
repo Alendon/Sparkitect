@@ -1,6 +1,5 @@
-using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using Serilog;
 using Silk.NET.Core;
 using Silk.NET.Core.Native;
@@ -9,8 +8,8 @@ using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan.Extensions.KHR;
 using Silk.NET.Windowing;
 using Sparkitect.DI;
-using Sparkitect.DI.Container;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.Vulkan.Vma;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Utils;
 using Sparkitect.Utils.DU;
@@ -29,10 +28,11 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     public VkInstance VkInstance { get; private set; } = null!;
     public VkPhysicalDevice VkPhysicalDevice { get; private set; } = null!;
     public VkDevice VkDevice { get; private set; } = null!;
-    public unsafe AllocationCallbacks* DefaultAllocationCallbacks { get; }
+    public VmaAllocator VmaAllocator { get; private set; } = null!;
+    public AllocationCallbacks* DefaultAllocationCallbacks { get; }
     public IObjectTracker<VulkanObject> ObjectTracker { get; private set; } = null!;
 
-    private readonly Dictionary<uint, List<VulkanQueue>> _queuesByFamily = [];
+    private readonly Dictionary<uint, List<VkQueue>> _queuesByFamily = [];
     private ExtDebugUtils? _debugUtils;
     private DebugUtilsMessengerEXT _debugMessenger;
     private KhrSurface? _khrSurface;
@@ -52,7 +52,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         ObjectTracker = new ObjectTracker<VulkanObject>();
     }
 
-    public unsafe void CreateInstance()
+    public void CreateInstance()
     {
         var configContext = new VulkanInstanceConfigurationContext(VkApi);
 
@@ -156,7 +156,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
     }
 
-    private unsafe void SetupDebugMessenger()
+    private void SetupDebugMessenger()
     {
         if (!VkApi.TryGetInstanceExtension(VkInstance.Handle, out _debugUtils))
         {
@@ -190,7 +190,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
     }
 
-    private static unsafe uint DebugCallback(
+    private static uint DebugCallback(
         DebugUtilsMessageSeverityFlagsEXT messageSeverity,
         DebugUtilsMessageTypeFlagsEXT messageTypes,
         DebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -267,7 +267,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         };
     }
 
-    public unsafe void CreateDevice()
+    public void CreateDevice()
     {
         var configContext = new VulkanDeviceConfigurationContext(VkApi, VkPhysicalDevice.PhysicalDevice);
 
@@ -377,8 +377,12 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
 
         RetrieveQueues(queueRequests, configContext.QueueFamilyProperties);
-        
-        
+
+        VmaAllocator = VmaAllocator.Create(
+            VkInstance.Handle,
+            VkPhysicalDevice.PhysicalDevice,
+            VkDevice.Handle,
+            Vk.Version13);
     }
 
     public Result<VkCommandPool, VkApiResult> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex, [InjectCallerContext] CallerContext callerContext = default)
@@ -397,11 +401,20 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         return new VkCommandPool(pool, this, callerContext);
     }
 
-    public unsafe Result<VkDescriptorPool, VkApiResult> CreateDescriptorPool(in DescriptorPoolCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default)
+    public Result<VkDescriptorPool, VkApiResult> CreateDescriptorPool(VkDescriptorPoolCreateOptions options, [InjectCallerContext] CallerContext callerContext = default)
     {
-        fixed (DescriptorPoolCreateInfo* infoPtr = &createInfo)
+        var poolSizesSpan = options.PoolSizes.AsSpan();
+        fixed (DescriptorPoolSize* poolSizesPtr = poolSizesSpan)
         {
-            var result = VkApi.CreateDescriptorPool(VkDevice.Handle, infoPtr, DefaultAllocationCallbacks, out var pool);
+            var createInfo = new DescriptorPoolCreateInfo
+            {
+                SType = StructureType.DescriptorPoolCreateInfo,
+                MaxSets = options.MaxSets,
+                PoolSizeCount = (uint)poolSizesSpan.Length,
+                PPoolSizes = poolSizesPtr,
+                Flags = options.Flags,
+            };
+            var result = VkApi.CreateDescriptorPool(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var pool);
             if (result != VkApiResult.Success) return result;
             return new VkDescriptorPool(pool, this, callerContext);
         }
@@ -431,37 +444,208 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         return new VkFence(fence, this, callerContext);
     }
 
-    public Result<VkDescriptorSetLayout, VkApiResult> CreateDescriptorSetLayout(in DescriptorSetLayoutCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default)
+    public Result<VkDescriptorSetLayout, VkApiResult> CreateDescriptorSetLayout(VkDescriptorSetLayoutCreateOptions options, [InjectCallerContext] CallerContext callerContext = default)
     {
-        fixed (DescriptorSetLayoutCreateInfo* infoPtr = &createInfo)
+        var bindingsSpan = options.Bindings.AsSpan();
+        fixed (DescriptorSetLayoutBinding* bindingsPtr = bindingsSpan)
         {
-            var result = VkApi.CreateDescriptorSetLayout(VkDevice.Handle, infoPtr, DefaultAllocationCallbacks, out var layout);
+            var createInfo = new DescriptorSetLayoutCreateInfo
+            {
+                SType = StructureType.DescriptorSetLayoutCreateInfo,
+                BindingCount = (uint)bindingsSpan.Length,
+                PBindings = bindingsPtr,
+                Flags = options.Flags,
+            };
+            var result = VkApi.CreateDescriptorSetLayout(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var layout);
             if (result != VkApiResult.Success) return result;
             return new VkDescriptorSetLayout(layout, this, callerContext);
         }
     }
 
-    public Result<VkPipelineLayout, VkApiResult> CreatePipelineLayout(in PipelineLayoutCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default)
+    public Result<VkPipelineLayout, VkApiResult> CreatePipelineLayout(VkPipelineLayoutCreateOptions options, [InjectCallerContext] CallerContext callerContext = default)
     {
-        fixed (PipelineLayoutCreateInfo* infoPtr = &createInfo)
+        var setLayouts = options.SetLayouts;
+        Span<DescriptorSetLayout> handles = setLayouts.Length <= 16
+            ? stackalloc DescriptorSetLayout[setLayouts.Length]
+            : new DescriptorSetLayout[setLayouts.Length];
+        for (var i = 0; i < setLayouts.Length; i++)
+            handles[i] = setLayouts[i].Handle;
+
+        var pushConstantsSpan = options.PushConstantRanges.AsSpan();
+
+        fixed (DescriptorSetLayout* setLayoutsPtr = handles)
+        fixed (PushConstantRange* pushConstantsPtr = pushConstantsSpan)
         {
-            var result = VkApi.CreatePipelineLayout(VkDevice.Handle, infoPtr, DefaultAllocationCallbacks, out var layout);
+            var createInfo = new PipelineLayoutCreateInfo
+            {
+                SType = StructureType.PipelineLayoutCreateInfo,
+                SetLayoutCount = (uint)setLayouts.Length,
+                PSetLayouts = setLayoutsPtr,
+                PushConstantRangeCount = (uint)pushConstantsSpan.Length,
+                PPushConstantRanges = pushConstantsPtr,
+            };
+            var result = VkApi.CreatePipelineLayout(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var layout);
             if (result != VkApiResult.Success) return result;
             return new VkPipelineLayout(layout, this, callerContext);
         }
     }
 
-    public Result<VkPipeline, VkApiResult> CreateComputePipeline(in ComputePipelineCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default)
+    public Result<VkPipeline, VkApiResult> CreateComputePipeline(VkComputePipelineCreateOptions options, [InjectCallerContext] CallerContext callerContext = default)
     {
-        fixed (ComputePipelineCreateInfo* infoPtr = &createInfo)
+        var byteCount = Encoding.UTF8.GetByteCount(options.EntryPoint);
+        Span<byte> nameBuffer = byteCount + 1 <= 64
+            ? stackalloc byte[byteCount + 1]
+            : new byte[byteCount + 1];
+        Encoding.UTF8.GetBytes(options.EntryPoint, nameBuffer);
+        nameBuffer[byteCount] = 0;
+
+        fixed (byte* pName = nameBuffer)
         {
-            var result = VkApi.CreateComputePipelines(VkDevice.Handle, default, 1, infoPtr, DefaultAllocationCallbacks, out var pipeline);
+            var stageInfo = new PipelineShaderStageCreateInfo
+            {
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.ComputeBit,
+                Module = options.Shader.Handle,
+                PName = pName,
+            };
+            var createInfo = new ComputePipelineCreateInfo
+            {
+                SType = StructureType.ComputePipelineCreateInfo,
+                Stage = stageInfo,
+                Layout = options.Layout.Handle,
+            };
+            var result = VkApi.CreateComputePipelines(VkDevice.Handle, default, 1, createInfo, DefaultAllocationCallbacks, out var pipeline);
             if (result != VkApiResult.Success) return result;
             return new VkPipeline(pipeline, this, callerContext);
         }
     }
 
-    public unsafe VkSurface? CreateSurface(IWindow window)
+    public Result<VkShaderModule, VkApiResult> CreateShaderModule(ReadOnlySpan<uint> spirvCode, [InjectCallerContext] CallerContext callerContext = default)
+    {
+        fixed (uint* codePtr = spirvCode)
+        {
+            var createInfo = new ShaderModuleCreateInfo
+            {
+                SType = StructureType.ShaderModuleCreateInfo,
+                PCode = codePtr,
+                CodeSize = (nuint)spirvCode.Length * sizeof(uint),
+            };
+            var result = VkApi.CreateShaderModule(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var module);
+            if (result != VkApiResult.Success) return result;
+            return new VkShaderModule(module, this, callerContext);
+        }
+    }
+
+    public Result<VkImage, VkApiResult> CreateImage(VkImageCreateOptions options, in VmaAllocationCreateInfo allocInfo, [InjectCallerContext] CallerContext callerContext = default)
+    {
+        var imageInfo = new ImageCreateInfo
+        {
+            SType = StructureType.ImageCreateInfo,
+            ImageType = options.Type,
+            Format = options.Format,
+            Extent = options.Extent,
+            MipLevels = options.MipLevels,
+            ArrayLayers = options.ArrayLayers,
+            Samples = options.Samples,
+            Tiling = options.Tiling,
+            Usage = options.Usage,
+            SharingMode = options.SharingMode,
+            InitialLayout = options.InitialLayout,
+        };
+
+        var result = VmaAllocator.CreateImage(in imageInfo, in allocInfo, out var image, out var allocation, out _);
+        if (result != VkApiResult.Success) return result;
+
+        return new VkImage(
+            image,
+            imageInfo.Format,
+            imageInfo.Extent,
+            imageInfo.MipLevels,
+            imageInfo.ArrayLayers,
+            imageInfo.ImageType,
+            imageInfo.Usage,
+            allocation,
+            this,
+            callerContext);
+    }
+
+    public Result<VkBuffer, VkApiResult> CreateBuffer(VkBufferCreateOptions options, in VmaAllocationCreateInfo allocInfo, [InjectCallerContext] CallerContext callerContext = default)
+    {
+        var bufferInfo = new BufferCreateInfo
+        {
+            SType = StructureType.BufferCreateInfo,
+            Size = options.Size,
+            Usage = options.Usage,
+            SharingMode = options.SharingMode,
+        };
+
+        var result = VmaAllocator.CreateBuffer(in bufferInfo, in allocInfo, out var buffer, out var allocation, out var allocationInfo);
+        if (result != VkApiResult.Success) return result;
+
+        return new VkBuffer(
+            buffer, bufferInfo.Size, bufferInfo.Usage,
+            allocation, allocationInfo.MappedData, this, callerContext);
+    }
+
+    public Result<VkImage, VkApiResult> CreateStorageImage2D(
+        Extent2D extent,
+        Format format,
+        VmaMemoryUsage memoryUsage = VmaMemoryUsage.GpuOnly,
+        ImageUsageFlags extraUsage = ImageUsageFlags.TransferSrcBit,
+        [InjectCallerContext] CallerContext callerContext = default)
+    {
+        var options = new VkImageCreateOptions(
+            Extent: new Extent3D(extent.Width, extent.Height, 1),
+            Format: format,
+            Usage: ImageUsageFlags.StorageBit | extraUsage);
+        var allocInfo = new VmaAllocationCreateInfo { Usage = memoryUsage };
+        return CreateImage(options, in allocInfo, callerContext);
+    }
+
+    public Result<VkBuffer, VkApiResult> CreateMappedStorageBuffer(
+        ulong size,
+        [InjectCallerContext] CallerContext callerContext = default)
+    {
+        var options = new VkBufferCreateOptions(
+            Size: size,
+            Usage: BufferUsageFlags.StorageBufferBit);
+        var allocInfo = new VmaAllocationCreateInfo
+        {
+            Usage = VmaMemoryUsage.CpuToGpu,
+            Flags = VmaAllocationCreateFlags.Mapped
+        };
+        return CreateBuffer(options, in allocInfo, callerContext);
+    }
+
+    public Result<VkSampler, VkApiResult> CreateSampler(
+        VkSamplerCreateOptions options,
+        [InjectCallerContext] CallerContext callerContext = default)
+    {
+        var createInfo = new SamplerCreateInfo
+        {
+            SType = StructureType.SamplerCreateInfo,
+            MagFilter = options.MagFilter,
+            MinFilter = options.MinFilter,
+            MipmapMode = options.MipmapMode,
+            AddressModeU = options.AddressModeU,
+            AddressModeV = options.AddressModeV,
+            AddressModeW = options.AddressModeW,
+            MipLodBias = options.MipLodBias,
+            AnisotropyEnable = options.AnisotropyEnable,
+            MaxAnisotropy = options.MaxAnisotropy,
+            CompareEnable = options.CompareEnable,
+            CompareOp = options.CompareOp,
+            MinLod = options.MinLod,
+            MaxLod = options.MaxLod,
+            BorderColor = options.BorderColor,
+            UnnormalizedCoordinates = options.UnnormalizedCoordinates,
+        };
+        var result = VkApi.CreateSampler(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var sampler);
+        if (result != VkApiResult.Success) return result;
+        return new VkSampler(sampler, this, callerContext);
+    }
+
+    public VkSurface? CreateSurface(IWindow window)
     {
         if (window.VkSurface == null || _khrSurface == null)
         {
@@ -490,12 +674,12 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         foreach (var request in requests)
         {
             var capabilities = familyProperties[(int)request.QueueFamilyIndex].QueueFlags;
-            var queues = new List<VulkanQueue>((int)request.QueueCount);
+            var queues = new List<VkQueue>((int)request.QueueCount);
 
             for (uint i = 0; i < request.QueueCount; i++)
             {
                 var handle = VkDevice.GetQueue(request.QueueFamilyIndex, i);
-                queues.Add(new VulkanQueue(handle, request.QueueFamilyIndex, i, capabilities));
+                queues.Add(new VkQueue(handle, request.QueueFamilyIndex, i, capabilities, this));
             }
 
             _queuesByFamily[request.QueueFamilyIndex] = queues;
@@ -505,14 +689,14 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             _queuesByFamily.Values.Sum(q => q.Count), _queuesByFamily.Count);
     }
 
-    public VulkanQueue? GetQueue(uint familyIndex, uint queueIndex)
+    public VkQueue? GetQueue(uint familyIndex, uint queueIndex)
     {
         return _queuesByFamily.TryGetValue(familyIndex, out var queues)
             ? queues.FirstOrDefault(q => q.QueueIndex == queueIndex)
             : null;
     }
 
-    public IReadOnlyList<VulkanQueue> GetQueuesForFamily(uint familyIndex)
+    public IReadOnlyList<VkQueue> GetQueuesForFamily(uint familyIndex)
     {
         return _queuesByFamily.TryGetValue(familyIndex, out var queues) ? queues : [];
     }
@@ -528,7 +712,16 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
 
     public void DestroyDevice()
     {
+        VmaAllocator?.Dispose();
+        VmaAllocator = null!;
+
+        foreach (var queues in _queuesByFamily.Values)
+        {
+            foreach (var queue in queues)
+                queue.Dispose();
+        }
         _queuesByFamily.Clear();
+
         VkDevice?.Dispose();
         VkDevice = null!;
     }
@@ -539,7 +732,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         VkPhysicalDevice = null!;
     }
 
-    public unsafe void DestroyInstance()
+    public void DestroyInstance()
     {
         if (_debugUtils != null && _debugMessenger.Handle != 0)
         {

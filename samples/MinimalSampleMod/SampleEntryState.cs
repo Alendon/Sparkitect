@@ -60,18 +60,6 @@ public partial class SampleEntryState : IStateDescriptor
         pool.Dispose();
         Log.Information("Command pool disposed (single buffer auto-freed)");
     }
-
-    [PerFrameFunction("print_on_frame")]
-    [PerFrameScheduling]
-    public static void PrintOnFrame(IDummyValueManagerStateFacade dummyValueManager)
-    {
-        Log.Information("Dummy Value fetched for {Id} as: {Value}", DummyID.MinimalSampleMod.Hello1,
-            dummyValueManager.GetDummyFacaded(DummyID.MinimalSampleMod.Hello1));
-        
-        Log.Information("Dummy Value from Provider fetched for {Id} as: {Provider}", DummyID.MinimalSampleMod.DummyProvider,
-            dummyValueManager.GetDummyFacaded(DummyID.MinimalSampleMod.DummyProvider));
-        Thread.Sleep(1000);
-    }
 }
 
 [DummyRegistry.RegisterProvider("dummy_provider")]

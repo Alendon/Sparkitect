@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using Semver;
 using Serilog;
 using Sparkitect.CompilerGenerated.IdExtensions;
@@ -290,7 +287,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
     }
 
-    public void FinalizeRegistrations()
+    private void FinalizeRegistrations()
     {
         // Register modules
         foreach (var moduleFactory in _pendingModules)

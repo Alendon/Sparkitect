@@ -6,7 +6,6 @@ using Sparkitect.DI;
 using Sparkitect.Utils;
 using Semver;
 using Serilog;
-using Sparkitect.DI.Container;
 using Sparkitect.GameState;
 using Sparkitect.Utils.DU;
 

@@ -7,7 +7,7 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkFence : VulkanObject
 {
-    internal unsafe VkFence(Fence handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
+    public VkFence(Fence handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
         : base(vulkanContext, callerContext)
     {
         Handle = handle;

@@ -4,11 +4,6 @@ using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
-// TODO: SG Analyzer - Validate StatelessFunctionAttribute usage:
-//   - Method must be static
-//   - Method must have exactly one scheduling attribute matching TContext/TRegistry
-//   - Method parameters must be DI-resolvable types
-//   - Containing type must implement IHasIdentification
 
 //Non generic base class, to be able to pass a generic type without the sub types, when only SG or non CLR compliant usage is  required
 public abstract class StatelessFunctionAttribute : Attribute

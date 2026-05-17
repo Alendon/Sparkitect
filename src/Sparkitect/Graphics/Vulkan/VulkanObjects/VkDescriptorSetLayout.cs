@@ -7,7 +7,7 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkDescriptorSetLayout : VulkanObject
 {
-    internal VkDescriptorSetLayout(DescriptorSetLayout handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
+    public VkDescriptorSetLayout(DescriptorSetLayout handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
         : base(vulkanContext, callerContext)
     {
         Handle = handle;

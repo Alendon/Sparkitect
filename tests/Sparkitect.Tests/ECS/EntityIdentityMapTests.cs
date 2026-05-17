@@ -1,5 +1,4 @@
 using Sparkitect.ECS;
-using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Storage;
 
 namespace Sparkitect.Tests.ECS;

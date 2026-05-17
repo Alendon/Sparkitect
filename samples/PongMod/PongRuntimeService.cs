@@ -11,7 +11,6 @@ using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Utils.DU;
 using Sparkitect.Windowing;
-using Sparkitect.Graphics.Vulkan.Vma;
 using VkApiResult = Silk.NET.Vulkan.Result;
 namespace PongMod;
 
@@ -31,11 +30,11 @@ internal class PongRuntimeService : IPongRuntimeService
     private VkSemaphore? _renderFinishedSemaphore;
     private VkFence? _inFlightFence;
     private uint _graphicsQueueFamily;
-    private Queue _graphicsQueue;
+    private VkQueue _graphicsQueue = null!;
 
-    // VMA and storage image
-    private VmaImage? _storageImage;
-    private ImageView _storageImageView;
+    // Storage image
+    private VkImage? _storageImage;
+    private VkImageView? _storageImageView;
 
     // Compute pipeline resources
     private VkDescriptorSetLayout? _descriptorSetLayout;
@@ -48,7 +47,6 @@ internal class PongRuntimeService : IPongRuntimeService
     public required IVulkanContext VulkanContext { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
     public required IShaderManager ShaderManager { private get; init; }
-    public required IVmaService VmaService { private get; init; }
 
     public ref PongGameData GameData => ref _gameData;
     public float DeltaTime { get; private set; }
@@ -59,7 +57,7 @@ internal class PongRuntimeService : IPongRuntimeService
         set => _backgroundColor = value;
     }
 
-    public unsafe void Initialize()
+    public void Initialize()
     {
         _gameData = PongGameData.CreateDefault();
         _frameTimer.Start();
@@ -74,7 +72,7 @@ internal class PongRuntimeService : IPongRuntimeService
         var queue = VulkanContext.GetQueue(_graphicsQueueFamily, 0);
         if (queue == null)
             throw new InvalidOperationException("No graphics queue available");
-        _graphicsQueue = queue.Handle;
+        _graphicsQueue = queue;
 
         // Create command pool
         var poolResult = VulkanContext.CreateCommandPool(
@@ -106,48 +104,18 @@ internal class PongRuntimeService : IPongRuntimeService
             throw new InvalidOperationException($"Failed to create fence: {fenceError.Value}");
         _inFlightFence = ((Result<VkFence, VkApiResult>.Ok)fenceResult).Value;
 
-        var vk = VulkanContext.VkApi;
-        var device = VulkanContext.VkDevice.Handle;
-
         // Create storage image (R8G8B8A8_UNORM supports STORAGE_BIT)
         var swapchain = _window!.Swapchain;
-        var imageInfo = new ImageCreateInfo
-        {
-            SType = StructureType.ImageCreateInfo,
-            ImageType = ImageType.Type2D,
-            Format = Format.R8G8B8A8Unorm,
-            Extent = new Extent3D(swapchain.Extent.Width, swapchain.Extent.Height, 1),
-            MipLevels = 1,
-            ArrayLayers = 1,
-            Samples = SampleCountFlags.Count1Bit,
-            Tiling = ImageTiling.Optimal,
-            Usage = ImageUsageFlags.StorageBit | ImageUsageFlags.TransferSrcBit,
-            SharingMode = SharingMode.Exclusive,
-            InitialLayout = ImageLayout.Undefined
-        };
-        var allocInfo = new VmaAllocationCreateInfo
-        {
-            Usage = VmaMemoryUsage.GpuOnly
-        };
-        _storageImage = VmaService.DefaultAllocator.CreateImage(imageInfo, allocInfo);
+        var storageImageResult = VulkanContext.CreateStorageImage2D(swapchain.Extent, Format.R8G8B8A8Unorm);
+        if (storageImageResult is Result<VkImage, VkApiResult>.Error storageImageError)
+            throw new InvalidOperationException($"Failed to create storage image: {storageImageError.Value}");
+        _storageImage = ((Result<VkImage, VkApiResult>.Ok)storageImageResult).Value;
 
         // Create storage image view
-        var storageViewInfo = new ImageViewCreateInfo
-        {
-            SType = StructureType.ImageViewCreateInfo,
-            Image = _storageImage.Image,
-            ViewType = ImageViewType.Type2D,
-            Format = Format.R8G8B8A8Unorm,
-            SubresourceRange = new ImageSubresourceRange
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                BaseMipLevel = 0,
-                LevelCount = 1,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            }
-        };
-        vk.CreateImageView(device, storageViewInfo, null, out _storageImageView);
+        var storageViewResult = _storageImage!.CreateView(ImageAspectFlags.ColorBit);
+        if (storageViewResult is Result<VkImageView, VkApiResult>.Error storageViewErr)
+            throw new InvalidOperationException($"Failed to create storage image view: {storageViewErr.Value}");
+        _storageImageView = ((Result<VkImageView, VkApiResult>.Ok)storageViewResult).Value;
 
         CreateComputePipeline();
         CreateDescriptorResources();
@@ -162,85 +130,60 @@ internal class PongRuntimeService : IPongRuntimeService
             throw new InvalidOperationException("Pong shader not registered");
 
         // Descriptor set layout: binding 0 = storage image
-        var binding = new DescriptorSetLayoutBinding
-        {
-            Binding = 0,
-            DescriptorType = DescriptorType.StorageImage,
-            DescriptorCount = 1,
-            StageFlags = ShaderStageFlags.ComputeBit
-        };
-        var layoutInfo = new DescriptorSetLayoutCreateInfo
-        {
-            SType = StructureType.DescriptorSetLayoutCreateInfo,
-            BindingCount = 1,
-            PBindings = &binding
-        };
-        var layoutResult = VulkanContext.CreateDescriptorSetLayout(layoutInfo);
+        var layoutResult = VulkanContext.CreateDescriptorSetLayout(
+            new VkDescriptorSetLayoutCreateOptions(Bindings:
+            [
+                new DescriptorSetLayoutBinding
+                {
+                    Binding = 0,
+                    DescriptorType = DescriptorType.StorageImage,
+                    DescriptorCount = 1,
+                    StageFlags = ShaderStageFlags.ComputeBit,
+                },
+            ]));
         if (layoutResult is Result<VkDescriptorSetLayout, VkApiResult>.Error layoutError)
             throw new InvalidOperationException($"Failed to create descriptor set layout: {layoutError.Value}");
         _descriptorSetLayout = ((Result<VkDescriptorSetLayout, VkApiResult>.Ok)layoutResult).Value;
 
         // Pipeline layout: push constants + descriptor set
-        var pushConstantRange = new PushConstantRange
-        {
-            StageFlags = ShaderStageFlags.ComputeBit,
-            Offset = 0,
-            Size = (uint)sizeof(PongGameData)
-        };
-        var setLayout = _descriptorSetLayout.Handle;
-        var pipelineLayoutInfo = new PipelineLayoutCreateInfo
-        {
-            SType = StructureType.PipelineLayoutCreateInfo,
-            SetLayoutCount = 1,
-            PSetLayouts = &setLayout,
-            PushConstantRangeCount = 1,
-            PPushConstantRanges = &pushConstantRange
-        };
-        var pipelineLayoutResult = VulkanContext.CreatePipelineLayout(pipelineLayoutInfo);
+        var pipelineLayoutResult = VulkanContext.CreatePipelineLayout(
+            new VkPipelineLayoutCreateOptions(
+                SetLayouts: [_descriptorSetLayout!],
+                PushConstantRanges:
+                [
+                    new PushConstantRange
+                    {
+                        StageFlags = ShaderStageFlags.ComputeBit,
+                        Offset = 0,
+                        Size = (uint)sizeof(PongGameData),
+                    },
+                ]));
         if (pipelineLayoutResult is Result<VkPipelineLayout, VkApiResult>.Error pipelineLayoutError)
             throw new InvalidOperationException($"Failed to create pipeline layout: {pipelineLayoutError.Value}");
         _pipelineLayout = ((Result<VkPipelineLayout, VkApiResult>.Ok)pipelineLayoutResult).Value;
 
         // Compute pipeline
-        var entryPoint = "main"u8;
-        fixed (byte* entryPointPtr = entryPoint)
-        {
-            var stageInfo = new PipelineShaderStageCreateInfo
-            {
-                SType = StructureType.PipelineShaderStageCreateInfo,
-                Stage = ShaderStageFlags.ComputeBit,
-                Module = shaderModule.Handle,
-                PName = entryPointPtr
-            };
-            var computePipelineInfo = new ComputePipelineCreateInfo
-            {
-                SType = StructureType.ComputePipelineCreateInfo,
-                Stage = stageInfo,
-                Layout = _pipelineLayout.Handle
-            };
-            var pipelineResult = VulkanContext.CreateComputePipeline(computePipelineInfo);
-            if (pipelineResult is Result<VkPipeline, VkApiResult>.Error pipelineError)
-                throw new InvalidOperationException($"Failed to create compute pipeline: {pipelineError.Value}");
-            _computePipeline = ((Result<VkPipeline, VkApiResult>.Ok)pipelineResult).Value;
-        }
+        var pipelineResult = VulkanContext.CreateComputePipeline(
+            new VkComputePipelineCreateOptions(shaderModule, _pipelineLayout!));
+        if (pipelineResult is Result<VkPipeline, VkApiResult>.Error pipelineError)
+            throw new InvalidOperationException($"Failed to create compute pipeline: {pipelineError.Value}");
+        _computePipeline = ((Result<VkPipeline, VkApiResult>.Ok)pipelineResult).Value;
     }
 
-    private unsafe void CreateDescriptorResources()
+    private void CreateDescriptorResources()
     {
         // Descriptor pool (only need 1)
-        var poolSize = new DescriptorPoolSize
-        {
-            Type = DescriptorType.StorageImage,
-            DescriptorCount = 1
-        };
-        var poolInfo = new DescriptorPoolCreateInfo
-        {
-            SType = StructureType.DescriptorPoolCreateInfo,
-            MaxSets = 1,
-            PoolSizeCount = 1,
-            PPoolSizes = &poolSize
-        };
-        var poolResult = VulkanContext.CreateDescriptorPool(poolInfo);
+        var poolResult = VulkanContext.CreateDescriptorPool(
+            new VkDescriptorPoolCreateOptions(
+                MaxSets: 1,
+                PoolSizes:
+                [
+                    new DescriptorPoolSize
+                    {
+                        Type = DescriptorType.StorageImage,
+                        DescriptorCount = 1,
+                    },
+                ]));
         if (poolResult is Result<VkDescriptorPool, VkApiResult>.Error descriptorPoolError)
             throw new InvalidOperationException($"Failed to create descriptor pool: {descriptorPoolError.Value}");
         _descriptorPool = ((Result<VkDescriptorPool, VkApiResult>.Ok)poolResult).Value;
@@ -252,21 +195,7 @@ internal class PongRuntimeService : IPongRuntimeService
         _descriptorSet = ((Result<VkDescriptorSet, VkApiResult>.Ok)setResult).Value;
 
         // Write descriptor pointing to storage image
-        var imageInfo = new DescriptorImageInfo
-        {
-            ImageView = _storageImageView,
-            ImageLayout = ImageLayout.General
-        };
-        var write = new WriteDescriptorSet
-        {
-            SType = StructureType.WriteDescriptorSet,
-            DstSet = _descriptorSet.Handle,
-            DstBinding = 0,
-            DescriptorCount = 1,
-            DescriptorType = DescriptorType.StorageImage,
-            PImageInfo = &imageInfo
-        };
-        VulkanContext.VkApi.UpdateDescriptorSets(VulkanContext.VkDevice.Handle, 1, write, 0, null);
+        _descriptorSet!.WriteStorageImage(binding: 0, _storageImageView!, ImageLayout.General);
     }
 
     private uint FindGraphicsQueueFamily(VkPhysicalDevice physicalDevice)
@@ -289,7 +218,7 @@ internal class PongRuntimeService : IPongRuntimeService
         UpdateSimulation();
     }
 
-    public unsafe void Render()
+    public void Render()
     {
         if (_window is null) return;
 
@@ -301,8 +230,6 @@ internal class PongRuntimeService : IPongRuntimeService
             return;
         }
 
-        var vk = VulkanContext.VkApi;
-        var device = VulkanContext.VkDevice.Handle;
         var swapchain = _window.Swapchain;
 
         // Wait for previous frame
@@ -315,166 +242,78 @@ internal class PongRuntimeService : IPongRuntimeService
             return;
         var imageIndex = ((Result<uint, VkApiResult>.Ok)acquireResult).Value;
 
-        // Record command buffer
-        var cmd = _commandBuffer!.Handle;
-        vk.ResetCommandBuffer(cmd, 0);
-
-        var beginInfo = new CommandBufferBeginInfo
-        {
-            SType = StructureType.CommandBufferBeginInfo,
-            Flags = CommandBufferUsageFlags.OneTimeSubmitBit
-        };
-        vk.BeginCommandBuffer(cmd, beginInfo);
+        _commandBuffer!.Reset();
+        _commandBuffer.Begin(CommandBufferUsageFlags.OneTimeSubmitBit);
 
         // Transition storage image to General for compute write
-        var storageBarrier = new ImageMemoryBarrier
-        {
-            SType = StructureType.ImageMemoryBarrier,
-            OldLayout = ImageLayout.Undefined,
-            NewLayout = ImageLayout.General,
-            SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
-            DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
-            Image = _storageImage!.Image,
-            SubresourceRange = new ImageSubresourceRange
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                BaseMipLevel = 0,
-                LevelCount = 1,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            },
-            SrcAccessMask = 0,
-            DstAccessMask = AccessFlags.ShaderWriteBit
-        };
-        vk.CmdPipelineBarrier(cmd,
-            PipelineStageFlags.TopOfPipeBit,
-            PipelineStageFlags.ComputeShaderBit,
-            0, 0, null, 0, null, 1, storageBarrier);
+        _commandBuffer!.ImageBarrier(
+            _storageImage!,
+            oldLayout: ImageLayout.Undefined,
+            newLayout: ImageLayout.General,
+            srcStage: PipelineStageFlags.TopOfPipeBit,
+            dstStage: PipelineStageFlags.ComputeShaderBit,
+            srcAccess: 0,
+            dstAccess: AccessFlags.ShaderWriteBit);
 
-        // Bind compute pipeline and dispatch
-        vk.CmdBindPipeline(cmd, PipelineBindPoint.Compute, _computePipeline!.Handle);
-        var descriptorSet = _descriptorSet!.Handle;
-        vk.CmdBindDescriptorSets(cmd, PipelineBindPoint.Compute, _pipelineLayout!.Handle, 0, 1, &descriptorSet, 0, null);
+        _commandBuffer.BindPipeline(PipelineBindPoint.Compute, _computePipeline!);
+        _commandBuffer!.BindDescriptorSets(PipelineBindPoint.Compute, _pipelineLayout!, firstSet: 0, _descriptorSet!);
 
-        // Update screen dimensions, background color, and push constants
         _gameData.ScreenWidth = swapchain.Extent.Width;
         _gameData.ScreenHeight = swapchain.Extent.Height;
         _gameData.BackgroundColor = _backgroundColor;
-        fixed (PongGameData* gameDataPtr = &_gameData)
-        {
-            vk.CmdPushConstants(cmd, _pipelineLayout.Handle, ShaderStageFlags.ComputeBit, 0, (uint)sizeof(PongGameData), gameDataPtr);
-        }
+        _commandBuffer.PushConstants(_pipelineLayout!, ShaderStageFlags.ComputeBit, 0, in _gameData);
 
-        // Dispatch compute shader (8x8 workgroups)
         var groupCountX = (swapchain.Extent.Width + 7) / 8;
         var groupCountY = (swapchain.Extent.Height + 7) / 8;
-        vk.CmdDispatch(cmd, groupCountX, groupCountY, 1);
+        _commandBuffer.Dispatch(groupCountX, groupCountY, 1);
 
         // Transition storage image: GENERAL -> TRANSFER_SRC_OPTIMAL
-        storageBarrier.OldLayout = ImageLayout.General;
-        storageBarrier.NewLayout = ImageLayout.TransferSrcOptimal;
-        storageBarrier.SrcAccessMask = AccessFlags.ShaderWriteBit;
-        storageBarrier.DstAccessMask = AccessFlags.TransferReadBit;
-        vk.CmdPipelineBarrier(cmd,
-            PipelineStageFlags.ComputeShaderBit,
-            PipelineStageFlags.TransferBit,
-            0, 0, null, 0, null, 1, storageBarrier);
+        _commandBuffer!.ImageBarrier(
+            _storageImage!,
+            oldLayout: ImageLayout.General,
+            newLayout: ImageLayout.TransferSrcOptimal,
+            srcStage: PipelineStageFlags.ComputeShaderBit,
+            dstStage: PipelineStageFlags.TransferBit,
+            srcAccess: AccessFlags.ShaderWriteBit,
+            dstAccess: AccessFlags.TransferReadBit);
 
-        // Transition swapchain image: UNDEFINED -> TRANSFER_DST_OPTIMAL
-        var swapchainBarrier = new ImageMemoryBarrier
-        {
-            SType = StructureType.ImageMemoryBarrier,
-            OldLayout = ImageLayout.Undefined,
-            NewLayout = ImageLayout.TransferDstOptimal,
-            SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
-            DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
-            Image = swapchain.Images[(int)imageIndex].Handle,
-            SubresourceRange = new ImageSubresourceRange
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                BaseMipLevel = 0,
-                LevelCount = 1,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            },
-            SrcAccessMask = 0,
-            DstAccessMask = AccessFlags.TransferWriteBit
-        };
-        vk.CmdPipelineBarrier(cmd,
-            PipelineStageFlags.TopOfPipeBit,
-            PipelineStageFlags.TransferBit,
-            0, 0, null, 0, null, 1, swapchainBarrier);
+        var swapchainImage = swapchain.Images[(int)imageIndex];
+        _commandBuffer.ImageBarrier(swapchainImage,
+            ImageLayout.Undefined, ImageLayout.TransferDstOptimal,
+            PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.TransferBit,
+            0, AccessFlags.TransferWriteBit);
 
         // Blit storage image to swapchain
-        var blitRegion = new ImageBlit
-        {
-            SrcSubresource = new ImageSubresourceLayers
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                MipLevel = 0,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            },
-            DstSubresource = new ImageSubresourceLayers
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                MipLevel = 0,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            }
-        };
-        // Source region (storage image)
-        blitRegion.SrcOffsets[0] = new Offset3D(0, 0, 0);
-        blitRegion.SrcOffsets[1] = new Offset3D((int)swapchain.Extent.Width, (int)swapchain.Extent.Height, 1);
-        // Destination region (swapchain image)
-        blitRegion.DstOffsets[0] = new Offset3D(0, 0, 0);
-        blitRegion.DstOffsets[1] = new Offset3D((int)swapchain.Extent.Width, (int)swapchain.Extent.Height, 1);
+        _commandBuffer.BlitFullExtent(
+            _storageImage!, ImageLayout.TransferSrcOptimal,
+            swapchainImage, ImageLayout.TransferDstOptimal,
+            Filter.Nearest);
 
-        vk.CmdBlitImage(cmd,
-            _storageImage.Image, ImageLayout.TransferSrcOptimal,
-            swapchain.Images[(int)imageIndex].Handle, ImageLayout.TransferDstOptimal,
-            1, blitRegion, Filter.Nearest);
+        _commandBuffer.ImageBarrier(swapchainImage,
+            ImageLayout.TransferDstOptimal, ImageLayout.PresentSrcKhr,
+            PipelineStageFlags.TransferBit, PipelineStageFlags.BottomOfPipeBit,
+            AccessFlags.TransferWriteBit, 0);
 
-        // Transition swapchain to present
-        swapchainBarrier.OldLayout = ImageLayout.TransferDstOptimal;
-        swapchainBarrier.NewLayout = ImageLayout.PresentSrcKhr;
-        swapchainBarrier.SrcAccessMask = AccessFlags.TransferWriteBit;
-        swapchainBarrier.DstAccessMask = 0;
-        vk.CmdPipelineBarrier(cmd,
-            PipelineStageFlags.TransferBit,
-            PipelineStageFlags.BottomOfPipeBit,
-            0, 0, null, 0, null, 1, swapchainBarrier);
-
-        vk.EndCommandBuffer(cmd);
+        _commandBuffer.End();
 
         // Submit
-        var waitSemaphore = _imageAvailableSemaphore.Handle;
-        var signalSemaphore = _renderFinishedSemaphore!.Handle;
-        var waitStage = PipelineStageFlags.ColorAttachmentOutputBit;
-
-        var submitInfo = new SubmitInfo
-        {
-            SType = StructureType.SubmitInfo,
-            WaitSemaphoreCount = 1,
-            PWaitSemaphores = &waitSemaphore,
-            PWaitDstStageMask = &waitStage,
-            CommandBufferCount = 1,
-            PCommandBuffers = &cmd,
-            SignalSemaphoreCount = 1,
-            PSignalSemaphores = &signalSemaphore
-        };
-        vk.QueueSubmit(_graphicsQueue, 1, submitInfo, _inFlightFence.Handle);
+        _graphicsQueue.Submit(
+            _commandBuffer!,
+            waitSemaphores: [_imageAvailableSemaphore!],
+            waitStages: [PipelineStageFlags.ColorAttachmentOutputBit],
+            signalSemaphores: [_renderFinishedSemaphore!],
+            fence: _inFlightFence!);
 
         // Present
-        swapchain.Present(imageIndex, _renderFinishedSemaphore, _graphicsQueue);
+        swapchain.Present(imageIndex, _renderFinishedSemaphore!, _graphicsQueue);
     }
 
-    public unsafe void Cleanup()
+    public void Cleanup()
     {
-        VulkanContext.VkApi.DeviceWaitIdle(VulkanContext.VkDevice.Handle);
+        VulkanContext.VkDevice.WaitIdle();
 
         // Cleanup storage image resources
-        VulkanContext.VkApi.DestroyImageView(VulkanContext.VkDevice.Handle, _storageImageView, null);
+        _storageImageView?.Dispose();
         _storageImage?.Dispose();
 
         // Dispose wrappers (pool disposes its descriptor sets automatically)

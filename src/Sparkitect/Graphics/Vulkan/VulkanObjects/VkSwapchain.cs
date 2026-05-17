@@ -25,7 +25,7 @@ public class VkSwapchain : VulkanObject
     public ReadOnlySpan<VkImage> Images => _images;
     public ReadOnlySpan<VkImageView> ImageViews => _imageViews;
 
-    public unsafe VkSwapchain(
+    public VkSwapchain(
         VkSurface surface,
         SwapchainConfig config,
         IVulkanContext context, uint width, uint height) : base(context)
@@ -48,7 +48,7 @@ public class VkSwapchain : VulkanObject
     /// <param name="timeout">Timeout in nanoseconds. Default is infinite.</param>
     /// <param name="autoRecreate">If true, automatically recreates swapchain on OUT_OF_DATE.</param>
     /// <returns>The image index, or error result.</returns>
-    public unsafe Result<uint, VkApiResult> AcquireNextImage(
+    public Result<uint, VkApiResult> AcquireNextImage(
         VkSemaphore signalSemaphore,
         ulong timeout = ulong.MaxValue,
         bool autoRecreate = false)
@@ -85,7 +85,7 @@ public class VkSwapchain : VulkanObject
     /// <param name="waitSemaphore">Semaphore to wait on before presenting.</param>
     /// <param name="presentQueue">Queue to present on.</param>
     /// <returns>Result code. Check for OUT_OF_DATE/SUBOPTIMAL.</returns>
-    public unsafe VkApiResult Present(uint imageIndex, VkSemaphore waitSemaphore, Queue presentQueue)
+    public unsafe VkApiResult Present(uint imageIndex, VkSemaphore waitSemaphore, VkQueue presentQueue)
     {
         var swapchain = _handle;
         var semaphoreHandle = waitSemaphore.Handle;
@@ -96,10 +96,9 @@ public class VkSwapchain : VulkanObject
             PWaitSemaphores = &semaphoreHandle,
             SwapchainCount = 1,
             PSwapchains = &swapchain,
-            PImageIndices = &imageIndex
+            PImageIndices = &imageIndex,
         };
-
-        return _khrSwapchain.QueuePresent(presentQueue, presentInfo);
+        return _khrSwapchain.QueuePresent(presentQueue.Handle, presentInfo);
     }
 
     /// <summary>
@@ -184,8 +183,11 @@ public class VkSwapchain : VulkanObject
                 images[i],
                 ImageFormat,
                 new Extent3D(Extent.Width, Extent.Height, 1),
-                1, 1,
+                1,
+                1,
                 ImageType.Type2D,
+                ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.TransferDstBit,
+                ImageBacking._Swapchain,
                 VulkanContext);
         }
     }

@@ -1,6 +1,4 @@
-using Sparkitect.DI;
 using Sparkitect.DI.Container;
-using Sparkitect.DI.Exceptions;
 
 namespace Sparkitect.Tests.DI;
 

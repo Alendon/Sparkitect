@@ -11,7 +11,7 @@ public class VkDescriptorPool : VulkanObject
 {
     private readonly HashSet<VkDescriptorSet> _allocatedSets = [];
 
-    internal VkDescriptorPool(DescriptorPool handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
+    public VkDescriptorPool(DescriptorPool handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
         : base(vulkanContext, callerContext)
     {
         Handle = handle;

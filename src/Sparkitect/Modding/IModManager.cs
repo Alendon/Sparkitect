@@ -1,7 +1,3 @@
-using JetBrains.Annotations;
-using Sparkitect.DI;
-using Sparkitect.DI.Container;
-
 namespace Sparkitect.Modding;
 
 /// <summary>
@@ -9,10 +5,6 @@ namespace Sparkitect.Modding;
 /// </summary>
 public interface IModManager
 {
-    //TODO adjust to expose a "hierarchy" of loaded mods. Eg first a group of engine mods get loaded and later a group of game mods
-
-
-
     /// <summary>
     /// Gets a collection of all loaded mods with their file identifiers (ID + Version).
     /// </summary>

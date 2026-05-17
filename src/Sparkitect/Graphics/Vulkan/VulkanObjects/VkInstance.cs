@@ -1,6 +1,5 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
-using Sparkitect.Utils;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
@@ -10,7 +9,7 @@ public class VkInstance : VulkanObject
     // Custom allocation callbacks for Vulkan. Null uses default system allocator.
     private readonly unsafe AllocationCallbacks* _allocationCallbacks = null;
 
-    internal unsafe VkInstance(Instance handle, IVulkanContext vulkanContext)
+    public VkInstance(Instance handle, IVulkanContext vulkanContext)
         : base(vulkanContext)
     {
         Handle = handle;
@@ -72,7 +71,7 @@ public class VkInstance : VulkanObject
     /// <summary>
     /// Gets the address of an instance-level Vulkan function by name.
     /// </summary>
-    public unsafe nint GetInstanceProcAddr(string name)
+    public nint GetInstanceProcAddr(string name)
     {
         return (nint)Vk.GetInstanceProcAddr(Handle, name);
     }

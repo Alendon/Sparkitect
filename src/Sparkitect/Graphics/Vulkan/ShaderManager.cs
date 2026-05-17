@@ -1,12 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Serilog;
-using Silk.NET.Vulkan;
-using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
+using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Graphics.Vulkan;
 
@@ -21,7 +19,7 @@ internal class ShaderManager : IShaderManager, IShaderManagerStateFacade
 
     private readonly Dictionary<Identification, VkShaderModule> _loadedModules = new();
 
-    public unsafe void RegisterModule(Identification id)
+    public void RegisterModule(Identification id)
     {
         using var stream = ResourceManager.GetResourceStream(id, ShaderResourceKey);
         if (stream is null)
@@ -35,26 +33,14 @@ internal class ShaderManager : IShaderManager, IShaderManagerStateFacade
 
         Span<uint> spirvCode = MemoryMarshal.Cast<byte, uint>(bytes.AsSpan());
 
-        Result result;
-        ShaderModule module;
-        fixed(uint* codeStart = spirvCode)
+        var moduleResult = VulkanContext.CreateShaderModule(spirvCode);
+        if (moduleResult is not Result<VkShaderModule, Silk.NET.Vulkan.Result>.Ok(var module))
         {
-            ShaderModuleCreateInfo createInfo = new()
-            {
-                SType = StructureType.ShaderModuleCreateInfo,
-                PCode = codeStart,
-                CodeSize = (UIntPtr)spirvCode.Length * sizeof(uint)
-            };
-            result = VulkanContext.VkApi.CreateShaderModule(VulkanContext.VkDevice.Handle, in createInfo,
-                VulkanContext.DefaultAllocationCallbacks, out module);
+            var error = ((Result<VkShaderModule, Silk.NET.Vulkan.Result>.Error)moduleResult).Value;
+            throw new InvalidOperationException($"Failed to create Shader Module for {id}, Reason: {error}");
         }
 
-        if (result != Result.Success)
-        {
-            throw new Exception($"Failed to create Shader Module for {id}, Reason: {result}");
-        }
-        
-        _loadedModules[id] = new VkShaderModule(module, VulkanContext);
+        _loadedModules[id] = module;
     }
 
     public bool TryGetRegisteredShaderModule(Identification id, [NotNullWhen(true)] out VkShaderModule? shaderModule)

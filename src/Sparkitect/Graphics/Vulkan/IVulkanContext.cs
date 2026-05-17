@@ -2,6 +2,7 @@
 using Silk.NET.Windowing;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.Vulkan.Vma;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Utils;
 using Sparkitect.Utils.DU;
@@ -16,6 +17,7 @@ public interface IVulkanContext
     VkInstance VkInstance { get; }
     VkPhysicalDevice VkPhysicalDevice { get; }
     VkDevice VkDevice { get; }
+    VmaAllocator VmaAllocator { get; }
     unsafe AllocationCallbacks* DefaultAllocationCallbacks { get; }
     IObjectTracker<VulkanObject> ObjectTracker { get; }
 
@@ -23,17 +25,39 @@ public interface IVulkanContext
     /// Gets a specific queue by family and index.
     /// </summary>
     /// <returns>The queue, or null if not found.</returns>
-    VulkanQueue? GetQueue(uint familyIndex, uint queueIndex);
+    VkQueue? GetQueue(uint familyIndex, uint queueIndex);
 
     Result<VkCommandPool, VkApiResult> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex, [InjectCallerContext] CallerContext callerContext = default);
 
-    Result<VkDescriptorPool, VkApiResult> CreateDescriptorPool(in DescriptorPoolCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default);
+    Result<VkDescriptorPool, VkApiResult> CreateDescriptorPool(VkDescriptorPoolCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
 
     Result<VkSemaphore, VkApiResult> CreateSemaphore(SemaphoreCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default);
     Result<VkFence, VkApiResult> CreateFence(FenceCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default);
-    Result<VkDescriptorSetLayout, VkApiResult> CreateDescriptorSetLayout(in DescriptorSetLayoutCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default);
-    Result<VkPipelineLayout, VkApiResult> CreatePipelineLayout(in PipelineLayoutCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default);
-    Result<VkPipeline, VkApiResult> CreateComputePipeline(in ComputePipelineCreateInfo createInfo, [InjectCallerContext] CallerContext callerContext = default);
+    Result<VkDescriptorSetLayout, VkApiResult> CreateDescriptorSetLayout(VkDescriptorSetLayoutCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
+    Result<VkPipelineLayout, VkApiResult> CreatePipelineLayout(VkPipelineLayoutCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
+    Result<VkPipeline, VkApiResult> CreateComputePipeline(VkComputePipelineCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
+    Result<VkSampler, VkApiResult> CreateSampler(VkSamplerCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
+    Result<VkShaderModule, VkApiResult> CreateShaderModule(ReadOnlySpan<uint> spirvCode, [InjectCallerContext] CallerContext callerContext = default);
+
+    Result<VkImage, VkApiResult> CreateImage(VkImageCreateOptions options, in VmaAllocationCreateInfo allocInfo, [InjectCallerContext] CallerContext callerContext = default);
+    Result<VkBuffer, VkApiResult> CreateBuffer(VkBufferCreateOptions options, in VmaAllocationCreateInfo allocInfo, [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>
+    /// Creates a 2D storage image (typical compute-shader target) with VMA-backed memory.
+    /// </summary>
+    Result<VkImage, VkApiResult> CreateStorageImage2D(
+        Extent2D extent,
+        Format format,
+        VmaMemoryUsage memoryUsage = VmaMemoryUsage.GpuOnly,
+        ImageUsageFlags extraUsage = ImageUsageFlags.TransferSrcBit,
+        [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>
+    /// Creates a persistently-mapped storage buffer (CPU-to-GPU upload target) of the given size.
+    /// </summary>
+    Result<VkBuffer, VkApiResult> CreateMappedStorageBuffer(
+        ulong size,
+        [InjectCallerContext] CallerContext callerContext = default);
 
     /// <summary>
     /// Creates a Vulkan surface for the given window.
@@ -45,7 +69,7 @@ public interface IVulkanContext
     /// <summary>
     /// Gets all queues belonging to a queue family.
     /// </summary>
-    IReadOnlyList<VulkanQueue> GetQueuesForFamily(uint familyIndex);
+    IReadOnlyList<VkQueue> GetQueuesForFamily(uint familyIndex);
 }
 
 [FacadeFor<IVulkanContext>]
@@ -61,7 +85,7 @@ public interface IVulkanContextStateFacade
     /// subsystems can shut down safely. Called by the <c>begin_vulkan_teardown</c>
     /// transition function, which carries no ordering attributes of its own — dependents
     /// reference it via <c>[OrderAfter&lt;BeginVulkanTeardownFunc&gt;]</c> (e.g.
-    /// <c>destroy_device</c>, <c>destroy_vma</c>) or <c>[OrderBefore&lt;BeginVulkanTeardownFunc&gt;]</c>
+    /// <c>destroy_device</c>) or <c>[OrderBefore&lt;BeginVulkanTeardownFunc&gt;]</c>
     /// (future render-graph shutdown transitions).
     /// </summary>
     void BeginVulkanTeardown();

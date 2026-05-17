@@ -13,7 +13,6 @@ using Sparkitect.ECS.Storage;
 using Sparkitect.ECS.Systems;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan;
-using Sparkitect.Graphics.Vulkan.Vma;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
@@ -48,10 +47,10 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     private VkSemaphore? _renderFinishedSemaphore;
     private VkFence? _inFlightFence;
     private uint _graphicsQueueFamily;
-    private Queue _graphicsQueue;
-    private VmaImage? _storageImage;
-    private ImageView _storageImageView;
-    private VmaBuffer? _entityBuffer;
+    private VkQueue _graphicsQueue = null!;
+    private VkImage? _storageImage;
+    private VkImageView? _storageImageView;
+    private VkBuffer? _entityBuffer;
     private VkDescriptorSetLayout? _descriptorSetLayout;
     private VkPipelineLayout? _pipelineLayout;
     private VkPipeline? _computePipeline;
@@ -79,7 +78,6 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     public required IVulkanContext VulkanContext { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
     public required IShaderManager ShaderManager { private get; init; }
-    public required IVmaService VmaService { private get; init; }
 
     public IWorld? GetWorld() => _world;
     public RenderEntity[] GetRenderBuffer() => _renderBuffer;
@@ -289,7 +287,7 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         var queue = VulkanContext.GetQueue(_graphicsQueueFamily, 0);
         if (queue == null)
             throw new InvalidOperationException("No graphics queue available");
-        _graphicsQueue = queue.Handle;
+        _graphicsQueue = queue;
 
         var poolResult = VulkanContext.CreateCommandPool(
             CommandPoolCreateFlags.ResetCommandBufferBit,
@@ -318,60 +316,22 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             throw new InvalidOperationException($"Failed to create fence: {fenceError.Value}");
         _inFlightFence = ((Result<VkFence, VkApiResult>.Ok)fenceResult).Value;
 
-        var vk = VulkanContext.VkApi;
-        var device = VulkanContext.VkDevice.Handle;
-
         var swapchain = _window!.Swapchain;
-        var imageInfo = new ImageCreateInfo
-        {
-            SType = StructureType.ImageCreateInfo,
-            ImageType = ImageType.Type2D,
-            Format = Format.R8G8B8A8Unorm,
-            Extent = new Extent3D(swapchain.Extent.Width, swapchain.Extent.Height, 1),
-            MipLevels = 1,
-            ArrayLayers = 1,
-            Samples = SampleCountFlags.Count1Bit,
-            Tiling = ImageTiling.Optimal,
-            Usage = ImageUsageFlags.StorageBit | ImageUsageFlags.TransferSrcBit,
-            SharingMode = SharingMode.Exclusive,
-            InitialLayout = ImageLayout.Undefined
-        };
-        var allocInfo = new VmaAllocationCreateInfo
-        {
-            Usage = VmaMemoryUsage.GpuOnly
-        };
-        _storageImage = VmaService.DefaultAllocator.CreateImage(imageInfo, allocInfo);
+        var storageImageResult = VulkanContext.CreateStorageImage2D(swapchain.Extent, Format.R8G8B8A8Unorm);
+        if (storageImageResult is Result<VkImage, VkApiResult>.Error storageImageError)
+            throw new InvalidOperationException($"Failed to create storage image: {storageImageError.Value}");
+        _storageImage = ((Result<VkImage, VkApiResult>.Ok)storageImageResult).Value;
 
-        var storageViewInfo = new ImageViewCreateInfo
-        {
-            SType = StructureType.ImageViewCreateInfo,
-            Image = _storageImage.Image,
-            ViewType = ImageViewType.Type2D,
-            Format = Format.R8G8B8A8Unorm,
-            SubresourceRange = new ImageSubresourceRange
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                BaseMipLevel = 0,
-                LevelCount = 1,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            }
-        };
-        vk.CreateImageView(device, storageViewInfo, null, out _storageImageView);
+        var storageViewResult = _storageImage!.CreateView(ImageAspectFlags.ColorBit);
+        if (storageViewResult is Result<VkImageView, VkApiResult>.Error storageViewErr)
+            throw new InvalidOperationException($"Failed to create storage image view: {storageViewErr.Value}");
+        _storageImageView = ((Result<VkImageView, VkApiResult>.Ok)storageViewResult).Value;
 
-        var bufferCreateInfo = new BufferCreateInfo
-        {
-            SType = StructureType.BufferCreateInfo,
-            Size = (ulong)(SpaceInvadersConstants.MaxRenderEntities * sizeof(RenderEntity)),
-            Usage = BufferUsageFlags.StorageBufferBit,
-            SharingMode = SharingMode.Exclusive
-        };
-        var bufferAllocInfo = new VmaAllocationCreateInfo
-        {
-            Usage = VmaMemoryUsage.CpuToGpu,
-            Flags = VmaAllocationCreateFlags.Mapped
-        };
-        _entityBuffer = VmaService.DefaultAllocator.CreateBuffer(bufferCreateInfo, bufferAllocInfo);
+        var entityBufferSize = (ulong)(SpaceInvadersConstants.MaxRenderEntities * sizeof(RenderEntity));
+        var entityBufferResult = VulkanContext.CreateMappedStorageBuffer(entityBufferSize);
+        if (entityBufferResult is Result<VkBuffer, VkApiResult>.Error entityBufferError)
+            throw new InvalidOperationException($"Failed to create entity buffer: {entityBufferError.Value}");
+        _entityBuffer = ((Result<VkBuffer, VkApiResult>.Ok)entityBufferResult).Value;
 
         CreateComputePipeline();
         CreateDescriptorResources();
@@ -384,96 +344,69 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         if (!ShaderManager.TryGetRegisteredShaderModule(ShaderModuleID.SpaceInvadersMod.SpaceInvaders, out var shaderModule))
             throw new InvalidOperationException("Space Invaders shader not registered");
 
-        var bindings = stackalloc DescriptorSetLayoutBinding[2];
-        bindings[0] = new DescriptorSetLayoutBinding
-        {
-            Binding = 0,
-            DescriptorType = DescriptorType.StorageImage,
-            DescriptorCount = 1,
-            StageFlags = ShaderStageFlags.ComputeBit
-        };
-        bindings[1] = new DescriptorSetLayoutBinding
-        {
-            Binding = 1,
-            DescriptorType = DescriptorType.StorageBuffer,
-            DescriptorCount = 1,
-            StageFlags = ShaderStageFlags.ComputeBit
-        };
-        var layoutInfo = new DescriptorSetLayoutCreateInfo
-        {
-            SType = StructureType.DescriptorSetLayoutCreateInfo,
-            BindingCount = 2,
-            PBindings = bindings
-        };
-        var layoutResult = VulkanContext.CreateDescriptorSetLayout(layoutInfo);
+        var layoutResult = VulkanContext.CreateDescriptorSetLayout(
+            new VkDescriptorSetLayoutCreateOptions(Bindings:
+            [
+                new DescriptorSetLayoutBinding
+                {
+                    Binding = 0,
+                    DescriptorType = DescriptorType.StorageImage,
+                    DescriptorCount = 1,
+                    StageFlags = ShaderStageFlags.ComputeBit,
+                },
+                new DescriptorSetLayoutBinding
+                {
+                    Binding = 1,
+                    DescriptorType = DescriptorType.StorageBuffer,
+                    DescriptorCount = 1,
+                    StageFlags = ShaderStageFlags.ComputeBit,
+                },
+            ]));
         if (layoutResult is Result<VkDescriptorSetLayout, VkApiResult>.Error layoutError)
             throw new InvalidOperationException($"Failed to create descriptor set layout: {layoutError.Value}");
         _descriptorSetLayout = ((Result<VkDescriptorSetLayout, VkApiResult>.Ok)layoutResult).Value;
 
-        var pushConstantRange = new PushConstantRange
-        {
-            StageFlags = ShaderStageFlags.ComputeBit,
-            Offset = 0,
-            Size = (uint)sizeof(SpaceInvadersGameData)
-        };
-        var setLayout = _descriptorSetLayout.Handle;
-        var pipelineLayoutInfo = new PipelineLayoutCreateInfo
-        {
-            SType = StructureType.PipelineLayoutCreateInfo,
-            SetLayoutCount = 1,
-            PSetLayouts = &setLayout,
-            PushConstantRangeCount = 1,
-            PPushConstantRanges = &pushConstantRange
-        };
-        var pipelineLayoutResult = VulkanContext.CreatePipelineLayout(pipelineLayoutInfo);
+        var pipelineLayoutResult = VulkanContext.CreatePipelineLayout(
+            new VkPipelineLayoutCreateOptions(
+                SetLayouts: [_descriptorSetLayout!],
+                PushConstantRanges:
+                [
+                    new PushConstantRange
+                    {
+                        StageFlags = ShaderStageFlags.ComputeBit,
+                        Offset = 0,
+                        Size = (uint)sizeof(SpaceInvadersGameData),
+                    },
+                ]));
         if (pipelineLayoutResult is Result<VkPipelineLayout, VkApiResult>.Error pipelineLayoutError)
             throw new InvalidOperationException($"Failed to create pipeline layout: {pipelineLayoutError.Value}");
         _pipelineLayout = ((Result<VkPipelineLayout, VkApiResult>.Ok)pipelineLayoutResult).Value;
 
-        var entryPoint = "main"u8;
-        fixed (byte* entryPointPtr = entryPoint)
-        {
-            var stageInfo = new PipelineShaderStageCreateInfo
-            {
-                SType = StructureType.PipelineShaderStageCreateInfo,
-                Stage = ShaderStageFlags.ComputeBit,
-                Module = shaderModule.Handle,
-                PName = entryPointPtr
-            };
-            var computePipelineInfo = new ComputePipelineCreateInfo
-            {
-                SType = StructureType.ComputePipelineCreateInfo,
-                Stage = stageInfo,
-                Layout = _pipelineLayout.Handle
-            };
-            var pipelineResult = VulkanContext.CreateComputePipeline(computePipelineInfo);
-            if (pipelineResult is Result<VkPipeline, VkApiResult>.Error pipelineError)
-                throw new InvalidOperationException($"Failed to create compute pipeline: {pipelineError.Value}");
-            _computePipeline = ((Result<VkPipeline, VkApiResult>.Ok)pipelineResult).Value;
-        }
+        var pipelineResult = VulkanContext.CreateComputePipeline(
+            new VkComputePipelineCreateOptions(shaderModule, _pipelineLayout!));
+        if (pipelineResult is Result<VkPipeline, VkApiResult>.Error pipelineError)
+            throw new InvalidOperationException($"Failed to create compute pipeline: {pipelineError.Value}");
+        _computePipeline = ((Result<VkPipeline, VkApiResult>.Ok)pipelineResult).Value;
     }
 
-    private unsafe void CreateDescriptorResources()
+    private void CreateDescriptorResources()
     {
-        var poolSizes = stackalloc DescriptorPoolSize[2];
-        poolSizes[0] = new DescriptorPoolSize
-        {
-            Type = DescriptorType.StorageImage,
-            DescriptorCount = 1
-        };
-        poolSizes[1] = new DescriptorPoolSize
-        {
-            Type = DescriptorType.StorageBuffer,
-            DescriptorCount = 1
-        };
-        var poolInfo = new DescriptorPoolCreateInfo
-        {
-            SType = StructureType.DescriptorPoolCreateInfo,
-            MaxSets = 1,
-            PoolSizeCount = 2,
-            PPoolSizes = poolSizes
-        };
-        var poolResult = VulkanContext.CreateDescriptorPool(poolInfo);
+        var poolResult = VulkanContext.CreateDescriptorPool(
+            new VkDescriptorPoolCreateOptions(
+                MaxSets: 1,
+                PoolSizes:
+                [
+                    new DescriptorPoolSize
+                    {
+                        Type = DescriptorType.StorageImage,
+                        DescriptorCount = 1,
+                    },
+                    new DescriptorPoolSize
+                    {
+                        Type = DescriptorType.StorageBuffer,
+                        DescriptorCount = 1,
+                    },
+                ]));
         if (poolResult is Result<VkDescriptorPool, VkApiResult>.Error descriptorPoolError)
             throw new InvalidOperationException($"Failed to create descriptor pool: {descriptorPoolError.Value}");
         _descriptorPool = ((Result<VkDescriptorPool, VkApiResult>.Ok)poolResult).Value;
@@ -483,38 +416,8 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             throw new InvalidOperationException($"Failed to allocate descriptor set: {setError.Value}");
         _descriptorSet = ((Result<VkDescriptorSet, VkApiResult>.Ok)setResult).Value;
 
-        var imageInfo = new DescriptorImageInfo
-        {
-            ImageView = _storageImageView,
-            ImageLayout = ImageLayout.General
-        };
-        var imageWrite = new WriteDescriptorSet
-        {
-            SType = StructureType.WriteDescriptorSet,
-            DstSet = _descriptorSet.Handle,
-            DstBinding = 0,
-            DescriptorCount = 1,
-            DescriptorType = DescriptorType.StorageImage,
-            PImageInfo = &imageInfo
-        };
-        VulkanContext.VkApi.UpdateDescriptorSets(VulkanContext.VkDevice.Handle, 1, imageWrite, 0, null);
-
-        var bufferInfo = new DescriptorBufferInfo
-        {
-            Buffer = _entityBuffer!.Buffer,
-            Offset = 0,
-            Range = (ulong)(SpaceInvadersConstants.MaxRenderEntities * sizeof(RenderEntity))
-        };
-        var bufferWrite = new WriteDescriptorSet
-        {
-            SType = StructureType.WriteDescriptorSet,
-            DstSet = _descriptorSet.Handle,
-            DstBinding = 1,
-            DescriptorCount = 1,
-            DescriptorType = DescriptorType.StorageBuffer,
-            PBufferInfo = &bufferInfo
-        };
-        VulkanContext.VkApi.UpdateDescriptorSets(VulkanContext.VkDevice.Handle, 1, bufferWrite, 0, null);
+        _descriptorSet!.WriteStorageImage(binding: 0, _storageImageView!, ImageLayout.General);
+        _descriptorSet!.WriteStorageBuffer(binding: 1, _entityBuffer!);
     }
 
     private uint FindGraphicsQueueFamily(VkPhysicalDevice physicalDevice)
@@ -540,7 +443,7 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         }
 
         // Copy render entities to mapped SSBO
-        var mappedPtr = _entityBuffer!.AllocationInfo.MappedData;
+        var mappedPtr = _entityBuffer!.MappedData;
         var renderCount = _renderEntityCount;
         if (renderCount > 0)
         {
@@ -552,8 +455,6 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             }
         }
 
-        var vk = VulkanContext.VkApi;
-        var device = VulkanContext.VkDevice.Handle;
         var swapchain = _window.Swapchain;
 
         _inFlightFence!.Wait();
@@ -564,45 +465,21 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             return;
         var imageIndex = ((Result<uint, VkApiResult>.Ok)acquireResult).Value;
 
-        var cmd = _commandBuffer!.Handle;
-        vk.ResetCommandBuffer(cmd, 0);
-
-        var beginInfo = new CommandBufferBeginInfo
-        {
-            SType = StructureType.CommandBufferBeginInfo,
-            Flags = CommandBufferUsageFlags.OneTimeSubmitBit
-        };
-        vk.BeginCommandBuffer(cmd, beginInfo);
+        _commandBuffer!.Reset();
+        _commandBuffer.Begin(CommandBufferUsageFlags.OneTimeSubmitBit);
 
         // Transition storage image to General for compute write
-        var storageBarrier = new ImageMemoryBarrier
-        {
-            SType = StructureType.ImageMemoryBarrier,
-            OldLayout = ImageLayout.Undefined,
-            NewLayout = ImageLayout.General,
-            SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
-            DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
-            Image = _storageImage!.Image,
-            SubresourceRange = new ImageSubresourceRange
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                BaseMipLevel = 0,
-                LevelCount = 1,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            },
-            SrcAccessMask = 0,
-            DstAccessMask = AccessFlags.ShaderWriteBit
-        };
-        vk.CmdPipelineBarrier(cmd,
-            PipelineStageFlags.TopOfPipeBit,
-            PipelineStageFlags.ComputeShaderBit,
-            0, 0, null, 0, null, 1, storageBarrier);
+        _commandBuffer!.ImageBarrier(
+            _storageImage!,
+            oldLayout: ImageLayout.Undefined,
+            newLayout: ImageLayout.General,
+            srcStage: PipelineStageFlags.TopOfPipeBit,
+            dstStage: PipelineStageFlags.ComputeShaderBit,
+            srcAccess: 0,
+            dstAccess: AccessFlags.ShaderWriteBit);
 
-        // Bind compute pipeline and dispatch
-        vk.CmdBindPipeline(cmd, PipelineBindPoint.Compute, _computePipeline!.Handle);
-        var descriptorSet = _descriptorSet!.Handle;
-        vk.CmdBindDescriptorSets(cmd, PipelineBindPoint.Compute, _pipelineLayout!.Handle, 0, 1, &descriptorSet, 0, null);
+        _commandBuffer.BindPipeline(PipelineBindPoint.Compute, _computePipeline!);
+        _commandBuffer!.BindDescriptorSets(PipelineBindPoint.Compute, _pipelineLayout!, firstSet: 0, _descriptorSet!);
 
         var gameData = new SpaceInvadersGameData
         {
@@ -612,107 +489,51 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             Padding = 0f,
             BackgroundColor = new Vector3(0.05f, 0.05f, 0.1f)
         };
-        vk.CmdPushConstants(cmd, _pipelineLayout.Handle, ShaderStageFlags.ComputeBit, 0, (uint)sizeof(SpaceInvadersGameData), &gameData);
+        _commandBuffer.PushConstants(_pipelineLayout!, ShaderStageFlags.ComputeBit, 0, in gameData);
 
         var groupCountX = (swapchain.Extent.Width + 7) / 8;
         var groupCountY = (swapchain.Extent.Height + 7) / 8;
-        vk.CmdDispatch(cmd, groupCountX, groupCountY, 1);
+        _commandBuffer.Dispatch(groupCountX, groupCountY, 1);
 
         // Transition storage image: GENERAL -> TRANSFER_SRC_OPTIMAL
-        storageBarrier.OldLayout = ImageLayout.General;
-        storageBarrier.NewLayout = ImageLayout.TransferSrcOptimal;
-        storageBarrier.SrcAccessMask = AccessFlags.ShaderWriteBit;
-        storageBarrier.DstAccessMask = AccessFlags.TransferReadBit;
-        vk.CmdPipelineBarrier(cmd,
-            PipelineStageFlags.ComputeShaderBit,
-            PipelineStageFlags.TransferBit,
-            0, 0, null, 0, null, 1, storageBarrier);
+        _commandBuffer!.ImageBarrier(
+            _storageImage!,
+            oldLayout: ImageLayout.General,
+            newLayout: ImageLayout.TransferSrcOptimal,
+            srcStage: PipelineStageFlags.ComputeShaderBit,
+            dstStage: PipelineStageFlags.TransferBit,
+            srcAccess: AccessFlags.ShaderWriteBit,
+            dstAccess: AccessFlags.TransferReadBit);
 
-        // Transition swapchain image: UNDEFINED -> TRANSFER_DST_OPTIMAL
-        var swapchainBarrier = new ImageMemoryBarrier
-        {
-            SType = StructureType.ImageMemoryBarrier,
-            OldLayout = ImageLayout.Undefined,
-            NewLayout = ImageLayout.TransferDstOptimal,
-            SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
-            DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
-            Image = swapchain.Images[(int)imageIndex].Handle,
-            SubresourceRange = new ImageSubresourceRange
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                BaseMipLevel = 0,
-                LevelCount = 1,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            },
-            SrcAccessMask = 0,
-            DstAccessMask = AccessFlags.TransferWriteBit
-        };
-        vk.CmdPipelineBarrier(cmd,
-            PipelineStageFlags.TopOfPipeBit,
-            PipelineStageFlags.TransferBit,
-            0, 0, null, 0, null, 1, swapchainBarrier);
+        var swapchainImage = swapchain.Images[(int)imageIndex];
+        _commandBuffer.ImageBarrier(swapchainImage,
+            ImageLayout.Undefined, ImageLayout.TransferDstOptimal,
+            PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.TransferBit,
+            0, AccessFlags.TransferWriteBit);
 
         // Blit storage image to swapchain
-        var blitRegion = new ImageBlit
-        {
-            SrcSubresource = new ImageSubresourceLayers
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                MipLevel = 0,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            },
-            DstSubresource = new ImageSubresourceLayers
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                MipLevel = 0,
-                BaseArrayLayer = 0,
-                LayerCount = 1
-            }
-        };
-        blitRegion.SrcOffsets[0] = new Offset3D(0, 0, 0);
-        blitRegion.SrcOffsets[1] = new Offset3D((int)swapchain.Extent.Width, (int)swapchain.Extent.Height, 1);
-        blitRegion.DstOffsets[0] = new Offset3D(0, 0, 0);
-        blitRegion.DstOffsets[1] = new Offset3D((int)swapchain.Extent.Width, (int)swapchain.Extent.Height, 1);
+        _commandBuffer.BlitFullExtent(
+            _storageImage!, ImageLayout.TransferSrcOptimal,
+            swapchainImage, ImageLayout.TransferDstOptimal,
+            Filter.Nearest);
 
-        vk.CmdBlitImage(cmd,
-            _storageImage.Image, ImageLayout.TransferSrcOptimal,
-            swapchain.Images[(int)imageIndex].Handle, ImageLayout.TransferDstOptimal,
-            1, blitRegion, Filter.Nearest);
+        _commandBuffer.ImageBarrier(swapchainImage,
+            ImageLayout.TransferDstOptimal, ImageLayout.PresentSrcKhr,
+            PipelineStageFlags.TransferBit, PipelineStageFlags.BottomOfPipeBit,
+            AccessFlags.TransferWriteBit, 0);
 
-        // Transition swapchain to present
-        swapchainBarrier.OldLayout = ImageLayout.TransferDstOptimal;
-        swapchainBarrier.NewLayout = ImageLayout.PresentSrcKhr;
-        swapchainBarrier.SrcAccessMask = AccessFlags.TransferWriteBit;
-        swapchainBarrier.DstAccessMask = 0;
-        vk.CmdPipelineBarrier(cmd,
-            PipelineStageFlags.TransferBit,
-            PipelineStageFlags.BottomOfPipeBit,
-            0, 0, null, 0, null, 1, swapchainBarrier);
-
-        vk.EndCommandBuffer(cmd);
+        _commandBuffer.End();
 
         // Submit
-        var waitSemaphore = _imageAvailableSemaphore.Handle;
-        var signalSemaphore = _renderFinishedSemaphore!.Handle;
-        var waitStage = PipelineStageFlags.ColorAttachmentOutputBit;
-
-        var submitInfo = new SubmitInfo
-        {
-            SType = StructureType.SubmitInfo,
-            WaitSemaphoreCount = 1,
-            PWaitSemaphores = &waitSemaphore,
-            PWaitDstStageMask = &waitStage,
-            CommandBufferCount = 1,
-            PCommandBuffers = &cmd,
-            SignalSemaphoreCount = 1,
-            PSignalSemaphores = &signalSemaphore
-        };
-        vk.QueueSubmit(_graphicsQueue, 1, submitInfo, _inFlightFence.Handle);
+        _graphicsQueue.Submit(
+            _commandBuffer!,
+            waitSemaphores: [_imageAvailableSemaphore!],
+            waitStages: [PipelineStageFlags.ColorAttachmentOutputBit],
+            signalSemaphores: [_renderFinishedSemaphore!],
+            fence: _inFlightFence!);
 
         // Present
-        swapchain.Present(imageIndex, _renderFinishedSemaphore, _graphicsQueue);
+        swapchain.Present(imageIndex, _renderFinishedSemaphore!, _graphicsQueue);
 
         // Frame pacing: yield CPU to prevent uncapped spin loop causing GPU coil whine.
         // The Vulkan fence wait provides GPU-side throttling, but without this sleep the
@@ -720,11 +541,11 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
         Thread.Sleep(1);
     }
 
-    public unsafe void CleanupRendering()
+    public void CleanupRendering()
     {
-        VulkanContext.VkApi.DeviceWaitIdle(VulkanContext.VkDevice.Handle);
+        VulkanContext.VkDevice.WaitIdle();
 
-        VulkanContext.VkApi.DestroyImageView(VulkanContext.VkDevice.Handle, _storageImageView, null);
+        _storageImageView?.Dispose();
         _storageImage?.Dispose();
         _entityBuffer?.Dispose();
 

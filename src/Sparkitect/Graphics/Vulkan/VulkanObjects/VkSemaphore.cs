@@ -1,5 +1,4 @@
 using JetBrains.Annotations;
-using Silk.NET.Vulkan;
 using Sparkitect.Utils;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
@@ -7,7 +6,7 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkSemaphore : VulkanObject
 {
-    internal unsafe VkSemaphore(Silk.NET.Vulkan.Semaphore handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
+    public VkSemaphore(Silk.NET.Vulkan.Semaphore handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
         : base(vulkanContext, callerContext)
     {
         Handle = handle;

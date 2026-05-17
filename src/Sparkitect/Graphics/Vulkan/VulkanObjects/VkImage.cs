@@ -1,5 +1,7 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
+using Sparkitect.Graphics.Vulkan.Vma;
+using Sparkitect.Utils;
 using Sparkitect.Utils.DU;
 using VkApiResult = Silk.NET.Vulkan.Result;
 
@@ -15,7 +17,10 @@ public class VkImage : VulkanObject
         uint mipLevels,
         uint arrayLayers,
         ImageType imageType,
-        IVulkanContext context) : base(context)
+        ImageUsageFlags usage,
+        ImageBacking backing,
+        IVulkanContext context,
+        CallerContext callerContext = default) : base(context, callerContext)
     {
         Handle = handle;
         Format = format;
@@ -23,6 +28,8 @@ public class VkImage : VulkanObject
         MipLevels = mipLevels;
         ArrayLayers = arrayLayers;
         ImageType = imageType;
+        Usage = usage;
+        Backing = backing;
     }
 
     public Image Handle { get; }
@@ -31,6 +38,8 @@ public class VkImage : VulkanObject
     public uint MipLevels { get; }
     public uint ArrayLayers { get; }
     public ImageType ImageType { get; }
+    public ImageUsageFlags Usage { get; }
+    public ImageBacking Backing { get; }
 
     /// <summary>
     /// Creates an image view for this image with inferred defaults.
@@ -106,8 +115,18 @@ public class VkImage : VulkanObject
         };
     }
 
-    public override unsafe void Destroy()
+    public override void Destroy()
     {
-        Vk.DestroyImage(Device, Handle, AllocationCallbacks);
+        switch (Backing)
+        {
+            case ImageBacking.Swapchain:
+                // Swapchain owns the image handle; nothing to destroy here.
+                // VkSwapchain.DestroyImageViews calls MarkDisposed() explicitly on its
+                // image wrappers, which untracks them; this body is a no-op.
+                break;
+            case ImageBacking.VmaAllocated v:
+                VulkanContext.VmaAllocator.DestroyImage(Handle, v.Value);
+                break;
+        }
     }
 }

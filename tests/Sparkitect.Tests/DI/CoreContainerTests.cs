@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.Exceptions;
 

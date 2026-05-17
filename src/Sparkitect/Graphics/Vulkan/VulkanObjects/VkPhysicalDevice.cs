@@ -1,13 +1,12 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
-using Sparkitect.Utils;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
 [PublicAPI]
 public class VkPhysicalDevice : VulkanObject
 {
-    internal VkPhysicalDevice(IVulkanContext vulkanContext, PhysicalDevice physicalDevice)
+    public VkPhysicalDevice(IVulkanContext vulkanContext, PhysicalDevice physicalDevice)
         : base(vulkanContext)
     {
         this.PhysicalDevice = physicalDevice;

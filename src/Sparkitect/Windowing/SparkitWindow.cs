@@ -1,9 +1,7 @@
 using Serilog;
 using Silk.NET.Input;
 using Silk.NET.Maths;
-using Silk.NET.Vulkan;
 using Silk.NET.Windowing;
-using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Utils.DU;
 using Sparkitect.Windowing.Input;
@@ -77,7 +75,7 @@ internal class SparkitWindow : ISparkitWindow
         return _swapchain.AcquireNextImage(signalSemaphore, timeout, autoRecreate);
     }
 
-    public VkApiResult Present(uint imageIndex, VkSemaphore waitSemaphore, Queue presentQueue)
+    public VkApiResult Present(uint imageIndex, VkSemaphore waitSemaphore, VkQueue presentQueue)
     {
         return _swapchain.Present(imageIndex, waitSemaphore, presentQueue);
     }

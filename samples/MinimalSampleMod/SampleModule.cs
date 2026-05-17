@@ -1,4 +1,3 @@
-using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
 using Sparkitect.Modding;

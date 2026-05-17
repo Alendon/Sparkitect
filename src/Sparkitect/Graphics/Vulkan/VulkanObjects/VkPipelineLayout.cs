@@ -7,7 +7,7 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkPipelineLayout : VulkanObject
 {
-    internal VkPipelineLayout(PipelineLayout handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
+    public VkPipelineLayout(PipelineLayout handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
         : base(vulkanContext, callerContext)
     {
         Handle = handle;

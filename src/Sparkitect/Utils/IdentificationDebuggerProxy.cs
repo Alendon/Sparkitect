@@ -8,15 +8,14 @@ internal sealed class IdentificationDebuggerProxy
 {
     private static IIdentificationManager? _instance;
     private static bool _isInitialized;
-    private static readonly object _lock = new();
+    private static readonly Lock Lock = new();
 
     public static IIdentificationManager? Instance
     {
         private get => _instance;
         set
         {
-            if (_isInitialized) return;
-            lock (_lock)
+            lock (Lock)
             {
                 if (_isInitialized) return;
                 _instance = value;

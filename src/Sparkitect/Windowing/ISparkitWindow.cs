@@ -1,7 +1,5 @@
 using JetBrains.Annotations;
-using Silk.NET.Vulkan;
 using Silk.NET.Windowing;
-using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Utils.DU;
 using Sparkitect.Windowing.Input;
@@ -32,5 +30,5 @@ public interface ISparkitWindow : IDisposable
         ulong timeout = ulong.MaxValue,
         bool autoRecreate = false);
 
-    VkApiResult Present(uint imageIndex, VkSemaphore waitSemaphore, Queue presentQueue);
+    VkApiResult Present(uint imageIndex, VkSemaphore waitSemaphore, VkQueue presentQueue);
 }

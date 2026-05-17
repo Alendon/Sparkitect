@@ -1,8 +1,6 @@
-using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Serilog;
 using Sparkitect.ECS.Systems;
 using Sparkitect.Modding;
-using Sparkitect.Modding.IDs;
 
 namespace MinimalSampleMod;
 

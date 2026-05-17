@@ -7,7 +7,7 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkPipeline : VulkanObject
 {
-    internal VkPipeline(Pipeline handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
+    public VkPipeline(Pipeline handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
         : base(vulkanContext, callerContext)
     {
         Handle = handle;
