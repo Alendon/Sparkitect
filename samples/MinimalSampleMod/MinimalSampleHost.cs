@@ -20,7 +20,6 @@ internal sealed class MinimalSampleHost : IMinimalSampleHost
     public required IWindowManager WindowManager { private get; init; }
     public required IDIService DIService { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
-    public required IModManager ModManager { private get; init; }
     public required IGraphResourceTypes ResourceTypes { private get; init; }
     public required IPassTypes PassTypes { private get; init; }
 
@@ -38,7 +37,7 @@ internal sealed class MinimalSampleHost : IMinimalSampleHost
             _window,
             DIService,
             GameStateManager.CurrentCoreContainer,
-            ModManager,
+            GameStateManager,
             ResourceTypes,
             PassTypes,
             new List<Identification> { RenderPassID.MinimalSampleMod.ClearColor });

@@ -11,13 +11,13 @@ public interface IModManager
     /// <summary>
     /// Gets a collection of all loaded mods with their file identifiers (ID + Version).
     /// </summary>
-    IReadOnlyCollection<ModFileIdentifier> LoadedMods { get; }
+    internal IReadOnlyCollection<ModFileIdentifier> LoadedMods { get; }
 
     /// <summary>
     /// Gets loaded mods organized by loading groups. Each group represents a set of mods loaded together
     /// (e.g., engine mods first, then game mods).
     /// </summary>
-    IReadOnlyList<IReadOnlyList<ModFileIdentifier>> LoadedModsPerGroup { get; }
+    internal IReadOnlyList<IReadOnlyList<ModFileIdentifier>> LoadedModsPerGroup { get; }
 
     /// <summary>
     /// Gets all mod archives discovered during mod discovery.
@@ -33,11 +33,11 @@ public interface IModManager
     /// Loads the specified mods by their file identifiers.
     /// </summary>
     /// <param name="identifiers">The mod file identifiers (ID + Version) to load.</param>
-    void LoadMods(params ReadOnlySpan<ModFileIdentifier> identifiers);
+    internal void LoadMods(params ReadOnlySpan<ModFileIdentifier> identifiers);
 
     /// <summary>
     /// Unloads the last loaded mod group.
     /// </summary>
     /// <returns>The mod file identifiers that were unloaded.</returns>
-    IReadOnlyList<ModFileIdentifier> UnloadLastModGroup();
+    internal IReadOnlyList<ModFileIdentifier> UnloadLastModGroup();
 }

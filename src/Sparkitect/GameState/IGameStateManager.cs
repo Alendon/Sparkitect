@@ -24,6 +24,12 @@ public interface IGameStateManager
     IEnumerable<string> LoadedMods { get; }
 
     /// <summary>
+    /// Active state stack, bottom-up: index 0 is the root state, the last entry is the
+    /// current/deepest frame.
+    /// </summary>
+    IReadOnlyList<StateStackEntry> StateStack { get; }
+
+    /// <summary>
     /// Checks if a mod with the given ID is currently loaded.
     /// </summary>
     /// <param name="modId">The mod identifier to check.</param>

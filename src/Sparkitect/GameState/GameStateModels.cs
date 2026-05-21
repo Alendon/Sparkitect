@@ -37,6 +37,7 @@ internal sealed record ActiveStateFrame(
     Identification StateId,
     ICoreContainer Container,
     IReadOnlyList<string> AddedMods,
+    IReadOnlyList<Identification> AddedModuleIds,
     IReadOnlyList<IStatelessFunction> TransitionEnterMethods,
     IReadOnlyList<IStatelessFunction> TransitionExitMethods,
     IReadOnlyList<IStatelessFunction> PerFrameMethods);

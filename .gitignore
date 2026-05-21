@@ -12,5 +12,6 @@ docs/export.txt
 **/.claude**
 .envrc
 .run/
+**/logs/
 BenchmarkDotNet.Artifacts/
 **/TestResults/**

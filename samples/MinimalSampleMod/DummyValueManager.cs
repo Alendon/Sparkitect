@@ -22,8 +22,7 @@ public class DummyValueManager(
     IComponentManager componentManager,
     ISystemManager systemManager,
     IDIService diService,
-    IGameStateManager gameStateManager,
-    IModManager modManager) : IDummyValueManager, IDummyValueManagerStateFacade
+    IGameStateManager gameStateManager) : IDummyValueManager, IDummyValueManagerStateFacade
 {
     private readonly Dictionary<Identification, string> _values = [];
     private readonly HashSet<Identification> _providers = [];
@@ -55,7 +54,7 @@ public class DummyValueManager(
             diService,
             gameStateManager.CurrentCoreContainer,
             provider: null,
-            modManager.LoadedMods.Select(m => m.Id));
+            gameStateManager.LoadedMods);
 
         if (!_providerContainer.TryResolve(id, out var dummyProvider))
             new KeyNotFoundException($"No provider registered for {id}").Throw();

@@ -28,6 +28,13 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     public IEnumerable<string> LoadedMods => _stateStack.SelectMany(x => x.AddedMods);
 
     /// <inheritdoc />
+    public IReadOnlyList<StateStackEntry> StateStack =>
+        _stateStack
+            .Reverse()
+            .Select(f => new StateStackEntry(f.StateId, f.AddedModuleIds, f.AddedMods))
+            .ToList();
+
+    /// <inheritdoc />
     public bool IsModLoaded(string modId) => LoadedMods.Contains(modId);
 
     private readonly List<Func<StateMetadata>> _pendingStates = new();
@@ -571,6 +578,7 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             stateId,
             container,
             additionalMods,
+            stateMetadata.ModuleIds,
             transitionEnterMethods,
             transitionExitMethods,
             perFrameMethods);

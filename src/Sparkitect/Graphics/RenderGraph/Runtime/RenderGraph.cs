@@ -3,6 +3,7 @@ using Silk.NET.Vulkan;
 using Sparkitect.CompilerGenerated.KeyedFactoryExtensions;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
+using Sparkitect.GameState;
 using Sparkitect.Graphics.RenderGraph.Hooks;
 using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan;
@@ -70,14 +71,14 @@ public sealed partial class RenderGraph : IDisposable
         ISparkitWindow window,
         IDIService diService,
         ICoreContainer hostContainer,
-        IModManager modManager,
+        IGameStateManager gameStateManager,
         IGraphResourceTypes resourceTypes,
         IPassTypes passTypes,
         IReadOnlyList<Identification> passIds)
     {
         var resolutionProvider = new RenderGraphResolutionProvider();
 
-        var modIdList = modManager.LoadedMods.Select(m => m.Id).ToList();
+        var modIdList = gameStateManager.LoadedMods.ToList();
         var passFactory = RenderPassRegistry.BuildRegisterPassContainer(
             diService,
             hostContainer,
