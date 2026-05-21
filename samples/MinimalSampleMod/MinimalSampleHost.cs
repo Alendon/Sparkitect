@@ -1,6 +1,7 @@
 using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Sparkitect.DI;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.RenderGraph.Runtime;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Modding;
@@ -20,11 +21,15 @@ internal sealed class MinimalSampleHost : IMinimalSampleHost
     public required IDIService DIService { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
     public required IModManager ModManager { private get; init; }
+    public required IGraphResourceTypes ResourceTypes { private get; init; }
+    public required IPassTypes PassTypes { private get; init; }
 
     public bool IsOpen => _window?.IsOpen ?? false;
 
     public void Initialize()
     {
+        if (_renderGraph is not null) return;
+
         _window = WindowManager.MainWindow ?? WindowManager.CreateWindow("MinimalSampleMod", 800, 600);
         WindowManager.MainWindow = _window;
 
@@ -34,6 +39,8 @@ internal sealed class MinimalSampleHost : IMinimalSampleHost
             DIService,
             GameStateManager.CurrentCoreContainer,
             ModManager,
+            ResourceTypes,
+            PassTypes,
             new List<Identification> { RenderPassID.MinimalSampleMod.ClearColor });
     }
 

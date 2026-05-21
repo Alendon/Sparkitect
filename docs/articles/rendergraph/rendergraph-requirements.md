@@ -618,6 +618,13 @@ are later stock or extension-layer concerns.
   data?
 - Which validation happens in analyzers, source generators, graph compilation, and frame
   execution?
+- Should swapchain frame management (image acquisition, present-layout transition, present
+  submission) be modeled as explicit *early* and *late* swapchain passes that participate in
+  normal graph ordering, instead of being hardcoded into a manager's `BeginFrame`/`EndFrame`?
+  An early pass would own acquisition and seed the swapchain view's bound backing; a late pass
+  would own the transition to `PresentSrcKhr` and signal the present semaphore. This would
+  collapse a category of "this only the manager can do" logic into the same pass + hook
+  contracts every other graph participant uses, and make swapchain handling extensible by mods.
 
 ## See Also
 

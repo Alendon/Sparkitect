@@ -4,6 +4,7 @@ using Sparkitect.CompilerGenerated.KeyedFactoryExtensions;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.Graphics.RenderGraph.Hooks;
+using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
@@ -19,10 +20,6 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 /// <see cref="RunFrame"/>. Constructed via the static <see cref="Initialize"/> factory;
 /// no public constructor.
 /// </summary>
-/// <remarks>
-/// Passes receive the swapchain through a per-graph
-/// <see cref="RenderGraphResolutionProvider"/>; the host container handles everything else.
-/// </remarks>
 [PublicAPI]
 public sealed partial class RenderGraph : IDisposable
 {
@@ -36,6 +33,7 @@ public sealed partial class RenderGraph : IDisposable
     private readonly VkSemaphore _presentSemaphore;
     private readonly VkQueue _graphicsQueue;
     private readonly uint _graphicsQueueFamily;
+    private readonly IImageResourceManager _imageManager;
     private bool _disposed;
 
     private RenderGraph(
@@ -48,7 +46,8 @@ public sealed partial class RenderGraph : IDisposable
         VkSemaphore acquireSemaphore,
         VkSemaphore presentSemaphore,
         VkQueue graphicsQueue,
-        uint graphicsQueueFamily)
+        uint graphicsQueueFamily,
+        IImageResourceManager imageManager)
     {
         _vulkanContext = vulkanContext;
         _window = window;
@@ -60,6 +59,7 @@ public sealed partial class RenderGraph : IDisposable
         _presentSemaphore = presentSemaphore;
         _graphicsQueue = graphicsQueue;
         _graphicsQueueFamily = graphicsQueueFamily;
+        _imageManager = imageManager;
     }
 
     /// <summary>
@@ -71,9 +71,11 @@ public sealed partial class RenderGraph : IDisposable
         IDIService diService,
         ICoreContainer hostContainer,
         IModManager modManager,
+        IGraphResourceTypes resourceTypes,
+        IPassTypes passTypes,
         IReadOnlyList<Identification> passIds)
     {
-        var resolutionProvider = new RenderGraphResolutionProvider(window, window.Swapchain);
+        var resolutionProvider = new RenderGraphResolutionProvider();
 
         var modIdList = modManager.LoadedMods.Select(m => m.Id).ToList();
         var passFactory = RenderPassRegistry.BuildRegisterPassContainer(
@@ -82,20 +84,38 @@ public sealed partial class RenderGraph : IDisposable
             resolutionProvider,
             modIdList);
 
+        var (queueFamily, queue) = ResolveGraphicsQueue(vulkanContext);
+
+        var swapchainBackings = window.Swapchain.Images.ToArray();
+        var swapchainImage = new Resources.Image(
+            swapchainBackings,
+            window.Swapchain.Extent,
+            window.Swapchain.ImageFormat,
+            initialQueueFamily: queueFamily);
+
+        var imageMgr = new ImageResourceManager(swapchainImage, vulkanContext);
+        var managersByType = new Dictionary<Type, IGraphResourceManager>
+        {
+            [typeof(ImageResourceManager)] = imageMgr,
+        };
+        var setupContext = new SetupContext(resourceTypes, managersByType);
+
         var compiler = new RenderGraphCompiler();
         foreach (var id in passIds)
         {
+            if (!passTypes.RegisteredPassIds.Contains(id))
+                throw new InvalidOperationException(
+                    $"Pass {id} is not registered via RenderPassRegistry.");
             if (!passFactory.TryResolve(id, out var pass))
                 throw new InvalidOperationException(
-                    $"No render pass registered for {id} — call RenderPassRegistry.RegisterPass<…>(id) first.");
-            ((ISetupHook)pass).Setup();
+                    $"No render pass factory resolved {id} — DI binding missing.");
+            setupContext.PushPass(id);
+            ((ISetupHook)pass).Setup(setupContext);
+            setupContext.PopPass();
             compiler.AddPass(id, pass);
         }
         var compiled = compiler.Compile();
 
-        var (queueFamily, queue) = ResolveGraphicsQueue(vulkanContext);
-        
-        
         var poolResult = vulkanContext.CreateCommandPool(
             CommandPoolCreateFlags.ResetCommandBufferBit, queueFamily);
         if (poolResult is not Result<VkCommandPool, VkApiResult>.Ok poolOk)
@@ -107,7 +127,6 @@ public sealed partial class RenderGraph : IDisposable
             throw new InvalidOperationException("RenderGraph: AllocateCommandBuffer failed.");
         var cmdBuf = cmdOk.Value;
 
-        // Fence MUST start signaled so the first RunFrame's Wait() returns immediately.
         var fenceResult = vulkanContext.CreateFence(FenceCreateFlags.SignaledBit);
         if (fenceResult is not Result<VkFence, VkApiResult>.Ok fenceOk)
             throw new InvalidOperationException("RenderGraph: CreateFence failed.");
@@ -123,7 +142,7 @@ public sealed partial class RenderGraph : IDisposable
             throw new InvalidOperationException("RenderGraph: CreateSemaphore (present) failed.");
         var presSem = presOk.Value;
 
-        return new RenderGraph(vulkanContext, window, compiled, pool, cmdBuf, fence, acqSem, presSem, queue, queueFamily);
+        return new RenderGraph(vulkanContext, window, compiled, pool, cmdBuf, fence, acqSem, presSem, queue, queueFamily, imageMgr);
     }
 
     private static (uint family, VkQueue queue) ResolveGraphicsQueue(IVulkanContext ctx)
@@ -146,13 +165,12 @@ public sealed partial class RenderGraph : IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        // Wait for device idle so per-frame objects are not in use when destroyed.
         unsafe { _vulkanContext.VkApi.DeviceWaitIdle(_vulkanContext.VkDevice.Handle); }
 
+        (_imageManager as IDisposable)?.Dispose();
         _presentSemaphore.Dispose();
         _acquireSemaphore.Dispose();
         _inFlightFence.Dispose();
-        // Command buffer auto-freed when pool destroyed.
         _commandPool.Dispose();
     }
 }

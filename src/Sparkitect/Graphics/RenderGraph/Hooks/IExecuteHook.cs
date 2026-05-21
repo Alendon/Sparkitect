@@ -9,5 +9,5 @@ namespace Sparkitect.Graphics.RenderGraph.Hooks;
 [PublicAPI]
 public interface IExecuteHook
 {
-    void Execute(VkCommandBuffer commandBuffer, uint swapchainImageIndex);
+    void Execute(VkCommandBuffer commandBuffer);
 }

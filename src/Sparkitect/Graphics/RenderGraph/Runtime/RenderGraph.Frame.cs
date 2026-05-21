@@ -9,8 +9,8 @@ public sealed partial class RenderGraph
 {
     /// <summary>
     /// Per-frame Vulkan orchestration at 1-frame-in-flight. Waits for the previous frame,
-    /// acquires the next swapchain image, dispatches every compiled pass between layout
-    /// barriers, then submits and presents.
+    /// acquires the next swapchain image, dispatches every compiled pass between
+    /// manager-driven barriers, then submits and presents.
     /// </summary>
     public void RunFrame()
     {
@@ -23,29 +23,15 @@ public sealed partial class RenderGraph
                 "RenderGraph: AcquireNextImage failed (resize is not supported).");
         var imageIndex = acqOk.Value;
 
-        var swapchainImage = _window.Swapchain.Images[(int)imageIndex];
+        _imageManager.BeginFrame(imageIndex);
 
         _commandBuffer.Reset();
         _commandBuffer.Begin(CommandBufferUsageFlags.OneTimeSubmitBit);
 
-        _commandBuffer.ImageBarrier(swapchainImage,
-            oldLayout: ImageLayout.Undefined,
-            newLayout: ImageLayout.TransferDstOptimal,
-            srcStage: PipelineStageFlags.TopOfPipeBit,
-            dstStage: PipelineStageFlags.TransferBit,
-            srcAccess: 0,
-            dstAccess: AccessFlags.TransferWriteBit);
-
         foreach (var (_, pass) in _compiled.OrderedPasses)
-            ((IExecuteHook)pass).Execute(_commandBuffer, imageIndex);
+            ((IExecuteHook)pass).Execute(_commandBuffer);
 
-        _commandBuffer.ImageBarrier(swapchainImage,
-            oldLayout: ImageLayout.TransferDstOptimal,
-            newLayout: ImageLayout.PresentSrcKhr,
-            srcStage: PipelineStageFlags.TransferBit,
-            dstStage: PipelineStageFlags.BottomOfPipeBit,
-            srcAccess: AccessFlags.TransferWriteBit,
-            dstAccess: 0);
+        _imageManager.EndFrame(_commandBuffer);
 
         _commandBuffer.End();
 

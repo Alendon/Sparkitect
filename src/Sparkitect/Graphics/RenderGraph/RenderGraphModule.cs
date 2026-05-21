@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.RenderGraph.Runtime;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
@@ -26,6 +27,13 @@ public partial class RenderGraphModule : IStateModule
         registryManager.AddRegistry<RenderPassRegistry>();
     }
 
+    [TransitionFunction("add_graph_resource_registry")]
+    [OnCreateScheduling]
+    public static void AddGraphResourceRegistry(IRegistryManager registryManager)
+    {
+        registryManager.AddRegistry<GraphResourceRegistry>();
+    }
+
     [TransitionFunction("process_render_pass_registry")]
     [OnFrameEnterScheduling]
     [OrderAfter<AddRenderPassRegistryFunc>]
@@ -34,10 +42,28 @@ public partial class RenderGraphModule : IStateModule
         registryManager.ProcessAllMissing<RenderPassRegistry>();
     }
 
+    [TransitionFunction("process_graph_resource_registry")]
+    [OnFrameEnterScheduling]
+    [OrderAfter<AddGraphResourceRegistryFunc>]
+    public static void ProcessGraphResourceRegistry(
+        IRegistryManager registryManager,
+        IGraphResourceTypesStateFacade resourceTypes)
+    {
+        registryManager.ProcessAllMissing<GraphResourceRegistry>();
+        resourceTypes.PostProcess();
+    }
+
     [TransitionFunction("remove_render_pass_registry")]
     [OnDestroyScheduling]
     public static void RemoveRenderPassRegistry(IRegistryManager registryManager)
     {
         registryManager.UnregisterAllRemaining<RenderPassRegistry>();
+    }
+
+    [TransitionFunction("remove_graph_resource_registry")]
+    [OnDestroyScheduling]
+    public static void RemoveGraphResourceRegistry(IRegistryManager registryManager)
+    {
+        registryManager.UnregisterAllRemaining<GraphResourceRegistry>();
     }
 }

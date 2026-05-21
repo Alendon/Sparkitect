@@ -8,5 +8,5 @@ namespace Sparkitect.Graphics.RenderGraph.Hooks;
 [PublicAPI]
 public interface ISetupHook
 {
-    void Setup();
+    void Setup(ISetupContext ctx);
 }
