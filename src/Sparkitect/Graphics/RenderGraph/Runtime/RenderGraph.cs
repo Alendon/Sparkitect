@@ -22,7 +22,7 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 /// no public constructor.
 /// </summary>
 [PublicAPI]
-public sealed partial class RenderGraph : IDisposable
+public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler, IDisposable
 {
     private readonly IVulkanContext _vulkanContext;
     private readonly ISparkitWindow _window;
@@ -36,6 +36,24 @@ public sealed partial class RenderGraph : IDisposable
     private readonly uint _graphicsQueueFamily;
     private readonly IImageResourceManager _imageManager;
     private bool _disposed;
+
+    public THandler? GetHandler<THandler>() where THandler : class
+    {
+        if (typeof(THandler) == typeof(IRenderGraph)) return (THandler)(object)this;
+        if (typeof(THandler) == typeof(IExternalResourceHandler)) return (THandler)(object)this;
+        return null;
+    }
+
+    public void Publish<TResource>(TResource value)
+    {
+        if (typeof(TResource) == typeof(SwapchainResource))
+        {
+            _imageManager.Apply((SwapchainResource)(object)value!);
+            return;
+        }
+        throw new InvalidOperationException(
+            $"RenderGraph.Publish: no external-resource route registered for type {typeof(TResource).FullName}.");
+    }
 
     private RenderGraph(
         IVulkanContext vulkanContext,
@@ -87,14 +105,7 @@ public sealed partial class RenderGraph : IDisposable
 
         var (queueFamily, queue) = ResolveGraphicsQueue(vulkanContext);
 
-        var swapchainBackings = window.Swapchain.Images.ToArray();
-        var swapchainImage = new Resources.Image(
-            swapchainBackings,
-            window.Swapchain.Extent,
-            window.Swapchain.ImageFormat,
-            initialQueueFamily: queueFamily);
-
-        var imageMgr = new ImageResourceManager(swapchainImage, vulkanContext);
+        var imageMgr = new ImageResourceManager(vulkanContext, initialQueueFamily: queueFamily);
         var managersByType = new Dictionary<Type, IGraphResourceManager>
         {
             [typeof(ImageResourceManager)] = imageMgr,

@@ -2,6 +2,7 @@ using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Sparkitect.DI;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.RenderGraph.Runtime;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Modding;
@@ -41,6 +42,9 @@ internal sealed class MinimalSampleHost : IMinimalSampleHost
             ResourceTypes,
             PassTypes,
             new List<Identification> { RenderPassID.MinimalSampleMod.ClearColor });
+
+        var swapchainResource = new SwapchainResource(_window.Swapchain);
+        swapchainResource.Apply(_renderGraph);
     }
 
     public void PollEvents() => _window?.PollEvents();

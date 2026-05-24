@@ -11,6 +11,7 @@ internal interface IImageResourceManager :
     IGraphResourceManager<Image, ImageRequest>,
     IGraphResourceManager<WriteableImage, WriteableImageRequest>
 {
+    void Apply(SwapchainResource swapchainResource);
     void BeginFrame(uint acquiredSwapchainImageIndex);
     void EndFrame(VkCommandBuffer commandBuffer);
 }
