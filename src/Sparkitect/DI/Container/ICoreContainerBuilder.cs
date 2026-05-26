@@ -18,7 +18,19 @@ public interface ICoreContainerBuilder
     /// <returns>The builder instance for method chaining</returns>
     /// <exception cref="InvalidOperationException">Thrown when the service is already registered or exists in parent container</exception>
     ICoreContainerBuilder Register<TServiceFactory>() where TServiceFactory : IServiceFactory, new();
-    
+
+    /// <summary>
+    /// Registers a service factory in the container by Type. Required for runtime-driven
+    /// registration where the factory type is only available as a <see cref="Type"/> value
+    /// (e.g., dictionary lookups in per-graph service scoping).
+    /// </summary>
+    /// <param name="factoryType">A Type that implements <see cref="IServiceFactory"/> and has a parameterless constructor.</param>
+    /// <returns>The builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="factoryType"/> does not implement <see cref="IServiceFactory"/> or lacks a parameterless constructor.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the service is already registered or exists in parent container.</exception>
+    ICoreContainerBuilder Register(Type factoryType);
+
+
     /// <summary>
     /// Overrides an existing service registration with a new factory implementation.
     /// </summary>

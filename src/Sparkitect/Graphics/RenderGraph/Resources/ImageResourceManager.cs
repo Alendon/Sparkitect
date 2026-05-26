@@ -7,6 +7,8 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
+
+
 /// <summary>
 /// Single Image bound to the swapchain plus a per-graph pool of transient Images.
 /// Acts as the dispatch coordinator for image resources — it owns physical resources
@@ -16,18 +18,27 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// run are tracked and rebound when <see cref="Apply"/> is called (and re-bound again
 /// on every subsequent call, supporting future resize / re-publish flows).
 /// </summary>
+[GraphLocal<IImageResourceManager>]
 internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
 {
-    private readonly IVulkanContext? _vulkanContext;
+    private readonly IVulkanContext _vulkanContext;
     private readonly List<Image> _transients = new();
     private readonly List<ISwapchainTrackedHandle> _swapchainHandles = new();
     private Image? _swapchainImage;
-    private readonly uint _initialQueueFamily;
+    private uint _queueFamily;
 
-    internal ImageResourceManager(IVulkanContext? vulkanContext = null, uint initialQueueFamily = 0)
+    internal ImageResourceManager(IVulkanContext vulkanContext)
     {
         _vulkanContext = vulkanContext;
-        _initialQueueFamily = initialQueueFamily;
+    }
+
+    /// <summary>
+    /// Binds the graphics queue family the manager will use when constructing new
+    /// swapchain-backed images. Invoke during render-graph setup, before any Apply.
+    /// </summary>
+    public void BindQueueFamily(uint queueFamily)
+    {
+        _queueFamily = queueFamily;
     }
 
     public void Apply(SwapchainResource swapchainResource)
@@ -37,7 +48,7 @@ internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
             backings,
             swapchainResource.Extent,
             swapchainResource.Format,
-            initialQueueFamily: _initialQueueFamily);
+            initialQueueFamily: _queueFamily);
 
         _swapchainImage = newImage;
 
@@ -128,10 +139,6 @@ internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
 
     private Image AllocateTransient(Extent2D extent, Format format)
     {
-        if (_vulkanContext is null)
-            throw new InvalidOperationException(
-                "ImageResourceManager: transient image declared but no IVulkanContext supplied at construction.");
-
         var result = _vulkanContext.CreateStorageImage2D(extent, format);
         if (result is not Result<VkImage, VkApiResult>.Ok ok)
             throw new InvalidOperationException(

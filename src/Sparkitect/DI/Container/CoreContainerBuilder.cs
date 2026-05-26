@@ -34,6 +34,30 @@ internal class CoreContainerBuilder : ICoreContainerBuilder
         return this;
     }
 
+    public ICoreContainerBuilder Register(Type factoryType)
+    {
+        if (factoryType is null) throw new ArgumentNullException(nameof(factoryType));
+        if (!typeof(IServiceFactory).IsAssignableFrom(factoryType))
+            throw new ArgumentException(
+                $"{factoryType.FullName} does not implement IServiceFactory.",
+                nameof(factoryType));
+
+        var instance = Activator.CreateInstance(factoryType)
+            ?? throw new InvalidOperationException(
+                $"Failed to instantiate service factory {factoryType.FullName} — requires a parameterless constructor.");
+        var serviceFactory = (IServiceFactory)instance;
+        var serviceType = serviceFactory.ServiceType;
+
+        if (_parentContainer?.TryResolve(serviceType, out _) is true)
+            throw new InvalidOperationException(
+                $"Service {serviceType.Name} is already registered in the parent container");
+
+        if (!_registrations.TryAdd(serviceType, serviceFactory))
+            throw new InvalidOperationException($"Service {serviceType.Name} is already registered");
+
+        return this;
+    }
+
     public ICoreContainerBuilder Override<TServiceFactory>() where TServiceFactory : IServiceFactory, new()
     {
         var serviceFactory = new TServiceFactory();

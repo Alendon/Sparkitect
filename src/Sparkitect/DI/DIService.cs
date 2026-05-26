@@ -139,11 +139,15 @@ internal class DIService : IDIService
         return new ResolutionScope(container, provider, metadata);
     }
 
+    public ICoreContainerBuilder CreateChildContainerBuilder(ICoreContainer parent)
+        => new CoreContainerBuilder(parent);
+
     public IFactoryContainer<TKey, TBase> BuildFactoryContainer<TKey, TBase>(
         ICoreContainer container,
         IResolutionProvider? provider,
         IEnumerable<string> modIds,
-        Type configuratorEntrypointAttribute)
+        Type configuratorEntrypointAttribute,
+        bool skipMissing = false)
         where TBase : class
         where TKey : notnull
     {
@@ -167,7 +171,7 @@ internal class DIService : IDIService
 
         // Step 4: Materialize the container once from the finalized aggregate
         var builder = new FactoryContainerBuilder<TKey, TBase>();
-        return builder.Build(registrations, scope, skipMissing: true);
+        return builder.Build(registrations, scope, skipMissing);
     }
 
     private static IReadOnlyList<Type> OrderEntrypoints<T>(IReadOnlyList<Type> allCandidateTypes)

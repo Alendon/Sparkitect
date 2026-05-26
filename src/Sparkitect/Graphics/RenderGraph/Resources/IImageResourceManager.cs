@@ -11,6 +11,12 @@ internal interface IImageResourceManager :
     IGraphResourceManager<Image, ImageRequest>,
     IGraphResourceManager<WriteableImage, WriteableImageRequest>
 {
+    /// <summary>
+    /// Bind the graphics queue family the manager will use when constructing new
+    /// swapchain-backed images. Invoke during render-graph setup, before any Apply.
+    /// </summary>
+    void BindQueueFamily(uint queueFamily);
+
     void Apply(SwapchainResource swapchainResource);
     void BeginFrame(uint acquiredSwapchainImageIndex);
     void EndFrame(VkCommandBuffer commandBuffer);

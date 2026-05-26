@@ -14,6 +14,10 @@ public sealed partial class RenderGraph
     /// </summary>
     public void RunFrame()
     {
+        if (!_setupComplete)
+            throw new InvalidOperationException(
+                "RenderGraph.RunFrame: Setup has not been invoked. Construct render graphs via IRenderGraphManager.CreateGraph<TRenderGraph>(passIds).");
+
         _inFlightFence.Wait();
         _inFlightFence.Reset();
 

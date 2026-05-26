@@ -92,12 +92,22 @@ public interface IDIService
     /// <param name="provider">Optional resolution provider for metadata-driven resolution.</param>
     /// <param name="modIds">Mod IDs to scan for configurator entrypoints.</param>
     /// <param name="configuratorEntrypointAttribute">The attribute type marking factory configurator entrypoints.</param>
+    /// <param name="skipMissing">When true, factories whose dependencies cannot be resolved are silently dropped; otherwise an exception is thrown. Defaults to false.</param>
     /// <returns>A built factory container with all registered and prepared factories.</returns>
     IFactoryContainer<TKey, TBase> BuildFactoryContainer<TKey, TBase>(
         ICoreContainer container,
         IResolutionProvider? provider,
         IEnumerable<string> modIds,
-        Type configuratorEntrypointAttribute)
+        Type configuratorEntrypointAttribute,
+        bool skipMissing = false)
         where TBase : class
         where TKey : notnull;
+
+    /// <summary>
+    /// Creates a child container builder whose parent chain points at <paramref name="parent"/>.
+    /// Use when a subsystem needs an isolated container scope that still resolves shared services
+    /// (Vulkan context, window, etc.) from the parent chain.
+    /// </summary>
+    /// <param name="parent">The parent container; the returned builder's services are layered above it.</param>
+    ICoreContainerBuilder CreateChildContainerBuilder(ICoreContainer parent);
 }

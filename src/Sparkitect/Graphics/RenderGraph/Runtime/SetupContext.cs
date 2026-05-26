@@ -4,22 +4,22 @@ using Sparkitect.Modding;
 namespace Sparkitect.Graphics.RenderGraph.Runtime;
 
 /// <summary>
-/// Setup-time dispatcher: resolves a resource type's manager via
-/// <see cref="IGraphResourceTypes"/> and forwards <c>Declare</c> calls. The
-/// active-pass bracket gives every pass a fresh slot counter starting at 0.
+/// Setup-time dispatcher: resolves a resource type's manager via the consolidated render-graph
+/// manager and forwards <c>Declare</c> calls. The active-pass bracket gives every pass a
+/// fresh slot counter starting at 0.
 /// </summary>
 internal sealed class SetupContext : ISetupContext
 {
-    private readonly IGraphResourceTypes _resourceTypes;
+    private readonly IRenderGraphManager _manager;
     private readonly IReadOnlyDictionary<Type, IGraphResourceManager> _managersByType;
     private Identification _activePassId;
     private int _nextSlotForActivePass;
 
     internal SetupContext(
-        IGraphResourceTypes resourceTypes,
+        IRenderGraphManager manager,
         IReadOnlyDictionary<Type, IGraphResourceManager> managersByType)
     {
-        _resourceTypes = resourceTypes;
+        _manager = manager;
         _managersByType = managersByType;
     }
 
@@ -39,7 +39,7 @@ internal sealed class SetupContext : ISetupContext
         where TResource : IHasIdentification
     {
         var resourceId = TResource.Identification;
-        if (!_resourceTypes.TryGetManagerType(resourceId, out var managerType))
+        if (!_manager.TryGetManagerType(resourceId, out var managerType))
             throw new InvalidOperationException(
                 $"No [ResourceManager<…>] binding registered for resource type {typeof(TResource).FullName} (id={resourceId}).");
         if (!_managersByType.TryGetValue(managerType, out var manager))

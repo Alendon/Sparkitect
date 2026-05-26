@@ -64,7 +64,7 @@ internal class RegistryManager : IRegistryManager
         var provider = new FacadeResolutionProvider();
         _registryFactory = DIService.BuildFactoryContainer<string, IRegistryBase>(
             effectiveContainer, provider, modIds,
-            typeof(RegistryConfiguratorAttribute));
+            typeof(RegistryConfiguratorAttribute), true);
         _lastCoreContainer = effectiveContainer;
     }
 

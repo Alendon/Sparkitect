@@ -8,17 +8,17 @@ namespace Sparkitect.Graphics.RenderGraph;
 /// register via the generator-emitted <c>[GraphResourceRegistry.RegisterResource(...)]</c>
 /// attribute. Identification-only — no keyed factory; resource types are instantiated
 /// through their bound manager, not via a registry-driven factory. Each registration
-/// forwards the id into <see cref="IGraphResourceTypesRegistryFacade"/> for tracking.
+/// forwards the id into <see cref="IRenderGraphManagerRegistryFacade"/> for tracking.
 /// </summary>
 [Registry(Identifier = "graph_resource")]
 [PublicAPI]
-public partial class GraphResourceRegistry(IGraphResourceTypesRegistryFacade resourceTypes) : IRegistry
+public partial class GraphResourceRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry
 {
     [RegistryMethod]
     public void RegisterResource<TResource>(Identification id)
         where TResource : class, IHasIdentification
     {
-        resourceTypes.AddResource(id);
+        managerFacade.AddResource(id);
     }
 
     public static string Identifier => "graph_resource";

@@ -1,7 +1,9 @@
 using System.Runtime.CompilerServices;
+using Moq;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.RenderGraph.Resources;
+using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
 using Image = Sparkitect.Graphics.RenderGraph.Resources.Image;
@@ -11,6 +13,8 @@ namespace Sparkitect.Tests.RenderGraph;
 public class ImageResourceManagerTests
 {
     private static readonly Identification PassA = Identification.Create(1, 1, 1);
+
+    private static IVulkanContext MockVulkanContext() => new Mock<IVulkanContext>(MockBehavior.Loose).Object;
 
     private static SwapchainResource MakeSwapchainResource(int backingCount = 1)
     {
@@ -34,7 +38,7 @@ public class ImageResourceManagerTests
     public async Task Declare_PreservesCallerSuppliedSlots()
     {
         var sr = MakeSwapchainResource();
-        var mgr = new ImageResourceManager();
+        var mgr = new ImageResourceManager(MockVulkanContext());
         mgr.Apply(sr);
         IImageResourceManager imgr = mgr;
 
@@ -51,7 +55,7 @@ public class ImageResourceManagerTests
     [Test]
     public async Task DeclareUntyped_UnknownRequestArmType_Throws()
     {
-        var mgr = new ImageResourceManager();
+        var mgr = new ImageResourceManager(MockVulkanContext());
         IGraphResourceManagerFor<WriteableImage> typed = mgr;
 
         var bogus = new BogusWriteableRequest();
@@ -62,7 +66,7 @@ public class ImageResourceManagerTests
     [Test]
     public async Task Declare_BeforeApply_FetchThrows()
     {
-        var mgr = new ImageResourceManager();
+        var mgr = new ImageResourceManager(MockVulkanContext());
         IImageResourceManager imgr = mgr;
 
         var handle = imgr.Declare(PassA, 0, new WriteableImageRequest.FromSwapchain(WriteUsage.TransferDst));
@@ -75,7 +79,7 @@ public class ImageResourceManagerTests
     [Test]
     public async Task ReApply_TrackedHandles_PointAtNewSwapchain()
     {
-        var mgr = new ImageResourceManager();
+        var mgr = new ImageResourceManager(MockVulkanContext());
         IImageResourceManager imgr = mgr;
 
         var firstSr = MakeSwapchainResource();

@@ -18,29 +18,38 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 /// <summary>
 /// Stock render graph. Frame-driving (owns command pool, command buffer, in-flight fence,
 /// acquire and present semaphores) but externally invoked — consumers call
-/// <see cref="RunFrame"/>. Constructed via the static <see cref="Initialize"/> factory;
-/// no public constructor.
+/// <see cref="RunFrame"/>. Constructed via <see cref="IRenderGraphManager.CreateGraph{TRenderGraph}"/>;
+/// post-construction setup work is driven by <see cref="IRenderGraphSetupHandler.Setup"/>.
 /// </summary>
 [PublicAPI]
-public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler, IDisposable
+[RenderGraphRegistry.RegisterRenderGraph("stock")]
+public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler, IRenderGraphSetupHandler, IDisposable
 {
     private readonly IVulkanContext _vulkanContext;
-    private readonly ISparkitWindow _window;
-    private readonly CompiledRenderGraph _compiled;
-    private readonly VkCommandPool _commandPool;
-    private readonly VkCommandBuffer _commandBuffer;
-    private readonly VkFence _inFlightFence;
-    private readonly VkSemaphore _acquireSemaphore;
-    private readonly VkSemaphore _presentSemaphore;
-    private readonly VkQueue _graphicsQueue;
-    private readonly uint _graphicsQueueFamily;
     private readonly IImageResourceManager _imageManager;
+    private readonly IDIService _diService;
+    private readonly IGameStateManager _gameStateManager;
+    private readonly IRenderGraphManager _renderGraphManager;
+
+    private ISparkitWindow _window = null!;
+    private ICoreContainer? _childContainer;
+
+    private CompiledRenderGraph _compiled = null!;
+    private VkCommandPool _commandPool = null!;
+    private VkCommandBuffer _commandBuffer = null!;
+    private VkFence _inFlightFence = null!;
+    private VkSemaphore _acquireSemaphore = null!;
+    private VkSemaphore _presentSemaphore = null!;
+    private VkQueue _graphicsQueue = null!;
+    private uint _graphicsQueueFamily;
     private bool _disposed;
+    private bool _setupComplete;
 
     public THandler? GetHandler<THandler>() where THandler : class
     {
         if (typeof(THandler) == typeof(IRenderGraph)) return (THandler)(object)this;
         if (typeof(THandler) == typeof(IExternalResourceHandler)) return (THandler)(object)this;
+        if (typeof(THandler) == typeof(IRenderGraphSetupHandler)) return (THandler)(object)this;
         return null;
     }
 
@@ -55,67 +64,57 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
             $"RenderGraph.Publish: no external-resource route registered for type {typeof(TResource).FullName}.");
     }
 
-    private RenderGraph(
+    internal RenderGraph(
         IVulkanContext vulkanContext,
-        ISparkitWindow window,
-        CompiledRenderGraph compiled,
-        VkCommandPool commandPool,
-        VkCommandBuffer commandBuffer,
-        VkFence inFlightFence,
-        VkSemaphore acquireSemaphore,
-        VkSemaphore presentSemaphore,
-        VkQueue graphicsQueue,
-        uint graphicsQueueFamily,
-        IImageResourceManager imageManager)
+        IImageResourceManager imageManager,
+        IDIService diService,
+        IGameStateManager gameStateManager,
+        IRenderGraphManager renderGraphManager)
     {
         _vulkanContext = vulkanContext;
-        _window = window;
-        _compiled = compiled;
-        _commandPool = commandPool;
-        _commandBuffer = commandBuffer;
-        _inFlightFence = inFlightFence;
-        _acquireSemaphore = acquireSemaphore;
-        _presentSemaphore = presentSemaphore;
-        _graphicsQueue = graphicsQueue;
-        _graphicsQueueFamily = graphicsQueueFamily;
         _imageManager = imageManager;
+        _diService = diService;
+        _gameStateManager = gameStateManager;
+        _renderGraphManager = renderGraphManager;
     }
 
     /// <summary>
-    /// Builds a fully initialized, ready-to-<see cref="RunFrame"/> render graph.
+    /// The per-render-graph child container, assigned by the render-graph manager after this
+    /// instance is resolved from the SG-emitted keyed factory. Holds the GraphLocal singletons
+    /// for this graph; disposed by <see cref="Dispose"/>.
     /// </summary>
-    public static RenderGraph Initialize(
-        IVulkanContext vulkanContext,
-        ISparkitWindow window,
-        IDIService diService,
-        ICoreContainer hostContainer,
-        IGameStateManager gameStateManager,
-        IGraphResourceTypes resourceTypes,
-        IPassTypes passTypes,
-        IReadOnlyList<Identification> passIds)
+    internal ICoreContainer? ChildContainer
     {
-        var resolutionProvider = new RenderGraphResolutionProvider();
+        get => _childContainer;
+        set => _childContainer = value;
+    }
 
-        var modIdList = gameStateManager.LoadedMods.ToList();
-        var passFactory = RenderPassRegistry.BuildRegisterPassContainer(
-            diService,
-            hostContainer,
-            resolutionProvider,
-            modIdList);
+    public void Setup(IEnumerable<Identification> passIds, ISparkitWindow window)
+    {
+        if (_setupComplete)
+            throw new InvalidOperationException(
+                "RenderGraph.Setup: already invoked. Setup runs exactly once per render graph instance.");
 
-        var (queueFamily, queue) = ResolveGraphicsQueue(vulkanContext);
+        _window = window;
+        var modIdList = _gameStateManager.LoadedMods.ToList();
+        var hostContainer = _gameStateManager.CurrentCoreContainer;
 
-        var imageMgr = new ImageResourceManager(vulkanContext, initialQueueFamily: queueFamily);
+        var (queueFamily, queue) = ResolveGraphicsQueue(_vulkanContext);
+        _imageManager.BindQueueFamily(queueFamily);
+
         var managersByType = new Dictionary<Type, IGraphResourceManager>
         {
-            [typeof(ImageResourceManager)] = imageMgr,
+            [typeof(ImageResourceManager)] = (IGraphResourceManager)_imageManager,
         };
-        var setupContext = new SetupContext(resourceTypes, managersByType);
+        var setupContext = new SetupContext(_renderGraphManager, managersByType);
+
+        using var passFactory = RenderPassRegistry.BuildRegisterPassContainer(
+            _diService, hostContainer, provider: null, modIdList);
 
         var compiler = new RenderGraphCompiler();
         foreach (var id in passIds)
         {
-            if (!passTypes.RegisteredPassIds.Contains(id))
+            if (!_renderGraphManager.RegisteredPassIds.Contains(id))
                 throw new InvalidOperationException(
                     $"Pass {id} is not registered via RenderPassRegistry.");
             if (!passFactory.TryResolve(id, out var pass))
@@ -126,35 +125,37 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
             setupContext.PopPass();
             compiler.AddPass(id, pass);
         }
-        var compiled = compiler.Compile();
+        _compiled = compiler.Compile();
 
-        var poolResult = vulkanContext.CreateCommandPool(
+        var poolResult = _vulkanContext.CreateCommandPool(
             CommandPoolCreateFlags.ResetCommandBufferBit, queueFamily);
         if (poolResult is not Result<VkCommandPool, VkApiResult>.Ok poolOk)
             throw new InvalidOperationException("RenderGraph: CreateCommandPool failed.");
-        var pool = poolOk.Value;
+        _commandPool = poolOk.Value;
 
-        var cmdResult = pool.AllocateCommandBuffer(CommandBufferLevel.Primary);
+        var cmdResult = _commandPool.AllocateCommandBuffer(CommandBufferLevel.Primary);
         if (cmdResult is not Result<VkCommandBuffer, VkApiResult>.Ok cmdOk)
             throw new InvalidOperationException("RenderGraph: AllocateCommandBuffer failed.");
-        var cmdBuf = cmdOk.Value;
+        _commandBuffer = cmdOk.Value;
 
-        var fenceResult = vulkanContext.CreateFence(FenceCreateFlags.SignaledBit);
+        var fenceResult = _vulkanContext.CreateFence(FenceCreateFlags.SignaledBit);
         if (fenceResult is not Result<VkFence, VkApiResult>.Ok fenceOk)
             throw new InvalidOperationException("RenderGraph: CreateFence failed.");
-        var fence = fenceOk.Value;
+        _inFlightFence = fenceOk.Value;
 
-        var acqResult = vulkanContext.CreateSemaphore();
+        var acqResult = _vulkanContext.CreateSemaphore();
         if (acqResult is not Result<VkSemaphore, VkApiResult>.Ok acqOk)
             throw new InvalidOperationException("RenderGraph: CreateSemaphore (acquire) failed.");
-        var acqSem = acqOk.Value;
+        _acquireSemaphore = acqOk.Value;
 
-        var presResult = vulkanContext.CreateSemaphore();
+        var presResult = _vulkanContext.CreateSemaphore();
         if (presResult is not Result<VkSemaphore, VkApiResult>.Ok presOk)
             throw new InvalidOperationException("RenderGraph: CreateSemaphore (present) failed.");
-        var presSem = presOk.Value;
+        _presentSemaphore = presOk.Value;
 
-        return new RenderGraph(vulkanContext, window, compiled, pool, cmdBuf, fence, acqSem, presSem, queue, queueFamily, imageMgr);
+        _graphicsQueue = queue;
+        _graphicsQueueFamily = queueFamily;
+        _setupComplete = true;
     }
 
     private static (uint family, VkQueue queue) ResolveGraphicsQueue(IVulkanContext ctx)
@@ -180,9 +181,14 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
         unsafe { _vulkanContext.VkApi.DeviceWaitIdle(_vulkanContext.VkDevice.Handle); }
 
         (_imageManager as IDisposable)?.Dispose();
-        _presentSemaphore.Dispose();
-        _acquireSemaphore.Dispose();
-        _inFlightFence.Dispose();
-        _commandPool.Dispose();
+        if (_setupComplete)
+        {
+            _presentSemaphore.Dispose();
+            _acquireSemaphore.Dispose();
+            _inFlightFence.Dispose();
+            _commandPool.Dispose();
+        }
+
+        (_childContainer as IDisposable)?.Dispose();
     }
 }
