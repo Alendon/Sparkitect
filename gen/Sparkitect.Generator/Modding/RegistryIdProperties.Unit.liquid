@@ -1,3 +1,4 @@
+#nullable enable
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
@@ -6,7 +7,21 @@ namespace {{ ExtensionsNamespace }};
 public readonly partial struct {{ ModStructName }}
 {
 {% for entry in Entries -%}
-    public global::Sparkitect.Modding.Identification {{ entry.PropertyName }} => global::{{ RegistrationsNamespace }}.{{ TypePrefix }}{{ RegistryName }}Registrations_{{ SourceTag }}.{{ entry.PropertyName }};
+    private static global::Sparkitect.Modding.Identification _{{ entry.LowerCaseId }}_{{ SourceTag }};
+    public global::Sparkitect.Modding.Identification {{ entry.PropertyName }} => _{{ entry.LowerCaseId }}_{{ SourceTag }};
+
+    private static void Register_{{ entry.PropertyName }}_{{ SourceTag }}(
+        global::{{ RegistryFullName }} registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager)
+    {
+        _{{ entry.LowerCaseId }}_{{ SourceTag }} = identificationManager.RegisterObject("{{ ModId }}", "{{ CategoryKey }}", "{{ entry.Id }}");
+{% if entry.Files and entry.Files.size > 0 -%}
+{%- for f in entry.Files %}
+        resourceManager?.SetResource(_{{ entry.LowerCaseId }}_{{ SourceTag }}, "{{ f.fileId }}", "{{ f.fileName }}");
+{%- endfor %}
+{% endif -%}
+        {{ entry.RegistrationCode }}
+    }
 {% endfor -%}
 }
-

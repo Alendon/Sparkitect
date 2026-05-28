@@ -1,10 +1,22 @@
-﻿#pragma warning disable CS9113
+﻿#nullable enable
+#pragma warning disable CS9113
 #pragma warning disable CS1591
 
 namespace SampleTest.Generated.IdExtensions;
 
 public readonly partial struct SampleTestDummyIDs
 {
-public global::Sparkitect.Modding.Identification Hello => global::SampleTest.Generated.Registrations.DummyRegistryRegistrations_Resources.Hello;
-}
+private static global::Sparkitect.Modding.Identification _hello_Resources;
+    public global::Sparkitect.Modding.Identification Hello => _hello_Resources;
 
+    private static void Register_Hello_Resources(
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager)
+    {
+        _hello_Resources = identificationManager.RegisterObject("sample_test", "dummy", "hello");
+
+        resourceManager?.SetResource(_hello_Resources, "default", "f.txt");
+registry.RegisterResourceFile(_hello_Resources);
+    }
+}

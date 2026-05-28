@@ -1,4 +1,5 @@
 ﻿//HintName: TestModule_TestRegistryRegistrations_Providers.g.cs
+#nullable enable
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
@@ -13,19 +14,27 @@ public class TestModule_TestRegistryRegistrations_Providers : global::Sparkitect
 {
     public override string CategoryIdentifier => "test";
 
-public static global::Sparkitect.Modding.Identification Init { get; private set; }
-public static global::Sparkitect.Modding.Identification Update { get; private set; }
+[global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_Init_Providers")]
+    private static extern void __Reg_Init_Providers(
+        global::TestMod.Generated.IdExtensions.TestModTestIDs _,
+        global::StatelessTest.TestRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
 
-    
-    public override void ProcessRegistrations(global::StatelessTest.TestRegistry registry)
+[global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_Update_Providers")]
+    private static extern void __Reg_Update_Providers(
+        global::TestMod.Generated.IdExtensions.TestModTestIDs _,
+        global::StatelessTest.TestRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
+public override void ProcessRegistrations(global::StatelessTest.TestRegistry registry)
     {
-{
-            Init = IdentificationManager.RegisterObject("test_mod", "test", "init");
-registry.Register<global::TestMod.TestModule.InitFunc>(Init);
-        }
-{
-            Update = IdentificationManager.RegisterObject("test_mod", "test", "update");
-registry.Register<global::TestMod.TestModule.UpdateFunc>(Update);
-        }
-} 
+__Reg_Init_Providers(default, registry, IdentificationManager, ResourceManager);
+__Reg_Update_Providers(default, registry, IdentificationManager, ResourceManager);
+}
 }

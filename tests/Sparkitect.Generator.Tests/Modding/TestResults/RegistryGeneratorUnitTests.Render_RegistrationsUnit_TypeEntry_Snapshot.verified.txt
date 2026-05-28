@@ -1,4 +1,5 @@
-﻿#pragma warning disable CS9113
+﻿#nullable enable
+#pragma warning disable CS9113
 #pragma warning disable CS1591
 
 namespace SampleTest.Generated.Registrations;
@@ -12,14 +13,17 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
 {
     public override string CategoryIdentifier => "dummy";
 
-public static global::Sparkitect.Modding.Identification Hello3 { get; private set; }
+[global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_Hello3_Providers")]
+    private static extern void __Reg_Hello3_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
 
-    
-    public override void ProcessRegistrations(global::MinimalSampleMod.DummyRegistry registry)
+public override void ProcessRegistrations(global::MinimalSampleMod.DummyRegistry registry)
     {
-{
-            Hello3 = IdentificationManager.RegisterObject("sample_test", "dummy", "hello3");
-registry.RegisterType<global::MinimalSampleMod.RegistryExample.SampleType>(Hello3);
-        }
-} 
+__Reg_Hello3_Providers(default, registry, IdentificationManager, ResourceManager);
+}
 }

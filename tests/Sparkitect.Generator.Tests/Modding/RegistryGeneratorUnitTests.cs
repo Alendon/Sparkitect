@@ -911,7 +911,10 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(code).Contains("namespace DiTest");
         await Assert.That(code).Contains("partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification");
         await Assert.That(code).Contains("public static global::Sparkitect.Modding.Identification Identification");
-        await Assert.That(code).Contains("global::SampleTest.Generated.Registrations.RenderPassRegistryRegistrations_Providers.ClearColorPass");
+        // The auto-emitted IHasIdentification reads through the C# 14 extension chain
+        // (IDs.{Cat}ID.{Mod}.{PropertyName}) instead of the entrypoint's static field — the
+        // entrypoint no longer holds per-entry storage.
+        await Assert.That(code).Contains("global::Sparkitect.Modding.IDs.RenderPassID.SampleTest.ClearColorPass");
 
         await Verifier.Verify(code, verifySettings);
     }

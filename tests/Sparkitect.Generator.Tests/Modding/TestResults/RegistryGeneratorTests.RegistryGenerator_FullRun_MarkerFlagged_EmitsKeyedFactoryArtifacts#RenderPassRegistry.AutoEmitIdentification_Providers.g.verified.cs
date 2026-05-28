@@ -4,10 +4,12 @@
 
 namespace DiTest
 {
+    using SampleTest.Generated.IdExtensions;
+
     partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification
     {
         public static global::Sparkitect.Modding.Identification Identification
-            => global::SampleTest.Generated.Registrations.RenderPassRegistryRegistrations_Providers.ClearColorPass;
+            => global::Sparkitect.Modding.IDs.RenderPassID.SampleTest.ClearColorPass;
     }
 }
 

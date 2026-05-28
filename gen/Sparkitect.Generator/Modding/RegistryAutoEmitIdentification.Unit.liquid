@@ -4,10 +4,12 @@
 {% for entry in Entries -%}
 namespace {{ entry.ContainingNamespace }}
 {
+    using {{ ExtensionsNamespace }};
+
     partial {{ entry.TypeKindKeyword }} {{ entry.TypeSimpleName }} : global::Sparkitect.Modding.IHasIdentification
     {
         public static global::Sparkitect.Modding.Identification Identification
-            => global::{{ RegistrationsNamespace }}.{{ TypePrefix }}{{ RegistryName }}Registrations_{{ SourceTag }}.{{ entry.PropertyName }};
+            => global::Sparkitect.Modding.IDs.{{ CategoryPascal }}ID.{{ ModIdPascal }}.{{ entry.PropertyName }};
     }
 }
 

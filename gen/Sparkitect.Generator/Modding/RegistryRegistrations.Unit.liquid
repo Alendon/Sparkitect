@@ -1,3 +1,4 @@
+#nullable enable
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
@@ -13,21 +14,20 @@ public class {{ TypePrefix }}{{ RegistryName }}Registrations_{{ SourceTag }} : g
     public override string CategoryIdentifier => "{{ CategoryKey }}";
 
 {% for entry in Entries -%}
-    public static global::Sparkitect.Modding.Identification {{ entry.PropertyName }} { get; private set; }
-{% endfor %}
-    
+    [global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_{{ entry.PropertyName }}_{{ SourceTag }}")]
+    private static extern void __Reg_{{ entry.PropertyName }}_{{ SourceTag }}(
+        global::{{ ExtensionsNamespace }}.{{ ModStructName }} _,
+        global::{{ RegistryFullName }} registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
+{% endfor -%}
     public override void ProcessRegistrations(global::{{ RegistryFullName }} registry)
     {
-{% for e in Entries -%}
-        {
-            {{ e.PropertyName }} = IdentificationManager.RegisterObject("{{ ModId }}", "{{ CategoryKey }}", "{{ e.Id }}");
-{% if e.Files and e.Files.size > 0 -%}
-            {%- for f in e.Files %}
-            ResourceManager?.SetResource({{ e.PropertyName }}, "{{ f.fileId }}", "{{ f.fileName }}");
-            {%- endfor %}
-{% endif -%}
-            {{ e.RegistrationCode }}
-        }
+{% for entry in Entries -%}
+        __Reg_{{ entry.PropertyName }}_{{ SourceTag }}(default, registry, IdentificationManager, ResourceManager);
 {% endfor -%}
-    } 
+    }
 }

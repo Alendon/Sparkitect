@@ -1,4 +1,5 @@
-﻿#pragma warning disable CS9113
+﻿#nullable enable
+#pragma warning disable CS9113
 #pragma warning disable CS1591
 
 namespace SampleTest.Generated.Registrations;
@@ -12,37 +13,47 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
 {
     public override string CategoryIdentifier => "dummy";
 
-public static global::Sparkitect.Modding.Identification Hello3 { get; private set; }
-public static global::Sparkitect.Modding.Identification Hello4 { get; private set; }
-public static global::Sparkitect.Modding.Identification Hello5 { get; private set; }
-public static global::Sparkitect.Modding.Identification Hello6 { get; private set; }
+[global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_Hello3_Providers")]
+    private static extern void __Reg_Hello3_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
 
-    
-    public override void ProcessRegistrations(global::MinimalSampleMod.DummyRegistry registry)
+[global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_Hello4_Providers")]
+    private static extern void __Reg_Hello4_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
+[global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_Hello5_Providers")]
+    private static extern void __Reg_Hello5_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
+[global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_Hello6_Providers")]
+    private static extern void __Reg_Hello6_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
+public override void ProcessRegistrations(global::MinimalSampleMod.DummyRegistry registry)
     {
-{
-            Hello3 = IdentificationManager.RegisterObject("sample_test", "dummy", "hello3");
-
-            ResourceManager?.SetResource(Hello3, "test1", "test.txt");
-registry.RegisterType<global::MinimalSampleMod.RegistryExample.SampleType>(Hello3);
-        }
-{
-            Hello4 = IdentificationManager.RegisterObject("sample_test", "dummy", "hello4");
-Container.TryResolve<global::Sparkitect.SomeType1>(out var arg_0);
-if(!Container.TryResolve<global::Sparkitect.SomeType2>(out var arg_1))
-    throw new global::System.InvalidOperationException("Missing dependency global::Sparkitect.SomeType2 for provider global::MinimalSampleMod.RegistryExample.SampleType.GetObjectDi");
-var value = global::MinimalSampleMod.RegistryExample.SampleType.GetObjectDi(arg_0, arg_1);
-registry.RegisterObject(Hello4, value);
-        }
-{
-            Hello5 = IdentificationManager.RegisterObject("sample_test", "dummy", "hello5");
-var value = global::MinimalSampleMod.RegistryExample.SampleType.SampleTypeGetObject();
-registry.RegisterObject(Hello5, value);
-        }
-{
-            Hello6 = IdentificationManager.RegisterObject("sample_test", "dummy", "hello6");
-var value = global::MinimalSampleMod.RegistryExample.SampleType.SampleTypeGetObjectProp;
-registry.RegisterObject(Hello6, value);
-        }
-} 
+__Reg_Hello3_Providers(default, registry, IdentificationManager, ResourceManager);
+__Reg_Hello4_Providers(default, registry, IdentificationManager, ResourceManager);
+__Reg_Hello5_Providers(default, registry, IdentificationManager, ResourceManager);
+__Reg_Hello6_Providers(default, registry, IdentificationManager, ResourceManager);
+}
 }

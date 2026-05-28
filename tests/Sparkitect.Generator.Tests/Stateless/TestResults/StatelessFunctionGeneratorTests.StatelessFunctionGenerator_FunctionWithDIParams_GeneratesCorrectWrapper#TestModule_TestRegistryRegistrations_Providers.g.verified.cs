@@ -1,4 +1,5 @@
 ﻿//HintName: TestModule_TestRegistryRegistrations_Providers.g.cs
+#nullable enable
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
@@ -13,14 +14,17 @@ public class TestModule_TestRegistryRegistrations_Providers : global::Sparkitect
 {
     public override string CategoryIdentifier => "test";
 
-public static global::Sparkitect.Modding.Identification Process { get; private set; }
+[global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_Process_Providers")]
+    private static extern void __Reg_Process_Providers(
+        global::TestMod.Generated.IdExtensions.TestModTestIDs _,
+        global::StatelessTest.TestRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
 
-    
-    public override void ProcessRegistrations(global::StatelessTest.TestRegistry registry)
+public override void ProcessRegistrations(global::StatelessTest.TestRegistry registry)
     {
-{
-            Process = IdentificationManager.RegisterObject("test_mod", "test", "process");
-registry.Register<global::TestMod.TestModule.ProcessFunc>(Process);
-        }
-} 
+__Reg_Process_Providers(default, registry, IdentificationManager, ResourceManager);
+}
 }

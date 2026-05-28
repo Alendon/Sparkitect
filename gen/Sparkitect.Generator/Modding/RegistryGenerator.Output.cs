@@ -17,24 +17,23 @@ public partial class RegistryGenerator
 
         var ns = settings.ComputeOutputNamespace("Registrations");
 
+        // Entrypoint projection only needs PropertyName per entry — it spells the
+        // `[UnsafeAccessor]` stub name and the matching call-site identifier in
+        // ProcessRegistrations. Files and RegistrationCode live on the IdProperties
+        // projection where the actual storage and register-body emission happen.
         var entries = unit.Entries
             .OrderBy(e => e.Id)
-            .Select(e =>
-            {
-                var propName = StringCase.ToPascalCase(e.Id);
-                return new
-                {
-                    Id = e.Id,
-                    PropertyName = propName,
-                    Files = e.Files.OrderBy(f => f.fileId).Select(f => new { fileId = f.fileId, fileName = f.fileName }).ToArray(),
-                    RegistrationCode = e.EmitRegistrationEntryCode("registry", propName)
-                };
-            })
+            .Select(e => new { PropertyName = StringCase.ToPascalCase(e.Id) })
             .ToArray();
 
-        var useResourceManager = entries.Any(e => e.Files.Length > 0);
-
         var typePrefix = string.IsNullOrEmpty(hintPrefix) ? "" : hintPrefix + "_";
+
+        // Top-level model gains ExtensionsNamespace + ModStructName so the UnsafeAccessor
+        // decl can name the IDs-struct value-type as the first parameter (required for
+        // static-method binding to a value-type target per CONTEXT.md specifics line 181).
+        var categoryPascal = StringCase.ToPascalCase(unit.Model.Key);
+        var extensionsNs = settings.ComputeOutputNamespace("IdExtensions");
+        var modStructName = StringCase.ToPascalCase(settings.ModId) + categoryPascal + "IDs";
 
         var model = new
         {
@@ -43,9 +42,9 @@ public partial class RegistryGenerator
             RegistryName = unit.Model.TypeName,
             RegistryFullName = unit.Model.ContainingNamespace + "." + unit.Model.TypeName,
             CategoryKey = unit.Model.Key,
-            ModId = settings.ModId,
             SourceTag = suffix,
-            UseResourceManager = useResourceManager,
+            ExtensionsNamespace = extensionsNs,
+            ModStructName = modStructName,
             Entries = entries
         };
 
@@ -126,12 +125,20 @@ public partial class RegistryGenerator
             })
             .ToArray();
 
+        // Route the static Identification accessor through the IDs extension chain
+        // (`IDs.{CategoryPascal}ID.{ModIdPascal}.{PropertyName}`) rather than reading
+        // the entrypoint class's storage directly. ExtensionsNamespace is projected so
+        // the template can emit a `using` directive that brings the C# 14
+        // `extension(IDs.{Cat}ID)` chain into scope at the concrete type's namespace.
         var tpl = new
         {
             RegistrationsNamespace = registrationsNs,
+            ExtensionsNamespace = settings.ComputeOutputNamespace("IdExtensions"),
             TypePrefix = string.Empty,
             RegistryName = unit.Model.TypeName,
             SourceTag = suffix,
+            CategoryPascal = StringCase.ToPascalCase(unit.Model.Key),
+            ModIdPascal = StringCase.ToPascalCase(settings.ModId),
             Entries = entries
         };
 
@@ -171,6 +178,30 @@ public partial class RegistryGenerator
 
         var typePrefix = string.IsNullOrEmpty(hintPrefix) ? "" : hintPrefix + "_";
 
+        // Anonymous projection carries LowerCaseId, Files, RegistrationCode, plus
+        // top-level RegistryFullName, CategoryKey, ModId — so the per-entry Register
+        // method body can render fully inside the IDs struct without any forwarder.
+        var entries = unit.Entries
+            .OrderBy(e => e.Id)
+            .Select(e =>
+            {
+                var propName = StringCase.ToPascalCase(e.Id);
+                var lowerId = ToCamelCase(propName);
+                return new
+                {
+                    Id = e.Id,
+                    PropertyName = propName,
+                    LowerCaseId = lowerId,
+                    Files = e.Files.OrderBy(f => f.fileId).Select(f => new { fileId = f.fileId, fileName = f.fileName }).ToArray(),
+                    // Pass the private backing-field name (_{lowerId}_{suffix}) so the emitted
+                    // registry.RegisterX<T>(...) body inside Register_{X}_{Suffix} writes through
+                    // the private static field on the IDs struct directly — NOT through the
+                    // public PropertyName accessor.
+                    RegistrationCode = e.EmitRegistrationEntryCode("registry", $"_{lowerId}_{suffix}")
+                };
+            })
+            .ToArray();
+
         var tpl = new
         {
             ExtensionsNamespace = extensionsNs,
@@ -178,11 +209,27 @@ public partial class RegistryGenerator
             RegistrationsNamespace = registrationsNs,
             TypePrefix = typePrefix,
             RegistryName = unit.Model.TypeName,
+            RegistryFullName = unit.Model.ContainingNamespace + "." + unit.Model.TypeName,
+            CategoryKey = unit.Model.Key,
+            ModId = settings.ModId,
             SourceTag = suffix,
-            Entries = unit.Entries.OrderBy(e => e.Id).Select(e => new { PropertyName = StringCase.ToPascalCase(e.Id) }).ToArray()
+            Entries = entries
         };
 
         return FluidHelper.TryRenderTemplate("Modding.RegistryIdProperties.Unit.liquid", tpl, out code);
+    }
+
+    /// <summary>
+    /// Lowercases the first character of a PascalCase identifier. Used to derive the
+    /// <c>_{lowerCaseId}_{Suffix}</c> backing-field name from the public PropertyName.
+    /// StringCase has no public ToCamelCase helper today, so this local form is kept
+    /// alongside the sole caller.
+    /// </summary>
+    private static string ToCamelCase(string pascal)
+    {
+        if (string.IsNullOrEmpty(pascal)) return pascal;
+        if (pascal.Length == 1) return pascal.ToLowerInvariant();
+        return char.ToLowerInvariant(pascal[0]) + pascal.Substring(1);
     }
     
     internal static bool RenderRegistryMetadata(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)

@@ -478,12 +478,21 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         var configuratorCode = registrationsTree2.GetText().ToString();
         await Assert.That(configuratorCode).Contains("global::Sparkitect.Modding.IdentificationHelper.Read<global::DiTest.ClearColorPass>()");
 
-        // Assert the registration line is preserved (D-01)
+        // The registration body now lives on the IDs struct inside a private static Register_X_Providers
+        // method emitted by RegistryIdProperties.Unit.liquid; the entrypoint file (Registrations_Providers)
+        // is reduced to UnsafeAccessor stubs + a dispatch ProcessRegistrations body.
+        var idPropertiesTree = driverRunResult.GeneratedTrees.FirstOrDefault(t =>
+            System.IO.Path.GetFileName(t.FilePath).Contains("IdProperties_Providers"));
+        await Assert.That(idPropertiesTree).IsNotNull();
+        var idPropertiesCode = idPropertiesTree!.GetText().ToString();
+        await Assert.That(idPropertiesCode).Contains("RegisterRenderPass<global::DiTest.ClearColorPass>");
+
+        // The entrypoint file dispatches via the UnsafeAccessor stub instead of carrying the registration line.
         var registrationsTree = driverRunResult.GeneratedTrees.FirstOrDefault(t =>
             System.IO.Path.GetFileName(t.FilePath).Contains("Registrations_Providers"));
         await Assert.That(registrationsTree).IsNotNull();
         var registrationsCode = registrationsTree!.GetText().ToString();
-        await Assert.That(registrationsCode).Contains("RegisterRenderPass<global::DiTest.ClearColorPass>");
+        await Assert.That(registrationsCode).Contains("__Reg_ClearColorPass_Providers(default, registry, IdentificationManager, ResourceManager);");
 
         // Assert the factory file contains expected IKeyedFactory<IRenderPass> impl
         var factoryTree = driverRunResult.GeneratedTrees.First(t =>

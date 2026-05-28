@@ -1,4 +1,5 @@
 ﻿//HintName: RenderPassRegistryRegistrations_Providers.g.cs
+#nullable enable
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
@@ -13,14 +14,17 @@ public class RenderPassRegistryRegistrations_Providers : global::Sparkitect.DI.R
 {
     public override string CategoryIdentifier => "render_pass";
 
-public static global::Sparkitect.Modding.Identification ClearColorPass { get; private set; }
+[global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Register_ClearColorPass_Providers")]
+    private static extern void __Reg_ClearColorPass_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestRenderPassIDs _,
+        global::DiTest.RenderPassRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
 
-    
-    public override void ProcessRegistrations(global::DiTest.RenderPassRegistry registry)
+public override void ProcessRegistrations(global::DiTest.RenderPassRegistry registry)
     {
-{
-            ClearColorPass = IdentificationManager.RegisterObject("sample_test", "render_pass", "clear_color_pass");
-registry.RegisterRenderPass<global::DiTest.ClearColorPass>(ClearColorPass);
-        }
-} 
+__Reg_ClearColorPass_Providers(default, registry, IdentificationManager, ResourceManager);
+}
 }
