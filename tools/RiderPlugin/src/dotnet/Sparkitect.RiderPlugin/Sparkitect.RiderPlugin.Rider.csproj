@@ -1,0 +1,31 @@
+<Project>
+
+  <PropertyGroup>
+    <LanguageTargets>$(MSBuildToolsPath)\Microsoft.CSharp.targets</LanguageTargets>
+    <LangVersion>latestmajor</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Sparkitect.RiderPlugin</RootNamespace>
+    <AssemblyName>Sparkitect.RiderPlugin</AssemblyName>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);RIDER</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Rider.SDK" Version="$(SdkVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="bin\**" />
+    <EmbeddedResource Remove="bin\**" />
+    <Compile Remove="bin\**" />
+  </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+</Project>

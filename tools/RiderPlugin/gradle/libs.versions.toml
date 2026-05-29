@@ -1,0 +1,8 @@
+[versions]
+kotlin = "2.2.0" # https://plugins.jetbrains.com/docs/intellij/using-kotlin.html#kotlin-standard-library
+
+[libraries]
+kotlinStdLib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+
+[plugins]
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

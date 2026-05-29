@@ -1,0 +1,19 @@
+# Gradle
+.gradle/
+build/
+output/
+.intellijPlatform/
+
+# .NET
+**/bin/
+**/obj/
+
+# IDE sandbox
+.idea/
+
+# Per-developer override (see local.user.properties.example)
+local.user.properties
+*.user.properties
+
+# Optional OSS reference clones (not required reading; re-clonable). See .reference/README.md
+.reference/

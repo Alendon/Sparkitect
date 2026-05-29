@@ -1,0 +1,10 @@
+# Per-developer override (copy to local.user.properties, which is git-ignored).
+# Use a locally-installed Rider for :runIde instead of downloading the IDE.
+#
+# Opt in by setting useLocalRider=true; the install location is then taken from
+# the RIDER_LOCAL_HOME environment variable.
+# useLocalRider=true
+#
+# Optionally, point at a specific install explicitly (takes precedence over the
+# environment variable):
+# riderLocalHome=/path/to/rider

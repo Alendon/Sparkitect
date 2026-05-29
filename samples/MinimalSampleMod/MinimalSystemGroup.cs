@@ -15,7 +15,8 @@ public partial class MinimalSystemGroup : IHasIdentification
         foreach (var entity in query)
         {
             ref var component = ref entity.GetMinimalComponent();
-            Log.Information("Component Value: {Value}", component.Value);
+            int componentValue = component.Value;
+            Log.Information("Component Value: {Value}", componentValue);
             component.Value++;
         }
     }

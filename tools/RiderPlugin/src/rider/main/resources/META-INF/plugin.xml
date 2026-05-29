@@ -1,0 +1,21 @@
+<idea-plugin require-restart="true">
+  <id>Sparkitect.RiderPlugin</id>
+  <name>Sparkitect</name>
+  <version>0.1.0</version>
+  <vendor>Sparkitect</vendor>
+  <idea-version since-build="261" />
+  <depends>com.intellij.modules.rider</depends>
+  <!--
+    Optional so the plugin still loads without it (SC#1). The YAML PSI types used
+    by the .sparkres.yaml reference provider (Plan 04) live in the bundled Unity
+    plugin (com.intellij.resharper.unity, rider-unity/dotnet/), whose YAML module
+    depends on org.jetbrains.plugins.yaml for the YAML language itself.
+  -->
+  <depends optional="true">org.jetbrains.plugins.yaml</depends>
+
+  <description>
+<![CDATA[
+<p>Navigation support for Sparkitect mod registrations and their generated identification symbols.</p>
+]]>
+  </description>
+</idea-plugin>

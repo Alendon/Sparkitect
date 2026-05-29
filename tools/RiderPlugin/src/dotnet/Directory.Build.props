@@ -1,0 +1,53 @@
+<Project>
+
+  <PropertyGroup>
+    <NoPackageAnalysis>true</NoPackageAnalysis>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+
+    <BaseIntermediateOutputPath>obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**</DefaultItemExcludes>
+    <OutputPath>bin\$(MSBuildProjectName)\$(Configuration)\</OutputPath>
+    <NoWarn>1701;1702;CA1707;CA1711;CA1816;MSB3277;CS8618;NU1603;CS8603</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>TRACE;DEBUG;JET_MODE_ASSERT</DefineConstants>
+  </PropertyGroup>
+
+  <Import Project="Plugin.props" />
+
+  <PropertyGroup>
+    <WaveVersionBase>$(SdkVersion.Substring(2,2))$(SdkVersion.Substring(5,1))</WaveVersionBase>
+    <WaveVersion>$(WaveVersionBase).0.0.0</WaveVersion>
+    <UpperWaveVersion>$(WaveVersionBase).9999.0</UpperWaveVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!--
+    The YAML PSI assembly (JetBrains.ReSharper.Plugins.Yaml.dll) ships in the bundled
+    rider-unity plugin, not in the ReSharper/Rider SDK NuGet metapackages. The Gradle
+    intellij-platform plugin downloads it into the Gradle transforms cache under a
+    riderRD-$(ProductVersion) folder; the transform-hash segment is globbed so the
+    reference resolves without hard-coding a machine-specific path. The .sparkres.yaml
+    reference provider, signal layer, and reverse-index pass compile against it.
+  -->
+  <PropertyGroup>
+    <SparkresYamlPsiSearchRoot>$([System.IO.Path]::Combine($(HOME), '.gradle', 'caches'))</SparkresYamlPsiSearchRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SparkresYamlPsiCandidate Include="$(SparkresYamlPsiSearchRoot)\**\riderRD-$(SdkVersion)\plugins\rider-unity\dotnet\JetBrains.ReSharper.Plugins.Yaml.dll" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'@(SparkresYamlPsiCandidate)' != ''">
+    <Reference Include="JetBrains.ReSharper.Plugins.Yaml">
+      <HintPath>@(SparkresYamlPsiCandidate)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

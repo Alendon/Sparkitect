@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Modding.IDs;
 using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 
 namespace MinimalSampleMod.Passes;

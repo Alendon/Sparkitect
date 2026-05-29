@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-﻿namespace Sparkitect.Modding;
+namespace Sparkitect.Modding;
 
 /// <summary>
 /// Base interface for all registry types. Provides cleanup functionality.

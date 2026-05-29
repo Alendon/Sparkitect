@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-﻿namespace Sparkitect.Modding;
+namespace Sparkitect.Modding;
 
 /// <summary>
 /// Marker interface for attributes that mark types, methods, or properties for registration.

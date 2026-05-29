@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <SdkVersion>2026.1.2</SdkVersion>
+    <Title>Sparkitect</Title>
+    <Description>Rider navigation support for Sparkitect mod registrations and their generated identification symbols.</Description>
+    <Authors>Sparkitect</Authors>
+  </PropertyGroup>
+</Project>
