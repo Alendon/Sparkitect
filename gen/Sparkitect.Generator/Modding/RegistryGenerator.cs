@@ -8,8 +8,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sparkitect.Generator.DI.Pipeline;
 using Sparkitect.Utilities;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
+using YamlDotNet.Core;
 
 namespace Sparkitect.Generator.Modding;
 
@@ -96,14 +95,32 @@ public partial class RegistryGenerator : IIncrementalGenerator
             .Select((x, _) => RegistryMap.Create(x));
 
 
-        // Resource files: keep parse as a separate result carrying path + entries
+        // Resource files: keep parse as a separate result carrying path + entries.
+        // Combine with the per-file analyzer-config options so the absolute AdditionalText.Path
+        // can be relativized against build_property.ProjectDir (D-50: emit a project-relative,
+        // machine-move-surviving coordinate — never an interceptor-location token).
         var resourceFileRegistrationProvider = context.AdditionalTextsProvider
             .Where(x =>
                 x.Path.EndsWith(ResourceFileSuffix))
-            .Select((text, cancellation) => (
-                text.Path,
-                Entries:
-                ParseResourceYaml(text, cancellation)));
+            .Combine(context.AnalyzerConfigOptionsProvider)
+            .Select((pair, cancellation) =>
+            {
+                var (text, optionsProvider) = pair;
+                var projectDir = optionsProvider.GetOptions(text)
+                    .TryGetValue("build_property.ProjectDir", out var dir)
+                    ? dir
+                    : null;
+                if (string.IsNullOrEmpty(projectDir) &&
+                    optionsProvider.GlobalOptions.TryGetValue("build_property.ProjectDir", out var globalDir))
+                {
+                    projectDir = globalDir;
+                }
+
+                var relativePath = MakeProjectRelative(text.Path, projectDir);
+                return (
+                    text.Path,
+                    Entries: ParseResourceYaml(text, relativePath, cancellation));
+            });
 
         // Provider attribute usages: scan all attributes to capture provider candidates
         var providerCandidateProvider = context.SyntaxProvider.CreateSyntaxProvider(
@@ -199,68 +216,166 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
 
     internal static ImmutableValueArray<FileRegistrationEntry> ParseResourceYaml(AdditionalText text,
-        CancellationToken cancellation)
+        string? sourcePath, CancellationToken cancellation)
     {
         var result = new ImmutableValueArray<FileRegistrationEntry>.Builder();
 
         var sourceText = text.GetText(cancellation);
         if (sourceText is null) return result.ToImmutableValueArray();
 
-        var deserializer = new DeserializerBuilder()
-            .WithNamingConvention(CamelCaseNamingConvention.Instance)
-            .Build();
-
         var raw = sourceText.ToString();
+        if (string.IsNullOrWhiteSpace(raw)) return result.ToImmutableValueArray();
 
-        // New simplified syntax: entries are key-value pairs where key=ID, value=file(s)
-        // Single-file: { pong: "pong.spirv" }
-        // Multi-file: { stone: { albedo: "stone.png", specular: "spec.png" } }
-        var root = deserializer.Deserialize<Dictionary<string, List<Dictionary<string, object>>>>(raw);
-        if (root is null) return result.ToImmutableValueArray();
-
-        foreach (var registry in root)
+        // Fixed shape (D-44/D-50): a top-level mapping of `FQN.Method:` keys, each to a sequence
+        // of single-key mappings `- entry_id: file(s)`. The entry-id scalar IS the navigation target,
+        // so we walk the low-level YamlDotNet Parser to capture its Mark (Start.Line / Start.Column).
+        // High-level Deserialize discards position entirely (Pitfall 3); we deliberately avoid it for
+        // the entry-id key. No SemanticModel, no InterceptsLocation/GetInterceptableLocation (D-50).
+        try
         {
-            if (string.IsNullOrWhiteSpace(registry.Key) || registry.Value is null) continue;
+            using var reader = new global::System.IO.StringReader(raw);
+            var parser = new YamlDotNet.Core.Parser(reader);
 
-            var methodSplitIndex = registry.Key.LastIndexOf('.');
-            if (methodSplitIndex <= 0) continue;
+            parser.Consume<YamlDotNet.Core.Events.StreamStart>();
+            if (!parser.TryConsume<YamlDotNet.Core.Events.DocumentStart>(out _))
+                return result.ToImmutableValueArray();
+            if (!parser.TryConsume<YamlDotNet.Core.Events.MappingStart>(out _))
+                return result.ToImmutableValueArray();
 
-            var registryClass = registry.Key.Substring(0, methodSplitIndex);
-            var methodName = registry.Key.Substring(methodSplitIndex + 1);
-
-            foreach (var entryDict in registry.Value)
+            // Top-level mapping: key = "FQN.Method", value = sequence of entry mappings.
+            while (!parser.Accept<YamlDotNet.Core.Events.MappingEnd>(out _))
             {
-                // Each entry is a single-key dictionary where key=ID
-                if (entryDict.Count != 1) continue;
-                var kvp = entryDict.First();
+                var registryKey = parser.Consume<YamlDotNet.Core.Events.Scalar>().Value;
 
-                var id = kvp.Key;
-                if (string.IsNullOrWhiteSpace(id) || !StringCase.IsSnakeCase(id)) continue;
-
-                var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
-
-                if (kvp.Value is string singleFile)
+                if (!parser.TryConsume<YamlDotNet.Core.Events.SequenceStart>(out _))
                 {
-                    // Single-file: value is the filename, uses special marker for primary key resolution
-                    files.Add((PrimaryFileMarker, singleFile));
-                }
-                else if (kvp.Value is Dictionary<object, object> multiFiles)
-                {
-                    // Multi-file: value is a dictionary of fileKey -> fileName
-                    foreach (var file in multiFiles.OrderBy(f => f.Key.ToString()))
-                    {
-                        if (file.Key is string fileKey && file.Value is string fileName)
-                        {
-                            files.Add((fileKey, fileName));
-                        }
-                    }
+                    // Unexpected value shape for a registry key — skip it cleanly.
+                    parser.SkipThisAndNestedEvents();
+                    continue;
                 }
 
-                result.Add(new FileRegistrationEntry(registryClass, methodName, id, files.ToImmutableValueArray()));
+                var methodSplitIndex = registryKey.LastIndexOf('.');
+                var registryClass = methodSplitIndex > 0 ? registryKey.Substring(0, methodSplitIndex) : null;
+                var methodName = methodSplitIndex > 0 ? registryKey.Substring(methodSplitIndex + 1) : null;
+
+                while (!parser.Accept<YamlDotNet.Core.Events.SequenceEnd>(out _))
+                {
+                    ParseResourceEntry(parser, registryClass, methodName, sourcePath, result);
+                }
+
+                parser.Consume<YamlDotNet.Core.Events.SequenceEnd>();
             }
+        }
+        catch (YamlDotNet.Core.YamlException)
+        {
+            // Malformed YAML: degrade to no entries (same observable behavior as the old
+            // Deserialize path returning an empty/failed parse).
+            return result.ToImmutableValueArray();
         }
 
         return result.ToImmutableValueArray();
+    }
+
+    /// <summary>
+    /// Parses one `- entry_id: file(s)` list item. Captures the entry-id scalar's source Mark
+    /// (line/column, 1-based from YamlDotNet) so YAML-backed leaves carry a plain backward
+    /// coordinate. Single-file (string) and multi-file (mapping) value shapes are preserved,
+    /// as is the snake-case id guard. Non-matching shapes are skipped without throwing.
+    /// </summary>
+    private static void ParseResourceEntry(
+        YamlDotNet.Core.IParser parser,
+        string? registryClass,
+        string? methodName,
+        string? sourcePath,
+        ImmutableValueArray<FileRegistrationEntry>.Builder result)
+    {
+        // Each entry is a single-key mapping: { entry_id: value }.
+        if (!parser.TryConsume<YamlDotNet.Core.Events.MappingStart>(out _))
+        {
+            parser.SkipThisAndNestedEvents();
+            return;
+        }
+
+        var idScalar = parser.Consume<YamlDotNet.Core.Events.Scalar>();
+        var id = idScalar.Value;
+        // Mark is 1-based for line/column in YamlDotNet; capture before validating so a real
+        // entry always carries a non-zero line (Pitfall 3).
+        var line = (int)idScalar.Start.Line;
+        var column = (int)idScalar.Start.Column;
+
+        var files = new ImmutableValueArray<(string fileId, string fileName)>.Builder();
+
+        if (parser.Accept<YamlDotNet.Core.Events.Scalar>(out _))
+        {
+            // Single-file: value is the filename; special marker resolves the primary key later.
+            // An empty scalar (`- entry1:` with no value) maps to no files, matching the prior
+            // high-level path where a null value produced an empty Files set.
+            var fileName = parser.Consume<YamlDotNet.Core.Events.Scalar>().Value;
+            if (!string.IsNullOrEmpty(fileName))
+            {
+                files.Add((PrimaryFileMarker, fileName));
+            }
+        }
+        else if (parser.TryConsume<YamlDotNet.Core.Events.MappingStart>(out _))
+        {
+            // Multi-file: value is a mapping of fileKey -> fileName.
+            while (!parser.Accept<YamlDotNet.Core.Events.MappingEnd>(out _))
+            {
+                var fileKey = parser.Consume<YamlDotNet.Core.Events.Scalar>().Value;
+                if (parser.Accept<YamlDotNet.Core.Events.Scalar>(out _))
+                {
+                    var fileName = parser.Consume<YamlDotNet.Core.Events.Scalar>().Value;
+                    files.Add((fileKey, fileName));
+                }
+                else
+                {
+                    parser.SkipThisAndNestedEvents();
+                }
+            }
+
+            parser.Consume<YamlDotNet.Core.Events.MappingEnd>();
+        }
+        else
+        {
+            // Unknown value shape — drop it.
+            parser.SkipThisAndNestedEvents();
+        }
+
+        // Close the single-key entry mapping.
+        parser.Consume<YamlDotNet.Core.Events.MappingEnd>();
+
+        // Validation mirrors the previous high-level path: registry key must split into class.method,
+        // and the id must be non-empty snake_case.
+        if (registryClass is null || methodName is null) return;
+        if (string.IsNullOrWhiteSpace(id) || !StringCase.IsSnakeCase(id)) return;
+
+        var sortedFiles = files.OrderBy(f => f.fileId).ToImmutableValueArray();
+        result.Add(new FileRegistrationEntry(registryClass, methodName, id, sortedFiles, sourcePath, line, column));
+    }
+
+    /// <summary>
+    /// Relativizes an absolute resource-file path against the project directory so the emitted
+    /// coordinate survives machine moves (D-50: "regenerated locally"). Falls back to the original
+    /// path when no project dir is available or the path is already relative. Uses forward slashes
+    /// for a stable, platform-neutral form in the generated attribute.
+    /// </summary>
+    internal static string? MakeProjectRelative(string? absolutePath, string? projectDir)
+    {
+        if (string.IsNullOrEmpty(absolutePath)) return absolutePath;
+        if (string.IsNullOrEmpty(projectDir)) return Normalize(absolutePath!);
+
+        var normalizedDir = projectDir!.Replace('\\', '/');
+        if (!normalizedDir.EndsWith("/")) normalizedDir += "/";
+        var normalizedPath = absolutePath!.Replace('\\', '/');
+
+        if (normalizedPath.StartsWith(normalizedDir, StringComparison.OrdinalIgnoreCase))
+        {
+            return normalizedPath.Substring(normalizedDir.Length);
+        }
+
+        return normalizedPath;
+
+        static string Normalize(string p) => p.Replace('\\', '/');
     }
 
     internal const string PrimaryFileMarker = "__primary__";
@@ -304,7 +419,10 @@ public partial class RegistryGenerator : IIncrementalGenerator
             }
 
             var files = resolvedFiles.OrderBy(f => f.fileId).ToImmutableValueArray();
-            var entry = new ResourceRegistrationEntry(e.Id, files, e.MethodName);
+            // Thread the plain YAML backward coordinate (path + line/column captured at parse time)
+            // onto the resource entry so the IdProperties projection can surface it (D-50).
+            var entry = new ResourceRegistrationEntry(e.Id, files, e.MethodName,
+                e.SourcePath, e.SourceLine, e.SourceColumn);
             bucket.builder.Add(entry);
             map[key] = bucket;
         }
@@ -732,6 +850,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         {
             Namespace = model.ContainingNamespace,
             RegistryName = model.TypeName,
+            Key = model.Key,
             Methods = model.RegisterMethods.Where(m => m.PrimaryParameterKind != PrimaryParameterKind.None).Select(m => new { Name = m.FunctionName, Files = files }).ToArray()
         };
 

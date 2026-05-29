@@ -8,6 +8,7 @@ namespace SampleTest.Generated.IdExtensions;
 public readonly partial struct SampleTestRenderPassIDs
 {
 private static global::Sparkitect.Modding.Identification _clearColorPass_Providers;
+    [global::Sparkitect.Modding.RegisteredFrom(typeof(global::DiTest.ClearColorPass))]
     public global::Sparkitect.Modding.Identification ClearColorPass => _clearColorPass_Providers;
 
     private static void Register_ClearColorPass_Providers(

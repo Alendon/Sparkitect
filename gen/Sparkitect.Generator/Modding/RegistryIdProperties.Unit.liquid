@@ -8,7 +8,9 @@ public readonly partial struct {{ ModStructName }}
 {
 {% for entry in Entries -%}
     private static global::Sparkitect.Modding.Identification _{{ entry.LowerCaseId }}_{{ SourceTag }};
-    public global::Sparkitect.Modding.Identification {{ entry.PropertyName }} => _{{ entry.LowerCaseId }}_{{ SourceTag }};
+{% if entry.SourcePath %}    [global::Sparkitect.Modding.RegisteredFrom(SourcePath = "{{ entry.SourcePath }}", SourceLine = {{ entry.SourceLine }}, SourceColumn = {{ entry.SourceColumn }})]
+{% elsif entry.RegisteredTypeFullName %}    [global::Sparkitect.Modding.RegisteredFrom(typeof(global::{{ entry.RegisteredTypeFullName }}){% if entry.RegisteredMember %}, Member = "{{ entry.RegisteredMember }}"{% endif %})]
+{% endif %}    public global::Sparkitect.Modding.Identification {{ entry.PropertyName }} => _{{ entry.LowerCaseId }}_{{ SourceTag }};
 
     private static void Register_{{ entry.PropertyName }}_{{ SourceTag }}(
         global::{{ RegistryFullName }} registry,

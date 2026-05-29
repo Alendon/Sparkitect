@@ -9,6 +9,21 @@ public abstract record RegistrationEntry(
     ImmutableValueArray<(string fileId, string fileName)> Files)
 {
     public abstract string EmitRegistrationEntryCode(string registrySymbol, string idSymbol);
+
+    /// <summary>
+    /// Backward-coordinate typeof target for the generated leaf ID property: the fully-qualified
+    /// (global::-prefixed) type that authored this registration. Null when no C# typeof target
+    /// exists yet (e.g. resource/YAML entries, whose coordinate is emitted in a later plan).
+    /// Container and member are kept SEPARATE — typeof emits a TYPE, never a dotted member.
+    /// </summary>
+    public abstract string? RegisteredTypeFullName { get; }
+
+    /// <summary>
+    /// Optional member name accompanying <see cref="RegisteredTypeFullName"/> (the provider
+    /// method/property name, or the user method name for stateless leaves). Null for the
+    /// type-shape leaf, where the registered type itself IS the navigation target.
+    /// </summary>
+    public abstract string? RegisteredMember { get; }
 }
 
 public sealed record MethodRegistrationEntry(
@@ -16,9 +31,16 @@ public sealed record MethodRegistrationEntry(
     ImmutableValueArray<(string fileId, string fileName)> Files,
     string MethodName,
     string ProviderFullName,
-    ImmutableValueArray<(string paramType, bool isNullable)> DiParameters)
+    ImmutableValueArray<(string paramType, bool isNullable)> DiParameters,
+    string? RegisteredContainerFullName = null,
+    string? RegisteredMemberName = null)
     : RegistrationEntry(Id, Files)
 {
+    // typeof target is the provider's CONTAINING type (Pitfall 1: cannot typeof a member);
+    // the member name is carried separately so the annotation reads typeof(Container), Member = "X".
+    public override string? RegisteredTypeFullName => RegisteredContainerFullName;
+    public override string? RegisteredMember => RegisteredMemberName;
+
     public override string EmitRegistrationEntryCode(string registry, string id)
     {
         var sb = new StringBuilder();
@@ -46,9 +68,15 @@ public sealed record PropertyRegistrationEntry(
     string Id,
     ImmutableValueArray<(string fileId, string fileName)> Files,
     string MethodName,
-    string ProviderFullName)
+    string ProviderFullName,
+    string? RegisteredContainerFullName = null,
+    string? RegisteredMemberName = null)
     : RegistrationEntry(Id, Files)
 {
+    // typeof target is the provider-property's CONTAINING type; member is the property name.
+    public override string? RegisteredTypeFullName => RegisteredContainerFullName;
+    public override string? RegisteredMember => RegisteredMemberName;
+
     public override string EmitRegistrationEntryCode(string registry, string id)
         => $"var value = {ProviderFullName};\n{registry}.{MethodName}({id}, value);";
 }
@@ -62,6 +90,10 @@ public sealed record TypeRegistrationEntry(
     RegistrationTypeKind TypeKind = RegistrationTypeKind.Class)
     : RegistrationEntry(Id, Files)
 {
+    // The registered type IS the navigation target — no member (Pitfall 1: emits a TYPE).
+    public override string? RegisteredTypeFullName => TypeFullName;
+    public override string? RegisteredMember => null;
+
     public override string EmitRegistrationEntryCode(string registry, string id)
         => $"{registry}.{MethodName}<{TypeFullName}>({id});";   // PRESERVED — D-01
 }
@@ -85,9 +117,18 @@ public sealed record KeyedFactoryGenerationInfo(
 public sealed record ResourceRegistrationEntry(
     string Id,
     ImmutableValueArray<(string fileId, string fileName)> Files,
-    string MethodName)
+    string MethodName,
+    string? SourcePath = null,
+    int SourceLine = 0,
+    int SourceColumn = 0)
     : RegistrationEntry(Id, Files)
 {
+    // YAML-backed leaves have no C# typeof target — the backward coordinate is a PLAIN
+    // path + line/column (D-50), carried below and emitted by the template's YAML branch.
+    // These two stay null so the C# typeof branch of the conditional never fires for YAML.
+    public override string? RegisteredTypeFullName => null;
+    public override string? RegisteredMember => null;
+
     public override string EmitRegistrationEntryCode(string registry, string id)
         => string.IsNullOrEmpty(MethodName) ? "" : $"{registry}.{MethodName}({id});";
 }

@@ -21,7 +21,14 @@ public record RegistryModel(
     ImmutableValueArray<(string Key, bool Required, bool Primary)> ResourceFiles,
     string? DeclaringSgNamespace = null);
 
-public record FileRegistrationEntry(string RegistryClass, string MethodName, string Id, ImmutableValueArray<(string fileId, string fileName)> Files);
+public record FileRegistrationEntry(
+    string RegistryClass,
+    string MethodName,
+    string Id,
+    ImmutableValueArray<(string fileId, string fileName)> Files,
+    string? SourcePath = null,
+    int SourceLine = 0,
+    int SourceColumn = 0);
 
 
 /// <summary>

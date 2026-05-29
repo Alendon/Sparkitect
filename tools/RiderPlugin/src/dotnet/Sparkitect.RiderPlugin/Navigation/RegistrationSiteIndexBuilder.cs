@@ -124,6 +124,10 @@ public sealed partial class RegistrationSiteIndexBuilder
         if (registeredType == null)
             return;
 
+        var modId = SparkitectModId.Resolve(registeredType);
+        if (string.IsNullOrEmpty(modId))
+            return;
+
         foreach (var argument in attribute.Arguments)
         {
             if (argument.Value is not ICSharpLiteralExpression literal)
@@ -135,7 +139,7 @@ public sealed partial class RegistrationSiteIndexBuilder
             if (string.IsNullOrEmpty(idString))
                 continue;
 
-            var key = RegistrationKey.FromAttribute(registeredType, attributeType!, idString!);
+            var key = RegistrationKey.FromAttribute(attributeType!, idString!, modId!);
             if (key == null)
                 continue;
 

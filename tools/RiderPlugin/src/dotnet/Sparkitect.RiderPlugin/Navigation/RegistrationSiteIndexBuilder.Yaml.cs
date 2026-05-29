@@ -53,11 +53,15 @@ public sealed partial class RegistrationSiteIndexBuilder
             if (string.IsNullOrEmpty(entryId))
                 continue;
 
-            var modPrefix = SparkresYamlAnchors.GetModPrefix(scalar);
-            if (string.IsNullOrEmpty(modPrefix))
+            var modId = SparkresYamlAnchors.GetModId(scalar);
+            if (string.IsNullOrEmpty(modId))
                 continue;
 
-            var key = RegistrationKey.FromYaml(modPrefix!, registryFqn!, entryId!);
+            var category = SparkresYamlAnchors.GetRegistryCategory(scalar, registryFqn!);
+            if (string.IsNullOrEmpty(category))
+                continue;
+
+            var key = RegistrationKey.FromYaml(modId!, category!, entryId!);
             if (key == null)
                 continue;
 

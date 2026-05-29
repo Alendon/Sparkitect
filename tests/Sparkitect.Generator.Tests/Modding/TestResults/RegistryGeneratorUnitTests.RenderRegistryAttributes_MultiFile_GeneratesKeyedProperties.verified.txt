@@ -6,7 +6,8 @@ namespace MinimalSampleMod;
 
 public partial class DummyRegistry
 {
-public class RegisterValueAttribute([global::Sparkitect.Utilities.SnakeCase] string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
+[global::Sparkitect.Modding.RegistrationMarker("dummy")]
+    public class RegisterValueAttribute([global::Sparkitect.Utilities.SnakeCase] string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
     {
         public bool GroupAtRoot { get; set; } = false;public string? BarFile { get; set; }public string FooFile { get; set; }
     }

@@ -1,5 +1,9 @@
+using JetBrains.Metadata.Reader.Impl;
 using JetBrains.ReSharper.Plugins.Yaml.Psi.Tree;
+using JetBrains.ReSharper.Psi;
+using JetBrains.ReSharper.Psi.Modules;
 using JetBrains.ReSharper.Psi.Tree;
+using JetBrains.ReSharper.Psi.Util;
 
 namespace Sparkitect.RiderPlugin.References;
 
@@ -48,8 +52,45 @@ public static class SparkresYamlAnchors
         return !string.IsNullOrEmpty(registryFqn);
     }
 
-    /// <summary>Mod prefix for a scalar's owning resource file (its project's name / root namespace).</summary>
-    public static string? GetModPrefix(ITreeNode node) => node.GetProject()?.Name;
+    private const string RegistryAttributeFullName = "Sparkitect.Modding.RegistryAttribute";
+
+    /// <summary>
+    /// The owning mod's csproj <c>&lt;ModId&gt;</c> for a scalar's resource file — the reliable mod source
+    /// (D-40), replacing the brittle project-name guess. Returns null when no <c>&lt;ModId&gt;</c> is set.
+    /// </summary>
+    public static string? GetModId(ITreeNode node) => SparkitectModId.Resolve(node);
+
+    /// <summary>
+    /// The registry's declared category for a YAML registration: resolves the registry type from its FQN
+    /// (the top-level key minus the trailing <c>.method</c>) and reads its <c>[Registry(Identifier)]</c> —
+    /// the same reliable category the C# path reads from the forward marker. Never the CLR short-name guess.
+    /// </summary>
+    public static string? GetRegistryCategory(ITreeNode node, string registryFqn)
+    {
+        var lastDot = registryFqn.LastIndexOf('.');
+        if (lastDot <= 0 || lastDot == registryFqn.Length - 1)
+            return null;
+
+        var registryClrName = registryFqn.Substring(0, lastDot);
+
+        var module = node.GetPsiModule();
+        var scope = module.GetPsiServices().Symbols
+            .GetSymbolScope(module, withReferences: true, caseSensitive: true);
+        var registryType = scope.GetTypeElementByCLRName(new ClrTypeName(registryClrName));
+        if (registryType == null)
+            return null;
+
+        var instances = registryType.GetAttributeInstances(
+            new ClrTypeName(RegistryAttributeFullName), AttributesSource.Self);
+        foreach (var instance in instances)
+        {
+            var value = instance.NamedParameter("Identifier");
+            if (!value.IsBadValue && value.IsConstant && value.ConstantValue.IsString())
+                return value.ConstantValue.AsString();
+        }
+
+        return null;
+    }
 
     private static ISequenceEntry? GetEnclosingSequenceEntry(ITreeNode node)
     {

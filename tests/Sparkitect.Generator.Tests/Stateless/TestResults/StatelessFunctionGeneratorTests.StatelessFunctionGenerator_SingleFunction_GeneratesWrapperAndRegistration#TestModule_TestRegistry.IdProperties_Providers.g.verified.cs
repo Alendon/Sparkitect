@@ -8,6 +8,7 @@ namespace TestMod.Generated.IdExtensions;
 public readonly partial struct TestModTestIDs
 {
 private static global::Sparkitect.Modding.Identification _init_Providers;
+    [global::Sparkitect.Modding.RegisteredFrom(typeof(global::TestMod.TestModule), Member = "Initialize")]
     public global::Sparkitect.Modding.Identification Init => _init_Providers;
 
     private static void Register_Init_Providers(

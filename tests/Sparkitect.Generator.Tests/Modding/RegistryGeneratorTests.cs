@@ -306,7 +306,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         var mockAdditionalText = new Mock<AdditionalText>();
         mockAdditionalText.Setup(x => x.GetText(It.IsAny<CancellationToken>())).Returns((SourceText?)null);
 
-        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, CancellationToken.None);
+        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, "test.sparkres.yaml", CancellationToken.None);
 
         await Assert.That(result).HasCount().EqualTo(0);
     }
@@ -323,7 +323,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         var mockAdditionalText = new Mock<AdditionalText>();
         mockAdditionalText.Setup(x => x.GetText(It.IsAny<CancellationToken>())).Returns(mockSourceText);
 
-        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, CancellationToken.None);
+        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, "test.sparkres.yaml", CancellationToken.None);
 
         await Assert.That(result).HasCount().EqualTo(1);
         var entry = result.First();
@@ -374,7 +374,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         var mockAdditionalText = new Mock<AdditionalText>();
         mockAdditionalText.Setup(x => x.GetText(It.IsAny<CancellationToken>())).Returns(mockSourceText);
 
-        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, CancellationToken.None);
+        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, "test.sparkres.yaml", CancellationToken.None);
 
         await Assert.That(result).HasCount().EqualTo(3);
 
@@ -401,7 +401,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         var mockAdditionalText = new Mock<AdditionalText>();
         mockAdditionalText.Setup(x => x.GetText(It.IsAny<CancellationToken>())).Returns(mockSourceText);
 
-        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, CancellationToken.None);
+        var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, "test.sparkres.yaml", CancellationToken.None);
 
         await Assert.That(result).HasCount().EqualTo(1);
         var entry = result.First();

@@ -1,0 +1,23 @@
+﻿#nullable enable
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace SampleTest.Generated.IdExtensions;
+
+public readonly partial struct SampleTestSampleIDs
+{
+private static global::Sparkitect.Modding.Identification _myItem_Resources;
+    [global::Sparkitect.Modding.RegisteredFrom(SourcePath = "res/test.sparkres.yaml", SourceLine = 2, SourceColumn = 5)]
+    public global::Sparkitect.Modding.Identification MyItem => _myItem_Resources;
+
+    private static void Register_MyItem_Resources(
+        global::Sample.Registry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager)
+    {
+        _myItem_Resources = identificationManager.RegisterObject("sample_test", "sample", "my_item");
+
+        resourceManager?.SetResource(_myItem_Resources, "res", "file.txt");
+registry.RegisterFile(_myItem_Resources);
+    }
+}

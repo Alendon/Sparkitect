@@ -7,7 +7,8 @@ namespace DiTest;
 
 public partial class RenderPassRegistry
 {
-public class RegisterRenderPassAttribute([global::Sparkitect.Utilities.SnakeCase] string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
+[global::Sparkitect.Modding.RegistrationMarker("render_pass")]
+    public class RegisterRenderPassAttribute([global::Sparkitect.Utilities.SnakeCase] string identifier) : global::System.Attribute, global::Sparkitect.Modding.IRegisterMarker
     {
         public bool GroupAtRoot { get; set; } = false;
     }

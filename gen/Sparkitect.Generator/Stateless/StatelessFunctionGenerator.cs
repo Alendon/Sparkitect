@@ -405,7 +405,11 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
                     entries.Add(new StatelessRegistrationEntry(
                         func.Identifier,
                         new ImmutableValueArray<(string fileId, string fileName)>(),
-                        func.WrapperFullTypeName));
+                        func.WrapperFullTypeName,
+                        // Pitfall 2: point the backward coordinate at the USER method + its parent type,
+                        // never the *Func wrapper. Both are already on the StatelessFunctionModel.
+                        func.ParentTypeName,
+                        func.MethodName));
                 }
 
                 // Create RegistrationUnit

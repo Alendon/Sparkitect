@@ -32,11 +32,15 @@ public class SparkresReferenceFactory : IReferenceFactory
             if (string.IsNullOrEmpty(entryId))
                 return ReferenceCollection.Empty;
 
-            var modPrefix = SparkresYamlAnchors.GetModPrefix(scalar);
-            if (string.IsNullOrEmpty(modPrefix))
+            var modId = SparkresYamlAnchors.GetModId(scalar);
+            if (string.IsNullOrEmpty(modId))
                 return ReferenceCollection.Empty;
 
-            var key = RegistrationKey.FromYaml(modPrefix!, registryFqn!, entryId!);
+            var category = SparkresYamlAnchors.GetRegistryCategory(scalar, registryFqn!);
+            if (string.IsNullOrEmpty(category))
+                return ReferenceCollection.Empty;
+
+            var key = RegistrationKey.FromYaml(modId!, category!, entryId!);
             if (key == null)
                 return ReferenceCollection.Empty;
 

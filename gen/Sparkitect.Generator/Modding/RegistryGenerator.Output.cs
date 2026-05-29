@@ -187,6 +187,19 @@ public partial class RegistryGenerator
             {
                 var propName = StringCase.ToPascalCase(e.Id);
                 var lowerId = ToCamelCase(propName);
+                // Backward-coordinate annotation: the template prepends `global::`, so strip any
+                // leading `global::` here. Null target = no [RegisteredFrom] emitted (e.g. resource
+                // entries, whose YAML coordinate branch is added in a later plan — Pitfall 1 guard).
+                var registeredType = e.RegisteredTypeFullName is { Length: > 0 } rt
+                    ? (rt.StartsWith("global::") ? rt.Substring("global::".Length) : rt)
+                    : null;
+                // YAML-backed leaves carry a PLAIN path + line/column coordinate (D-50) instead of a
+                // C# typeof target. Surface it for the template's mutually-exclusive YAML branch.
+                // SourcePath present (non-empty) selects the plain-coordinate form; otherwise the
+                // typeof branch (or no attribute) applies. The two are never emitted together.
+                var sourcePath = e is ResourceRegistrationEntry { SourcePath: { Length: > 0 } sp } ? sp : null;
+                var sourceLine = e is ResourceRegistrationEntry res ? res.SourceLine : 0;
+                var sourceColumn = e is ResourceRegistrationEntry res2 ? res2.SourceColumn : 0;
                 return new
                 {
                     Id = e.Id,
@@ -197,7 +210,15 @@ public partial class RegistryGenerator
                     // registry.RegisterX<T>(...) body inside Register_{X}_{Suffix} writes through
                     // the private static field on the IDs struct directly — NOT through the
                     // public PropertyName accessor.
-                    RegistrationCode = e.EmitRegistrationEntryCode("registry", $"_{lowerId}_{suffix}")
+                    RegistrationCode = e.EmitRegistrationEntryCode("registry", $"_{lowerId}_{suffix}"),
+                    // typeof target FQN (no global:: prefix; template adds it) + optional member name.
+                    RegisteredTypeFullName = registeredType,
+                    RegisteredMember = e.RegisteredMember,
+                    // YAML plain-coordinate fields (D-50). SourcePath is the project-relative path;
+                    // SourceLine/SourceColumn are the entry-id scalar's 1-based position.
+                    SourcePath = sourcePath,
+                    SourceLine = sourceLine,
+                    SourceColumn = sourceColumn
                 };
             })
             .ToArray();

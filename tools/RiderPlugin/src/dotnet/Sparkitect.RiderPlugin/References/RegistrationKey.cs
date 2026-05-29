@@ -11,12 +11,18 @@ namespace Sparkitect.RiderPlugin.References;
 /// A key is the pair <c>(generated IDs-struct CLR name, leaf member name)</c> — both endpoints can
 /// derive this identically, so a forward lookup and a reverse lookup always agree.
 /// </summary>
+/// <remarks>
+/// The IDs-struct CLR name is reconstructed deterministically from reliable inputs:
+/// <c>{Mod}{Category}IDs</c> under the <c>.CompilerGenerated.IdExtensions.</c> namespace, where
+/// <c>{Mod}</c> is the Pascal-cased csproj <c>&lt;ModId&gt;</c> and <c>{Category}</c> is the Pascal-cased
+/// registration category. Both segments come from structured metadata (the forward marker's category
+/// argument and the csproj ModId), never from namespace/short-name guessing.
+/// </remarks>
 public readonly struct RegistrationKey
 {
     private const string IdExtensionsNamespaceSuffix = ".CompilerGenerated.IdExtensions.";
-    private const string RegistrySuffix = "Registry";
     private const string IdsStructSuffix = "IDs";
-    private const string RegistryAttributeFullName = "Sparkitect.Modding.RegistryAttribute";
+    private const string RegistrationMarkerFullName = "Sparkitect.Modding.RegistrationMarkerAttribute";
 
     /// <summary>CLR name of the generated <c>{Mod}{Category}IDs</c> struct.</summary>
     public string IdsStructClrName { get; }
@@ -33,45 +39,27 @@ public readonly struct RegistrationKey
     public (string, string) AsTuple() => (IdsStructClrName, MemberName);
 
     /// <summary>
-    /// Derives the key from a registration attribute: the type it decorates supplies the mod prefix,
-    /// the attribute's containing registry type supplies the category, and the id string literal
-    /// supplies the leaf name.
+    /// Derives the key from a C# registration attribute. The category comes from the forward
+    /// <c>RegistrationMarkerAttribute</c> carried by the attribute type itself; the mod segment from the
+    /// owning project's csproj <c>&lt;ModId&gt;</c>; the leaf from the id string literal. No category or
+    /// mod-prefix guessing.
     /// </summary>
-    public static RegistrationKey? FromAttribute(ITypeElement registeredType, ITypeElement attributeType, string idString)
+    public static RegistrationKey? FromAttribute(ITypeElement attributeType, string idString, string modId)
     {
-        var idsStruct = BuildIdsStructClrName(registeredType, attributeType);
-        if (idsStruct == null)
-            return null;
-
-        var member = SnakeToPascal(idString);
-        if (string.IsNullOrEmpty(member))
-            return null;
-
-        return new RegistrationKey(idsStruct, member);
-    }
-
-    /// <summary>
-    /// Derives the key from a resource-file entry: the owning mod supplies the prefix, the registry
-    /// CLR name (from the file's top-level method key) supplies the category, and the entry id supplies
-    /// the leaf name. Produces the same key a C# attribute for the same registration would.
-    /// </summary>
-    public static RegistrationKey? FromYaml(string modPrefix, string registryClrName, string entryId)
-    {
-        if (string.IsNullOrEmpty(modPrefix) || string.IsNullOrEmpty(registryClrName))
-            return null;
-
-        var category = CategoryFromRegistryClrName(registryClrName);
+        var category = MarkerCategory(attributeType);
         if (string.IsNullOrEmpty(category))
             return null;
 
-        var member = SnakeToPascal(entryId);
-        if (string.IsNullOrEmpty(member))
-            return null;
-
-        var structName = modPrefix + category + IdsStructSuffix;
-        var idsStruct = modPrefix + IdExtensionsNamespaceSuffix + structName;
-        return new RegistrationKey(idsStruct, member);
+        return FromReliableInputs(modId, category!, idString);
     }
+
+    /// <summary>
+    /// Derives the key from a resource-file entry using already-resolved reliable inputs: the owning
+    /// mod's csproj <c>&lt;ModId&gt;</c>, the registry's declared category, and the entry id. Produces the
+    /// same key a C# attribute for the same registration would.
+    /// </summary>
+    public static RegistrationKey? FromYaml(string modId, string category, string entryId) =>
+        FromReliableInputs(modId, category, entryId);
 
     /// <summary>
     /// Derives the key from a resolved generated leaf property: its declaring type is the IDs struct
@@ -90,51 +78,14 @@ public readonly struct RegistrationKey
         return new RegistrationKey(clrName, property.ShortName);
     }
 
-    private static string? BuildIdsStructClrName(ITypeElement registeredType, ITypeElement attributeType)
+    /// <summary>The category argument of the attribute type's forward <c>RegistrationMarkerAttribute</c>, or null.</summary>
+    public static string? MarkerCategory(ITypeElement attributeType)
     {
-        var modPrefix = GetRootNamespace(registeredType);
-        if (string.IsNullOrEmpty(modPrefix))
-            return null;
-
-        var category = GetCategoryName(attributeType);
-        if (string.IsNullOrEmpty(category))
-            return null;
-
-        var structName = modPrefix + category + IdsStructSuffix;
-        return modPrefix + IdExtensionsNamespaceSuffix + structName;
-    }
-
-    private static string GetRootNamespace(ITypeElement typeElement)
-    {
-        var ns = typeElement.GetContainingNamespace().QualifiedName;
-        if (string.IsNullOrEmpty(ns))
-            return string.Empty;
-        var dot = ns.IndexOf('.');
-        return dot < 0 ? ns : ns.Substring(0, dot);
-    }
-
-    private static string GetCategoryName(ITypeElement attributeType)
-    {
-        // Category is the PascalCase form of the registry's declared Identifier
-        // ([Registry(Identifier = "ecs_system_group")] -> EcsSystemGroup). The registry CLR
-        // short-name is NOT reliable (SystemGroupRegistry -> "ecs_system_group",
-        // ModuleRegistry -> "state_module"). Must match the generated {Mod}{Category}IDs struct so
-        // a reverse-index key (FromAttribute) and a lookup key (FromLeafProperty) agree.
-        var registry = attributeType.GetContainingType();
-        if (registry == null)
-            return string.Empty;
-
-        var identifier = GetRegistryIdentifier(registry);
-        return string.IsNullOrEmpty(identifier) ? string.Empty : SnakeToPascal(identifier!);
-    }
-
-    private static string? GetRegistryIdentifier(ITypeElement registry)
-    {
-        var instances = registry.GetAttributeInstances(
-            new ClrTypeName(RegistryAttributeFullName), AttributesSource.Self);
+        var instances = attributeType.GetAttributeInstances(
+            new ClrTypeName(RegistrationMarkerFullName), AttributesSource.Self);
         foreach (var instance in instances)
         {
-            var value = instance.NamedParameter("Identifier");
+            var value = instance.PositionParameter(0);
             if (!value.IsBadValue && value.IsConstant && value.ConstantValue.IsString())
                 return value.ConstantValue.AsString();
         }
@@ -143,19 +94,32 @@ public readonly struct RegistrationKey
     }
 
     /// <summary>
-    /// Reduces a registry CLR name (<c>Sparkitect.Graphics.Vulkan.ShaderModuleRegistry</c>) to its
-    /// category (<c>ShaderModule</c>): the last dotted segment minus the <c>Registry</c> suffix.
+    /// Assembles the IDs-struct CLR name from reliable inputs — the retained deterministic reconstruction
+    /// (D-49): <c>{PascalMod}.CompilerGenerated.IdExtensions.{PascalMod}{PascalCategory}IDs</c>, member =
+    /// <c>SnakeToPascal(idString)</c>. Mirrors the generator's <c>StringCase.ToPascalCase(ModId)</c> +
+    /// <c>ToPascalCase(category)</c> struct naming.
     /// </summary>
-    private static string CategoryFromRegistryClrName(string registryClrName)
+    private static RegistrationKey? FromReliableInputs(string modId, string category, string idString)
     {
-        var lastDot = registryClrName.LastIndexOf('.');
-        var shortName = lastDot < 0 ? registryClrName : registryClrName.Substring(lastDot + 1);
-        return shortName.EndsWith(RegistrySuffix)
-            ? shortName.Substring(0, shortName.Length - RegistrySuffix.Length)
-            : shortName;
+        if (string.IsNullOrEmpty(modId) || string.IsNullOrEmpty(category))
+            return null;
+
+        var modPascal = SnakeToPascal(modId);
+        var categoryPascal = SnakeToPascal(category);
+        if (string.IsNullOrEmpty(modPascal) || string.IsNullOrEmpty(categoryPascal))
+            return null;
+
+        var member = SnakeToPascal(idString);
+        if (string.IsNullOrEmpty(member))
+            return null;
+
+        var structName = modPascal + categoryPascal + IdsStructSuffix;
+        var idsStruct = modPascal + IdExtensionsNamespaceSuffix + structName;
+        return new RegistrationKey(idsStruct, member);
     }
 
-    private static string SnakeToPascal(string snake)
+    /// <summary>The deterministic snake_case → PascalCase transform retained on the reliable-input path (D-49).</summary>
+    public static string SnakeToPascal(string snake)
     {
         var builder = new StringBuilder(snake.Length);
         var capitalizeNext = true;

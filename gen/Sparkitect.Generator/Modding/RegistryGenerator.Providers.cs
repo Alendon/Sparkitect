@@ -171,10 +171,14 @@ public partial class RegistryGenerator
         var files = filesBuilder.OrderBy(f => f.fileId).ToImmutableValueArray();
 
         RegistrationEntry entry;
+        // Backward-coordinate identity kept SEPARATE from the concatenated ProviderFullName
+        // (Pitfall 1): the typeof target is the CONTAINING type, the member is named on the side.
+        var registeredContainer = $"global::{cand.ProviderContainingTypeFullName}";
         if (cand.IsPropertyProvider)
         {
             var providerFull = $"global::{cand.ProviderContainingTypeFullName}.{cand.ProviderMethodOrTypeName}";
-            entry = new PropertyRegistrationEntry(cand.Id, files, cand.MethodName, providerFull);
+            entry = new PropertyRegistrationEntry(cand.Id, files, cand.MethodName, providerFull,
+                registeredContainer, cand.ProviderMethodOrTypeName);
         }
         else if (cand.IsTypeProvider)
         {
@@ -199,7 +203,8 @@ public partial class RegistryGenerator
         else
         {
             var providerFull = $"global::{cand.ProviderContainingTypeFullName}.{cand.ProviderMethodOrTypeName}";
-            entry = new MethodRegistrationEntry(cand.Id, files, cand.MethodName, providerFull, cand.DiParameters);
+            entry = new MethodRegistrationEntry(cand.Id, files, cand.MethodName, providerFull, cand.DiParameters,
+                registeredContainer, cand.ProviderMethodOrTypeName);
         }
 
         var entries = new ImmutableValueArray<RegistrationEntry>.Builder();

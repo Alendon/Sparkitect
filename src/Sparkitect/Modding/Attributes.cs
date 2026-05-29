@@ -38,6 +38,68 @@ public class RegistryAttribute : Attribute
 public class RegistryMetadataAttribute<TMetadata> : Attribute where TMetadata : class;
 
 /// <summary>
+/// Marks a registration-attribute type with the registration category it belongs to.
+/// Applied to the generated and hand-authored attribute types that mods place on their registrations.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
+public sealed class RegistrationMarkerAttribute(string category) : Attribute
+{
+    /// <summary>
+    /// The registration category identifier this attribute registers into.
+    /// </summary>
+    public string Category { get; } = category;
+}
+
+/// <summary>
+/// Annotates a generated identification property with the registration site it originates from.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+[PublicAPI]
+public sealed class RegisteredFromAttribute : Attribute
+{
+    /// <summary>
+    /// Annotates a leaf registered through C# source: the originating <paramref name="registeredType"/>
+    /// is the navigation target (optionally with a <see cref="Member"/>).
+    /// </summary>
+    public RegisteredFromAttribute(Type registeredType) => RegisteredType = registeredType;
+
+    /// <summary>
+    /// Annotates a leaf registered through a resource file: there is no C# type, only a plain
+    /// <see cref="SourcePath"/> coordinate (<see cref="SourceLine"/>/<see cref="SourceColumn"/>).
+    /// </summary>
+    public RegisteredFromAttribute()
+    {
+    }
+
+    /// <summary>
+    /// The type registered at the originating site. Null when the registration originates from a
+    /// resource file, where the navigation target is the <see cref="SourcePath"/> coordinate instead.
+    /// </summary>
+    public Type? RegisteredType { get; }
+
+    /// <summary>
+    /// The member name at the registration site, when the registration is reached through C# source.
+    /// </summary>
+    public string? Member { get; set; }
+
+    /// <summary>
+    /// The resource file path of the registration site, when the registration originates from a resource file.
+    /// </summary>
+    public string? SourcePath { get; set; }
+
+    /// <summary>
+    /// The line within <see cref="SourcePath"/> of the registration site.
+    /// </summary>
+    public int SourceLine { get; set; }
+
+    /// <summary>
+    /// The column within <see cref="SourcePath"/> of the registration site.
+    /// </summary>
+    public int SourceColumn { get; set; }
+}
+
+/// <summary>
 /// Marks a registry method that registers objects. Source generators create registration attributes
 /// (e.g., [RegisterItem("key")]) for each marked method, which mods use to register objects.
 /// </summary>

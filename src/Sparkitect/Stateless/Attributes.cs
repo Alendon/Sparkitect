@@ -36,6 +36,7 @@ public abstract class StatelessFunctionAttribute<TContext, TRegistry> : Stateles
 /// Must be combined with a scheduling attribute.
 /// </summary>
 [FacadeCategoryMapping<StateFacadeAttribute>]
+[RegistrationMarker("perframe_function")]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 [PublicAPI]
 [MeansImplicitUse]
@@ -47,6 +48,7 @@ public sealed class PerFrameFunctionAttribute(string identifier)
 /// Must be combined with a scheduling attribute (OnCreate, OnDestroy, etc.).
 /// </summary>
 [FacadeCategoryMapping<StateFacadeAttribute>]
+[RegistrationMarker("transition_function")]
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
 [PublicAPI]
 [MeansImplicitUse]

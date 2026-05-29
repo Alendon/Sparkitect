@@ -1,10 +1,14 @@
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Moq;
+using Sparkitect.Generator;
 using Sparkitect.Generator.Modding;
+using VerifyTests;
+using VerifyTUnit;
 
 namespace Sparkitect.Generator.Tests.Modding;
 
@@ -30,7 +34,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", "");
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - empty content returns empty array
         await Assert.That(result.Count).IsEqualTo(0);
@@ -43,7 +47,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", null);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - null content returns empty array
         await Assert.That(result.Count).IsEqualTo(0);
@@ -60,7 +64,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - should parse successfully
         await Assert.That(result.Count).IsEqualTo(1);
@@ -82,7 +86,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - should parse successfully with multiple files
         await Assert.That(result.Count).IsEqualTo(1);
@@ -103,7 +107,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - "MyItem" is not snake_case, should be skipped
         await Assert.That(result.Count).IsEqualTo(0);
@@ -120,7 +124,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - "my-item" is kebab-case, not snake_case, should be skipped
         await Assert.That(result.Count).IsEqualTo(0);
@@ -137,7 +141,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - "MY_ITEM" has uppercase, not valid snake_case, should be skipped
         await Assert.That(result.Count).IsEqualTo(0);
@@ -154,7 +158,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - no dot in registry key, should be skipped
         await Assert.That(result.Count).IsEqualTo(0);
@@ -171,7 +175,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - empty ID should be skipped
         await Assert.That(result.Count).IsEqualTo(0);
@@ -188,7 +192,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - "block_type_1" is valid snake_case, should parse
         await Assert.That(result.Count).IsEqualTo(1);
@@ -206,7 +210,7 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - "stone" is valid snake_case (no underscores required), should parse
         await Assert.That(result.Count).IsEqualTo(1);
@@ -226,11 +230,93 @@ public class RegistryGeneratorYamlParsingTests
         var text = CreateMockAdditionalText("test.sparkres.yaml", yaml);
 
         // Act
-        var result = RegistryGenerator.ParseResourceYaml(text, token);
+        var result = RegistryGenerator.ParseResourceYaml(text, "test.sparkres.yaml", token);
 
         // Assert - should only parse valid snake_case entries
         await Assert.That(result.Count).IsEqualTo(2);
         await Assert.That(Enumerable.Any(result, e => e.Id == "valid_item")).IsTrue();
         await Assert.That(Enumerable.Any(result, e => e.Id == "another_valid")).IsTrue();
+    }
+
+    [Test]
+    public async Task ParseResourceYaml_CapturesEntryIdScalarPosition(CancellationToken token)
+    {
+        // Arrange - a leading registry-key line so the entry-id scalar sits on a known line/column.
+        var yaml = """
+            TestRegistry.RegisterFile:
+              - my_item: "file.txt"
+            """;
+        var text = CreateMockAdditionalText("/proj/res/test.sparkres.yaml", yaml);
+
+        // Act
+        var result = RegistryGenerator.ParseResourceYaml(text, "res/test.sparkres.yaml", token);
+
+        // Assert - the entry-id scalar (`my_item`) carries a non-zero line and the project-relative path.
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result[0].SourcePath).IsEqualTo("res/test.sparkres.yaml");
+        await Assert.That(result[0].SourceLine).IsEqualTo(2);
+        await Assert.That(result[0].SourceColumn).IsGreaterThan(0);
+    }
+
+    [Test]
+    public async Task ParseResourceYaml_RelativizesAbsolutePathAgainstProjectDir(CancellationToken token)
+    {
+        // Arrange - an absolute path that the provider would relativize against build_property.ProjectDir.
+        var relative = RegistryGenerator.MakeProjectRelative(
+            "/home/user/proj/resources/shaders.sparkres.yaml", "/home/user/proj/");
+
+        // Assert - forward-slash, project-relative, machine-move-surviving (D-50).
+        await Assert.That(relative).IsEqualTo("resources/shaders.sparkres.yaml");
+    }
+
+    /// <summary>
+    /// End-to-end (Wave 0 gap closer): drives ParseResourceYaml on a fixed .sparkres.yaml shape,
+    /// builds resource units against a matching RegistryMap, renders IdProperties, and snapshots the
+    /// output so the plain SourcePath/SourceLine/SourceColumn coordinate is regression-covered.
+    /// The pre-existing render-only test does NOT exercise the parse→coordinate flow.
+    /// </summary>
+    [Test]
+    public async Task YamlIdProperties_EndToEnd_EmitsPlainCoordinate_Snapshot(CancellationToken token)
+    {
+        // Arrange - fixed shape: FQN.Method key + one snake_case entry-id list item.
+        var yaml = """
+            Sample.Registry.RegisterFile:
+              - my_item: "file.txt"
+            """;
+        var text = CreateMockAdditionalText("/proj/res/test.sparkres.yaml", yaml);
+
+        var parsed = RegistryGenerator.ParseResourceYaml(text, "res/test.sparkres.yaml", token);
+
+        var model = new RegistryModel(
+            "Registry", "sample", "Sample", false,
+            ImmutableValueArray.From(new RegisterMethodModel(
+                "RegisterFile", PrimaryParameterKind.None, TypeConstraintFlag.None, [])),
+            ImmutableValueArray.From(("res", true, true)));
+
+        var regMap = RegistryGenerator.RegistryMap.Create(
+            (ImmutableArray.Create(model), ImmutableValueArray.From<RegistryModel>()));
+
+        // Act - parse → units → IdProperties render.
+        var units = RegistryGenerator.BuildUnitsForResourceFile(parsed, regMap);
+        await Assert.That(units.Count).IsEqualTo(1);
+
+        var ok = RegistryGenerator.RenderRegistryIdPropertiesUnit(units[0], BuildSettings, out var code, out _);
+        await Assert.That(ok).IsTrue();
+
+        // Snapshot - must show the plain coordinate (non-zero SourceLine) and NO typeof (SC-4 / Pitfall 4).
+        await Verifier.Verify(code, VerifySettings);
+    }
+
+    private static ModBuildSettings BuildSettings => new(
+        "Sample Test Mod", "sample_test", "SampleTest", false, "SampleTest.Generated");
+
+    private static VerifySettings VerifySettings
+    {
+        get
+        {
+            var settings = new VerifySettings();
+            settings.UseDirectory("TestResults");
+            return settings;
+        }
     }
 }
