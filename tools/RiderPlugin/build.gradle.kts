@@ -59,7 +59,7 @@ sourceSets {
 }
 
 tasks.compileKotlin {
-    compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
+    compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21) }
 }
 
 val setBuildTool by tasks.registering {
@@ -104,6 +104,10 @@ dependencies {
         // reference provider are not part of the ReSharper SDK NuGet metapackage;
         // the backend csproj references the DLL from this plugin's install folder.
         bundledPlugin("com.intellij.resharper.unity")
+
+        // Frontend YAML language plugin. The Sparkres file type borrows its
+        // YAMLSyntaxHighlighterFactory and the plugin <depends> on it at runtime.
+        bundledPlugin("org.jetbrains.plugins.yaml")
     }
 }
 

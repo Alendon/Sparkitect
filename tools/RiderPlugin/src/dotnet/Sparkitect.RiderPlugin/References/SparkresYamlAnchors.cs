@@ -1,9 +1,11 @@
 using JetBrains.Metadata.Reader.Impl;
 using JetBrains.ReSharper.Plugins.Yaml.Psi.Tree;
 using JetBrains.ReSharper.Psi;
+using JetBrains.ReSharper.Psi.CSharp.Tree;
 using JetBrains.ReSharper.Psi.Modules;
 using JetBrains.ReSharper.Psi.Tree;
 using JetBrains.ReSharper.Psi.Util;
+using JetBrains.Util;
 
 namespace Sparkitect.RiderPlugin.References;
 
@@ -15,6 +17,9 @@ namespace Sparkitect.RiderPlugin.References;
 /// </summary>
 public static class SparkresYamlAnchors
 {
+    private static readonly ILogger Logger =
+        JetBrains.Util.Logging.Logger.GetLogger(typeof(SparkresYamlAnchors));
+
     /// <summary>The source text content of a scalar node.</summary>
     public static string? GetScalarText(IPlainScalarNode scalar) => scalar.GetText();
 
@@ -52,8 +57,6 @@ public static class SparkresYamlAnchors
         return !string.IsNullOrEmpty(registryFqn);
     }
 
-    private const string RegistryAttributeFullName = "Sparkitect.Modding.RegistryAttribute";
-
     /// <summary>
     /// The owning mod's csproj <c>&lt;ModId&gt;</c> for a scalar's resource file — the reliable mod source
     /// (D-40), replacing the brittle project-name guess. Returns null when no <c>&lt;ModId&gt;</c> is set.
@@ -62,8 +65,9 @@ public static class SparkresYamlAnchors
 
     /// <summary>
     /// The registry's declared category for a YAML registration: resolves the registry type from its FQN
-    /// (the top-level key minus the trailing <c>.method</c>) and reads its <c>[Registry(Identifier)]</c> —
-    /// the same reliable category the C# path reads from the forward marker. Never the CLR short-name guess.
+    /// (the top-level key minus the trailing <c>.method</c>) and reads the string-literal body of its
+    /// <see cref="!:IRegistry.Identifier"/> property. Concrete type only; returns null when the literal is
+    /// unreadable. Never the CLR short-name guess.
     /// </summary>
     public static string? GetRegistryCategory(ITreeNode node, string registryFqn)
     {
@@ -78,15 +82,50 @@ public static class SparkresYamlAnchors
             .GetSymbolScope(module, withReferences: true, caseSensitive: true);
         var registryType = scope.GetTypeElementByCLRName(new ClrTypeName(registryClrName));
         if (registryType == null)
-            return null;
-
-        var instances = registryType.GetAttributeInstances(
-            new ClrTypeName(RegistryAttributeFullName), AttributesSource.Self);
-        foreach (var instance in instances)
         {
-            var value = instance.NamedParameter("Identifier");
-            if (!value.IsBadValue && value.IsConstant && value.ConstantValue.IsString())
-                return value.ConstantValue.AsString();
+            Logger.Trace($"GetRegistryCategory: registry type unresolved from CLR name '{registryClrName}' (FQN '{registryFqn}').");
+            return null;
+        }
+
+        IProperty? identifierProperty = null;
+        foreach (var property in registryType.Properties)
+        {
+            if (property.ShortName == "Identifier")
+            {
+                identifierProperty = property;
+                break;
+            }
+        }
+
+        if (identifierProperty == null)
+        {
+            Logger.Trace($"GetRegistryCategory: no static 'Identifier' property on registry type '{registryClrName}'.");
+            return null;
+        }
+
+        var category = ReadPropertyLiteral(identifierProperty);
+        if (category == null)
+        {
+            Logger.Trace($"GetRegistryCategory: 'Identifier' literal unreadable on registry type '{registryClrName}'.");
+            return null;
+        }
+
+        Logger.Trace($"GetRegistryCategory: resolved category '{category}' for registry '{registryClrName}'.");
+        return category;
+    }
+
+    /// <summary>
+    /// Reads the first readable string-literal value from a property's source declaration(s) — covers the
+    /// expression-bodied <c>=&gt; "..."</c> shape every registry's <c>Identifier</c> getter uses. Returns
+    /// null when no readable string literal is present.
+    /// </summary>
+    private static string? ReadPropertyLiteral(IProperty property)
+    {
+        foreach (var declaration in property.GetDeclarations())
+        foreach (var literal in declaration.Descendants<ICSharpLiteralExpression>().Collect())
+        {
+            if (literal.IsConstantValue() && literal.ConstantValue.IsString())
+                return literal.ConstantValue.AsString();
         }
 
         return null;

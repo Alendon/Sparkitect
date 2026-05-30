@@ -14,7 +14,12 @@
         <CompilerVisibleProperty Include="SgOutputNamespace"/>
     </ItemGroup>
 
-    <!-- Include sparkres files as AdditionalFiles for source generator -->
+    <!-- .sparkres.yaml: Roslyn AdditionalText for the Registry generator. The Sparkitect Rider plugin
+         owns the file's IDE analysis (its backend SparkresYaml file type + a project-file-type user-data
+         provider mark it as a daemon-visible YAML source), so no separate None/Content membership is
+         needed to make it analyzable — AdditionalFiles is the single source of truth. The file is never
+         compiled, never copied to output, never packed (the archive walks Resources/ only); its content
+         reaches the mod solely through the generator's emitted C#. -->
     <ItemGroup>
         <AdditionalFiles Include="**/*.sparkres.yaml" />
     </ItemGroup>

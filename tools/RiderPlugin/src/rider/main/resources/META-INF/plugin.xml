@@ -6,12 +6,48 @@
   <idea-version since-build="261" />
   <depends>com.intellij.modules.rider</depends>
   <!--
-    Optional so the plugin still loads without it (SC#1). The YAML PSI types used
-    by the .sparkres.yaml reference provider (Plan 04) live in the bundled Unity
-    plugin (com.intellij.resharper.unity, rider-unity/dotnet/), whose YAML module
-    depends on org.jetbrains.plugins.yaml for the YAML language itself.
+    Non-optional: the Sparkres frontend file type borrows org.jetbrains.yaml's
+    YAMLSyntaxHighlighterFactory for editor coloring and the plugin maps
+    .sparkres.yaml onto a Rider-backed file type so the ReSharper backend's YAML
+    PSI/references/highlightings surface in the editor. YAML ships bundled in Rider.
   -->
-  <depends optional="true">org.jetbrains.plugins.yaml</depends>
+  <depends>org.jetbrains.plugins.yaml</depends>
+
+  <!--
+    Routes *.sparkres.yaml onto a Rider-backed file type (RiderLanguageFileTypeBase +
+    a dummy-lexer parser definition). This is what makes Rider open the file as a
+    backend document so the backend's registration references (F12) and daemon
+    highlightings render in the editor; the stock YAML editor ignores the backend.
+    Scoped via the patterns attribute so plain *.yaml keeps the stock YAML editor.
+
+    The rd.languageAssociation + backend.* extensions are the protocol bridge that
+    actually surfaces backend results: rd.languageAssociation binds the open frontend
+    SparkresYaml document to its backend PSI language (plain YAML, since the backend
+    file type derives YamlProjectFileType), which is what makes the per-document daemon
+    run in VISIBLE_DOCUMENT mode for the focused editor; markup.adapterFactory streams
+    the daemon's highlightings into the editor; actions.support routes editor actions
+    (go-to-declaration / F12) to the backend; typedHandler makes typing backend-aware.
+    Without these the backend only ever runs the solution-wide sweep (SOLUTION_ANALYSIS)
+    and nothing reaches the editor. Mirrors the Unity plugin's UnityYaml registration.
+  -->
+  <extensions defaultExtensionNs="com.intellij">
+    <fileType name="SparkresYaml" fieldName="INSTANCE"
+              implementationClass="sparkitect.riderplugin.yaml.SparkresYamlFileType"
+              language="SparkresYaml"
+              patterns="*.sparkres.yaml" />
+    <lang.parserDefinition language="SparkresYaml"
+              implementationClass="sparkitect.riderplugin.yaml.SparkresYamlParserDefinition" />
+    <lang.syntaxHighlighterFactory language="SparkresYaml"
+              implementationClass="org.jetbrains.yaml.YAMLSyntaxHighlighterFactory" />
+
+    <rd.languageAssociation backendLanguage="YAML" frontendLanguage="SparkresYaml" />
+    <backend.markup.adapterFactory language="SparkresYaml"
+              implementationClass="com.jetbrains.rdclient.daemon.FrontendMarkupAdapterFactory" />
+    <backend.actions.support language="SparkresYaml"
+              implementationClass="com.jetbrains.rider.actions.RiderActionSupportPolicy" />
+    <backend.typedHandler language="SparkresYaml"
+              implementationClass="com.jetbrains.rider.editorActions.FrontendTypedHandler" />
+  </extensions>
 
   <description>
 <![CDATA[
