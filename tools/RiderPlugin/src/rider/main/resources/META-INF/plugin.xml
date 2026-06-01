@@ -50,15 +50,17 @@
   </extensions>
 
   <!--
-    Action-id-routing spike: a frontend RiderAnAction whose backend id "SparkitectNavSpike" matches a
-    backend [Action] IExecutableAction of the same id, routed over the existing RD protocol with no
-    rdgen model. No forced keystroke so the binding stays keymap-configurable.
+    Go to Registration: a frontend RiderAnAction whose backend id "GoToRegistration" matches the backend
+    [Action] IExecutableAction of the same id, routed over the existing RD protocol with no rdgen model.
+    Added as the top entry of the editor context menu's Go To submenu (EditorPopupMenu.GoTo) as a peer to
+    Go to Definition. No forced keystroke so the binding stays keymap-configurable.
   -->
   <actions>
-    <action id="SparkitectNavSpike"
-            class="sparkitect.riderplugin.actions.SparkitectNavSpikeAction"
-            text="Sparkitect Nav Spike">
-      <add-to-group group-id="GoToMenu" />
+    <action id="GoToRegistration"
+            class="sparkitect.riderplugin.actions.GoToRegistrationAction"
+            text="Registration"
+            description="Navigate from a generated identification to its registration site">
+      <add-to-group group-id="EditorPopupMenu.GoTo" anchor="first" />
     </action>
   </actions>
 

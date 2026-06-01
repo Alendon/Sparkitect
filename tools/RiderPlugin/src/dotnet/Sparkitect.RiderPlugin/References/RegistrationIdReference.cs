@@ -46,6 +46,13 @@ public class RegistrationIdReference : CheckedReferenceBase<ICSharpLiteralExpres
 
     public override ISymbolTable GetReferenceSymbolTable(bool useReferenceName)
     {
+        // The symbol table can be requested from a foreign/stale PSI context (e.g. a declared-elements
+        // data rule running over a node that is no longer valid). Resolving the target type and exploring
+        // its FULL symbol table there has historically surfaced an extension-member NRE; degrade to an
+        // empty table (which the caller maps to unresolved/Ignore) rather than letting it throw.
+        if (!myOwner.IsValid())
+            return EmptySymbolTable.INSTANCE;
+
         var targetType = ResolveTargetType();
         if (targetType == null)
             return EmptySymbolTable.INSTANCE;

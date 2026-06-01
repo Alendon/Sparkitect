@@ -30,6 +30,15 @@ public partial class SampleEntryState : IStateDescriptor
     [DummyRegistry.RegisterValue("hello1")]
     public static string SomeValueToRegister() => "Hello World";
 
+    [TransitionFunction("dummy_value_read")]
+    [OnCreateScheduling]
+    [OrderAfter<SampleModule.ProcessRegistryFunc>]
+    public static void ReadDummyValues(IDummyValueManager dummyValueManager)
+    {
+        Log.Information("Dummy value from method registry: {value}",dummyValueManager.GetDummyValue(DummyID.MinimalSampleMod.Hello1));
+        Log.Information("Dummy value from provider type: {value}", dummyValueManager.GetDummyValue(DummyID.MinimalSampleMod.DummyProvider));
+    }
+
     [TransitionFunction("test_command_pool")]
     [OnCreateScheduling]
     [OrderAfter<VulkanModule.CreateDeviceFunc>]

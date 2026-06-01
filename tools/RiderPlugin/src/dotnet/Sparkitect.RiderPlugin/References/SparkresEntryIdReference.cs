@@ -33,6 +33,12 @@ public class SparkresEntryIdReference : CheckedReferenceBase<IPlainScalarNode>
 
     public override ISymbolTable GetReferenceSymbolTable(bool useReferenceName)
     {
+        // Guard against resolution invoked over a foreign/stale PSI node: a no-longer-valid owner has no
+        // dependable module, and exploring a FULL symbol table from there can surface the extension-member
+        // NRE. Degrade to an empty table (mapped to unresolved upstream) instead of throwing.
+        if (!myOwner.IsValid())
+            return EmptySymbolTable.INSTANCE;
+
         var module = myOwner.GetPsiModule();
         var targetType = ResolveTargetType(module);
         if (targetType == null)

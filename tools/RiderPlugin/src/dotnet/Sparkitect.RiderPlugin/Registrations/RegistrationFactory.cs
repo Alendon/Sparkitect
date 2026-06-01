@@ -1,6 +1,8 @@
+using System.Linq;
 using JetBrains.ReSharper.Psi;
 using JetBrains.ReSharper.Psi.CSharp.Tree;
 using JetBrains.ReSharper.Psi.Tree;
+using JetBrains.ReSharper.Psi.Util;
 using Sparkitect.RiderPlugin.References;
 
 namespace Sparkitect.RiderPlugin.Registrations;
@@ -71,6 +73,32 @@ public static class RegistrationFactory
         return key == null ? null : new ResourceRegistration(entryKey, key.Value);
     }
 
+    /// <summary>
+    /// Detects the registration owning a generated leaf id property — the reverse direction used by Go to
+    /// Registration. Reads the leaf's <c>[RegisteredFrom]</c> owner edge, then for a C# owner locates the
+    /// authoritative id-string literal (the registration attribute argument that reconstructs the same
+    /// <see cref="RegistrationKey" />) on the owning type and returns the category's subtype anchored on it.
+    /// Returns null for a resource-file (YAML) owner — that coordinate has no in-source C# anchor and is
+    /// navigated via <see cref="RegisteredFromReader" /> directly. Returns null when no owner is present.
+    /// </summary>
+    public static Registration? FromLeaf(IProperty leaf)
+    {
+        var owner = RegisteredFromReader.Read(leaf);
+        if (owner?.Type == null)
+            return null;
+
+        var key = RegistrationKey.FromLeafProperty(leaf);
+        if (key == null)
+            return null;
+
+        var literal = FindRegistrationLiteral(owner.Type, key.Value);
+        if (literal == null)
+            return null;
+
+        var category = OwnerCategory(literal);
+        return category == null ? null : Create(category, literal, key.Value);
+    }
+
     /// <summary>The one category→subtype mapping. New categories extend this single switch.</summary>
     private static Registration Create(string category, ITreeNode anchor, RegistrationKey key)
     {
@@ -78,5 +106,41 @@ public static class RegistrationFactory
             return new ExternalRegistration(anchor, key);
 
         return new TypeRegistration(anchor, key);
+    }
+
+    /// <summary>
+    /// Locates the registration id-string literal on the owning type: the registration-attribute argument
+    /// whose value reconstructs the same key as the leaf. Attributes on the type's members are descendants
+    /// of the type declaration, so a member-borne registration (method/property/value, stateless, ECS) is
+    /// found by the same walk as a type-borne one.
+    /// </summary>
+    private static ICSharpLiteralExpression? FindRegistrationLiteral(
+        ITypeElement ownerType, RegistrationKey leafKey)
+    {
+        foreach (var declaration in ownerType.GetDeclarations())
+        foreach (var literal in declaration.Descendants<ICSharpLiteralExpression>().Collect())
+        {
+            if (!literal.IsConstantValue() || !literal.ConstantValue.IsString())
+                continue;
+
+            var idString = literal.ConstantValue.AsString();
+            if (string.IsNullOrEmpty(idString))
+                continue;
+
+            var registration = FromCSharpLiteral(literal, idString!);
+            if (registration != null && registration.Key.AsTuple() == leafKey.AsTuple())
+                return literal;
+        }
+
+        return null;
+    }
+
+    /// <summary>The marker category carried by the registration attribute owning <paramref name="literal" />.</summary>
+    private static string? OwnerCategory(ICSharpLiteralExpression literal)
+    {
+        var argument = CSharpArgumentNavigator.GetByValue(literal);
+        var attribute = argument == null ? null : AttributeNavigator.GetByArgument(argument);
+        var attributeType = attribute?.TypeReference?.Resolve().DeclaredElement as ITypeElement;
+        return attributeType == null ? null : RegistrationKey.MarkerCategory(attributeType);
     }
 }

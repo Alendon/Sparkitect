@@ -19,4 +19,23 @@ public static class RegistrationMarkerPredicate
             .GetAttributeInstances(new ClrTypeName(RegistrationMarkerFullName), AttributesSource.Self)
             .Any();
     }
+
+    /// <summary>
+    /// True when <paramref name="owner" /> carries an applied registration attribute (its attribute type
+    /// holds the forward marker). Metadata-level enumeration — no PSI tree walk — so it is cheap enough for
+    /// per-poll action-update gating.
+    /// </summary>
+    public static bool CarriesRegistrationAttribute(IAttributesOwner? owner)
+    {
+        if (owner == null)
+            return false;
+
+        foreach (var instance in owner.GetAttributeInstances(AttributesSource.Self))
+        {
+            if (IsRegistrationAttribute(instance.GetAttributeType().GetTypeElement()))
+                return true;
+        }
+
+        return false;
+    }
 }
