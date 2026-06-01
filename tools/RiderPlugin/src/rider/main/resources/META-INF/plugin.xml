@@ -49,6 +49,19 @@
               implementationClass="com.jetbrains.rider.editorActions.FrontendTypedHandler" />
   </extensions>
 
+  <!--
+    Action-id-routing spike: a frontend RiderAnAction whose backend id "SparkitectNavSpike" matches a
+    backend [Action] IExecutableAction of the same id, routed over the existing RD protocol with no
+    rdgen model. No forced keystroke so the binding stays keymap-configurable.
+  -->
+  <actions>
+    <action id="SparkitectNavSpike"
+            class="sparkitect.riderplugin.actions.SparkitectNavSpikeAction"
+            text="Sparkitect Nav Spike">
+      <add-to-group group-id="GoToMenu" />
+    </action>
+  </actions>
+
   <description>
 <![CDATA[
 <p>Navigation support for Sparkitect mod registrations and their generated identification symbols.</p>

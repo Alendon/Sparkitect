@@ -1,6 +1,7 @@
 using JetBrains.ReSharper.Plugins.Yaml.Psi.Tree;
 using JetBrains.ReSharper.Psi.Resolve;
 using JetBrains.ReSharper.Psi.Tree;
+using Sparkitect.RiderPlugin.Registrations;
 
 namespace Sparkitect.RiderPlugin.References;
 
@@ -40,11 +41,11 @@ public class SparkresReferenceFactory : IReferenceFactory
             if (string.IsNullOrEmpty(category))
                 return ReferenceCollection.Empty;
 
-            var key = RegistrationKey.FromYaml(modId!, category!, entryId!);
-            if (key == null)
+            var registration = RegistrationFactory.FromYamlEntry(scalar, modId!, category!, entryId!);
+            if (registration == null)
                 return ReferenceCollection.Empty;
 
-            return new ReferenceCollection(new SparkresEntryIdReference(scalar, key.Value));
+            return new ReferenceCollection(new SparkresEntryIdReference(scalar, registration.Key));
         }
 
         return ReferenceCollection.Empty;

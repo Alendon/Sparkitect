@@ -1,18 +1,18 @@
 using JetBrains.ReSharper.Psi;
 using JetBrains.ReSharper.Psi.CSharp.Tree;
 using JetBrains.ReSharper.Psi.ExtensionsAPI.Resolve;
-using JetBrains.ReSharper.Psi.Modules;
 using JetBrains.ReSharper.Psi.Resolve;
 using JetBrains.ReSharper.Psi.Tree;
 using JetBrains.ReSharper.Psi.Util;
+using Sparkitect.RiderPlugin.Registrations;
 
 namespace Sparkitect.RiderPlugin.References;
 
 /// <summary>
 /// Produces a <see cref="RegistrationIdReference" /> on the ID string-literal argument of any
-/// registration attribute (an attribute type that carries the forward <c>RegistrationMarkerAttribute</c>).
-/// The navigation target is reconstructed from reliable inputs — the marker's category argument plus the
-/// owning project's csproj <c>&lt;ModId&gt;</c> — via the shared <see cref="RegistrationKey" />.
+/// registration attribute. Category / marker / mod detection is delegated to the shared
+/// <see cref="RegistrationFactory" /> (single source of truth); the navigation target is taken from the
+/// resolved <see cref="RegistrationKey" /> and the resolve/F12 behaviour stays unchanged.
 /// </summary>
 public class RegistrationIdReferenceFactory : IReferenceFactory
 {
@@ -28,33 +28,13 @@ public class RegistrationIdReferenceFactory : IReferenceFactory
         if (string.IsNullOrEmpty(idString))
             return ReferenceCollection.Empty;
 
-        var argument = CSharpArgumentNavigator.GetByValue(literal);
-        if (argument == null)
+        var registration = RegistrationFactory.FromCSharpLiteral(literal, idString!);
+        if (registration == null)
             return ReferenceCollection.Empty;
 
-        var attribute = AttributeNavigator.GetByArgument(argument);
-        if (attribute == null)
-            return ReferenceCollection.Empty;
-
-        var attributeType = attribute.TypeReference?.Resolve().DeclaredElement as ITypeElement;
-        if (!RegistrationMarkerPredicate.IsRegistrationAttribute(attributeType))
-            return ReferenceCollection.Empty;
-
-        var registeredType = attribute.GetContainingTypeElement(false);
-        if (registeredType == null)
-            return ReferenceCollection.Empty;
-
-        var modId = SparkitectModId.Resolve(registeredType);
-        if (string.IsNullOrEmpty(modId))
-            return ReferenceCollection.Empty;
-
-        var key = RegistrationKey.FromAttribute(attributeType!, idString!, modId!);
-        if (key == null)
-            return ReferenceCollection.Empty;
-
-        var module = ((IClrDeclaredElement)registeredType).Module;
+        var key = registration.Key;
         var reference = new RegistrationIdReference(
-            literal, module, key.Value.IdsStructClrName, key.Value.MemberName);
+            literal, literal.GetPsiModule(), key.IdsStructClrName, key.MemberName);
 
         var result = new ReferenceCollection(reference);
         return ResolveUtil.ReferenceSetsAreEqual(result, oldReferences) ? oldReferences : result;

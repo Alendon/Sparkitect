@@ -1,9 +1,11 @@
 using JetBrains.Annotations;
+using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
 namespace Sparkitect.ECS.Systems;
 
 [EcsSystemCategory]
+[RegistrationMarker("ecs_system")]
 [AttributeUsage(AttributeTargets.Method, Inherited = false)]
 [MeansImplicitUse]
 [PublicAPI]
