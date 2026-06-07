@@ -33,11 +33,14 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     public VmaAllocator VmaAllocator { get; private set; } = null!;
     public AllocationCallbacks* DefaultAllocationCallbacks { get; }
     public IObjectTracker<VulkanObject> ObjectTracker { get; private set; } = null!;
+    public KhrPushDescriptor KhrPushDescriptor => _khrPushDescriptor
+        ?? throw new InvalidOperationException("KhrPushDescriptor accessed before device creation");
 
     private readonly Dictionary<uint, List<VkQueue>> _queuesByFamily = [];
     private ExtDebugUtils? _debugUtils;
     private DebugUtilsMessengerEXT _debugMessenger;
     private KhrSurface? _khrSurface;
+    private KhrPushDescriptor? _khrPushDescriptor;
 
     public required IDIService ModDIService { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
@@ -284,6 +287,11 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 Log.Warning("VK_KHR_swapchain extension not available");
         }
 
+        // Push descriptors are mandatory for the render-graph descriptor path; fail fast if absent.
+        if (!configContext.AddExtension("VK_KHR_push_descriptor"))
+            throw new InvalidOperationException(
+                "VK_KHR_push_descriptor extension not available; the selected physical device cannot run the render graph");
+
         var queueRequests = configContext.GetQueueRequests();
         if (queueRequests.Count == 0)
         {
@@ -364,6 +372,10 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                     VkDevice = new VkDevice(this, device);
                     Log.Debug("Vulkan device created with {QueueCount} queue families, {ExtCount} extensions",
                         queueRequests.Count, enabledExtensions.Count);
+
+                    if (!VkApi.TryGetDeviceExtension(VkInstance.Handle, VkDevice.Handle, out _khrPushDescriptor))
+                        throw new InvalidOperationException(
+                            "Failed to load VK_KHR_push_descriptor device-extension handle after device creation");
                 }
             }
             finally

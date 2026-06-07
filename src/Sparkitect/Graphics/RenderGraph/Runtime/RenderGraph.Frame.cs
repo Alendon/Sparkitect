@@ -41,6 +41,8 @@ public sealed partial class RenderGraph
         _commandBuffer.Reset();
         _commandBuffer.Begin(CommandBufferUsageFlags.OneTimeSubmitBit);
 
+        _imageManager.ApplyPendingFills(_commandBuffer);
+
         foreach (var (_, pass) in _compiled.OrderedPasses)
             ((IExecuteHook)pass).Execute(_commandBuffer);
 

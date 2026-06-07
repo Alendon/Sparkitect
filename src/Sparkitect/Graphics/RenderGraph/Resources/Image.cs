@@ -43,6 +43,7 @@ public sealed partial class Image : IHasIdentification
     }
 
     internal int BackingCount => _backings.Length;
+    internal int CurrentBackingIndex => _currentIndex;
     internal void SetCurrentIndex(int idx) => _currentIndex = idx;
 
     public Image(VkImage[] backings, Extent2D extent, Format format, uint initialQueueFamily)

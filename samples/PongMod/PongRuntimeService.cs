@@ -51,6 +51,8 @@ internal class PongRuntimeService : IPongRuntimeService
     public ref PongGameData GameData => ref _gameData;
     public float DeltaTime { get; private set; }
 
+    public ISparkitWindow Window => _window!;
+
     public Vector3 BackgroundColor
     {
         get => _backgroundColor;

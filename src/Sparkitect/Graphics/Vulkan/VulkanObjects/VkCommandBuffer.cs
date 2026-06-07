@@ -106,6 +106,26 @@ public class VkCommandBuffer : VulkanObject
         }
     }
 
+    /// <summary>
+    /// Pushes descriptor-set writes inline into the command buffer via
+    /// <c>VK_KHR_push_descriptor</c>, with no pool or pre-allocated descriptor set.
+    /// The <see cref="WriteDescriptorSet.DstSet"/> field of each write is ignored.
+    /// </summary>
+    public unsafe void PushDescriptorSet(
+        PipelineBindPoint bindPoint,
+        VkPipelineLayout layout,
+        uint firstSet,
+        ReadOnlySpan<WriteDescriptorSet> writes)
+    {
+        var pushDescriptor = VulkanContext.KhrPushDescriptor;
+        fixed (WriteDescriptorSet* writesPtr = writes)
+        {
+            pushDescriptor.CmdPushDescriptorSet(
+                Handle, bindPoint, layout.Handle, firstSet,
+                (uint)writes.Length, writesPtr);
+        }
+    }
+
     public unsafe void PushConstants<T>(
         VkPipelineLayout layout,
         ShaderStageFlags stageFlags,

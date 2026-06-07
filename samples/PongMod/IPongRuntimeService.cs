@@ -1,5 +1,6 @@
 using System.Numerics;
 using Sparkitect.GameState;
+using Sparkitect.Windowing;
 
 namespace PongMod;
 
@@ -7,6 +8,12 @@ public interface IPongRuntimeService
 {
     ref PongGameData GameData { get; }
     float DeltaTime { get; }
+
+    /// <summary>
+    /// The mod-owned window. Exposed so the shared-image registration provider can read
+    /// <c>Window.Swapchain.Extent</c>.
+    /// </summary>
+    ISparkitWindow Window { get; }
 
     /// <summary>
     /// Gets or sets the background clear color for rendering.

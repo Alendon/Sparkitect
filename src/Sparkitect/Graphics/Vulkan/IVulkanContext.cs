@@ -1,4 +1,5 @@
 ﻿using Silk.NET.Vulkan;
+using Silk.NET.Vulkan.Extensions.KHR;
 using JetBrains.Annotations;
 using Silk.NET.Windowing;
 using Sparkitect.DI.GeneratorAttributes;
@@ -22,6 +23,12 @@ public interface IVulkanContext
     VmaAllocator VmaAllocator { get; }
     unsafe AllocationCallbacks* DefaultAllocationCallbacks { get; }
     IObjectTracker<VulkanObject> ObjectTracker { get; }
+
+    /// <summary>
+    /// The loaded <c>VK_KHR_push_descriptor</c> device-extension handle, used to push
+    /// descriptor-set writes inline into a command buffer without a pool-allocated set.
+    /// </summary>
+    KhrPushDescriptor KhrPushDescriptor { get; }
 
     /// <summary>
     /// Gets a specific queue by family and index.

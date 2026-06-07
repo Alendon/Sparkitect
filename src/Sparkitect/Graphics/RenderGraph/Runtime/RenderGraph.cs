@@ -9,6 +9,7 @@ using Sparkitect.Graphics.RenderGraph.Hooks;
 using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Metadata;
 using Sparkitect.Modding;
 using Sparkitect.Utils.DU;
 using Sparkitect.Windowing;
@@ -28,6 +29,7 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
 {
     private readonly IVulkanContext _vulkanContext;
     private readonly IImageResourceManager _imageManager;
+    private readonly IDescriptorResourceManager _descriptorManager;
     private readonly IDIService _diService;
     private readonly IGameStateManager _gameStateManager;
     private readonly IRenderGraphManager _renderGraphManager;
@@ -74,12 +76,14 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
     internal RenderGraph(
         IVulkanContext vulkanContext,
         IImageResourceManager imageManager,
+        IDescriptorResourceManager descriptorManager,
         IDIService diService,
         IGameStateManager gameStateManager,
         IRenderGraphManager renderGraphManager)
     {
         _vulkanContext = vulkanContext;
         _imageManager = imageManager;
+        _descriptorManager = descriptorManager;
         _diService = diService;
         _gameStateManager = gameStateManager;
         _renderGraphManager = renderGraphManager;
@@ -108,10 +112,12 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
 
         var (queueFamily, queue) = ResolveGraphicsQueue(_vulkanContext);
         _imageManager.BindQueueFamily(queueFamily);
+        _imageManager.DrainRegisteredImages();
 
         var managersByType = new Dictionary<Type, IGraphResourceManager>
         {
             [typeof(ImageResourceManager)] = (IGraphResourceManager)_imageManager,
+            [typeof(DescriptorResourceManager)] = (IGraphResourceManager)_descriptorManager,
         };
         var setupContext = new SetupContext(_renderGraphManager, managersByType);
 
@@ -119,6 +125,7 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
             _diService, hostContainer, provider: null, modIdList);
 
         var compiler = new RenderGraphCompiler();
+        var inGraphPassIds = new HashSet<Identification>();
         foreach (var id in passIds)
         {
             if (!_renderGraphManager.RegisteredPassIds.Contains(id))
@@ -131,7 +138,25 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
             ((ISetupHook)pass).Setup(setupContext);
             setupContext.PopPass();
             compiler.AddPass(id, pass);
+            inGraphPassIds.Add(id);
         }
+
+        // Drain declarative [PassConfiguration] ordering metadata into the compiler before Compile().
+        // Each in-graph pass's class-level [OrderAfter<T>]/[OrderBefore<T>] becomes a hard edge.
+        var passConfigs = new Dictionary<Identification, PassConfiguration>();
+        using (var configContainer = _diService.CreateEntrypointContainer<
+                   ApplyMetadataEntrypoint<PassConfiguration>>(modIdList))
+        {
+            configContainer.ProcessMany(ep => ep.CollectMetadata(passConfigs));
+        }
+        var orderingBuilder = new RenderGraphOrderingBuilder(compiler);
+        foreach (var (passId, cfg) in passConfigs)
+        {
+            if (!inGraphPassIds.Contains(passId)) continue;
+            cfg.OwnerId = passId;
+            cfg.ApplyEdges(orderingBuilder);
+        }
+
         _compiled = compiler.Compile();
 
         var poolResult = _vulkanContext.CreateCommandPool(
@@ -189,6 +214,7 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
         unsafe { _vulkanContext.VkApi.DeviceWaitIdle(_vulkanContext.VkDevice.Handle); }
 
         (_imageManager as IDisposable)?.Dispose();
+        (_descriptorManager as IDisposable)?.Dispose();
         if (_setupComplete)
         {
             _presentSemaphore.Dispose();

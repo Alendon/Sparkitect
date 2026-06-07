@@ -6,8 +6,8 @@ namespace Sparkitect.Graphics.RenderGraph;
 
 /// <summary>
 /// Layer-1 metadata entrypoint for the stock <see cref="Runtime.RenderGraph"/>. Declares
-/// the per-graph required services list: a single per-instance
-/// <see cref="IImageResourceManager"/>.
+/// the per-graph required services list: a per-instance <see cref="IImageResourceManager"/>
+/// and a per-instance <see cref="IDescriptorResourceManager"/>.
 /// </summary>
 [ApplyMetadataEntrypoint<RGServiceListMetadata>]
 internal sealed class MainRGServiceList : ApplyMetadataEntrypoint<RGServiceListMetadata>
@@ -15,6 +15,9 @@ internal sealed class MainRGServiceList : ApplyMetadataEntrypoint<RGServiceListM
     public override void CollectMetadata(Dictionary<Identification, RGServiceListMetadata> metadata)
     {
         metadata[Runtime.RenderGraph.Identification] =
-            new RGServiceListMetadata([typeof(IImageResourceManager)]);
+            new RGServiceListMetadata([
+                typeof(IImageResourceManager),
+                typeof(IDescriptorResourceManager),
+            ]);
     }
 }

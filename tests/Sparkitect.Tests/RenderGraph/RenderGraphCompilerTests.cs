@@ -60,6 +60,33 @@ public class RenderGraphCompilerTests
     }
 
     [Test]
+    public async Task Compile_EdgeViaOrderingAdapter_ReordersPasses()
+    {
+        var compiler = new RenderGraphCompiler();
+        // Add copy first, compute second; the ordering edge must force compute before copy.
+        compiler.AddPass(PassA, new TestPass("copy"));
+        compiler.AddPass(PassB, new TestPass("compute"));
+
+        // Apply edge (compute -> copy) through the adapter, dropping the optional flag.
+        var adapter = new RenderGraphOrderingBuilder(compiler);
+        adapter.AddEdge(from: PassB, to: PassA, optional: false);
+
+        var compiled = compiler.Compile();
+
+        await Assert.That(compiled.OrderedPasses[0].Id).IsEqualTo(PassB);
+        await Assert.That(compiled.OrderedPasses[1].Id).IsEqualTo(PassA);
+    }
+
+    [Test]
+    public async Task OrderingAdapter_Resolve_ThrowsNotSupported()
+    {
+        var compiler = new RenderGraphCompiler();
+        var adapter = new RenderGraphOrderingBuilder(compiler);
+
+        await Assert.That(() => adapter.Resolve()).Throws<NotSupportedException>();
+    }
+
+    [Test]
     public async Task Compile_Cycle_ThrowsInvalidOperationContainingCycle()
     {
         var compiler = new RenderGraphCompiler();

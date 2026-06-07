@@ -16,6 +16,11 @@ public class ImageResourceManagerTests
 
     private static IVulkanContext MockVulkanContext() => new Mock<IVulkanContext>(MockBehavior.Loose).Object;
 
+    private static IResourceRegistrationStore EmptyStore() => new ResourceRegistrationStore();
+
+    private static ImageResourceManager MakeManager() =>
+        new(MockVulkanContext(), EmptyStore());
+
     private static SwapchainResource MakeSwapchainResource(int backingCount = 1)
     {
         var swap = (VkSwapchain)RuntimeHelpers.GetUninitializedObject(typeof(VkSwapchain));
@@ -38,7 +43,7 @@ public class ImageResourceManagerTests
     public async Task Declare_PreservesCallerSuppliedSlots()
     {
         var sr = MakeSwapchainResource();
-        var mgr = new ImageResourceManager(MockVulkanContext());
+        var mgr = MakeManager();
         mgr.Apply(sr);
         IImageResourceManager imgr = mgr;
 
@@ -55,7 +60,7 @@ public class ImageResourceManagerTests
     [Test]
     public async Task DeclareUntyped_UnknownRequestArmType_Throws()
     {
-        var mgr = new ImageResourceManager(MockVulkanContext());
+        var mgr = MakeManager();
         IGraphResourceManagerFor<WriteableImage> typed = mgr;
 
         var bogus = new BogusWriteableRequest();
@@ -66,7 +71,7 @@ public class ImageResourceManagerTests
     [Test]
     public async Task Declare_BeforeApply_FetchThrows()
     {
-        var mgr = new ImageResourceManager(MockVulkanContext());
+        var mgr = MakeManager();
         IImageResourceManager imgr = mgr;
 
         var handle = imgr.Declare(PassA, 0, new WriteableImageRequest.FromSwapchain(WriteUsage.TransferDst));
@@ -79,7 +84,7 @@ public class ImageResourceManagerTests
     [Test]
     public async Task ReApply_TrackedHandles_PointAtNewSwapchain()
     {
-        var mgr = new ImageResourceManager(MockVulkanContext());
+        var mgr = MakeManager();
         IImageResourceManager imgr = mgr;
 
         var firstSr = MakeSwapchainResource();

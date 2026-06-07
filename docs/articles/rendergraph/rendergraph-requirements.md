@@ -334,15 +334,66 @@ must preserve correctness across those overlaps.
 
 ### Identity
 
-The stock graph should support both registered and pass-local declarations:
+A resource reference takes one of two forms, **symbolic** or **value**. These are stock
+engine-layer semantics; the foundation provides only the declaration and binding substrate and
+treats handles opaquely.
 
-- **Registered logical resources** have an `Identification` and can be referenced by multiple
-  passes or systems.
-- **Pass-local declarations** are scoped to one pass or one generated contract and do not need a
-  public `Identification`.
+- **Symbolic** — a description or identity that names a resource without being the resolved
+  resource: an `Identification`, or a description object such as the swapchain, a transient of a
+  given size and format, or a discriminated union like "registered image ID or swapchain".
+  Symbolic references are statically analyzable; the relevant stock or extension handler resolves
+  them to concrete values at build or frame time. Resolution semantics are the handler's — a
+  symbol may resolve to a shared backing, or act as a specialized factory producing distinct
+  backings per use. The symbol guarantees neither.
+- **Value** — the actual resolved resource a pass holds. Its canonical instance identity is
+  `(pass identity, slot)`: a deterministic per-pass index assigned in declaration order. Integer
+  slots give a deduplicated, source-generation-friendly exposition of a pass's resources that
+  stays stable as generated or hand-written code adds further declarations. This identity is not
+  part of the author-facing surface — a pass declares a resource and receives a handle, nothing
+  more — but it is a stable address other render-graph services can key on: expressing
+  dependencies, optimizing intra-pass work, or supporting diagnostics. A richer symbol layer —
+  resource-type `Identification`, the declaring member name, tracking metadata — maps onto
+  `(pass identity, slot)` additively, without replacing the canonical key.
 
-The exact stock rules for when a view participates in inter-pass data flow are engine-layer
-semantics. Foundation only provides the declaration/binding substrate.
+Registration is orthogonal to this distinction and to backing. A **registered** logical resource
+carries a public `Identification` and can be referenced symbolically by multiple passes or
+systems; a **pass-local** declaration is scoped to one pass or generated contract and needs no
+public `Identification`. Registration governs visibility and reference, not whether resolution
+shares backing.
+
+A relationship uses whichever form crosses its boundary:
+
+- **Value relationships are intra-pass.** When a pass composes resources it declared itself — a
+  descriptor binding its image and buffer views — it relates them by passing resolved value
+  handles directly. A value handle never escapes the pass that declared it.
+- **Symbolic relationships are external or cross-pass.** A reference that crosses a pass boundary,
+  names an external resource, or selects among known resources is expressed symbolically, not by
+  holding another pass's value handle. The graph resolves the symbol to a value at build or frame
+  time.
+
+This split is not stylistic. Cross-pass references are the data-flow edges the compiler orders
+passes on; keeping them symbolic keeps every inter-pass edge statically analyzable. Intra-pass
+composition needs the resolved value at execution time, so the value handle — which carries both
+the resolved view and its `(pass identity, slot)` provenance — is the natural channel.
+
+One invariant holds across both forms: every resource value resolves to exactly one symbolic
+source, and every relationship edge is identity-labelled. The full resource graph is therefore
+reconstructable from declarations alone, without executing a frame — no relationship exists only
+as an anonymous runtime value.
+
+A registered resource binds an `Identification` to a **physical resource** through a description —
+for an image, a description carrying size, format, transientness, and an optional default fill, and
+carrying no usage. Two registration forms express the symbolic resolution semantics above: one binds
+the identity to a single shared backing, the other to a configuration that produces a distinct
+backing per use.
+
+What a pass normally consumes is not the physical resource but a **view** over it. A view's setup
+request selects its source — a registered resource by `Identification`, an inline description, or an
+external resource such as the swapchain — and carries the usage and view type. Usage is therefore a
+property of the view, not of the physical resource: one shared image is consumed by one pass as a
+compute-storage view and by another as a transfer-source view. This separation — `Identification`
+and descriptions at the physical-resource layer, usage and consumption at the view layer — is
+central to how the stock render graph emerges from the foundation.
 
 ### External Data
 
