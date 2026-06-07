@@ -11,15 +11,7 @@ namespace Sparkitect.Windowing;
 [StateService<IWindowManager, WindowingModule>]
 internal class WindowManager : IWindowManager, IWindowManagerStateFacade
 {
-    private ISparkitWindow? _mainWindow;
-
     internal required IVulkanContext VulkanContext { private get; init; }
-
-    public ISparkitWindow? MainWindow
-    {
-        get => _mainWindow;
-        set => _mainWindow = value;
-    }
 
     public ISparkitWindow CreateWindow(string title, int width, int height, SwapchainConfig? config = null)
     {
@@ -38,9 +30,7 @@ internal class WindowManager : IWindowManager, IWindowManagerStateFacade
         var swapchain = new VkSwapchain(surface, config ?? SwapchainConfig.Default, VulkanContext, (uint)width, (uint)height);
 
         var window = new SparkitWindow(silkWindow, surface, swapchain);
-
-        _mainWindow ??= window;
-
+        
         Log.Information("Window created: {Title} ({Width}x{Height})", title, width, height);
 
         return window;

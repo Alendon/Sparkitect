@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.CompilerGenerated.KeyedFactoryExtensions;
@@ -44,6 +45,12 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
     private uint _graphicsQueueFamily;
     private bool _disposed;
     private bool _setupComplete;
+    private long _lastFrameTimestamp;
+
+    /// <summary>
+    /// Max frames per second; 0 = uncapped. Paced by a busy-wait in <see cref="RunFrame"/>.
+    /// </summary>
+    public uint MaxFrameRate { get; set; }
 
     public THandler? GetHandler<THandler>() where THandler : class
     {
@@ -155,6 +162,7 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
 
         _graphicsQueue = queue;
         _graphicsQueueFamily = queueFamily;
+        _lastFrameTimestamp = Stopwatch.GetTimestamp();
         _setupComplete = true;
     }
 

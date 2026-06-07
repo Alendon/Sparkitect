@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.RenderGraph.Hooks;
 using Sparkitect.Utils.DU;
@@ -17,6 +18,14 @@ public sealed partial class RenderGraph
         if (!_setupComplete)
             throw new InvalidOperationException(
                 "RenderGraph.RunFrame: Setup has not been invoked. Construct render graphs via IRenderGraphManager.CreateGraph<TRenderGraph>(passIds).");
+
+        if (MaxFrameRate != 0)
+        {
+            var minFrameTimeS = 1d / MaxFrameRate;
+            SpinWait.SpinUntil(() =>
+                Stopwatch.GetElapsedTime(_lastFrameTimestamp, Stopwatch.GetTimestamp()).TotalSeconds > minFrameTimeS);
+            _lastFrameTimestamp = Stopwatch.GetTimestamp();
+        }
 
         _inFlightFence.Wait();
         _inFlightFence.Reset();
