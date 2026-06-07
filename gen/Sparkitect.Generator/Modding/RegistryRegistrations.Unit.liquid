@@ -21,13 +21,14 @@ public class {{ TypePrefix }}{{ RegistryName }}Registrations_{{ SourceTag }} : g
         global::{{ ExtensionsNamespace }}.{{ ModStructName }} _,
         global::{{ RegistryFullName }} registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager);
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
 {% endfor -%}
     public override void ProcessRegistrations(global::{{ RegistryFullName }} registry)
     {
 {% for entry in Entries -%}
-        __Reg_{{ entry.PropertyName }}_{{ SourceTag }}(default, registry, IdentificationManager, ResourceManager);
+        __Reg_{{ entry.PropertyName }}_{{ SourceTag }}(default, registry, IdentificationManager, ResourceManager, Scope);
 {% endfor -%}
     }
 }

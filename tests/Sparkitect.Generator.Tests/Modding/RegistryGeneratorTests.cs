@@ -492,7 +492,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             System.IO.Path.GetFileName(t.FilePath).Contains("Registrations_Providers"));
         await Assert.That(registrationsTree).IsNotNull();
         var registrationsCode = registrationsTree!.GetText().ToString();
-        await Assert.That(registrationsCode).Contains("__Reg_ClearColorPass_Providers(default, registry, IdentificationManager, ResourceManager);");
+        await Assert.That(registrationsCode).Contains("__Reg_ClearColorPass_Providers(default, registry, IdentificationManager, ResourceManager, Scope);");
 
         // Assert the factory file contains expected IKeyedFactory<IRenderPass> impl
         var factoryTree = driverRunResult.GeneratedTrees.First(t =>

@@ -217,10 +217,20 @@ internal class RegistryManager : IRegistryManager
 
         var registrations = registrationsContainer.ResolveMany();
 
+        // Build a resolution scope over the active container so value-providing registration
+        // methods can resolve DI parameters the same way all other DI-leaf code does. Registration
+        // providers carry no resolution metadata, so the scope falls back to direct container
+        // resolution (matching the prior container-based behaviour) while staying metadata-ready.
+        var scope = DIService.BuildScope(
+            GameStateManager.CurrentCoreContainer,
+            new FacadeResolutionProvider(),
+            new[] { modId },
+            Array.Empty<Type>());
+
         foreach (var registration in registrations)
         {
-            // Initialize with current container
-            registration.Initialize(GameStateManager.CurrentCoreContainer);
+            // Initialize with the resolution scope
+            registration.Initialize(scope);
 
             // Process registrations with typed registry
             registration.ProcessRegistrations(registry);

@@ -14,7 +14,8 @@ private static global::Sparkitect.Modding.Identification _init_Providers;
     private static void Register_Init_Providers(
         global::StatelessTest.TestRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager)
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         _init_Providers = identificationManager.RegisterObject("test_mod", "test", "init");
 registry.Register<global::TestMod.TestModule.InitFunc>(_init_Providers);
@@ -26,7 +27,8 @@ private static global::Sparkitect.Modding.Identification _update_Providers;
     private static void Register_Update_Providers(
         global::StatelessTest.TestRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager)
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         _update_Providers = identificationManager.RegisterObject("test_mod", "test", "update");
 registry.Register<global::TestMod.TestModule.UpdateFunc>(_update_Providers);

@@ -1,5 +1,5 @@
 using JetBrains.Annotations;
-using Sparkitect.DI.Container;
+using Sparkitect.DI.Resolution;
 using Sparkitect.Modding;
 
 namespace Sparkitect.DI;
@@ -19,9 +19,10 @@ public abstract class Registrations<TRegistry> : IConfigurationEntrypoint<Regist
     public abstract string CategoryIdentifier { get; }
 
     /// <summary>
-    /// Gets the DI container, available after <see cref="Initialize"/> is called.
+    /// Gets the resolution scope dependencies are resolved against (used by value-providing
+    /// registration methods that declare DI parameters), available after <see cref="Initialize"/> is called.
     /// </summary>
-    protected ICoreContainer Container { get; private set; } = null!;
+    protected IResolutionScope Scope { get; private set; } = null!;
 
     /// <summary>
     /// Gets the identification manager, available after <see cref="Initialize"/> is called.
@@ -34,15 +35,23 @@ public abstract class Registrations<TRegistry> : IConfigurationEntrypoint<Regist
     protected IResourceManager ResourceManager { get; private set; } = null!;
 
     /// <summary>
-    /// Initializes the registration instance with DI-resolved services.
+    /// Initializes the registration instance with the resolution scope DI-providing
+    /// registration methods resolve their parameters against.
     /// </summary>
-    /// <param name="container">The core container to resolve services from.</param>
-    public void Initialize(ICoreContainer container)
+    /// <param name="scope">The resolution scope to resolve services from.</param>
+    public void Initialize(IResolutionScope scope)
     {
-        Container = container;
+        Scope = scope;
 
-        IdentificationManager = container.Resolve<IIdentificationManager>();
-        ResourceManager = container.Resolve<IResourceManager>();
+        if (!scope.TryResolve<IIdentificationManager>(typeof(Registrations<TRegistry>), out var identificationManager))
+            throw new global::System.InvalidOperationException(
+                $"Failed to resolve {nameof(IIdentificationManager)} for registrations of {typeof(TRegistry).Name}");
+        IdentificationManager = identificationManager;
+
+        if (!scope.TryResolve<IResourceManager>(typeof(Registrations<TRegistry>), out var resourceManager))
+            throw new global::System.InvalidOperationException(
+                $"Failed to resolve {nameof(IResourceManager)} for registrations of {typeof(TRegistry).Name}");
+        ResourceManager = resourceManager;
     }
 
     /// <summary>

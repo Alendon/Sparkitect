@@ -27,6 +27,7 @@ public partial class PongState : IStateDescriptor
     [OnCreateScheduling]
     [OrderAfter<VulkanModule.ProcessRegistriesFunc>]
     [OrderAfter<VulkanModule.CreateDeviceFunc>]
+    [OrderBefore<RenderGraphModule.ProcessRenderGraphRegistriesFunc>]
     public static void Initialize(IPongRuntimeService pongRuntime)
     {
         pongRuntime.Initialize();

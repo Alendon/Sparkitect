@@ -20,7 +20,8 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
         global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
         global::MinimalSampleMod.DummyRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager);
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
 [global::System.Runtime.CompilerServices.UnsafeAccessor(
         global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
@@ -29,7 +30,8 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
         global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
         global::MinimalSampleMod.DummyRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager);
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
 [global::System.Runtime.CompilerServices.UnsafeAccessor(
         global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
@@ -38,7 +40,8 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
         global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
         global::MinimalSampleMod.DummyRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager);
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
 [global::System.Runtime.CompilerServices.UnsafeAccessor(
         global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
@@ -47,13 +50,14 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
         global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
         global::MinimalSampleMod.DummyRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager);
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
 public override void ProcessRegistrations(global::MinimalSampleMod.DummyRegistry registry)
     {
-__Reg_Hello3_Providers(default, registry, IdentificationManager, ResourceManager);
-__Reg_Hello4_Providers(default, registry, IdentificationManager, ResourceManager);
-__Reg_Hello5_Providers(default, registry, IdentificationManager, ResourceManager);
-__Reg_Hello6_Providers(default, registry, IdentificationManager, ResourceManager);
+__Reg_Hello3_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
+__Reg_Hello4_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
+__Reg_Hello5_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
+__Reg_Hello6_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
 }
 }

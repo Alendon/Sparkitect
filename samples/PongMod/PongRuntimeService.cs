@@ -5,7 +5,6 @@ using Serilog;
 using Silk.NET.Input;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.RenderGraph;
-using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.RenderGraph.Runtime;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
@@ -26,7 +25,6 @@ internal class PongRuntimeService : IPongRuntimeService
 
     public required IWindowManager WindowManager { private get; init; }
     public required IRenderGraphManager RenderGraphManager { private get; init; }
-    public required IResourceRegistrationStore RegistrationStore { private get; init; }
 
     public ref PongGameData GameData => ref _gameData;
     public float DeltaTime { get; private set; }
@@ -54,16 +52,6 @@ internal class PongRuntimeService : IPongRuntimeService
     public void CreateGraph()
     {
         if (_renderGraph is not null) return;
-
-        // Re-register the shared target at the live swapchain extent (last-writer-wins over the
-        // placeholder declared by the registration provider) before the graph drains the store.
-        RegistrationStore.RegisterImage(
-            GraphImageID.PongMod.Target,
-            new ImageDescription(
-                _window!.Swapchain.Extent,
-                Silk.NET.Vulkan.Format.R8G8B8A8Unorm,
-                Transient: false,
-                DefaultFill: null));
 
         _renderGraph = RenderGraphManager.CreateGraph<RenderGraph>(
             new List<Identification>

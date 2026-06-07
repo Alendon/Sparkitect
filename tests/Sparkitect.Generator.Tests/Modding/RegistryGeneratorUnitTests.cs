@@ -331,6 +331,40 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Verifier.Verify(code, verifySettings);
     }
 
+    // Regression: a value-providing registration method that declares DI parameters must resolve
+    // them through the `scope` threaded into the generated static shim (IResolutionScope), NOT the
+    // base class's `Container` instance property — the static shim cannot see instance members, so
+    // emitting `Container.TryResolve` produced CS0103. This path had no consumer until a registry
+    // shipped a DI-param value provider, so the stale emission slipped through the migration.
+    [Test]
+    public async Task MethodEntry_WithDiParameters_ResolvesThroughScope_NotContainer()
+    {
+        var entry = new MethodRegistrationEntry(
+            "shared_image",
+            ImmutableValueArray.From<(string, string)>(),
+            "RegisterValue",
+            "global::SampleMod.GraphImageRegistrations.Target",
+            ImmutableValueArray.From(
+                ("global::SampleMod.IRuntimeService", false),
+                ("global::SampleMod.IOptionalDep", true)),
+            "global::SampleMod.GraphImageRegistrations",
+            "Target");
+
+        var code = entry.EmitRegistrationEntryCode("registry", "MyId");
+
+        // Never emit the out-of-scope instance property.
+        await Assert.That(code.Contains("Container.TryResolve")).IsFalse();
+        // Required dep: fail-fast resolve through the scope, keyed by the provider's containing type.
+        await Assert.That(code).Contains(
+            "if(!scope.TryResolve<global::SampleMod.IRuntimeService>(typeof(global::SampleMod.GraphImageRegistrations), out var arg_0))");
+        // Optional dep: best-effort resolve, no throw.
+        await Assert.That(code).Contains(
+            "scope.TryResolve<global::SampleMod.IOptionalDep>(typeof(global::SampleMod.GraphImageRegistrations), out var arg_1);");
+        // Provider invoked with resolved args, value handed to the registry method.
+        await Assert.That(code).Contains("var value = global::SampleMod.GraphImageRegistrations.Target(arg_0, arg_1);");
+        await Assert.That(code).Contains("registry.RegisterValue(MyId, value);");
+    }
+
     [Test]
     public async Task RenderRegistryAttributes_MultiFile_GeneratesKeyedProperties()
     {

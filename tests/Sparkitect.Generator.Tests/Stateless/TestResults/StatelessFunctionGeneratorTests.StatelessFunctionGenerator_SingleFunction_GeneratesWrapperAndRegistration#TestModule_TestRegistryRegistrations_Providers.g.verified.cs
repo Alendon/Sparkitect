@@ -21,10 +21,11 @@ public class TestModule_TestRegistryRegistrations_Providers : global::Sparkitect
         global::TestMod.Generated.IdExtensions.TestModTestIDs _,
         global::StatelessTest.TestRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager);
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
 public override void ProcessRegistrations(global::StatelessTest.TestRegistry registry)
     {
-__Reg_Init_Providers(default, registry, IdentificationManager, ResourceManager);
+__Reg_Init_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
 }
 }

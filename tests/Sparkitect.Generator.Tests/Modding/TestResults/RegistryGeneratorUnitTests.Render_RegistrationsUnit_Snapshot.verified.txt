@@ -20,10 +20,11 @@ public class DummyRegistryRegistrations_Resources : global::Sparkitect.DI.Regist
         global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
         global::MinimalSampleMod.DummyRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager);
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
 public override void ProcessRegistrations(global::MinimalSampleMod.DummyRegistry registry)
     {
-__Reg_Hello_Resources(default, registry, IdentificationManager, ResourceManager);
+__Reg_Hello_Resources(default, registry, IdentificationManager, ResourceManager, Scope);
 }
 }

@@ -14,7 +14,8 @@ private static global::Sparkitect.Modding.Identification _process_Providers;
     private static void Register_Process_Providers(
         global::StatelessTest.TestRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager)
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         _process_Providers = identificationManager.RegisterObject("test_mod", "test", "process");
 registry.Register<global::TestMod.TestModule.ProcessFunc>(_process_Providers);

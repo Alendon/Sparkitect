@@ -14,7 +14,8 @@ private static global::Sparkitect.Modding.Identification _clearColorPass_Provide
     private static void Register_ClearColorPass_Providers(
         global::DiTest.RenderPassRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager)
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         _clearColorPass_Providers = identificationManager.RegisterObject("sample_test", "render_pass", "clear_color_pass");
 registry.RegisterRenderPass<global::DiTest.ClearColorPass>(_clearColorPass_Providers);

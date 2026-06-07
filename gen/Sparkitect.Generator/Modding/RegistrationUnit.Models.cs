@@ -44,15 +44,19 @@ public sealed record MethodRegistrationEntry(
     public override string EmitRegistrationEntryCode(string registry, string id)
     {
         var sb = new StringBuilder();
+        // Resolve DI parameters through the registration scope (threaded in as `scope`), matching
+        // every other DI-leaf code path. The provider's containing type is the wrapper-type metadata
+        // key; with no registration metadata present the scope falls back to direct container resolution.
+        var wrapperTypeOf = $"typeof({RegisteredContainerFullName ?? "global::System.Object"})";
         for (int i = 0; i < DiParameters.Count; i++)
         {
             var (paramType, isNullable) = DiParameters[i];
             var globalType = paramType.StartsWith("global::") ? paramType : $"global::{paramType}";
             if (isNullable)
-                sb.AppendLine($"Container.TryResolve<{globalType}>(out var arg_{i});");
+                sb.AppendLine($"scope.TryResolve<{globalType}>({wrapperTypeOf}, out var arg_{i});");
             else
             {
-                sb.AppendLine($"if(!Container.TryResolve<{globalType}>(out var arg_{i}))");
+                sb.AppendLine($"if(!scope.TryResolve<{globalType}>({wrapperTypeOf}, out var arg_{i}))");
                 sb.AppendLine($"    throw new global::System.InvalidOperationException(\"Missing dependency {globalType} for provider {ProviderFullName}\");");
             }
         }

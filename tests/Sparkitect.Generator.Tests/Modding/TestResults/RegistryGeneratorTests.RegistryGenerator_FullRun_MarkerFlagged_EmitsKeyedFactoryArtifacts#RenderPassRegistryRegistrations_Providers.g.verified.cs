@@ -21,10 +21,11 @@ public class RenderPassRegistryRegistrations_Providers : global::Sparkitect.DI.R
         global::SampleTest.Generated.IdExtensions.SampleTestRenderPassIDs _,
         global::DiTest.RenderPassRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager);
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
 public override void ProcessRegistrations(global::DiTest.RenderPassRegistry registry)
     {
-__Reg_ClearColorPass_Providers(default, registry, IdentificationManager, ResourceManager);
+__Reg_ClearColorPass_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
 }
 }

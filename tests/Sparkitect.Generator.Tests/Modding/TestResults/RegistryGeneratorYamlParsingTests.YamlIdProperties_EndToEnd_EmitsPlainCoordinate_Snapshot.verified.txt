@@ -13,7 +13,8 @@ private static global::Sparkitect.Modding.Identification _myItem_Resources;
     private static void Register_MyItem_Resources(
         global::Sample.Registry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager)
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         _myItem_Resources = identificationManager.RegisterObject("sample_test", "sample", "my_item");
 

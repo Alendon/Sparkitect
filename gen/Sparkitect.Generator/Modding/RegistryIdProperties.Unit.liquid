@@ -15,7 +15,8 @@ public readonly partial struct {{ ModStructName }}
     private static void Register_{{ entry.PropertyName }}_{{ SourceTag }}(
         global::{{ RegistryFullName }} registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
-        global::Sparkitect.Modding.IResourceManager? resourceManager)
+        global::Sparkitect.Modding.IResourceManager? resourceManager,
+        global::Sparkitect.DI.Resolution.IResolutionScope scope)
     {
         _{{ entry.LowerCaseId }}_{{ SourceTag }} = identificationManager.RegisterObject("{{ ModId }}", "{{ CategoryKey }}", "{{ entry.Id }}");
 {% if entry.Files and entry.Files.size > 0 -%}
