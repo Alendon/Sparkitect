@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
@@ -16,7 +17,8 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// inline in pass Execute via <see cref="Descriptor.Push"/> — there is no per-frame hook.
 /// </summary>
 [GraphLocal<IDescriptorResourceManager>]
-internal sealed class DescriptorResourceManager : IDescriptorResourceManager, IDisposable
+[PublicAPI]
+public sealed class DescriptorResourceManager : IDescriptorResourceManager, IDisposable
 {
     private readonly IVulkanContext _vulkanContext;
     private readonly List<VkDescriptorSetLayout> _layouts = new();

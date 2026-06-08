@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 
 namespace Sparkitect.Graphics.RenderGraph.Resources;
@@ -7,7 +8,8 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// and coordinates frame-aliasing. Does NOT author per-pass barrier emission — that lives
 /// on <see cref="Hooks.IPreExecuteHook"/> implementations on resource views.
 /// </summary>
-internal interface IImageResourceManager :
+[PublicAPI]
+public interface IImageResourceManager :
     IGraphResourceManager<Image, ImageRequest>,
     IGraphResourceManager<WriteableImage, WriteableImageRequest>,
     IGraphResourceManager<ReadableImage, ReadableImageRequest>,
@@ -35,7 +37,11 @@ internal interface IImageResourceManager :
     /// </summary>
     void ApplyPendingFills(VkCommandBuffer commandBuffer);
 
-    void Apply(SwapchainResource swapchainResource);
+    /// <summary>
+    /// Bind (or rebind) the swapchain backing, reading its images/extent/format directly.
+    /// Reached through <see cref="ISwapchainHandler"/>; rebinds tracked handles.
+    /// </summary>
+    void Apply(VkSwapchain swapchain);
     void BeginFrame(uint acquiredSwapchainImageIndex);
     void EndFrame(VkCommandBuffer commandBuffer);
 }

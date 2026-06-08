@@ -54,6 +54,7 @@ public partial class SpaceInvadersSystemGroup
             count++;
         }
 
-        runtimeService.SetRenderEntityCount(count);
+        ReadOnlySpan<RenderEntity> span = new ReadOnlySpan<RenderEntity>(buffer, 0, count);
+        runtimeService.PublishEntities(span);
     }
 }

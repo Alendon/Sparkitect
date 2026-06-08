@@ -69,6 +69,13 @@ public interface IVulkanContext
         [InjectCallerContext] CallerContext callerContext = default);
 
     /// <summary>
+    /// Creates a device-local storage buffer usable as a transfer-copy destination.
+    /// </summary>
+    Result<VkBuffer, VkApiResult> CreateDeviceStorageBuffer(
+        ulong size,
+        [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>
     /// Creates a Vulkan surface for the given window.
     /// </summary>
     /// <param name="window">The window to create a surface for.</param>

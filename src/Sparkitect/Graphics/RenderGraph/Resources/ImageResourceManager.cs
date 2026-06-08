@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
@@ -14,12 +15,14 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// Acts as the dispatch coordinator for image resources — it owns physical resources
 /// and frame-index rotation, but does NOT author barrier emission (views do, via
 /// <see cref="Hooks.IPreExecuteHook"/>). The swapchain backing is delivered after
-/// construction via <see cref="Apply"/>; Handles handed out before <see cref="Apply"/>
-/// run are tracked and rebound when <see cref="Apply"/> is called (and re-bound again
-/// on every subsequent call, supporting future resize / re-publish flows).
+/// construction via <see cref="Apply"/> (reached through <see cref="ISwapchainHandler"/>);
+/// Handles handed out before <see cref="Apply"/> run are tracked and rebound when
+/// <see cref="Apply"/> is called (and re-bound again on every subsequent call,
+/// supporting future resize / re-publish flows).
 /// </summary>
 [GraphLocal<IImageResourceManager>]
-internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
+[PublicAPI]
+public sealed class ImageResourceManager : IImageResourceManager, IDisposable
 {
     private readonly IVulkanContext _vulkanContext;
     private readonly IResourceRegistrationStore _registrationStore;
@@ -78,13 +81,13 @@ internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
         _pendingFills.Clear();
     }
 
-    public void Apply(SwapchainResource swapchainResource)
+    public void Apply(VkSwapchain swapchain)
     {
-        var backings = swapchainResource.Underlying.Images.ToArray();
+        var backings = swapchain.Images.ToArray();
         var newImage = new Image(
             backings,
-            swapchainResource.Extent,
-            swapchainResource.Format,
+            swapchain.Extent,
+            swapchain.ImageFormat,
             initialQueueFamily: _queueFamily);
 
         _swapchainImage = newImage;
@@ -202,7 +205,7 @@ internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
     {
         if (_swapchainImage is null)
             throw new InvalidOperationException(
-                "ImageResourceManager.BeginFrame: Swapchain not applied. Call Apply(SwapchainResource) before running frames.");
+                "ImageResourceManager.BeginFrame: Swapchain not applied. Call Apply(VkSwapchain) before running frames.");
         _swapchainImage.SetCurrentIndex((int)acquiredSwapchainImageIndex);
     }
 
@@ -210,7 +213,7 @@ internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
     {
         if (_swapchainImage is null)
             throw new InvalidOperationException(
-                "ImageResourceManager.EndFrame: Swapchain not applied. Call Apply(SwapchainResource) before running frames.");
+                "ImageResourceManager.EndFrame: Swapchain not applied. Call Apply(VkSwapchain) before running frames.");
         _swapchainImage.TransitionTo(
             commandBuffer,
             ImageLayout.PresentSrcKhr,
@@ -293,7 +296,7 @@ internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
         public int Slot { get; }
         public Image Fetch() =>
             _image ?? throw new InvalidOperationException(
-                "IGraphResource<Image>.Fetch: Swapchain not applied. The owning ImageResourceManager has not yet received Apply(SwapchainResource).");
+                "IGraphResource<Image>.Fetch: Swapchain not applied. The owning ImageResourceManager has not yet received Apply(VkSwapchain).");
         public void UpdateSwapchainImage(Image newSwapchainImage) => _image = newSwapchainImage;
     }
 
@@ -310,7 +313,7 @@ internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
         public int Slot { get; }
         public WriteableImage Fetch() =>
             _view ?? throw new InvalidOperationException(
-                "IGraphResource<WriteableImage>.Fetch: Swapchain not applied. The owning ImageResourceManager has not yet received Apply(SwapchainResource).");
+                "IGraphResource<WriteableImage>.Fetch: Swapchain not applied. The owning ImageResourceManager has not yet received Apply(VkSwapchain).");
         public void UpdateSwapchainImage(Image newSwapchainImage) =>
             _view = new WriteableImage(newSwapchainImage, _usage);
     }
@@ -344,7 +347,7 @@ internal sealed class ImageResourceManager : IImageResourceManager, IDisposable
         public int Slot { get; }
         public ReadableImage Fetch() =>
             _view ?? throw new InvalidOperationException(
-                "IGraphResource<ReadableImage>.Fetch: Swapchain not applied. The owning ImageResourceManager has not yet received Apply(SwapchainResource).");
+                "IGraphResource<ReadableImage>.Fetch: Swapchain not applied. The owning ImageResourceManager has not yet received Apply(VkSwapchain).");
         public void UpdateSwapchainImage(Image newSwapchainImage) =>
             _view = new ReadableImage(newSwapchainImage, _usage);
     }

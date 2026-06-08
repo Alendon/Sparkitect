@@ -73,6 +73,33 @@ public class VkCommandBuffer : VulkanObject
             0, null, 0, null, 1, &barrier);
     }
 
+    /// <summary>Records a buffer-to-buffer copy of <paramref name="size"/> bytes.</summary>
+    public unsafe void CopyBuffer(VkBuffer src, VkBuffer dst, ulong size, ulong srcOffset = 0, ulong dstOffset = 0)
+    {
+        var region = new BufferCopy { SrcOffset = srcOffset, DstOffset = dstOffset, Size = size };
+        Vk.CmdCopyBuffer(Handle, src.Handle, dst.Handle, 1, &region);
+    }
+
+    /// <summary>Records a buffer-memory barrier over the whole buffer.</summary>
+    public unsafe void BufferBarrier(
+        VkBuffer buffer,
+        PipelineStageFlags srcStage, PipelineStageFlags dstStage,
+        AccessFlags srcAccess, AccessFlags dstAccess)
+    {
+        var barrier = new BufferMemoryBarrier
+        {
+            SType = StructureType.BufferMemoryBarrier,
+            SrcAccessMask = srcAccess,
+            DstAccessMask = dstAccess,
+            SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
+            DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
+            Buffer = buffer.Handle,
+            Offset = 0,
+            Size = Vk.WholeSize,
+        };
+        Vk.CmdPipelineBarrier(Handle, srcStage, dstStage, 0, 0, null, 1, &barrier, 0, null);
+    }
+
     public void BindPipeline(PipelineBindPoint bindPoint, VkPipeline pipeline)
         => Vk.CmdBindPipeline(Handle, bindPoint, pipeline.Handle);
 

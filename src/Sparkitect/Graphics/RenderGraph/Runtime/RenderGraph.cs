@@ -25,17 +25,25 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 /// </summary>
 [PublicAPI]
 [RenderGraphRegistry.RegisterRenderGraph("stock")]
-public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler, IRenderGraphSetupHandler, IDisposable
+public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler, IRenderGraphSetupHandler, ISwapchainHandler, IDisposable
 {
     private readonly IVulkanContext _vulkanContext;
     private readonly IImageResourceManager _imageManager;
     private readonly IDescriptorResourceManager _descriptorManager;
+    private readonly IBufferResourceManager _bufferManager;
+    private readonly IEntityListResourceManager _entityListManager;
     private readonly IDIService _diService;
     private readonly IGameStateManager _gameStateManager;
     private readonly IRenderGraphManager _renderGraphManager;
 
     private ISparkitWindow _window = null!;
     private ICoreContainer? _childContainer;
+
+    /// <summary>
+    /// Resource managers keyed by concrete type, assigned in <see cref="Setup"/>. Promoted from a Setup-local
+    /// so the type-routed <see cref="Publish{TResource}"/> door can reach managers at frame time.
+    /// </summary>
+    private Dictionary<Type, IGraphResourceManager> _managersByType = new();
 
     private CompiledRenderGraph _compiled = null!;
     private VkCommandPool _commandPool = null!;
@@ -59,24 +67,33 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
         if (typeof(THandler) == typeof(IRenderGraph)) return (THandler)(object)this;
         if (typeof(THandler) == typeof(IExternalResourceHandler)) return (THandler)(object)this;
         if (typeof(THandler) == typeof(IRenderGraphSetupHandler)) return (THandler)(object)this;
+        if (typeof(THandler) == typeof(ISwapchainHandler)) return (THandler)(object)this;
         return null;
     }
 
-    public void Publish<TResource>(TResource value)
+    public void SetSwapchain(VkSwapchain swapchain) => _imageManager.Apply(swapchain);
+
+    public void Publish<TResource>(TResource value) where TResource : IHasIdentification
     {
-        if (typeof(TResource) == typeof(SwapchainResource))
-        {
-            _imageManager.Apply((SwapchainResource)(object)value!);
-            return;
-        }
-        throw new InvalidOperationException(
-            $"RenderGraph.Publish: no external-resource route registered for type {typeof(TResource).FullName}.");
+        var resourceId = TResource.Identification;
+        if (!_renderGraphManager.TryGetManagerType(resourceId, out var managerType))
+            throw new InvalidOperationException(
+                $"RenderGraph.Publish: no [ResourceManager<…>] binding for {typeof(TResource).FullName} (id={resourceId}).");
+        if (!_managersByType.TryGetValue(managerType, out var manager))
+            throw new InvalidOperationException(
+                $"RenderGraph.Publish: manager {managerType.FullName} not registered with this graph.");
+        if (manager is not IGraphPushTargetFor<TResource> target)
+            throw new InvalidOperationException(
+                $"RenderGraph.Publish: {managerType.FullName} does not implement IGraphPushTargetFor<{typeof(TResource).Name}>.");
+        target.Publish(value);
     }
 
     internal RenderGraph(
         IVulkanContext vulkanContext,
         IImageResourceManager imageManager,
         IDescriptorResourceManager descriptorManager,
+        IBufferResourceManager bufferManager,
+        IEntityListResourceManager entityListManager,
         IDIService diService,
         IGameStateManager gameStateManager,
         IRenderGraphManager renderGraphManager)
@@ -84,6 +101,8 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
         _vulkanContext = vulkanContext;
         _imageManager = imageManager;
         _descriptorManager = descriptorManager;
+        _bufferManager = bufferManager;
+        _entityListManager = entityListManager;
         _diService = diService;
         _gameStateManager = gameStateManager;
         _renderGraphManager = renderGraphManager;
@@ -113,13 +132,16 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
         var (queueFamily, queue) = ResolveGraphicsQueue(_vulkanContext);
         _imageManager.BindQueueFamily(queueFamily);
         _imageManager.DrainRegisteredImages();
+        _bufferManager.DrainRegisteredBuffers();
 
-        var managersByType = new Dictionary<Type, IGraphResourceManager>
+        _managersByType = new Dictionary<Type, IGraphResourceManager>
         {
             [typeof(ImageResourceManager)] = (IGraphResourceManager)_imageManager,
             [typeof(DescriptorResourceManager)] = (IGraphResourceManager)_descriptorManager,
+            [typeof(BufferResourceManager)] = (IGraphResourceManager)_bufferManager,
+            [typeof(EntityListResourceManager)] = (IGraphResourceManager)_entityListManager,
         };
-        var setupContext = new SetupContext(_renderGraphManager, managersByType);
+        var setupContext = new SetupContext(_renderGraphManager, _managersByType);
 
         using var passFactory = RenderPassRegistry.BuildRegisterPassContainer(
             _diService, hostContainer, provider: null, modIdList);
@@ -215,6 +237,8 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
 
         (_imageManager as IDisposable)?.Dispose();
         (_descriptorManager as IDisposable)?.Dispose();
+        (_bufferManager as IDisposable)?.Dispose();
+        (_entityListManager as IDisposable)?.Dispose();
         if (_setupComplete)
         {
             _presentSemaphore.Dispose();

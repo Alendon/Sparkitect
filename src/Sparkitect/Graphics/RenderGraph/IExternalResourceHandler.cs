@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Sparkitect.Modding;
 
 namespace Sparkitect.Graphics.RenderGraph;
 
@@ -11,5 +12,5 @@ namespace Sparkitect.Graphics.RenderGraph;
 [PublicAPI]
 public interface IExternalResourceHandler
 {
-    void Publish<TResource>(TResource value);
+    void Publish<TResource>(TResource value) where TResource : IHasIdentification;
 }

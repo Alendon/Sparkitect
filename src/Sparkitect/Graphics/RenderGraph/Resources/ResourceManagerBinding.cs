@@ -13,4 +13,7 @@ public sealed record ResourceManagerBinding(ResourceManagerAttribute? Attribute)
     public Type ManagerType => Attribute?.ManagerType
         ?? throw new InvalidOperationException(
             "ResourceManagerBinding has no [ResourceManager<…>] attribute applied to its target type.");
+
+    /// <summary>Whether the bound resource is publishable through the type-routed push door.</summary>
+    public bool Publishable => Attribute?.Publishable ?? false;
 }

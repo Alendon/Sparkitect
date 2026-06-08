@@ -16,6 +16,19 @@ public interface IGraphResourceManagerFor<TResource> : IGraphResourceManager
         Identification passId, int slot, IResourceRequest<TResource> request);
 }
 
+/// <summary>
+/// Push capability: a manager that accepts a published <typeparamref name="TResource"/> value. The push
+/// analog of <see cref="IGraphResourceManagerFor{TResource}"/> — one level, no request to erase, the value
+/// <em>is</em> the resource. The type-routed <c>Publish&lt;T&gt;</c> door casts the Id-resolved manager to
+/// this and calls <see cref="Publish"/>.
+/// </summary>
+[PublicAPI]
+public interface IGraphPushTargetFor<TResource> : IGraphResourceManager
+    where TResource : IHasIdentification
+{
+    void Publish(TResource value);
+}
+
 /// <summary>Typed manager: declares <typeparamref name="TResource"/> from a <typeparamref name="TRequest"/> shape.</summary>
 [PublicAPI]
 public interface IGraphResourceManager<TResource, TRequest> : IGraphResourceManagerFor<TResource>

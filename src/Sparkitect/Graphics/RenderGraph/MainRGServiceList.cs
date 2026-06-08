@@ -5,9 +5,8 @@ using Sparkitect.Modding;
 namespace Sparkitect.Graphics.RenderGraph;
 
 /// <summary>
-/// Layer-1 metadata entrypoint for the stock <see cref="Runtime.RenderGraph"/>. Declares
-/// the per-graph required services list: a per-instance <see cref="IImageResourceManager"/>
-/// and a per-instance <see cref="IDescriptorResourceManager"/>.
+/// Layer-1 metadata entrypoint for the stock <see cref="Runtime.RenderGraph"/>. Declares the per-graph
+/// required services list: per-instance image, descriptor, device-buffer, and entity-list managers.
 /// </summary>
 [ApplyMetadataEntrypoint<RGServiceListMetadata>]
 internal sealed class MainRGServiceList : ApplyMetadataEntrypoint<RGServiceListMetadata>
@@ -18,6 +17,8 @@ internal sealed class MainRGServiceList : ApplyMetadataEntrypoint<RGServiceListM
             new RGServiceListMetadata([
                 typeof(IImageResourceManager),
                 typeof(IDescriptorResourceManager),
+                typeof(IBufferResourceManager),
+                typeof(IEntityListResourceManager),
             ]);
     }
 }

@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 /// <summary>
@@ -7,5 +9,6 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// or set, so there is no per-frame set rotation to drive; pushes happen inline in pass Execute via
 /// <see cref="Descriptor.Push"/>.
 /// </summary>
-internal interface IDescriptorResourceManager :
+[PublicAPI]
+public interface IDescriptorResourceManager :
     IGraphResourceManager<Descriptor, DescriptorRequest>;

@@ -13,11 +13,17 @@ emergent render graph are locked here.
 
 ## Design Anchors
 
-- The foundational render graph layer is a dumb substrate: pass identity, declaration capture,
-  execution binding, and extension contracts. It does not own GPU or resource semantics.
+- The foundational layer is a generic executable graph: pass (node) identity, declaration capture,
+  hook-driven binding and fetch, opaque handles, and extension contracts. It owns no GPU, resource,
+  or data semantics — *resource* is not a foundational concept; it is composed entirely in the stock
+  layer. The foundation exists to make the graph modular and modding-friendly; it is not the surface
+  authors use day to day.
 - Sparkitect's stock render graph is an emergent engine-layer implementation built on that
   substrate. It owns stock resource/view semantics, synchronization, lifetime, validation,
   command recording orchestration, and Vulkan integration.
+- The stock render graph is the shipped render-graph experience. Its ergonomics are first-class, not
+  a thin pass-through over the generic foundation. The foundation's genericity buys modularity and
+  modding reach; it must not dilute stock authoring.
 - The render graph is primarily an orchestration layer. Passes and resource/view contracts
   provide the actual rendering and Vulkan logic; the graph builds, binds, schedules, and invokes
   them.
@@ -43,7 +49,7 @@ The foundation defines the minimum protocol needed for graph-like systems to exi
 - Pass lifecycle shape.
 - Pass identity and registration substrate.
 - Setup-time declaration capture.
-- Execute-time binding and fetch protocol.
+- Hook-driven binding and fetch protocol.
 - Opaque handles that bridge setup declarations to frame execution.
 - Extension points for generated and hand-written contracts.
 - Protocol-level validation, such as detecting an unbound handle fetch.
@@ -152,9 +158,13 @@ The exact API shape is open. The important requirements are:
 - Setup remains real code. Resource declaration is too dynamic for an attribute-only model.
 - Setup binds runtime declarations to generated slots through slot-specific declaration
   functions. These functions already know the target slot identity.
-- `IGraphResource<TView>` is a simple graph handle. It does not encode read/write behavior,
-  descriptor behavior, synchronization behavior, upload behavior, backing-resource ownership, or
-  lifecycle behavior.
+- `IGraphResource<TView>` is the central foundational wiring object: a behavior-free handle carrying
+  a pass-local `Slot` and a single `Fetch()`, declared against a slot and resolved later to the live
+  instance of its resource type. Its implementation's sole responsibility is to return the correct
+  instance for the current frame; per-frame backing rotation lives inside that instance, so a stable
+  handle resolves correctly each frame without re-declaration. The handle encodes no read/write,
+  descriptor, synchronization, upload, ownership, or lifecycle behavior. Fetching from a handle in
+  the same hook execution it was declared in is undefined behavior.
 - Additional resource behavior is exposed by interfaces implemented by the resource view type
   and wired by generated or manually implemented pass contracts.
 - `Execute` receives an implementation-specific payload chosen by the concrete stock graph type
@@ -246,68 +256,59 @@ Generator design must account for existing Sparkitect constraints:
 Resource management is the central stock render graph design problem. The foundation does not
 define resource semantics; the stock engine layer does.
 
-At the stock emergent layer, physical resources and resource views are intentionally different
-concepts and must stay mentally distinct. A physical resource is backing storage or backing
-device state. A resource view is the semantic way a pass interacts with that backing. The same
-physical resource may be surfaced through multiple different view types with different graph
-meaning, descriptor behavior, synchronization requirements, or lifecycle hooks. The foundational
-layer knows neither concept.
+At the stock emergent layer a resource is a composite — a registered type, its instances (the data),
+the description that selects them, and the bound handle a pass holds (see Terminology). Resource data
+is treated as **physical** (backing storage or device state) or as a **view** (the semantic way a
+pass interacts with that backing); the two usually stay distinct, though either may bend its rule.
+One physical backing may be surfaced through several view types with different graph meaning,
+descriptor behavior, synchronization requirements, or lifecycle hooks. The foundational layer knows
+none of this — *resource* is a stock concept.
 
 ### Terminology
 
-**Logical resource**
+There is no single resource object. A **resource** is a composite the stock layer assembles, fully
+realized only **when bound to a pass**. The foundation never sees a resource — only a typed slot, an
+opaque request, and an opaque handle.
 
-A named or declared thing that graph participants refer to. It may be registered by
-`Identification`, pass-local, or described entirely by a declaration object. A logical resource
-does not imply one backing allocation.
+**Resource type** — a registered C# type carrying a static `Identification` (one per type). The type
+identity *routes* a request to the stock manager responsible for it. It is type-level: it names the
+kind, never an instance.
 
-**Physical resource**
+**Resource data** — the **instances** of a resource type. The relationship is the plain C# one: the
+resource type is a class; resource data are its instances. An `IGraphResource<TView>` resolves to one
+such instance at `Fetch()`. How a backing lives behind that instance is delegated to the stock
+manager and need not persist between pass invocations — a manager may retain an instance or produce
+one on demand.
 
-A concrete backing object or backing set managed by a stock or extension layer. Examples include
-a VMA buffer, a VMA image, swapchain images, CPU-side metadata storage, chunk buffers, a world BVH
-buffer, or a composed set of multiple backing objects. Physical resources are managed by
-graph-owned stock or extension manager instances.
+**Resource description** — the request a participant supplies when declaring or pushing. It *selects
+and shapes*: naming a registered backing, requesting a transient, selecting among known sources, or
+composing several. It may embed an `Identification` to reference a registered backing — the only
+place an instance-level reference lives. The stock manager interprets it; the foundation passes it
+opaquely.
 
-**Resource view**
+Resource data is *treated* two ways. These are mental categories, **not** foundational types, and
+either may bend its rule:
 
-A pass-facing semantic access object over one or more logical resources, physical resources, or
-external backing objects. It describes how a pass intends to see or use data.
+- **Physical** — tied directly to specific GPU objects or concrete CPU data (a device buffer, an
+  image, a CPU entity array). A physical instance may also reference other resources when needed.
+- **View** — a logical layer over physical resource(s) that modifies their state **directly** rather
+  than holding a local copy, so resources gain behavior (descriptor exposure, staging, layout intent)
+  without duplicating or re-syncing physical state. A view may also hold its own state when needed —
+  a staging view owns a staging buffer and the copy that fills it.
 
-A resource view may resolve at execution time to Vulkan objects, buffers, swapchain images,
-CPU-side data, ECS system provided data, composite resources, descriptor bindings, or generated
-operations. A resource view is not synonymous with `VkImageView`; a Vulkan image view is only one
-low-level artifact that a stock GPU image view may use.
+**Bound resource** — what a pass holds: an `IGraphResource<TView>` resolved at a `(pass, slot)`, whose
+`Fetch()` resolves to the live resource-data instance. This is the only form the foundation reifies,
+and the only point at which a resource is unambiguous.
 
-Resource views author the relationship to the management layer. A view type may declare, through
-its implemented contracts or generic shape, which stock manager interface is responsible for
-resolving and maintaining its backing behavior. This direction is intentional: the manager does
-not need prior knowledge of every view type, and views remain the flexible semantic layer over
-physical resources.
-
-Descriptor behavior follows the same rule. Descriptor sets, descriptor buffers, descriptor
-allocation/update/bind behavior, and descriptor-facing state exposure belong to resource/view
-contracts and their managers. The graph orchestrates when those contracts run; it does not define
-descriptor semantics in the foundation.
-
-The foundational graph treats views and handles opaquely. Semantics such as staging uploads,
-layout transitions, descriptor updates, frame duplication, subresource selection, and lifecycle
-hook behavior belong to stock engine resource/view contracts or extension-defined contracts.
-
-**Resource description**
-
-The setup-time declaration input passed by a pass. It can identify an existing resource, request
-a stock resource, provide creation hints, specify usage intent, select the swapchain, describe a
-composite view, or combine several of those.
-
-An `Identification` and a description object are not competing mechanisms:
-
-- `Identification` references a known logical resource or resource instance.
-- A description object tells the relevant stock or extension handler how to resolve and use a
-  view.
-- A description may contain an `Identification`.
-- A description may contain a discriminated union such as "registered image ID or swapchain".
-
-The foundation does not interpret either shape. Stock or extension handlers do.
+A view type authors its relationship to the management layer. Through its implemented contracts or
+generic shape, a view declares which stock manager interface resolves and maintains its backing
+behavior — the manager needs no prior knowledge of every view type, and views remain the flexible
+semantic layer over physical resources. Descriptor behavior follows the same rule: descriptor sets,
+buffers, allocation/update/bind behavior, and descriptor-facing state belong to resource/view
+contracts and their managers; the graph orchestrates when those contracts run but defines no
+descriptor semantics. The foundation treats views and handles opaquely — staging uploads, layout
+transitions, descriptor updates, frame duplication, subresource selection, and lifecycle hook
+behavior all belong to stock or extension resource/view contracts.
 
 ### View Examples
 
@@ -322,7 +323,8 @@ Vulkan image views:
   layout, buffer range, descriptor update requirements, and bind behavior.
 - **Entity list view:** A view over renderable entity data prepared by ECS systems or game logic.
   The graph sees data produced by systems or services; how those systems derived the data stays
-  outside the resource view contract.
+  outside the resource view contract. The list lives inside the resource — multiplicity is an
+  internal detail of the pushed data, not a foundational one-to-many handle.
 - **Voxel world composite view:** A view over chunk buffers, world-level acceleration data, and
   CPU metadata. It may expose world/chunk semantics rather than a single raw buffer.
 - **Multi-resource mapping view:** A view that wraps several existing resources, such as three
@@ -339,8 +341,8 @@ engine-layer semantics; the foundation provides only the declaration and binding
 treats handles opaquely.
 
 - **Symbolic** — a description or identity that names a resource without being the resolved
-  resource: an `Identification`, or a description object such as the swapchain, a transient of a
-  given size and format, or a discriminated union like "registered image ID or swapchain".
+  resource: an `Identification`, or a description object — a transient of a given size and format,
+  or a discriminated union over registered sources.
   Symbolic references are statically analyzable; the relevant stock or extension handler resolves
   them to concrete values at build or frame time. Resolution semantics are the handler's — a
   symbol may resolve to a shared backing, or act as a specialized factory producing distinct
@@ -355,7 +357,15 @@ treats handles opaquely.
   resource-type `Identification`, the declaring member name, tracking metadata — maps onto
   `(pass identity, slot)` additively, without replacing the canonical key.
 
-Registration is orthogonal to this distinction and to backing. A **registered** logical resource
+`Identification` is **type-level**: the registered resource type's identity, baked into the type,
+routing a request to the managing stock layer. It cannot by itself distinguish two instances of the
+same type. Instance selection happens one level down, inside the manager, through the **description**
+— which may carry a registered backing's `Identification`. This holds in both directions: a pass
+*binds* by description and external code *pushes* by description; the type identity routes and the
+description selects. Resource data therefore needs no standalone identity — outside a binding it may
+not exist.
+
+Registration is orthogonal to this distinction and to backing. A **registered** resource
 carries a public `Identification` and can be referenced symbolically by multiple passes or
 systems; a **pass-local** declaration is scoped to one pass or generated contract and needs no
 public `Identification`. Registration governs visibility and reference, not whether resolution
@@ -367,7 +377,7 @@ A relationship uses whichever form crosses its boundary:
   descriptor binding its image and buffer views — it relates them by passing resolved value
   handles directly. A value handle never escapes the pass that declared it.
 - **Symbolic relationships are external or cross-pass.** A reference that crosses a pass boundary,
-  names an external resource, or selects among known resources is expressed symbolically, not by
+  names externally-managed state, or selects among known resources is expressed symbolically, not by
   holding another pass's value handle. The graph resolves the symbol to a value at build or frame
   time.
 
@@ -388,22 +398,36 @@ the identity to a single shared backing, the other to a configuration that produ
 backing per use.
 
 What a pass normally consumes is not the physical resource but a **view** over it. A view's setup
-request selects its source — a registered resource by `Identification`, an inline description, or an
-external resource such as the swapchain — and carries the usage and view type. Usage is therefore a
+request selects its source — a registered resource by `Identification` or an inline description — and
+carries the usage and view type. A source backed by externally-managed state, such as the swapchain,
+is reached indirectly: the request names a graph resource whose backing the stock layer resolves to
+that state (see Pushed Data and Externally-Managed State). Usage is therefore a
 property of the view, not of the physical resource: one shared image is consumed by one pass as a
 compute-storage view and by another as a transfer-source view. This separation — `Identification`
 and descriptions at the physical-resource layer, usage and consumption at the view layer — is
 central to how the stock render graph emerges from the foundation.
 
-### External Data
+### Pushed Data and Externally-Managed State
 
-External data enters the stock graph through engine-layer resource/view contracts. Examples
-include game state, ECS system provided data, window/swapchain state, CPU staging data, or
-mod-owned data structures.
+All resources are **graph-owned**. There is no external-resource category; some graph-owned resources
+are **pushable** — they accept data fed from outside the pass pipeline (ECS-produced render data, CPU
+buffers, mod-owned structures). Pushing is a stock concern the foundation does not see.
 
-Once bound into the graph, external data should be accessed by passes through the same handle and
-view mechanism as other graph data. The pass should not need to know whether the backing came
-from Vulkan, ECS systems, CPU memory, swapchain acquisition, or a mod-defined provider.
+A push **routes by resource type and selects its target by description**, exactly as a pass binds. The
+pushed-into resource owns its ingestion: it manages allocation internally and exposes a safe, typed
+publish/commit surface **on the resource itself**, so callers never hand-route raw data. Because a
+push conceptually hands the data to the managing stock layer, the surface should make post-publish
+mutation fail fast — a recording-style handoff — since the language cannot express the ownership move
+directly.
+
+Once pushed, the data is accessed through the **same** handle and view mechanism as any other graph
+resource; a pass never knows whether a backing originated in Vulkan, ECS, CPU memory, or a mod
+provider.
+
+**Externally-managed state is not a resource.** The swapchain is the canonical case: its backing is
+owned and recreated by stock window/swapchain infrastructure, not the graph. It is set through a
+dedicated handler surface — not the push path — and exposed to passes **indirectly**, through whatever
+resource resolves its backing to the current acquired image.
 
 ## Graph Compilation And Execution
 
@@ -613,7 +637,7 @@ Validation belongs mostly to the stock engine layer and compatible extensions.
 Expected validation areas:
 
 - Unbound or fetched-before-bound handles.
-- Missing registered logical resources.
+- Missing registered resources.
 - Unsupported resource description/view combinations.
 - Conflicting stock view semantics over overlapping physical resources.
 - Missing generated/manual contracts.
@@ -657,14 +681,14 @@ are later stock or extension-layer concerns.
 - What exactly is emitted by stock pass/resource source generators?
 - How do stock pass abstractions encode hidden generic or marker metadata for generation?
 - What does a stock resource slot declaration contain?
-- What does `Fetch()` return for single views, list views, and composite views?
 - How are lifecycle hook dispatchers represented in generated/manual contracts?
 - How are stock resource descriptions validated without pushing semantics into foundation?
 - Which stock view types ship first?
-- How does the stock graph model a render target view over either a registered image or the
-  swapchain?
 - How does the stock graph model staging buffer semantics?
 - How does the stock graph model entity-derived render data provided by ECS systems?
+- For a pushable resource, should the publish handoff seal the data object in place (further writes
+  fail) or swap it for a fresh recording target? The fail-fast / recording-handoff intent is settled;
+  the mechanism is not.
 - How does the stock graph model composite resources such as voxel chunk buffers plus world BVH
   data?
 - Which validation happens in analyzers, source generators, graph compilation, and frame

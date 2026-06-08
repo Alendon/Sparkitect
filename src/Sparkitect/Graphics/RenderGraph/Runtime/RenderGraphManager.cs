@@ -53,6 +53,28 @@ internal sealed class RenderGraphManager :
             && _serviceListsByGraphId.ContainsKey(renderGraphId);
     }
 
+    /// <summary>
+    /// Structural check: does <paramref name="managerType"/> implement <c>IGraphPushTargetFor&lt;X&gt;</c>
+    /// for some resource type <c>X</c> whose baked <c>Identification</c> equals <paramref name="resourceId"/>?
+    /// Resolves <c>X.Identification</c> reflectively (the static-abstract member) — no resource-id→type map
+    /// exists at PostRegistry, so the assertion runs against the manager type's interface set.
+    /// </summary>
+    internal static bool ManagerImplementsPushTargetFor(Type managerType, Identification resourceId)
+    {
+        foreach (var iface in managerType.GetInterfaces())
+        {
+            if (!iface.IsGenericType ||
+                iface.GetGenericTypeDefinition() != typeof(IGraphPushTargetFor<>))
+                continue;
+
+            var resourceType = iface.GetGenericArguments()[0];
+            if (IdentificationHelper.Read(resourceType) == resourceId)
+                return true;
+        }
+
+        return false;
+    }
+
     public void AddPass(Identification id) => _passIds.Add(id);
     public void AddResource(Identification id) => _resourceIds.Add(id);
     public void AddRenderGraphType(Identification id) => _renderGraphIds.Add(id);
@@ -75,6 +97,11 @@ internal sealed class RenderGraphManager :
                     $"Resource id {id} is tracked via GraphResourceRegistry " +
                     "but no [ResourceManager<T>] metadata was found.");
             _managerByResourceId[id] = binding.ManagerType;
+
+            if (binding.Publishable && !ManagerImplementsPushTargetFor(binding.ManagerType, id))
+                throw new InvalidOperationException(
+                    $"Resource id {id} is declared Publishable but its manager {binding.ManagerType.FullName} " +
+                    "does not implement IGraphPushTargetFor<…> for that resource type.");
         }
 
         var serviceLists = new Dictionary<Identification, RGServiceListMetadata>();
@@ -137,9 +164,11 @@ internal sealed class RenderGraphManager :
             ?? throw new InvalidOperationException(
                 $"Render graph {rgId} does not expose IRenderGraphSetupHandler.");
         setupHandler.Setup(passIdList, window);
-        
-        var swapchainResource = new SwapchainResource(window.Swapchain);
-        swapchainResource.Apply(rg);
+
+        var swapchainHandler = rg.GetHandler<ISwapchainHandler>()
+            ?? throw new InvalidOperationException(
+                $"Render graph {rgId} does not expose ISwapchainHandler.");
+        swapchainHandler.SetSwapchain(window.Swapchain);
 
         return (TRenderGraph)rg;
     }

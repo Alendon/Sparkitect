@@ -21,13 +21,13 @@ public class ImageResourceManagerTests
     private static ImageResourceManager MakeManager() =>
         new(MockVulkanContext(), EmptyStore());
 
-    private static SwapchainResource MakeSwapchainResource(int backingCount = 1)
+    private static VkSwapchain MakeSwapchain(int backingCount = 1)
     {
         var swap = (VkSwapchain)RuntimeHelpers.GetUninitializedObject(typeof(VkSwapchain));
         ImagesField(swap) = new VkImage[backingCount];
         SetImageFormat(swap, Format.B8G8R8A8Unorm);
         SetExtent(swap, new Extent2D(800, 600));
-        return new SwapchainResource(swap);
+        return swap;
     }
 
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_images")]
@@ -42,9 +42,9 @@ public class ImageResourceManagerTests
     [Test]
     public async Task Declare_PreservesCallerSuppliedSlots()
     {
-        var sr = MakeSwapchainResource();
+        var swap = MakeSwapchain();
         var mgr = MakeManager();
-        mgr.Apply(sr);
+        mgr.Apply(swap);
         IImageResourceManager imgr = mgr;
 
         var h0 = imgr.Declare(PassA, 0, new WriteableImageRequest.FromSwapchain(WriteUsage.TransferDst));
@@ -87,14 +87,14 @@ public class ImageResourceManagerTests
         var mgr = MakeManager();
         IImageResourceManager imgr = mgr;
 
-        var firstSr = MakeSwapchainResource();
-        mgr.Apply(firstSr);
+        var firstSwap = MakeSwapchain();
+        mgr.Apply(firstSwap);
 
         var handle = imgr.Declare(PassA, 0, new WriteableImageRequest.FromSwapchain(WriteUsage.TransferDst));
         var imageAfterFirstApply = handle.Fetch().UnderlyingImage;
 
-        var secondSr = MakeSwapchainResource(backingCount: 2);
-        mgr.Apply(secondSr);
+        var secondSwap = MakeSwapchain(backingCount: 2);
+        mgr.Apply(secondSwap);
 
         var imageAfterReApply = handle.Fetch().UnderlyingImage;
 

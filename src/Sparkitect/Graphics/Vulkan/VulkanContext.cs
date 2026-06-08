@@ -622,11 +622,26 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     {
         var options = new VkBufferCreateOptions(
             Size: size,
-            Usage: BufferUsageFlags.StorageBufferBit);
+            Usage: BufferUsageFlags.StorageBufferBit | BufferUsageFlags.TransferSrcBit);
         var allocInfo = new VmaAllocationCreateInfo
         {
             Usage = VmaMemoryUsage.CpuToGpu,
             Flags = VmaAllocationCreateFlags.Mapped
+        };
+        return CreateBuffer(options, in allocInfo, callerContext);
+    }
+
+    /// <summary>Creates a device-local storage buffer usable as a transfer-copy destination.</summary>
+    public Result<VkBuffer, VkApiResult> CreateDeviceStorageBuffer(
+        ulong size,
+        [InjectCallerContext] CallerContext callerContext = default)
+    {
+        var options = new VkBufferCreateOptions(
+            Size: size,
+            Usage: BufferUsageFlags.StorageBufferBit | BufferUsageFlags.TransferDstBit);
+        var allocInfo = new VmaAllocationCreateInfo
+        {
+            Usage = VmaMemoryUsage.GpuOnly
         };
         return CreateBuffer(options, in allocInfo, callerContext);
     }
