@@ -2,7 +2,7 @@ using PongMod.CompilerGenerated.IdExtensions;
 using Serilog;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
-using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph_Deprecated;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;

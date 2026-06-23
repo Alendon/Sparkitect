@@ -1,4 +1,4 @@
-using Sparkitect.Graphics.RenderGraph.Resources;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
 
 namespace Sparkitect.Tests.RenderGraph;
 

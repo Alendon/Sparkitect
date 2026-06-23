@@ -1,5 +1,5 @@
-using Sparkitect.Graphics.RenderGraph;
-using Sparkitect.Graphics.RenderGraph.Runtime;
+using Sparkitect.Graphics.RenderGraph_Deprecated;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Runtime;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Tests.RenderGraph;

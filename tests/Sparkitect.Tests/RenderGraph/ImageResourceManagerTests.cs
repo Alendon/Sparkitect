@@ -1,12 +1,12 @@
 using System.Runtime.CompilerServices;
 using Moq;
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.RenderGraph;
-using Sparkitect.Graphics.RenderGraph.Resources;
+using Sparkitect.Graphics.RenderGraph_Deprecated;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding;
-using Image = Sparkitect.Graphics.RenderGraph.Resources.Image;
+using Image = Sparkitect.Graphics.RenderGraph_Deprecated.Resources.Image;
 
 namespace Sparkitect.Tests.RenderGraph;
 

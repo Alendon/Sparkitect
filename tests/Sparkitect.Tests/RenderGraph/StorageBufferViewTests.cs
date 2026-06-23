@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.RenderGraph.Resources;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 
 namespace Sparkitect.Tests.RenderGraph;

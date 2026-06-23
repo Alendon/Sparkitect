@@ -2,14 +2,14 @@ using System.Collections.Immutable;
 using System.Numerics;
 using SpaceInvadersMod.CompilerGenerated.IdExtensions;
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.RenderGraph;
-using Sparkitect.Graphics.RenderGraph.Resources;
+using Sparkitect.Graphics.RenderGraph_Deprecated;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
 using Sparkitect.Utils.DU;
-using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
+using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassRegistry;
 using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace SpaceInvadersMod.Passes;

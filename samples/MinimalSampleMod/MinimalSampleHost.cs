@@ -1,8 +1,8 @@
 using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
-using Sparkitect.Graphics.RenderGraph;
-using Sparkitect.Graphics.RenderGraph.Resources;
-using Sparkitect.Graphics.RenderGraph.Runtime;
+using Sparkitect.Graphics.RenderGraph_Deprecated;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Runtime;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Windowing;

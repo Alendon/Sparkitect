@@ -1,6 +1,6 @@
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.RenderGraph;
-using Sparkitect.Graphics.RenderGraph.Resources;
+using Sparkitect.Graphics.RenderGraph_Deprecated;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
 
 namespace PongMod;
 

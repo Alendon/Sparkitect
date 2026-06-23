@@ -1,11 +1,11 @@
 using PongMod.CompilerGenerated.IdExtensions;
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.RenderGraph;
-using Sparkitect.Graphics.RenderGraph.Resources;
+using Sparkitect.Graphics.RenderGraph_Deprecated;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
-using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
+using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassRegistry;
 
 namespace PongMod.Passes;
 

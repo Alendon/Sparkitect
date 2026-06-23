@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
 using Moq;
-using Sparkitect.Graphics.RenderGraph;
-using Sparkitect.Graphics.RenderGraph.Resources;
-using Sparkitect.Graphics.RenderGraph.Runtime;
+using Sparkitect.Graphics.RenderGraph_Deprecated;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Runtime;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Tests.RenderGraph;
@@ -16,18 +16,18 @@ public class PublishRoutingTests
 {
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_managersByType")]
     private static extern ref Dictionary<Type, IGraphResourceManager> ManagersByType(
-        Sparkitect.Graphics.RenderGraph.Runtime.RenderGraph graph);
+        Sparkitect.Graphics.RenderGraph_Deprecated.Runtime.RenderGraph graph);
 
-    private static Sparkitect.Graphics.RenderGraph.Runtime.RenderGraph BuildGraph(
+    private static Sparkitect.Graphics.RenderGraph_Deprecated.Runtime.RenderGraph BuildGraph(
         Mock<IRenderGraphManager> manager,
         Dictionary<Type, IGraphResourceManager> managersByType)
     {
-        var graph = (Sparkitect.Graphics.RenderGraph.Runtime.RenderGraph)
-            RuntimeHelpers.GetUninitializedObject(typeof(Sparkitect.Graphics.RenderGraph.Runtime.RenderGraph));
+        var graph = (Sparkitect.Graphics.RenderGraph_Deprecated.Runtime.RenderGraph)
+            RuntimeHelpers.GetUninitializedObject(typeof(Sparkitect.Graphics.RenderGraph_Deprecated.Runtime.RenderGraph));
 
         // The routing path only reads _renderGraphManager + _managersByType. Set both directly: the manager
         // field via reflection (private readonly), the dictionary via the UnsafeAccessor.
-        typeof(Sparkitect.Graphics.RenderGraph.Runtime.RenderGraph)
+        typeof(Sparkitect.Graphics.RenderGraph_Deprecated.Runtime.RenderGraph)
             .GetField("_renderGraphManager",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(graph, manager.Object);

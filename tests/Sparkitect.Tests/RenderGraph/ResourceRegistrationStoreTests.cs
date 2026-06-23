@@ -1,5 +1,5 @@
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.RenderGraph.Resources;
+using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Tests.RenderGraph;

@@ -1,4 +1,4 @@
-using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph_Deprecated;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
