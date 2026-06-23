@@ -6,21 +6,29 @@ description: Requirements and design constraints for the render graph
 
 # Render Graph Requirements
 
-This document captures the current render graph design direction. It is intentionally
-requirements-level: exact type names, source generator contracts, and implementation files are
-still open, but the architectural boundaries between the foundational substrate and the stock
-emergent render graph are locked here.
+This document captures the current render graph design direction. It is requirements-level:
+exact type names and source generator contracts remain open, but the following are locked —
+the architectural boundary between the **generic computational-graph core (L0+L1)** and the
+**stock RenderGraph specialization (L2)**, the two-relation declaration grammar (Read/Increment
+over epochs), the description/facts declaration model, and moment-based cross-pass identity.
+Sections marked as sketched directions carry no requirements weight.
 
 ## Design Anchors
 
-- The foundational layer is a generic executable graph: pass (node) identity, declaration capture,
-  hook-driven binding and fetch, opaque handles, and extension contracts. It owns no GPU, resource,
-  or data semantics — *resource* is not a foundational concept; it is composed entirely in the stock
-  layer. The foundation exists to make the graph modular and modding-friendly; it is not the surface
-  authors use day to day.
-- Sparkitect's stock render graph is an emergent engine-layer implementation built on that
-  substrate. It owns stock resource/view semantics, synchronization, lifetime, validation,
-  command recording orchestration, and Vulkan integration.
+- The lower two layers form a generic, GPU-unaware **computational-graph core**. **L0** is the
+  executable-graph substrate: pass (node) identity, declaration *capture*, hook-driven binding and
+  fetch, opaque handles, extension contracts. **L1** is the dataflow core layered on it: the
+  ledger, the two-relation grammar (Read/Increment over epochs), epoch/moment bookkeeping, the
+  compile pipeline, data-flow ordering, and the description/facts/instance machinery. The core owns
+  no GPU or rendering semantics — *resource* is not a core concept; it is composed entirely in the
+  specialization layer. The core exists to make the graph modular, testable, and modding-friendly;
+  it is not the surface authors use day to day.
+- Sparkitect's stock render graph is **L2**, the GPU/Vulkan specialization built on the core. It
+  owns stock resource/view semantics, synchronization, lifetime, validation, command recording
+  orchestration, and Vulkan integration. The RenderGraph is the core's first consumer; a future
+  non-rendering consumer (e.g. a general compute graph, with or without GPU acceleration) would
+  reuse L0+L1 with a different L2. L2 is expected to be thin — large complexity in L2 signals a
+  concern that belongs in L1.
 - The stock render graph is the shipped render-graph experience. Its ergonomics are first-class, not
   a thin pass-through over the generic foundation. The foundation's genericity buys modularity and
   modding reach; it must not dilute stock authoring.
@@ -30,77 +38,122 @@ emergent render graph are locked here.
 - The system is built horizontally, not vertically. Foundation does not define a universal
   resource hierarchy that stock Vulkan resources and mods inherit from. Instead, stock engine
   layers and mod layers cooperate through generated or manually implemented contracts.
+- All resource relationships are epoch relationships. Every edge the graph orders on is a Read
+  or an Increment against a specific epoch of a specific resource; there is no separate create,
+  write, publish, or consume vocabulary.
+- The declaration ledger is the single source of compile truth. The full resource graph is
+  reconstructable from declarations alone, without executing a frame.
 - Pass declarations should be source-generation friendly. Generated contracts must remain
   manually implementable for advanced mods and unusual resource models.
 - Runtime graph building should consume explicit generated or hand-written contracts. It should
   not infer deep semantics from arbitrary pass code.
-- Resource views are graph-level semantic views, not Vulkan `VkImageView` objects.
+- At the core there is no resource-vs-view distinction: everything is a generic resource reached
+  through a description, over a **single universal backing**. "Data" and "view" are emergent,
+  logical labels over the same resource — they routinely mix and are never cleanly separable, so
+  the foundation does not model them as distinct kinds. Where "view" appears it denotes a
+  graph-level semantic usage, never a Vulkan `VkImageView`.
+- A general resource description assumes nothing about the shape of the data it holds — a general
+  staging buffer stages a buffer, not an array of a known stride. Data-shape (stride, layout,
+  metadata prefixes, element counts) is encoded by *specialized* descriptions and resources. The
+  same result is reachable two equally valid ways: compose general parts and model the complexity
+  in pass setup, or encapsulate it in a specialized description. Composability is what offers both.
 - There is no resource lifecycle hook model in the foundation. The stock implementation uses
   generated or manually supplied render graph lifecycle hooks at the emergent graph layer.
+- Synchronization is primarily plan output derived from the ledger and static view metadata;
+  lifecycle hooks are the authored extension surface, not the synchronization mechanism.
 - No authoring role is privileged. Engine code, game code, and mods use the same public
   contracts, registration paths, and extension points.
 
 ## Layer Model
 
-### Foundational Substrate
+The system is three layers. The lower two — **Layer 0** and **Layer 1** — together form a
+generic, GPU-unaware **computational-graph core**: a reusable substrate for modelling data
+transformation by nodes into a result, with no rendering, Vulkan, or resource-backing semantics.
+**Layer 2** is the stock RenderGraph specialization built on that core. The architectural boundary
+that matters is **L0+L1 (generic core) vs L2 (specialization)**: the RenderGraph is the core's
+first consumer, and a future non-rendering consumer (such as a general compute graph, with or
+without GPU acceleration and an integrated CPU fallback) would reuse L0+L1 with a different L2.
+All logic worth unit-testing lives in L0+L1, which is testable without a GPU; L2 is proven by the
+sample renderers running.
 
-The foundation defines the minimum protocol needed for graph-like systems to exist:
+### Layer 0 — Executable Graph Substrate
 
-- Pass lifecycle shape.
+L0 defines the minimum protocol needed for graph-like systems to exist, with no notion of data
+flow, resources, or relations:
+
+- Pass (node) lifecycle shape.
 - Pass identity and registration substrate.
-- Setup-time declaration capture.
+- Setup-time declaration *capture* — not the semantics of what is captured.
 - Hook-driven binding and fetch protocol.
 - Opaque handles that bridge setup declarations to frame execution.
 - Extension points for generated and hand-written contracts.
 - Protocol-level validation, such as detecting an unbound handle fetch.
 
-The foundation deliberately does not define:
+L0 deliberately does not define resources, resource views, relation semantics, the ledger's
+contents, synchronization, allocation or aliasing, frames-in-flight, swapchain behavior, resource
+overlap, or any GPU concept.
 
-- Physical resources or resource views.
-- Vulkan images, buffers, descriptor sets, queues, layouts, or barriers.
-- Read/write/produce semantics.
-- Synchronization rules.
-- Allocation or aliasing policy.
-- Frames-in-flight policy.
-- Swapchain behavior.
-- Resource overlap validation.
-- Graph dependency semantics beyond what emergent layers provide.
+### Layer 1 — Dataflow Core
 
-This mirrors the ECS and Stateless Function direction: the core establishes a small protocol,
-while concrete behavior emerges from category-specific contracts, source generation, registries,
-metadata, and runtime managers.
+L1 is the generic dataflow engine layered on L0. It is domain-agnostic — it knows nodes,
+declarations, and the data-flow relationships between them, but nothing about GPUs or rendering:
 
-### Stock Engine Render Graph
+- The declaration **ledger** and the two-relation transaction grammar (Read/Increment over
+  epochs) — one grammar spoken by passes and by description declaration logic.
+- Epoch and lineage bookkeeping, **moment** linking, and the compile pipeline (collection, link,
+  plan-structure emission).
+- Data-flow ordering derivation, and fork / cycle / unproducible-epoch detection with full
+  provenance.
+- The description / declared-facts / instance pipeline, declaration products, and the
+  one-declaration-per-instance rule.
+- Central instance multiplication and frame binding behind `IGraphResource<T>.Fetch()` — the
+  generic resolution machinery; what an instance physically *is* belongs to L2.
+- The per-operation provenance a future conditional-re-execution layer would consume.
 
-The stock engine render graph is Sparkitect's shipped render graph feature. It is an emergent
-implementation over the foundation, not the foundation itself.
+L1 owns no physical backing, no synchronization primitives, and no Vulkan. Everything a source
+generator might later automate — declaration shapes, hook-dispatch wiring, metadata — lives at
+this layer. L0+L1 together mirror the ECS and Stateless Function direction: a small generic core
+over which concrete behavior emerges from category-specific contracts, source generation,
+registries, metadata, and runtime backing.
 
-The stock layer provides:
+### Layer 2 — Stock RenderGraph Specialization
+
+The stock engine render graph is Sparkitect's shipped render graph feature: the GPU/Vulkan
+specialization of the computational-graph core, not the core itself. It is expected to be **thin**
+— its substance is dominated by L0+L1, and large complexity surfacing in L2 is a signal that a
+concern belongs in L1.
+
+L2 provides:
 
 - Pass abstractions such as render and compute pass bases.
-- Stock resource declaration APIs.
-- Stock resource managers and resource view contracts.
-- Physical resource and resource view modeling.
-- Pass graph compilation and dependency ordering.
-- Frame-resolved bindings.
+- Plan-emitted synchronization, layout transitions, and presentation behavior, derived from the
+  L1 plan structure plus the static metadata of participating resource types.
+- Physical backing providers for leaf resources — the only per-family runtime services retained.
+- The physical meaning of an instance (per-swapchain-image / per-in-flight-frame backing rotation).
 - Render graph lifecycle hook dispatch.
-- Command-buffer access for pass Execute — implementation-specific payload (wrapper object or direct `VkCommandBuffer`), with raw Vulkan preserved as an escape hatch.
-- Descriptor update/bind orchestration.
-- Stock synchronization, layout transition, transfer, and presentation behavior.
+- Command-buffer access for pass Execute — implementation-specific payload (wrapper object or
+  direct `VkCommandBuffer`), with raw Vulkan preserved as an escape hatch.
+- Descriptor orchestration through composite descriptions and static view metadata.
+- Externally-managed state integration (the swapchain) through dedicated handlers, not the graph's
+  relation grammar.
 - Debugging and validation tooling.
 - GameState integration through normal Sparkitect infrastructure.
+
+Graph-core components (the L0+L1 ledger, instance table, epoch bookkeeping) are registered through
+the graph-local service model, so alternative L2 specializations — or non-rendering consumers —
+can reuse them piecemeal.
 
 Stock graph instances are not engine-global singletons. Like ECS worlds, they are created and
 owned by GameState-driven stock infrastructure for the relevant state/module lifetime.
 
-Mods can extend or replace portions of this stock behavior by adding compatible views, handlers,
+Mods can extend or replace portions of this L2 behavior by adding compatible views, handlers,
 pass abstractions, generated metadata, or hand-written contracts. A full replacement graph is not
 the intended common path, but the architecture must not make it impossible.
 
 ### Vulkan Backend Layer
 
-Vulkan-specific behavior lives in the stock engine layer or in Vulkan-specific extension layers.
-The foundation does not know about Vulkan.
+Vulkan-specific behavior lives in the L2 specialization or in Vulkan-specific extension layers.
+The computational-graph core (L0+L1) does not know about Vulkan.
 
 Current engine code already provides wrappers and services that the stock render graph can build
 on:
@@ -118,54 +171,102 @@ These are backend inputs for the stock graph, not foundation concepts.
 
 Passes are user-facing objects in the stock render graph. A pass has two functions:
 
-- **Setup** declares which resource views the pass needs and how it intends to use them. It runs
-  when the graph is built or rebuilt, not every frame.
+- **Setup** declares which resources the pass reads and which it produces. It runs when the graph
+  is built or rebuilt, not every frame.
 - **Execute** runs every frame the compiled graph schedules the pass. It fetches previously bound
   views and records or performs the pass work.
 
 Pass authors should be able to write the common case with minimal boilerplate. Resource usage is
-declared through annotated pass-local fields or properties. The annotated member records a graph
-resource slot, and the member's resource view type is the source-generator source of truth for
-that slot.
+declared through annotated pass-local fields or properties; the member's resource type is
+the source-generator source of truth for that member's declaration.
 
 ```csharp
-public sealed partial class EntityCopyPass : ComputePass
+public sealed partial class EntityStagingPass : ComputePass
 {
     [GraphResource]
-    private IGraphResource<FooStorageBufferView> _storage;
+    private IGraphResource<EntityListReadView> _input;
 
     [GraphResource]
-    private IGraphResource<BarEntityListView> _entities;
+    private IGraphResource<StagingBuffer> _staging;
 
-    public override void Setup()
+    [GraphResource]
+    private IGraphResource<EntityListResource> _entities;
+
+    public override void Setup(ISetupContext ctx)
     {
-        _storage = DeclareStorage(...);
-        _entities = DeclareEntities(...);
+        // The pass states only that it uses a resource shaped by a description. Whether the
+        // usage reads or increments an epoch is encoded by the description, not chosen here.
+
+        // Consume the externally pushed CPU entity list (a read-usage description carrying its moment).
+        _input = ctx.Use(new EntityListReadView(GraphMomentID.SpaceInvadersMod.EntitiesRaw));
+
+        // General staging — no data-shape, stride, or size assumption baked in by the pass.
+        var staging = new StagingDescription();
+        _staging = ctx.Use(staging);
+
+        // Compose the published entity list from the staged buffer plus the element count it
+        // carries. The count rides inside the resource — never reached through DI. Complexity is
+        // assembled here, from reusable parts.
+        _entities = ctx.Use(new EntityListResourceDescription(
+            staging.PopulatedBuffer,
+            GraphMomentID.SpaceInvadersMod.EntitiesGpu));
     }
 
     public override void Execute(ExecutePayload payload)
     {
-        var storage = _storage.Fetch();
-        var entities = _entities.Fetch();
-
-        // Record pass-specific work through the payload, or via the raw Vulkan escape hatch.
+        var staging = _staging.Fetch();
+        // Record pass work; synchronization for declared relations is plan-emitted.
     }
 }
+```
+
+The same result can instead be reached by encapsulating the staging and composition in one
+specialized description, moving the complexity out of the pass and into the resource model:
+
+```csharp
+// Only _input and _entities are needed; the specialized description owns staging internally.
+public override void Setup(ISetupContext ctx)
+{
+    _input = ctx.Use(new EntityListReadView(GraphMomentID.SpaceInvadersMod.EntitiesRaw));
+
+    // Stages and composes the ready-to-use entity list (which itself composites the staged
+    // buffer). Element layout and count are the description's concern, not the pass's.
+    _entities = ctx.Use(new EntityListStagingDescription(GraphMomentID.SpaceInvadersMod.EntitiesGpu));
+}
+```
+
+A consuming pass — possibly in a different mod — reaches the published resource with one
+declaration, no manager, no DI:
+
+```csharp
+_entities = ctx.Use(new EntityListReadView(GraphMomentID.SpaceInvadersMod.EntitiesGpu));
 ```
 
 The exact API shape is open. The important requirements are:
 
 - Setup remains real code. Resource declaration is too dynamic for an attribute-only model.
-- Setup binds runtime declarations to generated slots through slot-specific declaration
-  functions. These functions already know the target slot identity.
-- `IGraphResource<TView>` is the central foundational wiring object: a behavior-free handle carrying
-  a pass-local `Slot` and a single `Fetch()`, declared against a slot and resolved later to the live
-  instance of its resource type. Its implementation's sole responsibility is to return the correct
-  instance for the current frame; per-frame backing rotation lives inside that instance, so a stable
-  handle resolves correctly each frame without re-declaration. The handle encodes no read/write,
-  descriptor, synchronization, upload, ownership, or lifecycle behavior. Fetching from a handle in
-  the same hook execution it was declared in is undefined behavior.
-- Additional resource behavior is exposed by interfaces implemented by the resource view type
+- Setup declares resource usage through a single context verb, `use(description) ->
+  IGraphResource<T>`, with one generic parameter — the resource type — inferred from the
+  description; authors never write type arguments. The pass states only *that* it uses a resource
+  shaped by the description; whether that usage reads or increments an epoch is encoded by the
+  description, not chosen at the pass. The two-relation grammar (Read/Increment, plus
+  sub-declaration) is spoken *inside* descriptions, one level down. The single-verb pass surface is
+  the requirement; the exact verb name is open.
+- There are no pass-local slots and no slot-specific declaration functions. A declaration's
+  identity is its ledger node, minted when the declaration is recorded; the annotated member the
+  result is assigned to is the source-generator and analyzer anchor, not an identity. *(This
+  supersedes the earlier `(pass, slot)` scheme and the generated per-slot declaration functions.)*
+- `IGraphResource<T>` is the central foundational wiring object: a behavior-free handle
+  carrying a single `Fetch()`, declared against the ledger and resolved later to the live
+  instance of its resource type. Its implementation's sole responsibility is to return the
+  correct instance for the current frame; per-frame backing rotation lives inside that instance,
+  so a stable handle resolves correctly each frame without re-declaration. The handle encodes no
+  read/write, descriptor, synchronization, upload, ownership, or lifecycle behavior. Fetching
+  from a handle in the same hook execution it was declared in is undefined behavior.
+- Intra-pass wiring between declarations flows through **declaration products**: transaction-
+  minted references exposed on the description instance after it was declared (see Resource
+  Model, Descriptions and Declared Facts).
+- Additional resource behavior is exposed by interfaces implemented by the resource type
   and wired by generated or manually implemented pass contracts.
 - `Execute` receives an implementation-specific payload chosen by the concrete stock graph type
   for its pass type. The concrete shape is open — it may be a wrapper object or a direct
@@ -195,6 +296,11 @@ If data participates in graph ordering, synchronization, frame resolution, or ge
 lifecycle hook work, it should be modeled as a graph resource/view in the stock graph. If a pass
 calls a stable service API, it should use DI.
 
+If a value is derived from graph data, it is reached through a graph resource — composing a
+resource that carries the derived value (such as an element count alongside a GPU buffer) is the
+prescribed shape. Reaching through DI to input-side services for values the graph's own data
+flow produced is the canonical violation of this boundary.
+
 ## Source Generation And Manual Contracts
 
 Stock render graph ergonomics are source-generation backed, following the same style as
@@ -202,33 +308,23 @@ Stateless Functions and ECS ComponentQueries. The generator is member-declaratio
 setup-code driven.
 
 A pass-local field or property annotated as a graph resource is the generator trigger. The
-member's resource view type is the generator's source of truth for the slot. Setup code supplies
-runtime declaration values for generated slots, but the generator must not infer resource
+member's resource type is the generator's source of truth for that member's declaration.
+Setup code supplies runtime declaration values, but the generator must not infer resource
 semantics by interpreting arbitrary setup method bodies.
 
 The stock path should follow this pattern:
 
 1. The user writes a small partial pass class using stock pass abstractions.
-2. Annotated graph resource members define generated resource slots.
-3. The generator inspects each resource view type and the hook-shaped interfaces it implements.
-4. The generator emits explicit pass/resource metadata, slot-specific declaration functions,
-   binding/fetch code, and strongly typed lifecycle hook dispatchers.
-5. Setup calls slot-specific declaration functions to bind runtime declarations to those slots.
-6. Runtime graph building consumes the generated or manually written contracts.
-7. The compiled graph calls generated lifecycle hook dispatchers and then pass `Execute`.
-
-Setup declaration functions should be resource-specific. They communicate author intent more
-clearly than a universal object payload API:
-
-```csharp
-_storage = DeclareStorage(...);
-_target = DeclareFrameStorageImage(...);
-_swapchain = DeclareSwapchainTarget(...);
-```
-
-The declaration functions are generated or manually supplied as part of the pass contract. They
-already know their target slot identity, so setup does not need call-site rewriting to bind a
-declaration to a slot.
+2. Annotated graph-resource members define the pass's resource surface; the member's resource type
+   is the generator's source of truth.
+3. The generator inspects each resource type and the hook-shaped interfaces it implements.
+4. The generator emits pass/resource metadata, binding/fetch code, and strongly typed lifecycle
+   hook dispatchers.
+5. Setup assigns declaration results to the annotated members; analyzers verify assignment and
+   type agreement between member, verb, and description.
+6. Runtime graph building consumes the generated or manually written contracts; declarations land
+   in the ledger.
+7. The compiled plan interleaves emitted synchronization, hook dispatch, and pass `Execute`.
 
 This avoids deep runtime inference while keeping day-to-day authoring small. It also keeps the
 system open: generated contracts are just code. When the stock generator is not suitable, a mod
@@ -236,10 +332,20 @@ can manually implement the same contracts or provide a custom generator.
 
 Companion analyzers should validate that:
 
-- Annotated members use supported graph handle shapes.
-- Annotated members are assigned during setup.
-- Setup assignments use declaration functions compatible with the member's resource view type.
+- Annotated members use supported graph handle shapes and are assigned during setup from
+  declaration verbs whose resource type matches the member.
 - Graph handles are fetched only from valid execution-time code paths.
+- A description type implements exactly one description-interface instantiation (protects single-
+  generic inference; ships with the feature so violations surface as domain diagnostics, not raw
+  compiler errors).
+- Descriptions are immutable-shaped (sealed records, init-only members); declared-facts types do
+  not smuggle descriptions or arbitrary behavior back into the graph.
+- Description product properties are assigned only within declaration logic and read only after
+  the description was declared.
+- `Identification`-bearing description parameters are validated by the general `Identification`
+  usage analyzer family — symbolic-usage enforcement and back-link registration checks. That
+  family is general engine infrastructure specified outside this document; the render graph is
+  its first consumer and depends on it.
 - Manually implemented contracts match the generated contract shape.
 
 Generator design must account for existing Sparkitect constraints:
@@ -253,86 +359,188 @@ Generator design must account for existing Sparkitect constraints:
 
 ## Resource Model
 
-Resource management is the central stock render graph design problem. The foundation does not
-define resource semantics; the stock engine layer does.
+Resource management is the central stock render graph design problem. The computational-graph core
+defines the generic dataflow machinery (L1); *resource* semantics — backing, views,
+synchronization — are the L2 specialization.
 
-At the stock emergent layer a resource is a composite — a registered type, its instances (the data),
-the description that selects them, and the bound handle a pass holds (see Terminology). Resource data
-is treated as **physical** (backing storage or device state) or as a **view** (the semantic way a
-pass interacts with that backing); the two usually stay distinct, though either may bend its rule.
-One physical backing may be surfaced through several view types with different graph meaning,
-descriptor behavior, synchronization requirements, or lifecycle hooks. The foundational layer knows
-none of this — *resource* is a stock concept.
+All resource behavior derives from one structure: the **declaration ledger** (an L1 construct).
+Setup populates the ledger; compilation resolves and validates it; the frame runtime executes the
+plan derived from it. The full resource graph — every resource, every relationship, every ordering
+edge — is reconstructable from the ledger alone, without executing a frame. No relationship exists
+only as an anonymous runtime value.
 
 ### Terminology
 
-There is no single resource object. A **resource** is a composite the stock layer assembles, fully
-realized only **when bound to a pass**. The foundation never sees a resource — only a typed slot, an
-opaque request, and an opaque handle.
+**Resource type** — a plain C# type. Type identity is shape-based: descriptions, references, and
+handles are generic over the resource type, and the compiler carries the association end to end.
+The stock graph requires no per-resource-type registry. (This deliberately reverses an earlier
+direction in which a type-level `Identification` routed declarations to managers; routing by type
+identity no longer exists.)
 
-**Resource type** — a registered C# type carrying a static `Identification` (one per type). The type
-identity *routes* a request to the stock manager responsible for it. It is type-level: it names the
-kind, never an instance.
+**Resource data** — the instances of a resource type. An `IGraphResource<T>` resolves to one
+such instance at `Fetch()`. One declaration may be realized by several runtime instances (per
+swapchain image or in-flight frame); the graph multiplies and resolves instances centrally, and a
+pass never observes the duplication.
 
-**Resource data** — the **instances** of a resource type. The relationship is the plain C# one: the
-resource type is a class; resource data are its instances. An `IGraphResource<TView>` resolves to one
-such instance at `Fetch()`. How a backing lives behind that instance is delegated to the stock
-manager and need not persist between pass invocations — a manager may retain an instance or produce
-one on demand.
+**Epoch** — a position in a resource's intra-frame dataflow. Epochs are static plan structure:
+they are advanced only by declared increments, identical in shape every frame, and authored code
+never sees an epoch number — epochs are symbols, resolved during compilation.
 
-**Resource description** — the request a participant supplies when declaring or pushing. It *selects
-and shapes*: naming a registered backing, requesting a transient, selecting among known sources, or
-composing several. It may embed an `Identification` to reference a registered backing — the only
-place an instance-level reference lives. The stock manager interprets it; the foundation passes it
-opaquely.
+**Resource description** — the behavioral unit of declaration. A description is authored as plain
+data (constructed freely, typically by a pass), but it carries the logic of what declaring it
+means: which sub-resources it requires, which increments it performs, what it hands onward. Its
+declaration logic runs exactly once, inside a ledger transaction.
 
-Resource data is *treated* two ways. These are mental categories, **not** foundational types, and
-either may bend its rule:
+**Declared facts** — the immutable record a description's declaration logic produces. The ledger
+stores facts, never the description instance; after declaration the description object is
+unreachable by the graph. Facts carry the declaration's resource references and a snapshot of
+every parameter that matters, and facts own instance creation: the logic that constructs a
+runtime instance consumes the facts and the resolved sub-instances, nothing else.
 
-- **Physical** — tied directly to specific GPU objects or concrete CPU data (a device buffer, an
-  image, a CPU entity array). A physical instance may also reference other resources when needed.
-- **View** — a logical layer over physical resource(s) that modifies their state **directly** rather
-  than holding a local copy, so resources gain behavior (descriptor exposure, staging, layout intent)
-  without duplicating or re-syncing physical state. A view may also hold its own state when needed —
-  a staging view owns a staging buffer and the copy that fills it.
+**Leaf and composite resources** — a leaf resource is realized against a physical backing
+(a device buffer, an image); its facts resolve a backing provider at instance creation. A
+composite resource is CPU data plus references to existing resources; it has no backing provider
+and no manager of any kind. Backing providers are the only per-family runtime services the
+resource model retains; all wiring and per-execution value state lives in the ledger and graph
+core.
 
-**Bound resource** — what a pass holds: an `IGraphResource<TView>` resolved at a `(pass, slot)`, whose
-`Fetch()` resolves to the live resource-data instance. This is the only form the foundation reifies,
-and the only point at which a resource is unambiguous.
+**Resource reference** — an opaque, typed, epoch-qualified reference to a resource, minted only by
+ledger transaction verbs. A reference is valid because the ledger recognizes it; references cannot
+be constructed, only received.
 
-A view type authors its relationship to the management layer. Through its implemented contracts or
-generic shape, a view declares which stock manager interface resolves and maintains its backing
-behavior — the manager needs no prior knowledge of every view type, and views remain the flexible
-semantic layer over physical resources. Descriptor behavior follows the same rule: descriptor sets,
-buffers, allocation/update/bind behavior, and descriptor-facing state belong to resource/view
-contracts and their managers; the graph orchestrates when those contracts run but defines no
-descriptor semantics. The foundation treats views and handles opaquely — staging uploads, layout
-transitions, descriptor updates, frame duplication, subresource selection, and lifecycle hook
-behavior all belong to stock or extension resource/view contracts.
+**Moment** — a registered `Identification` naming one specific symbolic epoch of one resource: the
+result of exactly one increment in the assembled graph. Moments are the only cross-pass reference
+mechanism (detailed under Identity).
 
-### View Examples
+### Relations and Epochs
 
-The stock graph and compatible extensions must support resource views that are broader than
-Vulkan image views:
+The ledger knows exactly two relations:
 
-- **Render target view:** A view suitable for writing render output. It may resolve to a
-  registered image or to the current acquired swapchain image.
-- **Staging buffer view:** A view over CPU data and GPU buffer state. It can encode size,
-  exposed upload buffer, copy timing, and pre-execution transfer behavior.
-- **Descriptor-facing buffer/image view:** A view that resolves descriptor type, binding, image
-  layout, buffer range, descriptor update requirements, and bind behavior.
-- **Entity list view:** A view over renderable entity data prepared by ECS systems or game logic.
-  The graph sees data produced by systems or services; how those systems derived the data stays
-  outside the resource view contract. The list lives inside the resource — multiplicity is an
-  internal detail of the pushed data, not a foundational one-to-many handle.
-- **Voxel world composite view:** A view over chunk buffers, world-level acceleration data, and
-  CPU metadata. It may expose world/chunk semantics rather than a single raw buffer.
-- **Multi-resource mapping view:** A view that wraps several existing resources, such as three
-  images used together for a custom material or mapping scheme.
+- **Read** — a participant consumes a resource at a specific epoch.
+- **Increment** — a participant advances a resource from one epoch to the next, producing the
+  next epoch's content.
 
-Views can be one-to-one, one-to-many, many-to-one, or composite. Two passes may use completely
-different view types that overlap the same physical backing resources. Stock engine contracts
-must preserve correctness across those overlaps.
+There is no separate create, write, publish, produce, or consume vocabulary. Creation, editing,
+and external publishing are all increments, distinguished only by provenance (which pass,
+declaration, or external door performs them). A `(resource, epoch)` pair is immutable once its
+producing increment completes; "mutation" means producing the next epoch.
+
+Every resource has a **base epoch**: its introduced-but-unfilled state. A reference to the base
+epoch can be held — it is the required input of the first increment — but never read. This is not
+a special rule: a read of any epoch must be ordered after the increment that produces it, and the
+base epoch has no producing increment, so reading it is unschedulable by construction. Allocation
+is a materialization detail, not a ledger relation; a resource's first readable content is the
+result of its first increment (its **birth**).
+
+Two increments declared from the same source epoch are a **fork** — a compile-time error carrying
+full provenance. Concurrent writers are therefore not validated against; they are structurally
+inexpressible. Branching is expressed as new resources grounded on a shared epoch, not as
+competing increments of one resource: a chain of increments signals one resource built in steps;
+parallel variants are born as their own resources reading the common base. (Recycling a
+no-longer-read base backing is future intelligent-tracking territory, enabled by the ledger but
+not committed.)
+
+This two-relation base is deliberately minimal because the rest of the system derives from it:
+
+- Pass ordering derives from Read/Increment edges (data-flow ordering needs no other input).
+- Anti-dependencies (reuse of a backing, invalidation of values grounded on an advanced epoch)
+  derive from epoch advances.
+- Synchronization — barriers, layout transitions, including first-use transitions from
+  undefined state — is emitted by compilation from epoch edges plus the static metadata of the
+  participating resource types. First use is the birth edge, not a special case.
+- Producer validation (a referenced resource nobody produces, a resource produced twice) is fork
+  and absence checking, uniform everywhere.
+- Conditional re-execution (skipping work whose inputs did not change) remains expressible over
+  the same single edge kind. This is a sketched direction, not a committed feature; see Runtime
+  Manipulation.
+
+### Resource References
+
+Transaction verbs return references eagerly, but epochs are symbols: resolution to concrete
+positions happens during compilation, after all declarations are collected. The result of a
+declaration must never depend on the order in which passes happen to be set up — collection and
+resolution are separate phases.
+
+References are the intra-pass and intra-declaration wiring currency: a declaration that performs
+an increment hands the post-increment reference onward through its facts and declaration
+products, and a sibling declaration takes it as a parameter. References never cross pass
+boundaries; there is no dataflow path between passes at setup time, by design. Cross-pass wiring
+is symbolic, through moments.
+
+Holding a reference and reading it are distinct capabilities. Holding is free (facts hold
+references to base epochs and intermediate states); reading requires a producing increment and
+creates an ordering edge.
+
+### Descriptions and Declared Facts
+
+Declaration has two levels. A pass declares its resource usage through `use(description)`; the
+description's declaration logic, invoked inside the resulting transaction, speaks the two-relation
+grammar (Read/Increment, plus sub-declaration) one level down. Provenance differs — ledger entries
+attribute to the pass or to the declaring description — and so does the surface: the pass states
+only *that* it uses a resource, while the relation semantics live in the description. Composition
+is recursive declaration: a description declares its parts, which may themselves be composites. A
+description's logic may read or increment the sub-resources it composes **and** the resource it
+itself resolves to — advancing the resolved resource directly (a transient born in place, or an
+existing referenced resource taken to its next epoch) is first-class, not only incrementing others.
+
+A description's declaration logic runs exactly once, inside the transaction, and that single
+execution is the parameter snapshot: whatever the description's mutable surface held at that
+moment is captured into the returned facts, and later mutation of the description object is
+inconsequential because nothing graph-side retains it. Facts must be immutable and must not
+smuggle the description or arbitrary behavior back into the graph; analyzers enforce the shape.
+
+Instance creation runs once per multiplied runtime instance and is owned by the facts. It
+receives the resolved sub-instances for its references and, for leaf resources, the backing
+provider surface. It cannot consult the original description, by construction.
+
+Illustrative shape (type names not final), using the canonical staging example — a resource that
+accepts CPU data, owns a host-visible buffer and a device buffer, and performs one increment of
+the device buffer:
+
+```csharp
+public sealed record StagingDescription : IResourceDescription<StagingBuffer>
+{
+    /// Set during declaration: the device buffer after this description's staging copy (X:1).
+    /// Reading it before the description has been declared is an error.
+    public ResourceRef<DeviceBuffer> PopulatedBuffer { get; private set; }
+
+    public DeclaredFacts<StagingBuffer> Declare(IResourceTransaction tx)
+    {
+        var host   = tx.Declare(new HostBufferDescription());   // host, base epoch
+        var device = tx.Declare(new DeviceBufferDescription()); // X, base epoch
+        var staged = tx.Increment(device);                      // X -> X:1, minted here
+
+        PopulatedBuffer = staged;                  // pass-side exposure of the minted ref
+
+        return new StagingFacts(host, device, staged);   // graph-side truth
+    }
+}
+
+public sealed record StagingFacts(
+    ResourceRef<HostBuffer> Host,
+    ResourceRef<DeviceBuffer> Device,
+    ResourceRef<DeviceBuffer> PopulatedBuffer) : DeclaredFacts<StagingBuffer>
+{
+    public override StagingBuffer CreateInstance(IInstanceContext ctx) =>
+        new(ctx.Resolve(Host), ctx.Resolve(Device));
+}
+```
+
+**Declaration products.** A description may expose transaction-minted references on itself —
+properties assigned during its declaration logic, read by the declaring pass afterward to wire
+sibling declarations. The graph never reads these properties; graph-side truth is the facts. The
+exposure direction is therefore strictly asymmetric: the graph keeps facts, the pass keeps the
+description. Misuse fails fast — an unassigned product is an unminted reference, rejected with
+provenance at the consuming declaration, and analyzers additionally enforce assign-before-read
+ordering within setup.
+
+**A description instance may be declared at most once.** Re-declaring the same instance would
+re-run its declaration logic and overwrite its products, silently cross-wiring consumers; the
+ledger detects instance reuse and rejects it. Descriptions are cheap records; each declaration
+gets a fresh instance.
+
+Resources never behave like passes: a resource instance has no setup of its own, and everything a
+description declares is instance-invariant.
 
 ### Identity
 
@@ -340,147 +548,175 @@ A resource reference takes one of two forms, **symbolic** or **value**. These ar
 engine-layer semantics; the foundation provides only the declaration and binding substrate and
 treats handles opaquely.
 
-- **Symbolic** — a description or identity that names a resource without being the resolved
-  resource: an `Identification`, or a description object — a transient of a given size and format,
-  or a discriminated union over registered sources.
-  Symbolic references are statically analyzable; the relevant stock or extension handler resolves
-  them to concrete values at build or frame time. Resolution semantics are the handler's — a
-  symbol may resolve to a shared backing, or act as a specialized factory producing distinct
-  backings per use. The symbol guarantees neither.
-- **Value** — the actual resolved resource a pass holds. Its canonical instance identity is
-  `(pass identity, slot)`: a deterministic per-pass index assigned in declaration order. Integer
-  slots give a deduplicated, source-generation-friendly exposition of a pass's resources that
-  stays stable as generated or hand-written code adds further declarations. This identity is not
-  part of the author-facing surface — a pass declares a resource and receives a handle, nothing
-  more — but it is a stable address other render-graph services can key on: expressing
-  dependencies, optimizing intra-pass work, or supporting diagnostics. A richer symbol layer —
-  resource-type `Identification`, the declaring member name, tracking metadata — maps onto
-  `(pass identity, slot)` additively, without replacing the canonical key.
+- **Symbolic** — a description. Descriptions are statically analyzable and may embed an
+  `Identification` to reference a registered moment — the only place an instance-level
+  `Identification` reference lives. The stock layer resolves symbolic references during
+  compilation; authored code never resolves them.
+- **Value** — a resource reference or bound handle. Value identity is the ledger node, minted when
+  the declaration is recorded — never derived from location, naming, or declaration order.
+  Provenance (which pass, which declaration, which sub-declaration) is metadata on the node, not
+  the identity itself. This identity is not author-facing — a pass declares and receives a handle,
+  nothing more — but it is the stable address graph services key on for dependencies, diagnostics,
+  and tooling. (This supersedes the earlier `(pass identity, slot)` scheme; pass-local slots no
+  longer exist.)
 
-`Identification` is **type-level**: the registered resource type's identity, baked into the type,
-routing a request to the managing stock layer. It cannot by itself distinguish two instances of the
-same type. Instance selection happens one level down, inside the manager, through the **description**
-— which may carry a registered backing's `Identification`. This holds in both directions: a pass
-*binds* by description and external code *pushes* by description; the type identity routes and the
-description selects. Resource data therefore needs no standalone identity — outside a binding it may
-not exist.
+Cross-pass wiring is carried by **moments**. A moment registration is method-level, follows the
+ordinary registry pattern, and yields an SG-emitted `Identification` property like every other
+registration. The registration declares the moment's resource type; it declares nothing about
+backing, position, or producer. A moment enters a description as a constructor `Identification`
+argument: a produce-usage description's internal increment marks the moment, and a consume-usage
+description's internal read references it. The pass surface carries no marking verb or parameter —
+both publishing and reading a moment are expressed through the description. At setup exactly one
+increment in the assembled graph is **marked** with the moment, and the moment thereafter resolves
+to that increment's result epoch.
 
-Registration is orthogonal to this distinction and to backing. A **registered** resource
-carries a public `Identification` and can be referenced symbolically by multiple passes or
-systems; a **pass-local** declaration is scoped to one pass or generated contract and needs no
-public `Identification`. Registration governs visibility and reference, not whether resolution
-shares backing.
+- Marking is publishing. Unmarked epochs are private dataflow; the set of registered moments is a
+  pipeline's deliberate, moddable surface — chosen the way public API is chosen.
+- A referenced moment with no marked increment is an error naming the moment and its readers. Two
+  marked increments for one moment are an error with both provenances. Both surface at
+  compilation, before any frame runs.
+- Because positions are inferred and never authored, a mod may restructure a chain — replacing one
+  marked step with several, redefining which increment carries an existing moment — and every
+  reader re-links unchanged.
 
-A relationship uses whichever form crosses its boundary:
+Type safety for moment-embedding descriptions is layered: the description's generic association
+carries the resource type in C#; the general `Identification` usage analyzers (of which the render
+graph is the first consumer) validate symbolic usage and registration shape at edit time; graph
+compilation re-validates as ground truth, since mod composition is only known at runtime.
 
-- **Value relationships are intra-pass.** When a pass composes resources it declared itself — a
-  descriptor binding its image and buffer views — it relates them by passing resolved value
-  handles directly. A value handle never escapes the pass that declared it.
-- **Symbolic relationships are external or cross-pass.** A reference that crosses a pass boundary,
-  names externally-managed state, or selects among known resources is expressed symbolically, not by
-  holding another pass's value handle. The graph resolves the symbol to a value at build or frame
-  time.
+One invariant holds across both forms: every readable epoch has exactly one producing increment,
+and every relationship edge lands in the ledger. The full resource graph is reconstructable from
+declarations alone.
 
-This split is not stylistic. Cross-pass references are the data-flow edges the compiler orders
-passes on; keeping them symbolic keeps every inter-pass edge statically analyzable. Intra-pass
-composition needs the resolved value at execution time, so the value handle — which carries both
-the resolved view and its `(pass identity, slot)` provenance — is the natural channel.
+### Resource Composition Examples
 
-One invariant holds across both forms: every resource value resolves to exactly one symbolic
-source, and every relationship edge is identity-labelled. The full resource graph is therefore
-reconstructable from declarations alone, without executing a frame — no relationship exists only
-as an anonymous runtime value.
+"View" is an emergent label, not a foundational kind (see Design Anchors): these are usage-shaped
+compositions over generic resources and one universal backing, not a separate resource category.
+The stock graph and compatible extensions must support compositions broader than Vulkan image
+views:
 
-A registered resource binds an `Identification` to a **physical resource** through a description —
-for an image, a description carrying size, format, transientness, and an optional default fill, and
-carrying no usage. Two registration forms express the symbolic resolution semantics above: one binds
-the identity to a single shared backing, the other to a configuration that produces a distinct
-backing per use.
+- **Render target view:** A view suitable for writing render output. It may resolve to a
+  registered image or to the current acquired swapchain image.
+- **Staging buffer view:** A view over CPU data and GPU buffer state. Canonically modeled as a
+  composite description that declares a host-visible leaf, a device leaf, and one increment of
+  the device resource, handing the post-increment reference onward through its declaration
+  products.
+- **Descriptor-facing buffer/image view:** A view that resolves descriptor type, binding, image
+  layout, buffer range, descriptor update requirements, and bind behavior.
+- **Entity list view:** A view over renderable entity data prepared by ECS systems or game logic.
+  The graph sees data produced by systems or services; how those systems derived the data stays
+  outside the resource view contract. The pushed list is consumed through a composite resource
+  that carries the GPU buffer reference alongside its CPU-side metadata (such as the element
+  count), so passes read one resource rather than re-deriving facts from input-side services.
+  The list lives inside the resource — multiplicity is an internal detail of the pushed data, not
+  a foundational one-to-many handle.
+- **Voxel world composite view:** A view over chunk buffers, world-level acceleration data, and
+  CPU metadata. It may expose world/chunk semantics rather than a single raw buffer.
+- **Multi-resource mapping view:** A view that wraps several existing resources, such as three
+  images used together for a custom material or mapping scheme.
 
-What a pass normally consumes is not the physical resource but a **view** over it. A view's setup
-request selects its source — a registered resource by `Identification` or an inline description — and
-carries the usage and view type. A source backed by externally-managed state, such as the swapchain,
-is reached indirectly: the request names a graph resource whose backing the stock layer resolves to
-that state (see Pushed Data and Externally-Managed State). Usage is therefore a
-property of the view, not of the physical resource: one shared image is consumed by one pass as a
-compute-storage view and by another as a transfer-source view. This separation — `Identification`
-and descriptions at the physical-resource layer, usage and consumption at the view layer — is
-central to how the stock render graph emerges from the foundation.
+Views can be one-to-one, one-to-many, many-to-one, or composite. Two passes may use completely
+different resource types that overlap the same physical backing resources. Stock engine contracts
+must preserve correctness across those overlaps.
 
 ### Pushed Data and Externally-Managed State
 
-All resources are **graph-owned**. There is no external-resource category; some graph-owned resources
-are **pushable** — they accept data fed from outside the pass pipeline (ECS-produced render data, CPU
-buffers, mod-owned structures). Pushing is a stock concern the foundation does not see.
+All resources are **graph-owned**. Some graph-owned resources are **pushable** — they accept data
+fed from outside the pass pipeline. A pushable resource is a registered moment whose configuration
+declares it externally pushed; the configuration is `Identification`-mapped metadata, carried by
+the ordinary metadata mechanism.
 
-A push **routes by resource type and selects its target by description**, exactly as a pass binds. The
-pushed-into resource owns its ingestion: it manages allocation internally and exposes a safe, typed
-publish/commit surface **on the resource itself**, so callers never hand-route raw data. Because a
-push conceptually hands the data to the managing stock layer, the surface should make post-publish
-mutation fail fast — a recording-style handoff — since the language cannot express the ownership move
-directly.
+Publishing hands the data to the graph: the live, freely-mutating collection and the value a frame
+works on are two distinct objects, and the publish surface makes post-publish mutation fail fast —
+a recording-style handoff (the exact seal-versus-swap mechanism remains open). At frame start, push
+machinery performs the **birth increment** of each externally pushed moment, binding the most
+recent published snapshot. If nothing new was published, the frame binds the previous snapshot;
+re-binding is unconditional, and whether dependent work could be skipped belongs to the
+conditional re-execution sketch, not to committed behavior.
 
-Once pushed, the data is accessed through the **same** handle and view mechanism as any other graph
-resource; a pass never knows whether a backing originated in Vulkan, ECS, CPU memory, or a mod
-provider.
+A push lands only at the chain head — a pushed resource is by design the first entry in its epoch
+list. From the birth increment onward its chain is ordinary graph territory: passes may read it
+and increment past it like any other resource.
 
-**Externally-managed state is not a resource.** The swapchain is the canonical case: its backing is
-owned and recreated by stock window/swapchain infrastructure, not the graph. It is set through a
-dedicated handler surface — not the push path — and exposed to passes **indirectly**, through whatever
-resource resolves its backing to the current acquired image.
+The external-push configuration is itself a modding axis. A mod may reconfigure an existing moment
+away from external push and define it by marking a pass increment instead — for example, pushing a
+different raw format under its own moment and inserting a transform chain that produces the
+expected input. Readers re-link against the unchanged moment. Conflicts stay loud and
+configuration-aware: a pass marking an externally-configured moment is a duplicate definition
+whose error names the configuration; a reconfigured moment with no marking increment is an
+undefined moment.
+
+**Externally-managed state is not a resource.** The swapchain is the canonical case: its backing
+is owned and recreated by stock window/swapchain infrastructure, not the graph. It is set through
+a dedicated handler surface — not the push path — and exposed to passes indirectly, through
+whatever resource resolves its backing to the current acquired image.
 
 ## Graph Compilation And Execution
 
 The stock render graph compiles setup declarations into an execution plan. The runtime graph
 builder should combine explicit generated/manual contracts, not inspect arbitrary pass logic.
 
-The stock compilation path is expected to handle:
+Compilation runs in two strictly separated phases, because no declaration outcome may depend on
+the order in which passes happen to be set up:
 
-- Pass registration and inclusion.
-- Graph-owned resource manager instance creation and inclusion.
-- Resource/view declaration collection.
-- View-to-backing-resource resolution.
-- Data-flow ordering.
-- Explicit ordering escape hatches.
-- Binding creation for frame execution.
-- Lifecycle hook dispatcher scheduling.
-- Validation and debug metadata.
+**Collection.** Pass setup runs; declarations land in the ledger. Descriptions' declaration logic
+executes inside the transactions this opens, attributing nested entries to their declaring
+declaration. Epochs are recorded as symbols; references are handed out eagerly but resolve to
+nothing yet. Moments are recorded as markings on increments.
+
+**Link.** With the ledger complete, the graph resolves and validates:
+
+- Epoch symbols resolve to concrete positions per resource chain.
+- Each referenced moment binds to exactly one marked increment. Zero is an error naming the
+  moment and its readers; two is an error with both provenances. External-push configuration
+  participates here: an externally pushed moment's birth increment is provided by push machinery,
+  and conflicts between configuration and markings are reported configuration-aware.
+- Forks (two increments from one source epoch), reads of unproducible epochs, and contradictory
+  grounding (one consumer transitively requiring two different epochs of one resource whose
+  backing cannot hold both) are rejected with full provenance.
+- Moment type expectations from registrations are checked against the marked increments' resource
+  types — the runtime ground truth behind the edit-time analyzer checks.
+
+**Plan emission.** From the linked ledger the graph derives: pass execution order (from
+Read/Increment edges, plus explicit ordering escape hatches); synchronization — barriers and
+layout transitions, including first-use transitions, emitted from epoch edges combined with the
+static metadata of participating resource types; instance multiplication (one ledger node realized as
+N runtime instances where frame or swapchain duplication requires it); and the scheduled positions
+of lifecycle hook dispatch, ordered ledger-topologically (see Render Graph Lifecycle Hooks).
 
 ### Data-Flow Ordering
 
-Data-flow ordering is the primary stock pass ordering mechanism. Passes declare the views they
-need in setup; stock resource/view handlers and generated contracts turn those declarations into
-the graph facts needed by the stock builder.
+Data-flow ordering is the primary stock pass ordering mechanism, and it is fully defined by the
+ledger: every Read of an epoch orders the reader after that epoch's producing increment; every
+Increment orders after its source epoch and after that epoch's declared readers (the
+anti-dependency that makes backing reuse safe). No other ordering input exists in the data-flow
+layer — there are no access-mode enums and no inferred semantics; richer access information lives
+in resource types as static metadata consumed by synchronization emission, never by ordering.
 
-The stock graph may also expose injectable setup-time graph-builder hooks, similar in spirit to
-Sparkitect's existing entrypoint ordering integration. Pass contracts, resource views, or related
-stock contracts may contribute or manipulate edges during graph setup/compilation.
-
-For the initial semantics:
+Edge semantics:
 
 - Optional edges whose target or source node is missing are ignored.
 - Non-optional edges with a missing source or target are errors.
 - Cycles are hard errors.
+- Forks are hard errors (the multi-writer case is structurally inexpressible, not validated
+  against).
 
-Access concepts such as read, write, produce, consume, update, staging, or present are not
-foundation-global semantics. They are stock or extension-layer contracts. The stock engine layer
-may define common access models for Vulkan buffers/images, CPU staging data, swapchain targets,
-and entity-derived render data.
-
-Explicit ordering remains a supplementary escape hatch for cases where data-flow declarations do
-not express the intended order.
+Explicit ordering (class-level ordering metadata between passes) remains a supplementary escape
+hatch. It is expected to disappear from well-formed graphs as data-flow edges take over — a
+sample pass carrying an explicit edge where a moment read would order it is a smell the migration
+should eliminate.
 
 ### Render Graph Lifecycle Hooks
 
 The render graph uses lifecycle hooks, but not as foundation resource lifecycle hooks. The
 foundation does not define resources, resource views, Vulkan synchronization, descriptors,
 allocation, or resource lifecycle semantics. Render graph hooks are emergent graph-level
-extension points discovered from pass types and resource view types.
+extension points discovered from pass types and resource types.
 
 A hook-shaped interface can be implemented by:
 
 - The pass type itself.
-- A resource view type used by an annotated pass resource slot.
+- A resource type used by an annotated pass resource member.
 
 The source generator discovers hook-shaped interfaces generically. It must not hardcode every
 stock or mod-defined hook interface. For each discovered hook on a pass, the generator emits one
@@ -491,19 +727,34 @@ matching lifecycle phase.
 graph lifecycle phase
   -> generated pass hook dispatcher
       -> optional pass-level hook implementation
-      -> resource view hook for slot A
-      -> resource view hook for slot B
-      -> resource view hook for slot C
+      -> resource view hook for declaration A
+      -> resource view hook for declaration B
+      -> resource view hook for declaration C
 ```
 
 Every call inside the generated dispatcher is strongly typed. This resolves clashes between
 user-authored pass hook code and resource-view hook code: both are hook sources, and the
-generated dispatcher is the single wiring point that binds slots and composes the hook calls.
+generated dispatcher is the single wiring point that binds declarations and composes the hook
+calls.
 
-A resource view hook may perform immediate graph work. For example, a buffer view may implement a
-pre-execution synchronization hook that issues GPU synchronization logic through the stock Vulkan
-graph context before pass execution. The graph may also expose lifecycle phases during graph
-building, compilation, frame binding, pre-execution, post-execution, resize handling, or cleanup.
+**Dispatch order is ledger-topological, not declaration-ordered.** Within one pass's execution
+window, several declarations may have contributed hook work and declared increments — a staging
+copy advancing one resource, a sibling reading the advanced state. The generated dispatcher's
+composition order must respect the intra-window ledger edges; member or declaration order is not
+a valid tiebreaker where an edge exists. (The ledger already contains the required edges; for
+unrelated hook work any stable order remains acceptable.) *This supersedes the earlier "chosen
+stock composition order" rule.*
+
+**Hook insertion is graph/generator responsibility.** Resource lifecycle hook calls are inserted
+by the generated dispatchers and scheduled by the plan; passes do not manually invoke per-
+declaration hook methods. A pass may still override or extend dispatch through its own hook
+implementations — the override capability is the reason dispatchers are generated into the pass.
+
+**An increment declared by a description is realized as resource behavior in the declaring pass's
+window.** The staging description declares `X -> X:1`; the work that makes it true — the buffer
+copy — is authored on the staging view through a hook-shaped contract and dispatched by the graph
+at the increment's planned position, with plan-emitted synchronization around it. Pass `Execute`
+neither performs nor orders this work.
 
 The initial lifecycle categories are:
 
@@ -519,40 +770,46 @@ Source generation must remain agnostic to the specific stock hook list. It disco
 contracts generically and wires them without hardcoding a privileged fixed set of lifecycle
 interfaces.
 
-Examples include:
+Examples of legitimate hook work include:
 
-- Copy CPU data into a mapped or staging buffer before a GPU pass.
-- Transition an image before compute writes.
-- Update descriptor sets before command recording.
+- Copy CPU data into a mapped or staging buffer at a declared increment's planned position.
+- Update or push descriptor payloads before command recording.
 - Bind descriptor sets or pipelines.
-- Blit a storage image into a swapchain target after compute.
-- Publish a resource version after a write.
-- Mark a view as updated for runtime conditional execution.
 - Acquire a swapchain image before the first pass that targets it.
 - Present after the final pass writes the presentation target.
 
+Moved out of hooks and into plan output: image layout transitions before writes, barrier
+placement, publishing a resource version after a write (superseded by epochs), and marking a view
+as updated for conditional execution (belongs to the conditional re-execution sketch).
+
 These hooks belong to stock engine resource/view contracts or extension-defined contracts. They
-are not foundation resource lifecycle hooks. No custom hook ordering model is required for the
-initial design; generated dispatchers use the chosen stock composition order for each lifecycle
-phase.
+are not foundation resource lifecycle hooks.
 
 ### Runtime Manipulation
 
-The stock graph should support two pass toggling modes:
+Committed behavior:
 
-- **Structural changes** add or remove passes, resource declarations, or graph-visible
-  relationships. They trigger graph rebuild.
+- **Structural changes** add or remove passes, declarations, or graph-visible relationships. They
+  trigger graph rebuild: collection and link run again, and re-running setup re-snapshots
+  description parameters.
 - **Runtime disable** skips a pass while preserving compiled topology when the pass remains part
   of the graph.
+- The frame runtime executes every scheduled operation every frame. There is no committed
+  change-driven skipping.
 
-The stock graph may also support conditional execution:
+> **Sketched direction — conditional re-execution (not committed).** The ledger retains enough
+> per-operation provenance that a change-driven skip evaluator could be added without
+> re-architecting: cross-frame change stamps ("generations") per value, per-operation memoization
+> of input stamps, and a global run-set evaluation in which no participant — including the push
+> door — decides locally; eligibility propagates forward along dataflow, and required re-runs
+> propagate backward along a backing's epoch chain (a chain skips suffix-closed or reruns
+> prefix-closed; there is no skipping the middle). Known brittle areas: purity of passes that read
+> live services during Execute, and data residency across instance rotation. Recorded so the
+> committed model stays checked against it; unvalidated by any current sample, carries no
+> requirements weight.
 
-- **Structural conditionality:** a pass or generated contract is not included because required
-  stock resources/views cannot resolve.
-- **Runtime conditionality:** a pass is skipped because a stock view/resource did not update this
-  frame.
-
-The meaning of "required" and "updated" is engine-layer semantics.
+Structural conditionality — a pass or generated contract not included because required
+declarations cannot resolve — remains engine-layer semantics.
 
 ## Vulkan And Compute Scope
 
@@ -586,15 +843,16 @@ Current sample rendering is effectively:
 5. Present.
 
 The stock graph should absorb the repeated boilerplate: command pools/buffers, fences,
-semaphores, acquire/present, descriptor update plumbing, common barriers, resize invalidation,
-storage-image-to-swapchain blit, cleanup ordering, and frame resource duplication.
+semaphores, acquire/present, descriptor update plumbing, plan-emitted barriers and layout
+transitions, resize invalidation, storage-image-to-swapchain blit, cleanup ordering, and frame
+resource duplication.
 
 Pass-specific code should remain in passes: shader choice, resource declarations, push constant
 values, dispatch dimensions, unusual custom synchronization, and the actual Vulkan work expressed
 through pass code and resource/view lifecycle hooks.
 
 The graph should not know about windows directly. Window binding enters the graph through a
-swapchain target resource/view and its associated stock manager contracts.
+swapchain target resource/view and its associated stock contracts.
 
 ### Emergent GPU Concerns
 
@@ -602,10 +860,12 @@ These concerns are stock/extension-layer concerns, not foundation concepts:
 
 - **Multi-queue scheduling**: not needed initially, but the design must not prevent graphics,
   compute, and transfer queues later.
-- **Memory aliasing**: reusing GPU memory for non-overlapping transient resources is future
-  stock/extension behavior.
-- **Frames-in-flight**: resources that need per-frame copies or synchronization state should
-  model that through stock resource/view contracts and frame-resolved bindings.
+- **Memory aliasing**: reusing a backing is an epoch advance with re-grounding — the ledger makes
+  the legality computable (old-epoch readers schedule first). Exploiting this for transient
+  resources is future stock/extension behavior, enabled but not committed.
+- **Frames-in-flight**: realized as central instance multiplication — one ledger node mapped to
+  per-frame instances, with the epoch-to-instance mapping owned by the graph core and resolved
+  transparently at `Fetch()`.
 - **Subresources**: mips, layers, buffer ranges, and other backing-resource slices are view-layer
   semantics.
 
@@ -619,16 +879,21 @@ owned by the active game state.
 Registration should follow standard Sparkitect patterns:
 
 - Pass registration through a stock pass registry or generated registration path.
-- Stock resource managers and resource/view handlers through normal registry, metadata, or
-  DI-backed entrypoint patterns.
-- Shader and Vulkan services through existing Vulkan module infrastructure where appropriate.
-- Mod-defined views and handlers through the same public extension contracts as engine-defined
-  views and handlers.
+- **Moment registration** is the graph's primary registration path: method-level, ordinary
+  registry mechanics, SG-emitted `Identification` properties. A moment registration declares
+  name and resource type — never backing, position, or producer.
+- **No per-resource-type registry is required.** Resource types participate by shape.
+  *(Deliberate reversal of the earlier type-routing direction.)*
+- External-push configuration for moments is `Identification`-mapped metadata through the
+  ordinary metadata mechanism, and is itself a modding surface.
+- Backing providers and graph-core services register as graph-local services; shader and Vulkan
+  services go through existing Vulkan module infrastructure where appropriate.
+- Mod-defined views, descriptions, and handlers use the same public extension contracts as
+  engine-defined ones.
 
 Graph composition may be driven by explicit graph-owner configuration, attribute/entrypoint-driven
 registration metadata, or a combination of both. The exact stock composition rules remain open.
-The foundation should not require per-resource-type registries; that is a stock engine design
-choice if it proves useful.
+The foundation does not require per-resource-type registries, and the stock layer defines none.
 
 ## Validation And Debugging
 
@@ -637,14 +902,31 @@ Validation belongs mostly to the stock engine layer and compatible extensions.
 Expected validation areas:
 
 - Unbound or fetched-before-bound handles.
-- Missing registered resources.
 - Unsupported resource description/view combinations.
 - Conflicting stock view semantics over overlapping physical resources.
 - Missing generated/manual contracts.
 - Swapchain-relative resources that need recreation after resize.
 - Resource leaks, especially Vulkan/VMA objects.
 - Dependency visualization and pass/resource graph inspection.
-- Debug display of generated pass slots, view bindings, and lifecycle hook dispatchers.
+- Debug display of generated declarations, view bindings, and lifecycle hook dispatchers.
+
+Link-stage validation, all with full provenance:
+
+- Undefined moment: referenced, never marked — names the moment and lists its readers.
+- Duplicate moment definition: two marked increments — both provenances; configuration-aware
+  when external-push settings conflict with markings.
+- Fork: two increments from one source epoch.
+- Read of an unproducible epoch (including base epochs).
+- Contradictory grounding: one consumer transitively requires two epochs of one resource that
+  cannot coexist on its backing — reported as the spelled-out diamond (both paths, both epochs),
+  not as a bare cycle. Legality is backing-policy-dependent; the diagnostic states which policy
+  would admit the shape.
+- Moment type mismatch between registration, marking increment, and readers.
+- Description instance reuse: the same description instance declared twice.
+
+Cross-mod contradictory grounding — two independently-correct mods whose combination grounds
+contradictorily — is diagnosable with the same machinery; resolution strategies beyond diagnosis
+are deliberately out of scope until real data exists.
 
 The foundation should validate only protocol-level misuse. It should not attempt to validate
 Vulkan layouts, descriptor compatibility, staging safety, or graph resource overlap without a
@@ -652,54 +934,53 @@ stock/extension contract that gives it those semantics.
 
 The initial implementation does not need a dedicated diagnostics layer or an additional
 deterministic ordering feature beyond what falls out of explicit constraints and the chosen graph
-resolution algorithm. Cycle detection and required-edge validation remain mandatory.
+resolution algorithm. Cycle, fork, and link validation remain mandatory.
 
 ## Initial Implementation Scope
 
-The first implementation should prove the design with the smallest useful stock feature set:
+The redesign is proven by the smallest stock feature set that exercises every model element:
 
-- Pass registration and dependency-driven execution ordering.
-- Opt-in source-generated pass/resource contract path alongside the manual contract path.
-- Compute passes.
-- Storage images.
-- Storage buffers.
-- Descriptor sets.
-- Push constants.
-- Compute dispatch.
-- Swapchain acquisition, presentation, and sync object lifecycle in graph infrastructure.
-- A single VMA allocator per Vulkan device exposed through the Vulkan module.
-- Migration of the sample renderers from raw per-mod Vulkan orchestration to graph compute
-  passes.
+- The ledger, the two relations, epoch linking, and plan-emitted ordering and synchronization.
+- The description/facts/instance pipeline, including declaration products and the
+  one-instance-per-declaration rule.
+- Leaf buffer and image descriptions backed by graph-local backing providers.
+- Moment registration, marking, linking, and external-push configuration.
+- The staging composite and a published GPU-side composite carrying CPU metadata (the entity
+  list with its count), consumed across passes through moments.
+- Descriptor composites deriving layouts from static view metadata at declaration.
+- Central instance resolution behind `Fetch()` (single in-flight frame initially).
+- Migration of the sample renderers onto the model, with explicit ordering edges eliminated in
+  favor of data-flow ordering.
 
-Rasterization, multi-queue scheduling, memory aliasing, and advanced frame-graph optimizations
-are later stock or extension-layer concerns.
+Out of scope: conditional re-execution (sketched only), rasterization, multi-queue scheduling,
+backing-recycling intelligence, and frame-graph optimizations.
 
 ## Open Questions
 
+- For a pushable resource, should the publish handoff seal the data object in place (further
+  writes fail) or swap it for a fresh recording target? The fail-fast / recording-handoff intent
+  is settled; the mechanism is not.
 - What is the minimal foundational pass/declaration/binding protocol?
-- What generated/manual contracts does the stock render graph consume?
-- What exactly is emitted by stock pass/resource source generators?
-- How do stock pass abstractions encode hidden generic or marker metadata for generation?
-- What does a stock resource slot declaration contain?
-- How are lifecycle hook dispatchers represented in generated/manual contracts?
-- How are stock resource descriptions validated without pushing semantics into foundation?
-- Which stock view types ship first?
-- How does the stock graph model staging buffer semantics?
-- How does the stock graph model entity-derived render data provided by ECS systems?
-- For a pushable resource, should the publish handoff seal the data object in place (further writes
-  fail) or swap it for a fresh recording target? The fail-fast / recording-handoff intent is settled;
-  the mechanism is not.
-- How does the stock graph model composite resources such as voxel chunk buffers plus world BVH
-  data?
-- Which validation happens in analyzers, source generators, graph compilation, and frame
-  execution?
+- What exactly do the stock pass/resource source generators emit, and how are hook dispatchers
+  represented in generated/manual contracts?
+- Exact names of the *description-internal* transaction verbs (read, increment, sub-declaration).
+  The pass surface is settled — a single `use(description)` verb, with relation semantics and
+  moment marking carried inside the description, not as pass-level verbs or parameters.
+- The return shape of moment registration methods — the single symbol both analyzers and link
+  read the moment's resource type from.
+- How leaf descriptions reach backing providers at instance creation (the one place the design
+  bends never-pull: scoped provider lookup on the instance context vs dedicated transaction
+  primitives for physical leaves).
+- Residency and instance policy for resources carried across frames once multiple frames are in
+  flight (single-instance-with-sync vs copy-on-advance), and its interaction with the
+  conditional re-execution sketch.
 - Should swapchain frame management (image acquisition, present-layout transition, present
   submission) be modeled as explicit *early* and *late* swapchain passes that participate in
-  normal graph ordering, instead of being hardcoded into a manager's `BeginFrame`/`EndFrame`?
-  An early pass would own acquisition and seed the swapchain view's bound backing; a late pass
-  would own the transition to `PresentSrcKhr` and signal the present semaphore. This would
-  collapse a category of "this only the manager can do" logic into the same pass + hook
-  contracts every other graph participant uses, and make swapchain handling extensible by mods.
+  normal graph ordering? The uniform increment grammar strengthens the case; unresolved.
+- Descriptions parameterized from live services (swapchain extent): rebuild re-runs setup and
+  re-snapshots — is rebuild granularity sufficient for all resize paths?
+- Cross-mod contradictory grounding: diagnosis ships; resolution policy deferred until data
+  exists.
 
 ## See Also
 
