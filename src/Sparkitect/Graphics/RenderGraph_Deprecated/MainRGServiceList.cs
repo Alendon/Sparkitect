@@ -5,7 +5,7 @@ using Sparkitect.Modding;
 namespace Sparkitect.Graphics.RenderGraph_Deprecated;
 
 /// <summary>
-/// Layer-1 metadata entrypoint for the stock <see cref="Runtime.RenderGraph"/>. Declares the per-graph
+/// Layer-1 metadata entrypoint for the stock <see cref="Runtime.RenderGraphDeprecated"/>. Declares the per-graph
 /// required services list: per-instance image, descriptor, device-buffer, and entity-list managers.
 /// </summary>
 [ApplyMetadataEntrypoint<RGServiceListMetadata>]
@@ -13,7 +13,7 @@ internal sealed class MainRGServiceList : ApplyMetadataEntrypoint<RGServiceListM
 {
     public override void CollectMetadata(Dictionary<Identification, RGServiceListMetadata> metadata)
     {
-        metadata[Runtime.RenderGraph.Identification] =
+        metadata[Runtime.RenderGraphDeprecated.Identification] =
             new RGServiceListMetadata([
                 typeof(IImageResourceManager),
                 typeof(IDescriptorResourceManager),

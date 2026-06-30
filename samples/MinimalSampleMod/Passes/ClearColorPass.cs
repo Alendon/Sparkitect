@@ -1,22 +1,22 @@
 using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.RenderGraph_Deprecated;
-using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
+using Sparkitect.Graphing;
+using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
-using Sparkitect.Modding.IDs;
-using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassRegistry;
+using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 
 namespace MinimalSampleMod.Passes;
 
 [RenderPassRegistry.RegisterPass("clear_color")]
 internal sealed partial class ClearColorPass : ComputePass
 {
-    [GraphResource] private IGraphResource<WriteableImage> _target = null!;
+    private IGraphResource<ImageResource> _target = null!;
     private uint _frameCounter;
 
     public override void Setup(ISetupContext ctx)
     {
-        _target = ctx.Declare(new WriteableImageRequest.FromSwapchain(WriteUsage.TransferDst));
+        _target = ctx.Use(new ClearColorImageDescription());
     }
 
     public override void Execute(VkCommandBuffer commandBuffer)
@@ -30,11 +30,12 @@ internal sealed partial class ClearColorPass : ComputePass
             Float32_2 = 0.5f,
             Float32_3 = 1f,
         };
-        commandBuffer.ClearColorImage(img.VkImage, ImageLayout.TransferDstOptimal, in clearColor);
-    }
 
-    protected override void InvokeSlotPreExecuteHooks(VkCommandBuffer commandBuffer)
-    {
-        _target.Fetch().PreExecute(commandBuffer);
+        img.TransitionTo(
+            commandBuffer,
+            ImageLayout.TransferDstOptimal,
+            AccessFlags.TransferWriteBit,
+            PipelineStageFlags.TransferBit);
+        commandBuffer.ClearColorImage(img.Backing, ImageLayout.TransferDstOptimal, in clearColor);
     }
 }

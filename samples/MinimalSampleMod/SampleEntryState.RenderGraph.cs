@@ -8,7 +8,7 @@ public partial class SampleEntryState
 {
     [TransitionFunction("create_render_graph")]
     [OnFrameEnterScheduling]
-    [OrderAfter<Sparkitect.Graphics.RenderGraph_Deprecated.RenderGraphModule.ProcessRenderGraphRegistriesFunc>]
+    [OrderAfter<Sparkitect.Graphics.RenderGraph.RenderGraphModule.ProcessRenderGraphRegistriesFunc>]
     public static void CreateRenderGraph(IMinimalSampleHost host) => host.Initialize();
 
     [PerFrameFunction("poll_window")]

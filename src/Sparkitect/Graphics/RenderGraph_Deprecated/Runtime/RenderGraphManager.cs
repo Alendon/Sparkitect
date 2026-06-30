@@ -15,9 +15,9 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated.Runtime;
 /// graph-local service factory map. Drives construction of render-graph instances via
 /// <see cref="CreateGraph{TRenderGraph}"/>.
 /// </summary>
-[StateService<IRenderGraphManager, RenderGraphModule>]
+[StateService<IRenderGraphManager, RenderGraphDeprecatedModule>]
 [PublicAPI]
-internal sealed class RenderGraphManager :
+internal sealed class RenderGraphDeprecatedManager :
     IRenderGraphManager,
     IRenderGraphManagerRegistryFacade,
     IRenderGraphManagerStateFacade
@@ -147,7 +147,7 @@ internal sealed class RenderGraphManager :
         var passIdList = passIds.ToList();
         var modIdList = GameStateManager.LoadedMods.ToList();
 
-        using var rgFactory = RenderGraphRegistry.BuildRegisterRenderGraphContainer(
+        using var rgFactory = RenderGraphDeprecatedRegistry.BuildRegisterRenderGraphContainer(
             DIService,
             childContainer,
             provider: null,
@@ -157,7 +157,7 @@ internal sealed class RenderGraphManager :
             throw new InvalidOperationException(
                 $"No render-graph factory resolved for {rgId} — registration missing or DI deps unmet.");
 
-        if (rg is RenderGraph stockRg)
+        if (rg is RenderGraphDeprecated stockRg)
             stockRg.ChildContainer = childContainer;
 
         var setupHandler = rg.GetHandler<IRenderGraphSetupHandler>()

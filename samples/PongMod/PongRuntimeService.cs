@@ -21,7 +21,7 @@ internal class PongRuntimeService : IPongRuntimeService
     private float _lastFrameTime;
 
     private ISparkitWindow? _window;
-    private RenderGraph? _renderGraph;
+    private RenderGraphDeprecated? _renderGraph;
 
     public required IWindowManager WindowManager { private get; init; }
     public required IRenderGraphManager RenderGraphManager { private get; init; }
@@ -53,11 +53,11 @@ internal class PongRuntimeService : IPongRuntimeService
     {
         if (_renderGraph is not null) return;
 
-        _renderGraph = RenderGraphManager.CreateGraph<RenderGraph>(
+        _renderGraph = RenderGraphManager.CreateGraph<RenderGraphDeprecated>(
             new List<Identification>
             {
-                RenderPassID.PongMod.PongCompute,
-                RenderPassID.PongMod.PongCopy,
+                RenderPassDeprecatedID.PongMod.PongCompute,
+                RenderPassDeprecatedID.PongMod.PongCopy,
             },
             _window);
         _renderGraph.MaxFrameRate = 120;

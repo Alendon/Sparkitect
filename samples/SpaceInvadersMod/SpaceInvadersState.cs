@@ -16,7 +16,7 @@ public partial class SpaceInvadersState : IStateDescriptor
     [
         StateModuleID.SpaceInvadersMod.SpaceInvaders,
         StateModuleID.Sparkitect.Vulkan,
-        StateModuleID.Sparkitect.RenderGraph,
+        StateModuleID.Sparkitect.RenderGraphDeprecated,
         StateModuleID.Sparkitect.Windowing,
         StateModuleID.Sparkitect.Ecs
     ];

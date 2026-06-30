@@ -1,3 +1,4 @@
+using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphing.Descriptions;
 using Sparkitect.Graphing.Ledger;
 using Sparkitect.Modding;
@@ -25,14 +26,16 @@ internal static class SyntheticDomain
     /// <summary>A leaf description resolving to a size-only <see cref="SyntheticBuffer"/>.</summary>
     internal sealed record LeafBufferDescription(int Size) : IResourceDescription<SyntheticBuffer>
     {
-        public DeclaredFacts<SyntheticBuffer> Declare(IResourceTransaction tx) =>
-            new LeafBufferFacts(Size);
+        public DeclaredFact<SyntheticBuffer> Declare(IResourceTransaction tx) =>
+            new LeafBufferFact(Size);
     }
 
     /// <summary>Leaf facts: build the buffer directly (no sub-references to resolve).</summary>
-    internal sealed record LeafBufferFacts(int Size) : DeclaredFacts<SyntheticBuffer>
+    internal sealed record LeafBufferFact(int Size) : DeclaredFact<SyntheticBuffer>
     {
-        public override SyntheticBuffer CreateInstance(IInstanceContext ctx) => new(Size);
+        public SyntheticBuffer CreateInstance(IInstanceContext ctx) => new(Size);
+
+        public CleanupStrategy CleanupStrategy { get; }
     }
 
     /// <summary>
@@ -43,23 +46,25 @@ internal static class SyntheticDomain
     internal sealed record StagingDescription(int HostSize, int DeviceSize, int Count)
         : IResourceDescription<SyntheticComposite>
     {
-        public DeclaredFacts<SyntheticComposite> Declare(IResourceTransaction tx)
+        public DeclaredFact<SyntheticComposite> Declare(IResourceTransaction tx)
         {
             var host = tx.Declare(new LeafBufferDescription(HostSize));
             var device = tx.Declare(new LeafBufferDescription(DeviceSize));
             var staged = tx.Increment(device);
-            return new StagingFacts(host, staged, Count);
+            return new StagingFact(host, staged, Count);
         }
     }
 
     /// <summary>Composite facts: compose the POCO from the dependency-first resolved sub-instances.</summary>
-    internal sealed record StagingFacts(
+    internal sealed record StagingFact(
         ResourceRef<SyntheticBuffer> Host,
         ResourceRef<SyntheticBuffer> Device,
-        int Count) : DeclaredFacts<SyntheticComposite>
+        int Count) : DeclaredFact<SyntheticComposite>
     {
-        public override SyntheticComposite CreateInstance(IInstanceContext ctx) =>
+        public SyntheticComposite CreateInstance(IInstanceContext ctx) =>
             new(ctx.Resolve(Host), ctx.Resolve(Device), Count);
+
+        public CleanupStrategy CleanupStrategy { get; }
     }
 
     /// <summary>
@@ -69,17 +74,18 @@ internal static class SyntheticDomain
     /// </summary>
     internal sealed record SelfIncrementingDescription(int Size) : IResourceDescription<SyntheticBuffer>
     {
-        public DeclaredFacts<SyntheticBuffer> Declare(IResourceTransaction tx)
+        public DeclaredFact<SyntheticBuffer> Declare(IResourceTransaction tx)
         {
             tx.Increment(tx.Self<SyntheticBuffer>());
-            return new SelfIncrementFacts(Size);
+            return new SelfIncrementFact(Size);
         }
     }
 
     /// <summary>Self-increment facts: build the buffer for the resource the description advanced.</summary>
-    internal sealed record SelfIncrementFacts(int Size) : DeclaredFacts<SyntheticBuffer>
+    internal sealed record SelfIncrementFact(int Size) : DeclaredFact<SyntheticBuffer>
     {
-        public override SyntheticBuffer CreateInstance(IInstanceContext ctx) => new(Size);
+        public SyntheticBuffer CreateInstance(IInstanceContext ctx) => new(Size);
+        public CleanupStrategy CleanupStrategy { get; }
     }
 
     /// <summary>
@@ -90,10 +96,10 @@ internal static class SyntheticDomain
     internal sealed record ProduceMomentDescription(Identification Moment, int Size)
         : IResourceDescription<SyntheticBuffer>
     {
-        public DeclaredFacts<SyntheticBuffer> Declare(IResourceTransaction tx)
+        public DeclaredFact<SyntheticBuffer> Declare(IResourceTransaction tx)
         {
             tx.Increment(tx.Self<SyntheticBuffer>(), Moment);
-            return new SelfIncrementFacts(Size);
+            return new SelfIncrementFact(Size);
         }
     }
 
@@ -104,10 +110,10 @@ internal static class SyntheticDomain
     internal sealed record ConsumeMomentDescription(Identification Moment, int Size)
         : IResourceDescription<SyntheticBuffer>
     {
-        public DeclaredFacts<SyntheticBuffer> Declare(IResourceTransaction tx)
+        public DeclaredFact<SyntheticBuffer> Declare(IResourceTransaction tx)
         {
             tx.ReferenceMoment(Moment);
-            return new LeafBufferFacts(Size);
+            return new LeafBufferFact(Size);
         }
     }
 }

@@ -12,43 +12,43 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated;
 /// render-graph-type registries and finalizes the consolidated manager via
 /// <see cref="IRenderGraphManagerStateFacade.PostRegistry"/> after registration runs.
 /// </summary>
-[ModuleRegistry.RegisterModule("render_graph")]
+[ModuleRegistry.RegisterModule("render_graph_deprecated")]
 [PublicAPI]
-public partial class RenderGraphModule : IStateModule
+public partial class RenderGraphDeprecatedModule : IStateModule
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Vulkan];
 
-    [TransitionFunction("add_render_graph_registries")]
+    [TransitionFunction("add_render_graph_registries_deprecated")]
     [OnCreateScheduling]
     public static void AddRegistries(IRegistryManager registryManager)
     {
-        registryManager.AddRegistry<RenderPassRegistry>();
+        registryManager.AddRegistry<RenderPassDeprecatedRegistry>();
         registryManager.AddRegistry<GraphResourceRegistry>();
-        registryManager.AddRegistry<RenderGraphRegistry>();
+        registryManager.AddRegistry<RenderGraphDeprecatedRegistry>();
         registryManager.AddRegistry<GraphImageRegistry>();
     }
 
-    [TransitionFunction("process_render_graph_registries")]
+    [TransitionFunction("process_render_graph_registries_deprecated")]
     [OnFrameEnterScheduling]
-    [OrderAfter<AddRenderGraphRegistriesFunc>]
+    [OrderAfter<AddRenderGraphRegistriesDeprecatedFunc>]
     public static void ProcessRegistries(
         IRegistryManager registryManager,
         IRenderGraphManagerStateFacade manager)
     {
-        registryManager.ProcessAllMissing<RenderPassRegistry>();
+        registryManager.ProcessAllMissing<RenderPassDeprecatedRegistry>();
         registryManager.ProcessAllMissing<GraphResourceRegistry>();
-        registryManager.ProcessAllMissing<RenderGraphRegistry>();
+        registryManager.ProcessAllMissing<RenderGraphDeprecatedRegistry>();
         registryManager.ProcessAllMissing<GraphImageRegistry>();
         manager.PostRegistry();
     }
 
-    [TransitionFunction("remove_render_graph_registries")]
+    [TransitionFunction("remove_render_graph_registries_deprecated")]
     [OnDestroyScheduling]
     public static void RemoveRegistries(IRegistryManager registryManager)
     {
-        registryManager.UnregisterAllRemaining<RenderPassRegistry>();
+        registryManager.UnregisterAllRemaining<RenderPassDeprecatedRegistry>();
         registryManager.UnregisterAllRemaining<GraphResourceRegistry>();
-        registryManager.UnregisterAllRemaining<RenderGraphRegistry>();
+        registryManager.UnregisterAllRemaining<RenderGraphDeprecatedRegistry>();
         registryManager.UnregisterAllRemaining<GraphImageRegistry>();
     }
 }

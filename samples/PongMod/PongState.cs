@@ -19,7 +19,7 @@ public partial class PongState : IStateDescriptor
     [
         StateModuleID.PongMod.Pong,
         StateModuleID.Sparkitect.Vulkan,
-        StateModuleID.Sparkitect.RenderGraph,
+        StateModuleID.Sparkitect.RenderGraphDeprecated,
         StateModuleID.Sparkitect.Windowing
     ];
 
@@ -27,7 +27,7 @@ public partial class PongState : IStateDescriptor
     [OnCreateScheduling]
     [OrderAfter<VulkanModule.ProcessRegistriesFunc>]
     [OrderAfter<VulkanModule.CreateDeviceFunc>]
-    [OrderBefore<RenderGraphModule.ProcessRenderGraphRegistriesFunc>]
+    [OrderBefore<RenderGraphDeprecatedModule.ProcessRenderGraphRegistriesDeprecatedFunc>]
     public static void Initialize(IPongRuntimeService pongRuntime)
     {
         pongRuntime.Initialize();
@@ -36,7 +36,7 @@ public partial class PongState : IStateDescriptor
 
     [TransitionFunction("pong_create_graph")]
     [OnFrameEnterScheduling]
-    [OrderAfter<RenderGraphModule.ProcessRenderGraphRegistriesFunc>]
+    [OrderAfter<RenderGraphDeprecatedModule.ProcessRenderGraphRegistriesDeprecatedFunc>]
     public static void CreateGraph(IPongRuntimeService pongRuntime) => pongRuntime.CreateGraph();
 
     [PerFrameFunction("pong_frame")]

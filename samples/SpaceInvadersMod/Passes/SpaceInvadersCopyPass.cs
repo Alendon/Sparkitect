@@ -5,7 +5,7 @@ using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
-using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassRegistry;
+using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassDeprecatedRegistry;
 
 namespace SpaceInvadersMod.Passes;
 

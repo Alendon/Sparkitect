@@ -5,15 +5,15 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated;
 
 /// <summary>
 /// Stock pass registry. Mods register concrete <see cref="IPass"/> implementations
-/// via the generator-emitted <c>[RenderPassRegistry.RegisterPass(...)]</c> attribute;
+/// via the generator-emitted <c>[RenderPassDeprecatedRegistry.RegisterPass(...)]</c> attribute;
 /// the keyed-factory marker drives the configurator generation consumed by
 /// <see cref="Sparkitect.DI.IDIService.BuildFactoryContainer{TKey,TBase}"/>.
 /// Each registration call forwards the id into <see cref="IRenderGraphManagerRegistryFacade"/>
 /// for tracking.
 /// </summary>
-[Registry(Identifier = "render_pass")]
+[Registry(Identifier = "render_pass_deprecated")]
 [PublicAPI]
-public partial class RenderPassRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry
+public partial class RenderPassDeprecatedRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry
 {
     [RegistryMethod]
     [KeyedFactoryGenerationMarker<IPass>]
@@ -23,7 +23,7 @@ public partial class RenderPassRegistry(IRenderGraphManagerRegistryFacade manage
         managerFacade.AddPass(id);
     }
 
-    public static string Identifier => "render_pass";
+    public static string Identifier => "render_pass_deprecated";
 
     public void Unregister(Identification id)
     {

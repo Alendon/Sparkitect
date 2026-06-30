@@ -24,8 +24,8 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated.Runtime;
 /// post-construction setup work is driven by <see cref="IRenderGraphSetupHandler.Setup"/>.
 /// </summary>
 [PublicAPI]
-[RenderGraphRegistry.RegisterRenderGraph("stock")]
-public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler, IRenderGraphSetupHandler, ISwapchainHandler, IDisposable
+[RenderGraphDeprecatedRegistry.RegisterRenderGraph("stock")]
+public sealed partial class RenderGraphDeprecated : IRenderGraph, IExternalResourceHandler, IRenderGraphSetupHandler, ISwapchainHandler, IDisposable
 {
     private readonly IVulkanContext _vulkanContext;
     private readonly IImageResourceManager _imageManager;
@@ -88,7 +88,7 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
         target.Publish(value);
     }
 
-    internal RenderGraph(
+    internal RenderGraphDeprecated(
         IVulkanContext vulkanContext,
         IImageResourceManager imageManager,
         IDescriptorResourceManager descriptorManager,
@@ -143,7 +143,7 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
         };
         var setupContext = new SetupContext(_renderGraphManager, _managersByType);
 
-        using var passFactory = RenderPassRegistry.BuildRegisterPassContainer(
+        using var passFactory = RenderPassDeprecatedRegistry.BuildRegisterPassContainer(
             _diService, hostContainer, provider: null, modIdList);
 
         var compiler = new RenderGraphCompiler();
@@ -152,7 +152,7 @@ public sealed partial class RenderGraph : IRenderGraph, IExternalResourceHandler
         {
             if (!_renderGraphManager.RegisteredPassIds.Contains(id))
                 throw new InvalidOperationException(
-                    $"Pass {id} is not registered via RenderPassRegistry.");
+                    $"Pass {id} is not registered via RenderPassDeprecatedRegistry.");
             if (!passFactory.TryResolve(id, out var pass))
                 throw new InvalidOperationException(
                     $"No render pass factory resolved {id} — DI binding missing.");

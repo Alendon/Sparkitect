@@ -9,7 +9,7 @@ using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
 using Sparkitect.Utils.DU;
-using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassRegistry;
+using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassDeprecatedRegistry;
 using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace SpaceInvadersMod.Passes;

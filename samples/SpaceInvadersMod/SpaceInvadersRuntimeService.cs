@@ -35,7 +35,7 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     private RenderEntity[] _renderBuffer = new RenderEntity[SpaceInvadersConstants.MaxRenderEntities];
     private bool _isGameplayActive;
     private ISparkitWindow? _window;
-    private RenderGraph? _renderGraph;
+    private RenderGraphDeprecated? _renderGraph;
     private StorageHandle _playerStorageHandle;
     private StorageHandle _enemyStorageHandle;
 
@@ -86,12 +86,12 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     {
         if (_renderGraph is not null) return;
 
-        _renderGraph = RenderGraphManager.CreateGraph<RenderGraph>(
+        _renderGraph = RenderGraphManager.CreateGraph<RenderGraphDeprecated>(
             new List<Identification>
             {
-                RenderPassID.SpaceInvadersMod.SpaceInvadersStaging,
-                RenderPassID.SpaceInvadersMod.SpaceInvadersCompute,
-                RenderPassID.SpaceInvadersMod.SpaceInvadersCopy,
+                RenderPassDeprecatedID.SpaceInvadersMod.SpaceInvadersStaging,
+                RenderPassDeprecatedID.SpaceInvadersMod.SpaceInvadersCompute,
+                RenderPassDeprecatedID.SpaceInvadersMod.SpaceInvadersCopy,
             },
             _window!);
         _renderGraph.MaxFrameRate = 120;

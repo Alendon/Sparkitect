@@ -6,7 +6,7 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.RenderGraph_Deprecated.Runtime;
 
-public sealed partial class RenderGraph
+public sealed partial class RenderGraphDeprecated
 {
     /// <summary>
     /// Per-frame Vulkan orchestration at 1-frame-in-flight. Waits for the previous frame,

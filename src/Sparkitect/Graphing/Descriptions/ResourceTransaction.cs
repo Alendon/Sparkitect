@@ -53,17 +53,17 @@ public sealed class ResourceTransaction : IResourceTransaction
 
         var resourceRef = _ledger.Declare<TSub>(Identification.Empty);
         _selfResources.Push(resourceRef.Resource);
-        DeclaredFacts<TSub> facts;
+        DeclaredFact<TSub> fact;
         try
         {
-            facts = description.Declare(this);
+            fact = description.Declare(this);
         }
         finally
         {
             _selfResources.Pop();
         }
 
-        _factsByResource[resourceRef.Resource] = facts;
+        _factsByResource[resourceRef.Resource] = fact;
         return resourceRef;
     }
 
@@ -83,9 +83,9 @@ public sealed class ResourceTransaction : IResourceTransaction
     /// instance context to build the dependency. Null when no facts were registered (a reference
     /// minted by an increment shares its source resource's facts).
     /// </summary>
-    internal DeclaredFacts<T>? FactsFor<T>(ResourceRef<T> reference) =>
+    internal DeclaredFact<T>? FactsFor<T>(ResourceRef<T> reference) =>
         _factsByResource.TryGetValue(reference.Resource, out var facts)
-            ? (DeclaredFacts<T>)facts
+            ? (DeclaredFact<T>)facts
             : null;
 
     private GraphNodeId LastResource() =>

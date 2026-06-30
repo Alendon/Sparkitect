@@ -31,7 +31,7 @@ public class DeclarationPipelineTests
         await Assert.That(grownChains).IsEqualTo(1);
 
         // The facts are immutable and hold the host/device refs and the CPU-side count.
-        var facts = tx.FactsFor(topRef) as StagingFacts;
+        var facts = tx.FactsFor(topRef) as StagingFact;
         await Assert.That(facts).IsNotNull();
         await Assert.That(facts!.Count).IsEqualTo(3);
     }

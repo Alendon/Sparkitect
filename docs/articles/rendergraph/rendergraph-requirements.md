@@ -126,8 +126,8 @@ concern belongs in L1.
 L2 provides:
 
 - Pass abstractions such as render and compute pass bases.
-- Plan-emitted synchronization, layout transitions, and presentation behavior, derived from the
-  L1 plan structure plus the static metadata of participating resource types.
+- Synchronization, layout transitions, and presentation behavior resolved at runtime from the L1
+  plan's ordering plus resources' carried state — the plan fixes order and position, not state.
 - Physical backing providers for leaf resources — the only per-family runtime services retained.
 - The physical meaning of an instance (per-swapchain-image / per-in-flight-frame backing rotation).
 - Render graph lifecycle hook dispatch.
@@ -378,9 +378,10 @@ direction in which a type-level `Identification` routed declarations to managers
 identity no longer exists.)
 
 **Resource data** — the instances of a resource type. An `IGraphResource<T>` resolves to one
-such instance at `Fetch()`. One declaration may be realized by several runtime instances (per
-swapchain image or in-flight frame); the graph multiplies and resolves instances centrally, and a
-pass never observes the duplication.
+such instance at `Fetch()`. One declaration may be realized by several runtime instances. General
+instance multiplication is a deferred capability; until then the graph resolves a single instance,
+**except** where a backing is inherently multi-image (the swapchain), whose per-index selection is
+handled inside its backing provider's resolve. A pass never observes this.
 
 **Epoch** — a position in a resource's intra-frame dataflow. Epochs are static plan structure:
 they are advanced only by declared increments, identical in shape every frame, and authored code
@@ -403,6 +404,16 @@ composite resource is CPU data plus references to existing resources; it has no 
 and no manager of any kind. Backing providers are the only per-family runtime services the
 resource model retains; all wiring and per-execution value state lives in the ledger and graph
 core.
+
+A leaf resource instance carries its own **current physical state** (such as an image's layout)
+at runtime; the state required by a given use is carried by the using description, and reconciling
+current-against-required at the point of request is what produces a transition — never stored in
+the ledger. Leaf instances are built through their per-family backing provider (the image manager
+for images); composite and view resources self-resolve by composing already-resolved sub-instances,
+so only the small set of physically-backed leaf types depends on a manager. Resolution is lazy and
+dependency-first, positioned by the plan rather than performed in one upfront sweep: the render
+graph drives the swapchain and informs the image manager of the current acquired index as part of
+that resolution.
 
 **Resource reference** — an opaque, typed, epoch-qualified reference to a resource, minted only by
 ledger transaction verbs. A reference is valid because the ledger recognizes it; references cannot
@@ -446,8 +457,11 @@ This two-relation base is deliberately minimal because the rest of the system de
 - Anti-dependencies (reuse of a backing, invalidation of values grounded on an advanced epoch)
   derive from epoch advances.
 - Synchronization — barriers, layout transitions, including first-use transitions from
-  undefined state — is emitted by compilation from epoch edges plus the static metadata of the
-  participating resource types. First use is the birth edge, not a special case.
+  undefined state — is **resolved at runtime**, at the point a resource instance is requested
+  (explicitly by a pass fetch, or transitively as a composite resolves its parts). Compilation
+  fixes only *where and in what order* each resource is used; it computes no state. At request time
+  the transition reconciles the resource instance's **carried current state** with the **required
+  state** of the use. First use is the birth edge, not a special case.
 - Producer validation (a referenced resource nobody produces, a resource produced twice) is fork
   and absence checking, uniform everywhere.
 - Conditional re-execution (skipping work whose inputs did not change) remains expressible over
@@ -619,6 +633,17 @@ Views can be one-to-one, one-to-many, many-to-one, or composite. Two passes may 
 different resource types that overlap the same physical backing resources. Stock engine contracts
 must preserve correctness across those overlaps.
 
+### Cleanup
+
+Every resource declares one cleanup strategy: **None** (nothing to dispose — e.g. a composite of
+sub-resources plus CPU metadata), **Dispose** (direct disposal of an owned object — e.g. a view
+resource disposing its `VkImageView`), or **Release** (manager-backed resources signal release and
+the backing provider decides what that means). Release is the substrate on which memory aliasing
+and pass-transient resource reuse are later built: the graph signals release; the provider owns the
+policy (no-op, pool-return, alias-reuse). Cleanup dispatch rides the Cleanup lifecycle hook. A
+resource never contains or knows of views over it, so releasing a backing is independent of any
+view's disposal.
+
 ### Pushed Data and Externally-Managed State
 
 All resources are **graph-owned**. Some graph-owned resources are **pushable** — they accept data
@@ -646,10 +671,17 @@ configuration-aware: a pass marking an externally-configured moment is a duplica
 whose error names the configuration; a reconfigured moment with no marking increment is an
 undefined moment.
 
-**Externally-managed state is not a resource.** The swapchain is the canonical case: its backing
-is owned and recreated by stock window/swapchain infrastructure, not the graph. It is set through
-a dedicated handler surface — not the push path — and exposed to passes indirectly, through
-whatever resource resolves its backing to the current acquired image.
+**Externally-managed state is not a special resource.** The swapchain is an ordinary image
+resource whose backing origin is the swapchain rather than a VMA allocation; its backing is owned
+and recreated by stock window/swapchain infrastructure, not the graph. It is delivered to the graph
+as external state through a dedicated handler — not the push path — and the render graph itself
+drives swapchain acquisition and presentation. Per-image-index selection lives in the resource's
+resolve, so a resolved swapchain image is scoped to the current acquired index. Presentation is
+modeled in the relation grammar: the graph reserves a single **finishline moment**, and whichever
+increment drives the presentation target to its present-ready epoch marks it. The graph references
+that moment as a consumer; presentation and its present-layout transition are issued by the graph
+at the finishline position. An unmarked finishline is an undefined-moment error; two markings are a
+duplicate-definition error — the ordinary moment diagnostics.
 
 ## Graph Compilation And Execution
 
@@ -678,11 +710,22 @@ nothing yet. Moments are recorded as markings on increments.
   types — the runtime ground truth behind the edit-time analyzer checks.
 
 **Plan emission.** From the linked ledger the graph derives: pass execution order (from
-Read/Increment edges, plus explicit ordering escape hatches); synchronization — barriers and
-layout transitions, including first-use transitions, emitted from epoch edges combined with the
-static metadata of participating resource types; instance multiplication (one ledger node realized as
-N runtime instances where frame or swapchain duplication requires it); and the scheduled positions
-of lifecycle hook dispatch, ordered ledger-topologically (see Render Graph Lifecycle Hooks).
+Read/Increment edges, plus explicit ordering escape hatches); the epoch-edge structure that
+synchronization is resolved against at runtime (barriers and layout transitions, including
+first-use transitions, are issued when a resource is requested — reconciling its carried current
+state with the use's required state — not precomputed here); the positions where inherently
+multi-image backings are index-selected; and the scheduled positions of lifecycle hook dispatch,
+ordered ledger-topologically (see Render Graph Lifecycle Hooks).
+
+### Ad-hoc / Precompiled Hybrid
+
+The stock graph deliberately blends two models. **Precompiled:** structure, ordering, moment
+binding, and validation are resolved once at compile/link, giving determinism and full diagnostics.
+**Ad-hoc:** physical state — instance creation and layout/barrier transitions — is resolved lazily
+at runtime, when a resource is explicitly or transitively requested, never baked into a static
+barrier list. The plan knows *when, where, and in what order* each resource is used; it does not
+know the concrete instance or its state until that instance is requested. This keeps compile-time
+correctness while letting state track real runtime conditions.
 
 ### Data-Flow Ordering
 
@@ -753,8 +796,8 @@ implementations — the override capability is the reason dispatchers are genera
 **An increment declared by a description is realized as resource behavior in the declaring pass's
 window.** The staging description declares `X -> X:1`; the work that makes it true — the buffer
 copy — is authored on the staging view through a hook-shaped contract and dispatched by the graph
-at the increment's planned position, with plan-emitted synchronization around it. Pass `Execute`
-neither performs nor orders this work.
+at the increment's planned position, with synchronization resolved at runtime around it. Pass
+`Execute` neither performs nor orders this work.
 
 The initial lifecycle categories are:
 
@@ -776,7 +819,8 @@ Examples of legitimate hook work include:
 - Update or push descriptor payloads before command recording.
 - Bind descriptor sets or pipelines.
 - Acquire a swapchain image before the first pass that targets it.
-- Present after the final pass writes the presentation target.
+- Present at the finishline moment's position, after the increment that marks the presentation
+  target as present-ready.
 
 Moved out of hooks and into plan output: image layout transitions before writes, barrier
 placement, publishing a resource version after a write (superseded by epochs), and marking a view

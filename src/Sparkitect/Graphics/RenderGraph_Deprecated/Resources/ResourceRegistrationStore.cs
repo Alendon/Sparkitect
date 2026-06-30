@@ -6,11 +6,11 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
 
 /// <summary>
 /// The single module-level resource-registration store. Bound to
-/// <see cref="RenderGraphModule"/> so the per-graph child container (which chains to the
+/// <see cref="RenderGraphDeprecatedModule"/> so the per-graph child container (which chains to the
 /// host) can inject it into graph-local managers. Carries an independent dictionary per
 /// resource family (images and buffers); further families get their own dictionary.
 /// </summary>
-[StateService<IResourceRegistrationStore, RenderGraphModule>]
+[StateService<IResourceRegistrationStore, RenderGraphDeprecatedModule>]
 [PublicAPI]
 public sealed class ResourceRegistrationStore : IResourceRegistrationStore
 {
