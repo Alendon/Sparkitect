@@ -25,7 +25,8 @@ public partial class RegistryGenerator
         string ProviderMethodOrTypeName,
         ImmutableValueArray<ProviderFileArg> Files,
         ImmutableValueArray<(string paramType, bool isNullable)> DiParameters,
-        bool IsValueTypeProvider = false);
+        bool IsValueTypeProvider = false,
+        bool IsRecordProvider = false);
 
     internal static bool TryExtractProviderInfo(AttributeData attribute,
         out string registryTypeName, out string? registryNamespace, out string methodName, out bool isRegisterMarker)
@@ -78,6 +79,7 @@ public partial class RegistryGenerator
             PropertyDeclarationSyntax pds => semanticModel.GetDeclaredSymbol(pds, cancellationToken),
             ClassDeclarationSyntax cds => semanticModel.GetDeclaredSymbol(cds, cancellationToken),
             StructDeclarationSyntax sds => semanticModel.GetDeclaredSymbol(sds, cancellationToken),
+            RecordDeclarationSyntax rds => semanticModel.GetDeclaredSymbol(rds, cancellationToken),
             InterfaceDeclarationSyntax ids => semanticModel.GetDeclaredSymbol(ids, cancellationToken),
             _ => null
         };
@@ -100,6 +102,7 @@ public partial class RegistryGenerator
         bool isTypeProvider = targetSymbol is INamedTypeSymbol;
         bool isPropertyProvider = targetSymbol is IPropertySymbol;
         bool isValueTypeProvider = targetSymbol is INamedTypeSymbol nameSym && nameSym.IsValueType;
+        bool isRecordProvider = targetSymbol is INamedTypeSymbol recSym && recSym.IsRecord;
         string containerFullName;
         string methodOrTypeName;
         var diParamsBuilder = new ImmutableValueArray<(string paramType, bool isNullable)>.Builder();
@@ -144,7 +147,8 @@ public partial class RegistryGenerator
             methodOrTypeName,
             files,
             diParamsBuilder.ToImmutableValueArray(),
-            isValueTypeProvider);
+            isValueTypeProvider,
+            isRecordProvider);
     }
 
     internal static RegistrationUnit? MapProviderCandidateToUnit(ProviderCandidate cand, RegistryMap regMap)
@@ -197,8 +201,14 @@ public partial class RegistryGenerator
                 kfg = new KeyedFactoryGenerationInfo(tBase, configuratorClassName);
             }
 
-            entry = new TypeRegistrationEntry(cand.Id, files, cand.MethodName, typeFull, kfg,
-                cand.IsValueTypeProvider ? RegistrationTypeKind.Struct : RegistrationTypeKind.Class);
+            var typeKind = (cand.IsValueTypeProvider, cand.IsRecordProvider) switch
+            {
+                (true, true) => RegistrationTypeKind.RecordStruct,
+                (false, true) => RegistrationTypeKind.Record,
+                (true, false) => RegistrationTypeKind.Struct,
+                (false, false) => RegistrationTypeKind.Class,
+            };
+            entry = new TypeRegistrationEntry(cand.Id, files, cand.MethodName, typeFull, kfg, typeKind);
         }
         else
         {
@@ -304,14 +314,15 @@ public partial class RegistryGenerator
     {
         if (node is not AttributeSyntax attrSyntax) return null;
 
-        // Only care about class/struct declarations (type providers)
+        // Only care about class/struct/record declarations (type providers)
         var decl = attrSyntax.Parent?.Parent;
-        if (decl is not (ClassDeclarationSyntax or StructDeclarationSyntax)) return null;
+        if (decl is not (ClassDeclarationSyntax or StructDeclarationSyntax or RecordDeclarationSyntax)) return null;
 
         ISymbol? targetSymbol = decl switch
         {
             ClassDeclarationSyntax cds => semanticModel.GetDeclaredSymbol(cds, cancellationToken),
             StructDeclarationSyntax sds => semanticModel.GetDeclaredSymbol(sds, cancellationToken),
+            RecordDeclarationSyntax rds => semanticModel.GetDeclaredSymbol(rds, cancellationToken),
             _ => null
         };
 

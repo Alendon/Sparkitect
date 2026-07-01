@@ -110,4 +110,21 @@ public interface IDIService
     /// </summary>
     /// <param name="parent">The parent container; the returned builder's services are layered above it.</param>
     ICoreContainerBuilder CreateChildContainerBuilder(ICoreContainer parent);
+
+    /// <summary>
+    /// Builds a child core container by discovering configurator entrypoints and letting each contribute
+    /// registrations to a builder layered over <paramref name="parent"/>. The discovery attribute selects
+    /// the configurator set; <paramref name="configure"/> invokes each configurator (and may filter).
+    /// </summary>
+    /// <typeparam name="TConfigurator">The non-generic configurator base to discover.</typeparam>
+    /// <param name="parent">The parent container the built container layers over.</param>
+    /// <param name="modIds">Mod IDs to scan for configurator entrypoints; also the loaded-mods set passed to each configurator.</param>
+    /// <param name="discoveryAttribute">The attribute type marking configurator entrypoints.</param>
+    /// <param name="configure">Callback invoked per configurator with the builder and loaded-mods set; applies any filtering and calls Configure.</param>
+    ICoreContainer BuildConfiguredContainer<TConfigurator>(
+        ICoreContainer parent,
+        IEnumerable<string> modIds,
+        Type discoveryAttribute,
+        Action<TConfigurator, ICoreContainerBuilder, IReadOnlySet<string>> configure)
+        where TConfigurator : class;
 }

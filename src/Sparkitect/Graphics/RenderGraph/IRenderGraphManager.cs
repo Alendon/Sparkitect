@@ -7,10 +7,10 @@ using Sparkitect.Windowing;
 namespace Sparkitect.Graphics.RenderGraph;
 
 /// <summary>
-/// Read surface for the render-graph subsystem: pass catalog, render-graph-type catalog, resource-moment
-/// catalog, plus the construction entry point <see cref="CreateGraph{TRenderGraph}"/>. Construction is
-/// thin and GameState-owned — there is no resource-manager catalog, no child container, and no per-graph
-/// service-list metadata.
+/// Read surface for the render-graph subsystem: pass catalog, fact catalog, render-graph-type catalog,
+/// resource-moment catalog, plus the construction entry point <see cref="CreateGraph{TRenderGraph}"/>.
+/// Construction is thin and GameState-owned; each graph is resolved against a per-graph child container
+/// populated with its <c>[GraphLocal&lt;,IRenderGraph&gt;]</c> services.
 /// </summary>
 [RegistryFacade<IRenderGraphManagerRegistryFacade>]
 [PublicAPI]
@@ -18,6 +18,9 @@ public interface IRenderGraphManager
 {
     /// <summary>All pass identifications registered with the render-graph subsystem.</summary>
     IReadOnlyCollection<Identification> RegisteredPassIds { get; }
+
+    /// <summary>All fact identifications registered with the render-graph subsystem.</summary>
+    IReadOnlyCollection<Identification> RegisteredFactIds { get; }
 
     /// <summary>All render-graph-type identifications registered with the render-graph subsystem.</summary>
     IReadOnlyCollection<Identification> RegisteredRenderGraphIds { get; }

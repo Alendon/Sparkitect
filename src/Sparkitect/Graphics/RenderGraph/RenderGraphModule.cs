@@ -26,6 +26,7 @@ public partial class RenderGraphModule : IStateModule
     {
         registryManager.AddRegistry<ResourceMomentRegistry>();
         registryManager.AddRegistry<RenderPassRegistry>();
+        registryManager.AddRegistry<FactRegistry>();
         registryManager.AddRegistry<RenderGraphRegistry>();
     }
 
@@ -36,6 +37,7 @@ public partial class RenderGraphModule : IStateModule
     {
         registryManager.ProcessAllMissing<ResourceMomentRegistry>();
         registryManager.ProcessAllMissing<RenderPassRegistry>();
+        registryManager.ProcessAllMissing<FactRegistry>();
         registryManager.ProcessAllMissing<RenderGraphRegistry>();
     }
 
@@ -45,6 +47,7 @@ public partial class RenderGraphModule : IStateModule
     {
         registryManager.UnregisterAllRemaining<ResourceMomentRegistry>();
         registryManager.UnregisterAllRemaining<RenderPassRegistry>();
+        registryManager.UnregisterAllRemaining<FactRegistry>();
         registryManager.UnregisterAllRemaining<RenderGraphRegistry>();
     }
 }

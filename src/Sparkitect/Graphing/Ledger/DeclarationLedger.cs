@@ -114,6 +114,35 @@ public sealed class DeclarationLedger
     public void RecordMomentRead(Identification moment, GraphNodeId reader) =>
         _momentReads.Add(new MomentReadEdge(moment, reader));
 
+    /// <summary>
+    /// Mints a reference to an already-recorded node by its <paramref name="nodeId"/> — the bridge for
+    /// fetching a resource the plan bound elsewhere (e.g. a moment's published increment, whose
+    /// <see cref="Compile.ResolvedMoment.IncrementNode"/> names the produced node). The reference carries
+    /// the node's chain identity and epoch, so resolving it yields that chain's instance. The node must
+    /// exist and carry resource type <typeparamref name="T"/>; the reference is ledger-minted, so it
+    /// resolves like any other.
+    /// </summary>
+    public ResourceRef<T> ReferenceTo<T>(GraphNodeId nodeId)
+    {
+        foreach (var node in _nodes)
+        {
+            if (node.Id != nodeId)
+            {
+                continue;
+            }
+
+            if (node.ResourceType != typeof(T))
+            {
+                throw new InvalidOperationException(
+                    $"Node {nodeId} carries resource type {node.ResourceType.Name}, not {typeof(T).Name}.");
+            }
+
+            return new ResourceRef<T>(node.Resource, node.Epoch);
+        }
+
+        throw new InvalidOperationException($"No ledger node {nodeId} — cannot mint a reference to it.");
+    }
+
     /// <summary>The epoch chain (base → produced epochs in order) for one resource.</summary>
     public IReadOnlyList<LedgerNode> ChainFor(GraphNodeId resource) =>
         _chainsByResource.TryGetValue(resource, out var chain) ? chain : [];

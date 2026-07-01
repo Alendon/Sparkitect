@@ -119,7 +119,13 @@ public partial class RegistryGenerator
                 {
                     TypeSimpleName = simpleName,
                     ContainingNamespace = ns,
-                    TypeKindKeyword = e.TypeKind == RegistrationTypeKind.Struct ? "struct" : "class",
+                    TypeKindKeyword = e.TypeKind switch
+                    {
+                        RegistrationTypeKind.RecordStruct => "record struct",
+                        RegistrationTypeKind.Record => "record",
+                        RegistrationTypeKind.Struct => "struct",
+                        _ => "class"
+                    },
                     PropertyName = StringCase.ToPascalCase(e.Id)
                 };
             })

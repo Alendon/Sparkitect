@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
+using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.CompilerGenerated.KeyedFactoryExtensions;
 using Sparkitect.DI;
+using Sparkitect.DI.Container;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan;
@@ -12,6 +14,7 @@ using Sparkitect.Graphing.Compile;
 using Sparkitect.Graphing.Descriptions;
 using Sparkitect.Graphing.Ledger;
 using Sparkitect.Modding;
+using Sparkitect.Modding.IDs;
 using Sparkitect.Utils.DU;
 using Sparkitect.Windowing;
 using VkApiResult = Silk.NET.Vulkan.Result;
@@ -49,6 +52,8 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     private bool _disposed;
     private bool _setupComplete;
     private long _lastFrameTimestamp;
+    
+    public required IImageManager ImageManager { private get; init; }
 
     /// <summary>
     /// Max frames per second; 0 = uncapped. Paced by a busy-wait in <see cref="RunFrame"/>.
@@ -75,9 +80,9 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
         return null;
     }
 
-    public void SetSwapchain(VkSwapchain swapchain) => _provider.SetSwapchain(swapchain);
+    public void SetSwapchain(VkSwapchain swapchain) => ImageManager.SetSwapchain(swapchain);
 
-    public void Setup(IEnumerable<Identification> passIds, ISparkitWindow window)
+    public void Setup(IEnumerable<Identification> passIds, ISparkitWindow window, ICoreContainer graphContainer)
     {
         if (_setupComplete)
             throw new InvalidOperationException(
@@ -85,20 +90,22 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
 
         _window = window;
         var modIdList = _gameStateManager.LoadedMods.ToList();
-        var hostContainer = _gameStateManager.CurrentCoreContainer;
 
         var (queueFamily, queue) = ResolveGraphicsQueue(_vulkanContext);
 
         // Build the declaration ledger: resolve each pass, run its single-Use Setup against the graph's
-        // setup context (which threads the owned provider into descriptions and captures the present
-        // target), then reference the finishline so binding has a consumer.
+        // setup context, then reference the finishline so binding has a consumer. Facts resolve through
+        // the fact keyed factory built against the per-graph container, so a fact's DI dependencies
+        // (e.g. the graph-local IImageManager) are injected from that scope.
         _ledger = new DeclarationLedger();
-        _transaction = new ResourceTransaction(_ledger);
+        using var factFactory = FactRegistry.BuildRegisterContainer(
+            _diService, graphContainer, provider: null, modIdList);
+        _transaction = new ResourceTransaction(_ledger, factFactory);
         _frameContext = new FrameInstanceContext();
-        var setupContext = new GraphSetupContext(_transaction, _frameContext, _provider);
+        var setupContext = new GraphSetupContext(_transaction, _frameContext);
 
         using var passFactory = RenderPassRegistry.BuildRegisterPassContainer(
-            _diService, hostContainer, provider: null, modIdList);
+            _diService, graphContainer, provider: null, modIdList);
 
         foreach (var id in passIds)
         {
@@ -117,11 +124,6 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
             _passes.Add(computePass);
         }
 
-        _presentTarget = setupContext.PresentTarget
-            ?? throw new InvalidOperationException(
-                "RenderGraph.Setup: no present target was declared. Exactly one pass must use a " +
-                "ClearColorImageDescription so the finishline-marked image can be reconciled to present.");
-
         // The RG references the finishline moment as a consumer so an unmarked finishline surfaces
         // UndefinedMoment naming this present reader (rather than silently producing no present binding).
         _transaction.Declare(new FinishlineReaderDescription());
@@ -131,6 +133,16 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
             throw new InvalidOperationException(
                 $"RenderGraph.Setup: graph compilation failed: {linkError.Value}.");
         _plan = ((Result<CompiledPlan, CompileError>.Ok)linkResult).Value;
+
+        // Resolve the present target from the graph itself: the finishline moment binds at link to the
+        // single increment that marked it, so its published image is the present target. Mint a reference
+        // to that bound node and wrap it in a frame-context handle the frame loop re-fetches each frame.
+        if (!_plan.ResolvedMoments.TryGetValue(GraphMomentID.Sparkitect.Finishline, out var finishline))
+            throw new InvalidOperationException(
+                "RenderGraph.Setup: the finishline moment was not published — exactly one pass must mark " +
+                "its present-target increment with the finishline moment so the graph can reconcile it to present.");
+        var presentRef = _ledger.ReferenceTo<ImageResource>(finishline.IncrementNode);
+        _presentTarget = new GraphResourceHandle<ImageResource>(presentRef, _frameContext);
 
         var poolResult = _vulkanContext.CreateCommandPool(
             CommandPoolCreateFlags.ResetCommandBufferBit, queueFamily);

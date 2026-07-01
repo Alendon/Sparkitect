@@ -142,6 +142,23 @@ internal class DIService : IDIService
     public ICoreContainerBuilder CreateChildContainerBuilder(ICoreContainer parent)
         => new CoreContainerBuilder(parent);
 
+    public ICoreContainer BuildConfiguredContainer<TConfigurator>(
+        ICoreContainer parent,
+        IEnumerable<string> modIds,
+        Type discoveryAttribute,
+        Action<TConfigurator, ICoreContainerBuilder, IReadOnlySet<string>> configure)
+        where TConfigurator : class
+    {
+        var loadedMods = (modIds as IReadOnlyCollection<string> ?? modIds.ToList()).ToHashSet();
+
+        var builder = new CoreContainerBuilder(parent);
+
+        using var configurators = CreateEntrypointContainer<TConfigurator>(loadedMods, discoveryAttribute);
+        configurators.ProcessMany(configurator => configure(configurator, builder, loadedMods));
+
+        return builder.Build();
+    }
+
     public IFactoryContainer<TKey, TBase> BuildFactoryContainer<TKey, TBase>(
         ICoreContainer container,
         IResolutionProvider? provider,

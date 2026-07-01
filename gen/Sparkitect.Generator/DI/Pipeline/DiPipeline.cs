@@ -22,7 +22,14 @@ public static class DiPipeline
     /// <returns>A <see cref="FactoryModel"/> or null if extraction fails.</returns>
     public static FactoryModel? ExtractFactory(INamedTypeSymbol symbol, FactoryIntent intent, string baseType)
     {
-        var constructor = symbol.Constructors.FirstOrDefault();
+        // Skip a record's synthetic copy constructor (the implicitly-declared single-parameter ctor
+        // whose parameter is the containing type itself); selecting it would treat the type as its own
+        // dependency. Non-record types have no such ctor, so this is a no-op for class/struct.
+        var constructor = symbol.Constructors
+            .FirstOrDefault(c => !(c.IsImplicitlyDeclared
+                                   && c.Parameters.Length == 1
+                                   && SymbolEqualityComparer.Default.Equals(c.Parameters[0].Type, symbol)))
+            ?? symbol.Constructors.FirstOrDefault();
         if (constructor is null) return null;
 
         var requiredProperties = GetInjectableProperties(symbol);

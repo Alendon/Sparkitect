@@ -104,14 +104,19 @@ public sealed record TypeRegistrationEntry(
 
 /// <summary>
 /// Concrete-type kind carried on <see cref="TypeRegistrationEntry"/> so that
-/// auto-emit (49.3) can produce a matching <c>partial class</c> or <c>partial struct</c>
-/// extension. Defaults to <see cref="Class"/> for backward compatibility with callers
-/// that have not yet been wired through the kind-aware extraction path.
+/// auto-emit (49.3) can produce a matching <c>partial class</c>, <c>partial struct</c>,
+/// <c>partial record</c>, or <c>partial record struct</c> extension. The emitted partial's
+/// kind keyword must match the registered type's source declaration, or the partials will not
+/// merge and the auto-emitted <c>IHasIdentification</c> member is dropped. Defaults to
+/// <see cref="Class"/> for backward compatibility with callers that have not yet been wired
+/// through the kind-aware extraction path.
 /// </summary>
 public enum RegistrationTypeKind
 {
     Class,
-    Struct
+    Struct,
+    Record,
+    RecordStruct
 }
 
 public sealed record KeyedFactoryGenerationInfo(

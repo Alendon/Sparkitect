@@ -462,8 +462,6 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             throw new InvalidOperationException($"State {stateId} is not registered");
         }
 
-        var builder = new CoreContainerBuilder(parentContainer);
-
         // Get module types for delta modules
         var moduleTypes = new HashSet<Type>();
         foreach (var moduleId in stateMetadata.ModuleIds)
@@ -475,22 +473,20 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             moduleTypes.Add(moduleMeta.ModuleType);
         }
 
-        // Build loadedMods set from current state stack and additional mods
-        var loadedMods = new HashSet<string>(LoadedMods.Concat(additionalMods));
-
         // Register services for new modules (skip CoreModule — its services are in the root container)
-        using var configuratorContainer = DIService.CreateEntrypointContainer<IStateModuleServiceConfigurator>(loadedMods);
-        configuratorContainer.ProcessMany(configurator =>
-        {
-            if (configurator.ModuleType == typeof(CoreModule)) return;
-            if (!moduleTypes.Contains(configurator.ModuleType)) return;
+        return DIService.BuildConfiguredContainer<IStateModuleServiceConfigurator>(
+            parentContainer,
+            LoadedMods.Concat(additionalMods),
+            typeof(StateModuleServiceConfiguratorEntrypointAttribute),
+            (configurator, builder, loadedMods) =>
+            {
+                if (configurator.ModuleType == typeof(CoreModule)) return;
+                if (!moduleTypes.Contains(configurator.ModuleType)) return;
 
-            configurator.Configure(builder, loadedMods);
-            Log.Debug("Registered services for module {ModuleType} in state {StateId}",
-                configurator.ModuleType.Name, stateId);
-        });
-
-        return builder.Build();
+                configurator.Configure(builder, loadedMods);
+                Log.Debug("Registered services for module {ModuleType} in state {StateId}",
+                    configurator.ModuleType.Name, stateId);
+            });
     }
 
     [DebuggerStepThrough]

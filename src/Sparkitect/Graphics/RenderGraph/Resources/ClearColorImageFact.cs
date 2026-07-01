@@ -6,7 +6,7 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 
 [FactRegistry.Register("clear_color_image")]
-public sealed partial class ClearColorImageFact(IImageManager? Provider)
+public sealed partial record ClearColorImageFact(IImageManager? Provider)
     : DeclaredFact<ImageResource>, IHasIdentification
 {
     /// <inheritdoc/>

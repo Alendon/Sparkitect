@@ -14,8 +14,7 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 /// </summary>
 internal sealed class GraphSetupContext(
     ResourceTransaction transaction,
-    FrameInstanceContext frameContext,
-    IImageManager provider) : ISetupContext
+    FrameInstanceContext frameContext) : ISetupContext
 {
 
     /// <inheritdoc/>

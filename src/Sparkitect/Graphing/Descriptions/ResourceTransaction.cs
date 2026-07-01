@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Sparkitect.DI.Container;
 using Sparkitect.Graphing.Compile;
 using Sparkitect.Graphing.Ledger;
 using Sparkitect.Modding;
@@ -17,12 +18,24 @@ namespace Sparkitect.Graphing.Descriptions;
 public sealed class ResourceTransaction : IResourceTransaction
 {
     private readonly DeclarationLedger _ledger;
+    private readonly IFactoryContainer<Identification, DeclaredFact>? _factFactory;
     private readonly Dictionary<GraphNodeId, object> _factsByResource = [];
     private readonly HashSet<object> _declaredInstances = new(ReferenceEqualityComparer.Instance);
     private readonly Stack<GraphNodeId> _selfResources = [];
 
-    /// <summary>Creates a transaction recording into <paramref name="ledger"/>.</summary>
-    public ResourceTransaction(DeclarationLedger ledger) => _ledger = ledger;
+    /// <summary>
+    /// Creates a transaction recording into <paramref name="ledger"/>. The optional
+    /// <paramref name="factFactory"/> is the DI keyed factory a description resolves its facts through
+    /// via <see cref="InstantiateFact{TDeclaredFact}"/>; omit it for transactions that construct facts
+    /// directly and never call that verb.
+    /// </summary>
+    public ResourceTransaction(
+        DeclarationLedger ledger,
+        IFactoryContainer<Identification, DeclaredFact>? factFactory = null)
+    {
+        _ledger = ledger;
+        _factFactory = factFactory;
+    }
 
     /// <inheritdoc/>
     public void Read<T>(ResourceRef<T> reference) =>
@@ -76,6 +89,20 @@ public sealed class ResourceTransaction : IResourceTransaction
         }
 
         return new ResourceRef<T>(_selfResources.Peek(), Epoch.Base);
+    }
+
+    /// <inheritdoc/>
+    public TDeclaredFact InstantiateFact<TDeclaredFact>() where TDeclaredFact : DeclaredFact, IHasIdentification
+    {
+        if (_factFactory is null)
+            throw new InvalidOperationException(
+                "InstantiateFact requires a fact factory; this transaction was constructed without one.");
+
+        if (!_factFactory.TryResolve(TDeclaredFact.Identification, out var fact))
+            throw new InvalidOperationException(
+                $"No fact factory resolved for {TDeclaredFact.Identification} — fact registration missing or DI deps unmet.");
+
+        return (TDeclaredFact)fact;
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Graphing;
 
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
@@ -10,6 +11,7 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// constructs a single-index leaf. It owns no per-index arrays — the index lives here, in the resolve.
 /// </summary>
 [PublicAPI]
+[GraphLocal<IImageManager, IRenderGraph>]
 public sealed class ImageManager : IImageManager
 {
     private VkSwapchain? _swapchain;

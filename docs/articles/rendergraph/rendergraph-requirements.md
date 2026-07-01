@@ -410,7 +410,11 @@ at runtime; the state required by a given use is carried by the using descriptio
 current-against-required at the point of request is what produces a transition — never stored in
 the ledger. Leaf instances are built through their per-family backing provider (the image manager
 for images); composite and view resources self-resolve by composing already-resolved sub-instances,
-so only the small set of physically-backed leaf types depends on a manager. Resolution is lazy and
+so only the small set of physically-backed leaf types depends on a manager. A leaf's facts receive
+their backing provider by **dependency injection**: backing providers register as graph-local services
+in the render graph's per-graph child container, and a fact is DI-instantiated against that container
+(through the fact keyed factory) so its provider dependency is constructor-injected — never pulled
+from an ambient lookup. Resolution is lazy and
 dependency-first, positioned by the plan rather than performed in one upfront sweep: the render
 graph drives the swapchain and informs the image manager of the current acquired index as part of
 that resolution.
@@ -1012,9 +1016,12 @@ backing-recycling intelligence, and frame-graph optimizations.
   moment marking carried inside the description, not as pass-level verbs or parameters.
 - The return shape of moment registration methods — the single symbol both analyzers and link
   read the moment's resource type from.
-- How leaf descriptions reach backing providers at instance creation (the one place the design
+- ~~How leaf descriptions reach backing providers at instance creation (the one place the design
   bends never-pull: scoped provider lookup on the instance context vs dedicated transaction
-  primitives for physical leaves).
+  primitives for physical leaves).~~ **(RESOLVED 2026-06-26 by the 55.2 implementation: backing
+  providers are graph-local DI services in the render graph's per-graph child container; a leaf's
+  facts are DI-instantiated against that container and receive their backing provider by constructor
+  injection — neither a scoped instance-context lookup nor a transaction primitive.)**
 - Residency and instance policy for resources carried across frames once multiple frames are in
   flight (single-instance-with-sync vs copy-on-advance), and its interaction with the
   conditional re-execution sketch.

@@ -1,6 +1,5 @@
 using JetBrains.Annotations;
 using Sparkitect.CompilerGenerated.IdExtensions;
-using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphing.Descriptions;
 using Sparkitect.Modding.IDs;
 

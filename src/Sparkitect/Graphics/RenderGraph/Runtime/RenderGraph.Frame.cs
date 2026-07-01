@@ -42,7 +42,7 @@ public sealed partial class RenderGraph
 
         // Inform the backing provider of this frame's acquired index, then bind a FRESH per-frame
         // instance context so the leaf resolves against the current index (Pitfall 3: N=1 cache).
-        _provider.InformAcquiredIndex(imageIndex);
+        ImageManager.InformAcquiredIndex(imageIndex);
         var instanceContext = new InstanceContext(_transaction);
         _frameContext.Bind(instanceContext);
 
