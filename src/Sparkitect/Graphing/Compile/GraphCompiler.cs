@@ -43,11 +43,20 @@ public sealed class GraphCompiler
             return unproducible;
         }
 
-        var graph = BuildOrderingGraph();
+        // Bind moments BEFORE building the ordering graph: a moment reference resolves to its single
+        // marked increment, and that binding is precisely what lets a cross-pass moment read
+        // contribute a produce-before-consume ordering edge (and participate in the cycle check).
+        if (BindMoments(out var resolvedMoments) is { } momentError)
+        {
+            return momentError;
+        }
+
+        var graph = BuildOrderingGraph(resolvedMoments);
 
         // Cycle detection via the in-repo QuikGraph idiom: TopologicalSortAlgorithm throws
         // NonAcyclicGraphException on a cycle. We translate that into a provenance-carrying DU case
-        // rather than letting the exception escape (the deprecated compiler threw a string).
+        // rather than letting the exception escape (the deprecated compiler threw a string). The
+        // moment edges folded in above are included, so a moment-induced cycle surfaces here.
         var topo = new TopologicalSortAlgorithm<GraphNodeId, Edge<GraphNodeId>>(graph);
         try
         {
@@ -56,11 +65,6 @@ public sealed class GraphCompiler
         catch (NonAcyclicGraphException)
         {
             return new CompileError.Cycle(FindCycleParticipants(graph));
-        }
-
-        if (BindMoments(out var resolvedMoments) is { } momentError)
-        {
-            return momentError;
         }
 
         var ordered = DeriveOrdering(graph);
@@ -175,9 +179,11 @@ public sealed class GraphCompiler
     /// <summary>
     /// Builds the data-flow ordering graph over ledger nodes per requirements §Data-Flow Ordering:
     /// every Read orders the reader after that epoch's producing increment; every Increment orders
-    /// after its source epoch and after that source epoch's declared readers (the anti-dependency).
+    /// after its source epoch and after that source epoch's declared readers (the anti-dependency);
+    /// every moment read orders the reader after the marked increment the moment resolves to.
     /// </summary>
-    private BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> BuildOrderingGraph()
+    private BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> BuildOrderingGraph(
+        IReadOnlyDictionary<Identification, ResolvedMoment> resolvedMoments)
     {
         var graph = new BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>>(allowParallelEdges: false);
 
@@ -214,6 +220,21 @@ public sealed class GraphCompiler
                 EnsureVertex(graph, reader);
                 AddEdge(graph, reader, increment.ProducedNode);
             }
+        }
+
+        // Moment read: the reader orders after the marked increment its moment resolves to. This is
+        // the produce-before-consume edge a cross-pass moment reference contributes. A moment with no
+        // resolved producer was already rejected by BindMoments (UndefinedMoment), so any read that
+        // reaches here has a bound increment; a read without one is skipped defensively.
+        foreach (var momentRead in _ledger.MomentReads)
+        {
+            if (!resolvedMoments.TryGetValue(momentRead.Moment, out var resolved))
+            {
+                continue;
+            }
+
+            EnsureVertex(graph, momentRead.Reader);
+            AddEdge(graph, resolved.IncrementNode, momentRead.Reader);
         }
 
         return graph;

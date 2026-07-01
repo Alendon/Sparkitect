@@ -1,4 +1,5 @@
 using MinimalSampleMod.CompilerGenerated.IdExtensions;
+using MinimalSampleMod.Resources;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphing;
 using Sparkitect.Graphics.RenderGraph;
@@ -31,11 +32,9 @@ internal sealed partial class ClearColorPass : ComputePass
             Float32_3 = 1f,
         };
 
-        img.TransitionTo(
-            commandBuffer,
-            ImageLayout.TransferDstOptimal,
-            AccessFlags.TransferWriteBit,
-            PipelineStageFlags.TransferBit);
+        // The transfer-dst transition is contributed by the clear-color view's pre-execute hook (the
+        // render graph dispatches it before this Execute) and the present transition by its finishline
+        // hook; the pass performs no layout transition itself.
         commandBuffer.ClearColorImage(img.Backing, ImageLayout.TransferDstOptimal, in clearColor);
     }
 }

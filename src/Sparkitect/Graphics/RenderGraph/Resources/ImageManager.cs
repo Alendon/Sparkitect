@@ -1,7 +1,10 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
+using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Graphing;
+using Sparkitect.Utils.DU;
+using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
@@ -14,8 +17,12 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 [GraphLocal<IImageManager, IRenderGraph>]
 public sealed class ImageManager : IImageManager
 {
+    private readonly IVulkanContext _vulkanContext;
     private VkSwapchain? _swapchain;
     private uint _acquiredIndex;
+    private ImageResource? _transientLeaf;
+
+    public ImageManager(IVulkanContext vulkanContext) => _vulkanContext = vulkanContext;
 
     /// <inheritdoc/>
     public void SetSwapchain(VkSwapchain swapchain) => _swapchain = swapchain;
@@ -38,5 +45,37 @@ public sealed class ImageManager : IImageManager
             _swapchain.ImageFormat,
             initialLayout: ImageLayout.Undefined,
             initialAccess: 0);
+    }
+
+    /// <inheritdoc/>
+    public ImageResource ResolveTransientLeaf(ExtentIntent intent, Format format)
+    {
+        // N=1 stable: the transient backing is allocated once and reused for the graph's lifetime.
+        if (_transientLeaf is not null)
+            return _transientLeaf;
+
+        if (_swapchain is null)
+            throw new InvalidOperationException(
+                "ImageManager.ResolveTransientLeaf: swapchain not applied. " +
+                "Call SetSwapchain(VkSwapchain) before resolving a transient leaf.");
+
+        var extent = intent switch
+        {
+            ExtentIntent.MatchSwapchain => _swapchain.Extent,
+        };
+
+        var result = _vulkanContext.CreateStorageImage2D(extent, format);
+        if (result is not Result<VkImage, VkApiResult>.Ok ok)
+            throw new InvalidOperationException(
+                "ImageManager.ResolveTransientLeaf: CreateStorageImage2D failed " +
+                $"({((Result<VkImage, VkApiResult>.Error)result).Value}).");
+
+        _transientLeaf = new ImageResource(
+            ok.Value,
+            extent,
+            format,
+            initialLayout: ImageLayout.Undefined,
+            initialAccess: 0);
+        return _transientLeaf;
     }
 }

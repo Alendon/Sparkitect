@@ -57,12 +57,25 @@ Sections marked as sketched directions carry no requirements weight.
   metadata prefixes, element counts) is encoded by *specialized* descriptions and resources. The
   same result is reachable two equally valid ways: compose general parts and model the complexity
   in pass setup, or encapsulate it in a specialized description. Composability is what offers both.
-- There is no resource lifecycle hook model in the foundation. The stock implementation uses
-  generated or manually supplied render graph lifecycle hooks at the emergent graph layer.
-- Synchronization is primarily plan output derived from the ledger and static view metadata;
-  lifecycle hooks are the authored extension surface, not the synchronization mechanism.
+- There is no resource lifecycle hook model in the foundation (L1). The stock implementation uses
+  generated or manually supplied render graph lifecycle hooks at the emergent graph layer (L2).
+- Lifecycle hooks are the synchronization mechanism, not merely an optional extension surface. The
+  compiled plan fixes only order and position; hooks dispatched at those plan-positioned lifecycle
+  points reconcile each resource's carried current state against the required state of its use,
+  issuing the barriers and layout transitions at runtime. Thin, pass-owned view resources contribute
+  their own transition hooks, and the same hook dispatch is the general extension point for injecting
+  execution logic into the lifecycle without editing passes or the graph.
 - No authoring role is privileged. Engine code, game code, and mods use the same public
   contracts, registration paths, and extension points.
+- **The render graph holds no knowledge of any resource's runtime state.** It never inspects,
+  assumes, or stores static metadata describing what state a resource is in at runtime. Any such
+  coupling would require assumptions or knowledge about resources that *always* limit what a resource
+  can be and how a mod may define or extend it — a direct conflict with the modding philosophy and
+  the no-privileged-authoring-role principle. Runtime state is owned by the resource itself; the graph
+  only schedules *when* the resource's own lifecycle hook runs, and that hook reconciles the
+  resource's carried state on its own. This is the root reason synchronization cannot be
+  plan-computed and is fully runtime-dynamic (see Relations and Epochs → synchronization, and Render
+  Graph Lifecycle Hooks). It has been a recurring design trouble-point; treat it as inviolable.
 
 ## Layer Model
 
@@ -126,8 +139,9 @@ concern belongs in L1.
 L2 provides:
 
 - Pass abstractions such as render and compute pass bases.
-- Synchronization, layout transitions, and presentation behavior resolved at runtime from the L1
-  plan's ordering plus resources' carried state — the plan fixes order and position, not state.
+- Synchronization, layout transitions, and presentation behavior resolved at runtime by
+  lifecycle-hook dispatch, driven by the L1 plan's ordering plus resources' carried state — the plan
+  fixes order and position, not state.
 - Physical backing providers for leaf resources — the only per-family runtime services retained.
 - The physical meaning of an instance (per-swapchain-image / per-in-flight-frame backing rotation).
 - Render graph lifecycle hook dispatch.
@@ -215,7 +229,7 @@ public sealed partial class EntityStagingPass : ComputePass
     public override void Execute(ExecutePayload payload)
     {
         var staging = _staging.Fetch();
-        // Record pass work; synchronization for declared relations is plan-emitted.
+        // Record pass work; synchronization is plan-positioned lifecycle-hook dispatch, not recorded here.
     }
 }
 ```
@@ -324,7 +338,7 @@ The stock path should follow this pattern:
    type agreement between member, verb, and description.
 6. Runtime graph building consumes the generated or manually written contracts; declarations land
    in the ledger.
-7. The compiled plan interleaves emitted synchronization, hook dispatch, and pass `Execute`.
+7. The compiled plan positions lifecycle-hook dispatch (which performs synchronization) and pass `Execute`.
 
 This avoids deep runtime inference while keeping day-to-day authoring small. It also keeps the
 system open: generated contracts are just code. When the stock generator is not suitable, a mod
@@ -406,8 +420,9 @@ resource model retains; all wiring and per-execution value state lives in the le
 core.
 
 A leaf resource instance carries its own **current physical state** (such as an image's layout)
-at runtime; the state required by a given use is carried by the using description, and reconciling
-current-against-required at the point of request is what produces a transition — never stored in
+at runtime; the state required by a given use is carried by the using description, and a lifecycle
+hook contributed by that use reconciles current-against-required at the use's plan-positioned
+lifecycle point, which is what produces a transition — never stored in
 the ledger. Leaf instances are built through their per-family backing provider (the image manager
 for images); composite and view resources self-resolve by composing already-resolved sub-instances,
 so only the small set of physically-backed leaf types depends on a manager. A leaf's facts receive
@@ -461,11 +476,11 @@ This two-relation base is deliberately minimal because the rest of the system de
 - Anti-dependencies (reuse of a backing, invalidation of values grounded on an advanced epoch)
   derive from epoch advances.
 - Synchronization — barriers, layout transitions, including first-use transitions from
-  undefined state — is **resolved at runtime**, at the point a resource instance is requested
-  (explicitly by a pass fetch, or transitively as a composite resolves its parts). Compilation
-  fixes only *where and in what order* each resource is used; it computes no state. At request time
-  the transition reconciles the resource instance's **carried current state** with the **required
-  state** of the use. First use is the birth edge, not a special case.
+  undefined state — is **resolved at runtime by lifecycle-hook dispatch**, positioned by the
+  compiled plan. Compilation fixes only *where and in what order* each resource is used; it computes
+  no state. At each plan-positioned lifecycle point the dispatched hook — contributed by the using
+  view/resource — reconciles the resource instance's **carried current state** with the **required
+  state** of the use, issuing the transition. First use is the birth edge, not a special case.
 - Producer validation (a referenced resource nobody produces, a resource produced twice) is fork
   and absence checking, uniform everywhere.
 - Conditional re-execution (skipping work whose inputs did not change) remains expressible over
@@ -683,8 +698,11 @@ drives swapchain acquisition and presentation. Per-image-index selection lives i
 resolve, so a resolved swapchain image is scoped to the current acquired index. Presentation is
 modeled in the relation grammar: the graph reserves a single **finishline moment**, and whichever
 increment drives the presentation target to its present-ready epoch marks it. The graph references
-that moment as a consumer; presentation and its present-layout transition are issued by the graph
-at the finishline position. An unmarked finishline is an undefined-moment error; two markings are a
+that moment as a consumer. The present-layout transition is contributed as a lifecycle hook by the
+resource that publishes the finishline — the same hook-driven reconciliation as every other
+transition; the graph issues only the queue-level presentation at the finishline position, validates
+once at setup that the finishline resolves to the swapchain-backed image, and asserts present-
+readiness at runtime. An unmarked finishline is an undefined-moment error; two markings are a
 duplicate-definition error — the ordinary moment diagnostics.
 
 ## Graph Compilation And Execution
@@ -716,8 +734,8 @@ nothing yet. Moments are recorded as markings on increments.
 **Plan emission.** From the linked ledger the graph derives: pass execution order (from
 Read/Increment edges, plus explicit ordering escape hatches); the epoch-edge structure that
 synchronization is resolved against at runtime (barriers and layout transitions, including
-first-use transitions, are issued when a resource is requested — reconciling its carried current
-state with the use's required state — not precomputed here); the positions where inherently
+first-use transitions, are issued by plan-positioned lifecycle hooks reconciling each resource's
+carried current state with the use's required state — not precomputed here); the positions where inherently
 multi-image backings are index-selected; and the scheduled positions of lifecycle hook dispatch,
 ordered ledger-topologically (see Render Graph Lifecycle Hooks).
 
@@ -725,9 +743,11 @@ ordered ledger-topologically (see Render Graph Lifecycle Hooks).
 
 The stock graph deliberately blends two models. **Precompiled:** structure, ordering, moment
 binding, and validation are resolved once at compile/link, giving determinism and full diagnostics.
-**Ad-hoc:** physical state — instance creation and layout/barrier transitions — is resolved lazily
-at runtime, when a resource is explicitly or transitively requested, never baked into a static
-barrier list. The plan knows *when, where, and in what order* each resource is used; it does not
+**Ad-hoc:** physical state — instance creation and layout/barrier transitions — is resolved at
+runtime rather than baked into a static barrier list: instance creation is lazy, performed when a
+resource is explicitly or transitively requested, and layout/barrier transitions are issued by
+plan-positioned lifecycle hooks reconciling carried against required state. The plan knows *when,
+where, and in what order* each resource is used; it does not
 know the concrete instance or its state until that instance is requested. This keeps compile-time
 correctness while letting state track real runtime conditions.
 
@@ -738,7 +758,8 @@ ledger: every Read of an epoch orders the reader after that epoch's producing in
 Increment orders after its source epoch and after that epoch's declared readers (the
 anti-dependency that makes backing reuse safe). No other ordering input exists in the data-flow
 layer — there are no access-mode enums and no inferred semantics; richer access information lives
-in resource types as static metadata consumed by synchronization emission, never by ordering.
+in resource types as static metadata consumed by the views' synchronization (transition) hooks,
+never by ordering.
 
 Edge semantics:
 
@@ -819,6 +840,9 @@ interfaces.
 
 Examples of legitimate hook work include:
 
+- Reconcile a resource's carried layout/access to a use's required state — the first-use and
+  inter-use barriers and layout transitions — at the use's planned position. This is the primary
+  synchronization mechanism, contributed by the using view/resource, not plan output.
 - Copy CPU data into a mapped or staging buffer at a declared increment's planned position.
 - Update or push descriptor payloads before command recording.
 - Bind descriptor sets or pipelines.
@@ -826,9 +850,11 @@ Examples of legitimate hook work include:
 - Present at the finishline moment's position, after the increment that marks the presentation
   target as present-ready.
 
-Moved out of hooks and into plan output: image layout transitions before writes, barrier
-placement, publishing a resource version after a write (superseded by epochs), and marking a view
-as updated for conditional execution (belongs to the conditional re-execution sketch).
+Kept out of hooks: publishing a resource version after a write (superseded by epochs) and marking a
+view as updated for conditional execution (belongs to the conditional re-execution sketch). Image
+layout transitions and barrier placement are **not** plan output — they are hook work (above),
+issued by the using view's transition hook reconciling carried against required state; the plan only
+positions that dispatch.
 
 These hooks belong to stock engine resource/view contracts or extension-defined contracts. They
 are not foundation resource lifecycle hooks.
@@ -891,8 +917,8 @@ Current sample rendering is effectively:
 5. Present.
 
 The stock graph should absorb the repeated boilerplate: command pools/buffers, fences,
-semaphores, acquire/present, descriptor update plumbing, plan-emitted barriers and layout
-transitions, resize invalidation, storage-image-to-swapchain blit, cleanup ordering, and frame
+semaphores, acquire/present, descriptor update plumbing, plan-positioned hook-issued barriers and
+layout transitions, resize invalidation, storage-image-to-swapchain blit, cleanup ordering, and frame
 resource duplication.
 
 Pass-specific code should remain in passes: shader choice, resource declarations, push constant
@@ -988,7 +1014,8 @@ resolution algorithm. Cycle, fork, and link validation remain mandatory.
 
 The redesign is proven by the smallest stock feature set that exercises every model element:
 
-- The ledger, the two relations, epoch linking, and plan-emitted ordering and synchronization.
+- The ledger, the two relations, epoch linking, plan-emitted ordering, and plan-positioned
+  hook-dispatched synchronization.
 - The description/facts/instance pipeline, including declaration products and the
   one-instance-per-declaration rule.
 - Leaf buffer and image descriptions backed by graph-local backing providers.

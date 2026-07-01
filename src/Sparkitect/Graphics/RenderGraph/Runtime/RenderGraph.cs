@@ -37,11 +37,19 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     private FrameInstanceContext _frameContext = null!;
     private CompiledPlan _plan = null!;
 
-    // The single pass for the walking skeleton, run in CompiledPlan order in the frame loop.
+    // The passes, run in the frame loop; _passRoots[i] holds pass i's plan-derived root resources
+    // (parallel to _passes) so the frame loop can type-cast each root to the lifecycle hook interfaces.
     private readonly List<ComputePass> _passes = [];
+    private readonly List<IReadOnlyList<RootResource>> _passRoots = [];
 
-    // The present target: the finishline-marked clear-image leaf the graph reconciles to PresentSrcKhr.
+    // The present target: the finishline-marked leaf whose carried state the graph asserts is
+    // PresentSrcKhr (the present transition is contributed by a hook, not issued by the RG).
     private IGraphResource<ImageResource>? _presentTarget;
+
+    // The plan-derived root resource that published the finishline moment; the frame loop dispatches
+    // the finishline (present) hook on it after all passes run. Its swapchain backing is validated once.
+    private RootResource? _finishlinePublisher;
+    private bool _presentBackingValidated;
 
     private VkCommandPool _commandPool = null!;
     private VkCommandBuffer _commandBuffer = null!;
@@ -120,7 +128,11 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
                     $"Render pass {id} ({pass.GetType().FullName}) is not a ComputePass — the walking skeleton " +
                     "only supports compute-category passes.");
 
+            // Bracket the pass's single-Use Setup so the setup context records the root resource
+            // handles this pass declares (D-07a). The RG stays decoupled from pass-private fields.
+            setupContext.BeginPass();
             computePass.Setup(setupContext);
+            _passRoots.Add(setupContext.EndPass());
             _passes.Add(computePass);
         }
 
@@ -143,6 +155,12 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
                 "its present-target increment with the finishline moment so the graph can reconcile it to present.");
         var presentRef = _ledger.ReferenceTo<ImageResource>(finishline.IncrementNode);
         _presentTarget = new GraphResourceHandle<ImageResource>(presentRef, _frameContext);
+
+        // Correlate the finishline-publishing ROOT resource: the moment's marked increment lives on the
+        // same resource chain the publishing description declared, so match the recorded pass root whose
+        // chain id equals that increment's chain (not by re-deriving from the leaf). The frame loop
+        // dispatches the finishline (present) hook on this root after ALL passes have executed.
+        _finishlinePublisher = FindRootByChain(ResolveChain(finishline.IncrementNode));
 
         var poolResult = _vulkanContext.CreateCommandPool(
             CommandPoolCreateFlags.ResetCommandBufferBit, queueFamily);
@@ -188,6 +206,26 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
             }
         }
         throw new InvalidOperationException("RenderGraph: no graphics-capable queue family found on physical device.");
+    }
+
+    // The chain (declaring resource node) a ledger node belongs to; None when the node is unknown.
+    private GraphNodeId ResolveChain(GraphNodeId nodeId)
+    {
+        foreach (var node in _ledger.Nodes)
+            if (node.Id == nodeId)
+                return node.Resource;
+        return GraphNodeId.None;
+    }
+
+    // The recorded pass root whose declared resource chain equals the given chain, or null if none.
+    private RootResource? FindRootByChain(GraphNodeId chain)
+    {
+        if (chain.IsNone) return null;
+        foreach (var passRoots in _passRoots)
+            foreach (var root in passRoots)
+                if (root.ResourceChain == chain)
+                    return root;
+        return null;
     }
 
     public void Dispose()

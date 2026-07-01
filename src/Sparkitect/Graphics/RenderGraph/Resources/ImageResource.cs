@@ -6,7 +6,7 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 
 [PublicAPI]
-public sealed class ImageResource
+public class ImageResource
 {
     public VkImage Backing { get; }
 

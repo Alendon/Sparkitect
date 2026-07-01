@@ -1,6 +1,10 @@
 using Sparkitect.Graphing;
 using Sparkitect.Graphing.Compile;
+using Sparkitect.Graphing.Descriptions;
+using Sparkitect.Graphing.Ledger;
+using Sparkitect.Modding;
 using Sparkitect.Utils.DU;
+using static Sparkitect.Tests.Graphing.SyntheticDomain;
 
 namespace Sparkitect.Tests.Graphing;
 
@@ -10,6 +14,32 @@ namespace Sparkitect.Tests.Graphing;
 /// </summary>
 public class OrderingTests
 {
+    private static readonly Identification OrderingMoment = Identification.Create(9, 1, 1);
+
+    [Test]
+    public async Task MomentReference_OrdersConsumerAfterProducerIncrement()
+    {
+        var ledger = new DeclarationLedger();
+        var tx = new ResourceTransaction(ledger);
+
+        // Declare the consumer FIRST so the mint-order tiebreak does NOT accidentally place it after
+        // the producer: the ONLY thing that can order the consumer after the marked increment is a
+        // real moment-derived ordering edge. Consumer-first therefore makes this red pre-fix.
+        var consume = tx.Declare(new ConsumeMomentDescription(OrderingMoment, Size: 8));
+        tx.Declare(new ProduceMomentDescription(OrderingMoment, Size: 16));
+
+        var plan = await AssertOk(new GraphCompiler(ledger).Link());
+        var order = plan.OrderedNodes.ToList();
+
+        // The producer increment is the single marked node; the consume reader is the consume
+        // description's minted node (the node ReferenceMoment recorded the read against).
+        var producerIncrement = ledger.Nodes.Single(node => node.IsMarked).Id;
+        var consumeReader = consume.Resource;
+
+        // A cross-pass moment reference must derive produce-before-consume ordering (SC#3 / D-15).
+        await Assert.That(order.IndexOf(consumeReader))
+            .IsGreaterThan(order.IndexOf(producerIncrement));
+    }
     [Test]
     public async Task LinearChain_OrdersReaderAfterProducer_AndIncrementAfterSource()
     {
