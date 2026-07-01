@@ -9,7 +9,7 @@ namespace Sparkitect.GameState;
 /// </summary>
 [Registry(Identifier = "state")]
 [PublicAPI]
-public partial class StateRegistry(IGameStateManagerRegistryFacade gameStateManager) : IRegistry
+public partial class StateRegistry(IGameStateManagerRegistryFacade gameStateManager) : IRegistry<CoreModule>
 {
     /// <inheritdoc/>
     public static string Identifier => "state";

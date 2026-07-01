@@ -15,6 +15,7 @@ public class TestRegistry_Metadata
     public const bool IsExternal = false;
     public const string RegisterMethods = "RegisterItem;RegisterType";
     public const string ResourceFiles = "data:1:0;config:0:0";
+    public const string OwningModule = "";
 
 
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

@@ -17,7 +17,8 @@ namespace Sparkitect.GameState;
 /// Manages game state transitions, module lifecycle, and main loop execution
 /// </summary>
 [StateService<IGameStateManager, CoreModule>]
-internal sealed class GameStateManager : IGameStateManager, IGameStateManagerRegistryFacade, IGameStateManagerStateFacade
+internal sealed class GameStateManager : IGameStateManager, IGameStateManagerRegistryFacade, IGameStateManagerStateFacade,
+    IGameStateTransitionSignal
 {
     private const string DefaultRootModConfigPath = "mods/roots.json";
 
@@ -43,11 +44,16 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     private Identification? _pendingTransitionTarget;
     private bool _isTransitioning;
     private bool _shutdownRequested;
+    private GsmTransitionDirection _transitionDirection = GsmTransitionDirection.None;
 
     public required IModManager ModManager { get; init; }
     public required IRegistryManager RegistryManager { get; init; }
     public required IDIService DIService { get; init; }
     public required IStatelessFunctionManager FunctionManager { get; init; }
+
+    GsmTransitionDirection IGameStateTransitionSignal.TransitionDirection => _transitionDirection;
+
+    private IRegistryLifecycleManager RegistryLifecycle => (IRegistryLifecycleManager)RegistryManager;
 
     public ICoreContainer CurrentCoreContainer => _stateStack.Count > 0 ? _stateStack.Peek().Container : RootContainer;
     public ICoreContainer RootContainer { get; set; } = null!;
@@ -77,16 +83,10 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         // Extract mod IDs for registry processing and DI (runtime identification)
         var rootModIds = rootMods.Select(m => m.Id).ToArray();
 
-        RegistryManager.AddRegistry<ModuleRegistry>();
-        RegistryManager.AddRegistry<StateRegistry>();
-        RegistryManager.AddRegistry<PerFrameRegistry>();
-        RegistryManager.AddRegistry<TransitionRegistry>();
-
-        // Process registries for root mods (uses IDs)
-        RegistryManager.ProcessRegistry<ModuleRegistry>(rootModIds);
-        RegistryManager.ProcessRegistry<StateRegistry>(rootModIds);
-        RegistryManager.ProcessRegistry<PerFrameRegistry>(rootModIds);
-        RegistryManager.ProcessRegistry<TransitionRegistry>(rootModIds);
+        // CoreModule owns the module/state/per-frame/transition registries. The manager auto-adds and
+        // populates them for the root mods before the finalize pass, which needs those registrations to
+        // validate the state/module hierarchy.
+        RegistryLifecycle.BootstrapRootRegistries(rootModIds, RootContainer);
 
         // Finalize registrations
         FinalizeRegistrations();
@@ -114,9 +114,10 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         var entryFrame = CreateStateFrame(entryStateId, RootContainer, rootModIds);
 
         PushState(entryFrame);
+        EnterFrameRegistries(entryFrame);
 
         // Execute entry sequence
-        ExecuteMethods(entryFrame.TransitionEnterMethods);
+        ExecuteEnterMethods(entryFrame.TransitionEnterMethods);
 
         Log.Information("Entry state active, starting main loop");
         StartMainLoop();
@@ -187,11 +188,8 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         // Extract mod IDs for registry processing (runtime identification)
         var additionalModIds = additionalMods.Select(m => m.Id).ToList();
 
-        // Process registries for the newly loaded mods (uses IDs)
-        RegistryManager.ProcessRegistry<ModuleRegistry>(additionalModIds);
-        RegistryManager.ProcessRegistry<StateRegistry>(additionalModIds);
-        RegistryManager.ProcessRegistry<PerFrameRegistry>(additionalModIds);
-        RegistryManager.ProcessRegistry<TransitionRegistry>(additionalModIds);
+        // CoreModule's registries are already added; populate them for the newly loaded mods before finalize.
+        RegistryLifecycle.ProcessModuleRegistriesForMods(CoreModule.Identification, additionalModIds, CurrentCoreContainer);
 
         // Finalize registrations (validates state/module hierarchy)
         FinalizeRegistrations();
@@ -229,7 +227,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
             // Parent is currently leaf - execute parent OnFrameExit
             var parentFrame = _stateStack.Peek();
-            ExecuteMethods(parentFrame.TransitionExitMethods);
+            ExecuteExitMethods(parentFrame.TransitionExitMethods);
 
             // Create child frame (uses IDs for state frame tracking)
             var parentContainer = _stateStack.Peek().Container;
@@ -239,9 +237,10 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             childFrame = childFrame with { AddedMods = additionalModIds };
 
             PushState(childFrame);
+            EnterFrameRegistries(childFrame);
 
             // Execute child entry sequence
-            ExecuteMethods(childFrame.TransitionEnterMethods);
+            ExecuteEnterMethods(childFrame.TransitionEnterMethods);
 
             Log.Information("Transition with mod change complete: now in state {StateId}", childFrame.StateId);
         }
@@ -498,6 +497,36 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
         }
     }
 
+    // Enter/exit method passes carry a first-class direction signal the registry manager reads to auto-detect
+    // populate vs teardown. Per-frame execution keeps the default None.
+    private void ExecuteEnterMethods(IReadOnlyList<IStatelessFunction> methods)
+    {
+        _transitionDirection = GsmTransitionDirection.Enter;
+        try { ExecuteMethods(methods); }
+        finally { _transitionDirection = GsmTransitionDirection.None; }
+    }
+
+    private void ExecuteExitMethods(IReadOnlyList<IStatelessFunction> methods)
+    {
+        _transitionDirection = GsmTransitionDirection.Exit;
+        try { ExecuteMethods(methods); }
+        finally { _transitionDirection = GsmTransitionDirection.None; }
+    }
+
+    // A module's registries are added when it becomes active (its delta on state enter) and removed when the
+    // frame is popped; instance lifecycle is bookkeeping only, driven by the IRegistry<TModule> owning-module link.
+    private void EnterFrameRegistries(ActiveStateFrame frame)
+    {
+        foreach (var moduleId in frame.AddedModuleIds)
+            RegistryLifecycle.AddModuleRegistries(moduleId, frame.Container);
+    }
+
+    private void LeaveFrameRegistries(ActiveStateFrame frame)
+    {
+        foreach (var moduleId in frame.AddedModuleIds)
+            RegistryLifecycle.RemoveModuleRegistries(moduleId);
+    }
+
     private ActiveStateFrame CreateStateFrame(
         Identification stateId,
         ICoreContainer parentContainer,
@@ -594,6 +623,9 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
 
         var frame = _stateStack.Pop();
 
+        // Auto-remove the registries owned by this frame's modules (bookkeeping only).
+        LeaveFrameRegistries(frame);
+
         // Unload mods if this frame added any
         if (frame.AddedMods.Count > 0)
         {
@@ -617,16 +649,16 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
         var childFrame = _stateStack.Peek();
 
         // Execute child exit sequence
-        ExecuteMethods(childFrame.TransitionExitMethods);
+        ExecuteExitMethods(childFrame.TransitionExitMethods);
 
         // Pop child
         PopState();
 
-        // Parent is now leaf - execute parent enter transition
+        // Parent is now leaf - execute parent enter transition (its registries stay added from first entry)
         if (_stateStack.Count > 0)
         {
             var parentFrame = _stateStack.Peek();
-            ExecuteMethods(parentFrame.TransitionEnterMethods);
+            ExecuteEnterMethods(parentFrame.TransitionEnterMethods);
             Log.Information("Transitioned to parent: {StateId}", parentFrame.StateId);
         }
     }
@@ -639,15 +671,16 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
         if (_stateStack.Count > 0)
         {
             var parentFrame = _stateStack.Peek();
-            ExecuteMethods(parentFrame.TransitionExitMethods);
+            ExecuteExitMethods(parentFrame.TransitionExitMethods);
         }
 
         // Create and push child
         var childFrame = CreateStateFrame(childStateId, parentContainer, []);
         PushState(childFrame);
+        EnterFrameRegistries(childFrame);
 
         // Execute child entry sequence
-        ExecuteMethods(childFrame.TransitionEnterMethods);
+        ExecuteEnterMethods(childFrame.TransitionEnterMethods);
 
         Log.Information("Transitioned to child: {StateId}", childStateId);
     }
@@ -750,7 +783,7 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
         if (_stateStack.Count > 0)
         {
             var rootFrame = _stateStack.Peek();
-            ExecuteMethods(rootFrame.TransitionExitMethods);
+            ExecuteExitMethods(rootFrame.TransitionExitMethods);
             PopState();
         }
 

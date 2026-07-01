@@ -11,18 +11,17 @@ public partial class SampleModule : IStateModule
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
 
-    [TransitionFunction("process_registry")]
-    [OnCreateScheduling]
-    private static void ProcessRegistry(IRegistryManager registryManager)
+    [TransitionFunction("process_registry_enter")]
+    [OnFrameEnterScheduling]
+    private static void ProcessRegistryEnter(IRegistryManager registryManager)
     {
-        registryManager.AddRegistry<DummyRegistry>();
-        registryManager.ProcessAllMissing<DummyRegistry>();
+        registryManager.ProcessRegistry<DummyRegistry, SampleModule>();
     }
 
-    [TransitionFunction("remove_registry")]
-    [OnDestroyScheduling]
-    private static void RemoveRegistry(IRegistryManager registryManager)
+    [TransitionFunction("process_registry_exit")]
+    [OnFrameExitScheduling]
+    private static void ProcessRegistryExit(IRegistryManager registryManager)
     {
-        registryManager.UnregisterAllRemaining<DummyRegistry>();
+        registryManager.ProcessRegistry<DummyRegistry, SampleModule>();
     }
 }

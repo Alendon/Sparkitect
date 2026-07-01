@@ -36,6 +36,21 @@ public static partial class TestData
         public struct Identification { }
         public interface IHasIdentification { }
 
+        public interface IRegistryBase { void Unregister(Identification id); }
+        public interface IRegistry : IRegistryBase { }
+
+        public interface IStateModule { }
+
+        public interface IRegistry<TModule> : IRegistry { }
+
+        // Owning-module stand-in for registry fixtures. Exposes a static Identification the generator's
+        // OwningModule emission reads; deliberately does not declare : IHasIdentification so the shared
+        // surface never trips the IHasIdentification analyzer in unrelated tests.
+        public sealed partial class TestModule
+        {
+            public static Identification Identification => default;
+        }
+
         [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
         public sealed class KeyedFactoryGenerationMarkerAttribute<TBase> : Attribute where TBase : class { }
 

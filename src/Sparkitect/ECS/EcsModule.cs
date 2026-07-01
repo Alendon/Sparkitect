@@ -15,42 +15,22 @@ public partial class EcsModule : IStateModule
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
 
-    [TransitionFunction("add_ecs_registries")]
-    [OnCreateScheduling]
-    static void AddRegistries(IRegistryManager registryManager)
-    {
-        registryManager.AddRegistry<UnmanagedComponentRegistry>();
-        registryManager.AddRegistry<SystemGroupRegistry>();
-        registryManager.AddRegistry<SystemRegistry>();
-    }
-    
     [OnFrameEnterScheduling]
     [TransitionFunction("process_ecs_registries_up")]
-    [OrderAfter<AddEcsRegistriesFunc>]
     static void ProcessRegistriesUp(IRegistryManager registryManager, ISystemManager systemManager)
     {
-        registryManager.ProcessAllMissing<UnmanagedComponentRegistry>();
-        registryManager.ProcessAllMissing<SystemGroupRegistry>();
-        registryManager.ProcessAllMissing<SystemRegistry>();
+        registryManager.ProcessRegistry<UnmanagedComponentRegistry, EcsModule>();
+        registryManager.ProcessRegistry<SystemGroupRegistry, EcsModule>();
+        registryManager.ProcessRegistry<SystemRegistry, EcsModule>();
         systemManager.FetchMetadata();
     }
-    
-    
-    [TransitionFunction("remove_ecs_registries")]
-    [OnDestroyScheduling]
-    static void RemoveRegistries(IRegistryManager registryManager)
-    {
-        //TODO add remove function
-    }
-    
+
     [OnFrameExitScheduling]
     [TransitionFunction("process_ecs_registries_down")]
-    [OrderBefore<RemoveEcsRegistriesFunc>]
     static void ProcessRegistriesDown(IRegistryManager registryManager)
     {
-        registryManager.UnregisterAllRemaining<UnmanagedComponentRegistry>();
-        registryManager.UnregisterAllRemaining<SystemRegistry>();
+        registryManager.ProcessRegistry<UnmanagedComponentRegistry, EcsModule>();
+        registryManager.ProcessRegistry<SystemGroupRegistry, EcsModule>();
+        registryManager.ProcessRegistry<SystemRegistry, EcsModule>();
     }
-    
-    
 }

@@ -55,9 +55,11 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         // Get attribute location for reporting attribute-related errors
         var regAttrLocation = GetAttributeLocation(regAttr);
 
-        // SPARK0201: Must implement IRegistry
+        // SPARK0201: Must implement the constructed IRegistry<TModule> (the bare non-generic IRegistry
+        // no longer satisfies the contract — the owning-module link is carried by the type argument).
         var implementsIRegistry = type.AllInterfaces.Any(i =>
-            i.ToDisplayString(DisplayFormats.NamespaceAndType) == "Sparkitect.Modding.IRegistry");
+            i.OriginalDefinition.ToDisplayString(DisplayFormats.NamespaceAndType) == "Sparkitect.Modding.IRegistry"
+            && i.TypeArguments.Length == 1);
         if (!implementsIRegistry)
         {
             ctx.ReportDiagnostic(Diagnostic.Create(

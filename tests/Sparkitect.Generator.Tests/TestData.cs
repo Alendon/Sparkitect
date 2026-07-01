@@ -81,6 +81,20 @@ public static partial class TestData
                 public interface IRegistry : IRegistryBase
                 {
                 }
+
+                public interface IStateModule { }
+
+                public interface IRegistry<TModule> : IRegistry
+                {
+                }
+
+                // Owning-module stand-in for registry fixtures. Exposes a static Identification the
+                // generator's OwningModule emission reads; deliberately does not declare
+                // : IHasIdentification so the shared surface never trips the IHasIdentification analyzer.
+                public sealed partial class TestModule
+                {
+                    public static Identification Identification => Identification.Empty;
+                }
             }
             """
         );

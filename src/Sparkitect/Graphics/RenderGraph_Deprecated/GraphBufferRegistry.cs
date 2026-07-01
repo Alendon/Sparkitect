@@ -13,7 +13,7 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated;
 /// </summary>
 [Registry(Identifier = "graph_buffer")]
 [PublicAPI]
-public partial class GraphBufferRegistry(IResourceRegistrationStore store) : IRegistry
+public partial class GraphBufferRegistry(IResourceRegistrationStore store) : IRegistry<RenderGraphDeprecatedModule>
 {
     [RegistryMethod]
     public void RegisterSharedBuffer(Identification id, BufferDescription description)

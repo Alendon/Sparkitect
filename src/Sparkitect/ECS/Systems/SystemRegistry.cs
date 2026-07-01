@@ -6,7 +6,7 @@ namespace Sparkitect.ECS.Systems;
 
 [Registry(Identifier = "ecs_system", External = true)]
 [PublicAPI]
-public sealed partial class SystemRegistry : StatelessFunctionRegistryBase, IRegistry
+public sealed partial class SystemRegistry : StatelessFunctionRegistryBase, IRegistry<EcsModule>
 {
     public static string Identifier => "ecs_system";
 

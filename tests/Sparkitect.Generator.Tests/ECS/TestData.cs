@@ -211,7 +211,7 @@ public static partial class TestData
                 public sealed class EcsSystemContext { }
 
                 [Registry(Identifier = "ecs_system")]
-                public sealed partial class SystemRegistry : IRegistry
+                public sealed partial class SystemRegistry : IRegistry<TestModule>
                 {
                     public static string Identifier => "ecs_system";
                     public void Unregister(Identification id) { }
@@ -278,7 +278,7 @@ public static partial class TestData
                 public sealed class GameStateContext { }
 
                 [Registry(Identifier = "per_frame")]
-                public sealed partial class PerFrameRegistry : IRegistry
+                public sealed partial class PerFrameRegistry : IRegistry<TestModule>
                 {
                     public static string Identifier => "per_frame";
                     public void Unregister(Identification id) { }

@@ -72,7 +72,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             namespace DiTest
             {
                 [Registry(Identifier = "dummy")]
-                public class DummyRegistry : IRegistry
+                public class DummyRegistry : IRegistry<TestModule>
                 {
                     [RegistryMethod]
                     public void RegisterValue(Identification id, string value) { }
@@ -120,7 +120,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             namespace DiTest
             {
                 [Registry(Identifier = "dummy")]
-                public class DummyRegistry : IRegistry
+                public class DummyRegistry : IRegistry<TestModule>
                 {
                     [RegistryMethod]
                     public void RegisterValue(Identification id, string value) { }
@@ -167,7 +167,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             namespace DiTest
             {
                 [Registry(Identifier = "dummy")]
-                public class DummyRegistry : IRegistry
+                public class DummyRegistry : IRegistry<TestModule>
                 {
                     [RegistryMethod]
                     public void RegisterValue(Identification id, string value) { }
@@ -231,7 +231,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             namespace DiTest
             {
                 [Registry(Identifier = "dummy")]
-                public class DummyRegistry : IRegistry
+                public class DummyRegistry : IRegistry<TestModule>
                 {
                     [RegistryMethod]
                     public void RegisterType(Identification id) { }
@@ -474,7 +474,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             using Sparkitect.Modding;
             namespace N;
             [Registry(Identifier = "r")]
-            public class R : IRegistry
+            public class R : IRegistry<TestModule>
             {
                 [RegistryMethod]
                 [KeyedFactoryGenerationMarkerAttribute<IFoo>]
@@ -500,7 +500,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             using Sparkitect.Modding;
             namespace N;
             [Registry(Identifier = "r")]
-            public class R : IRegistry
+            public class R : IRegistry<TestModule>
             {
                 [RegistryMethod]
                 public void Reg<T>(Identification id) where T : class { }

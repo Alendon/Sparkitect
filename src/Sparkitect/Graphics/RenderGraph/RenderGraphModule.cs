@@ -19,34 +19,23 @@ public partial class RenderGraphModule : IStateModule
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Vulkan];
 
-    [TransitionFunction("add_render_graph_registries")]
-    [OnCreateScheduling]
-    public static void AddRegistries(IRegistryManager registryManager)
-    {
-        registryManager.AddRegistry<ResourceMomentRegistry>();
-        registryManager.AddRegistry<RenderPassRegistry>();
-        registryManager.AddRegistry<FactRegistry>();
-        registryManager.AddRegistry<RenderGraphRegistry>();
-    }
-
-    [TransitionFunction("process_render_graph_registries")]
+    [TransitionFunction("process_render_graph_registries_enter")]
     [OnFrameEnterScheduling]
-    [OrderAfter<AddRenderGraphRegistriesFunc>]
-    public static void ProcessRegistries(IRegistryManager registryManager)
+    public static void ProcessRegistriesEnter(IRegistryManager registryManager)
     {
-        registryManager.ProcessAllMissing<ResourceMomentRegistry>();
-        registryManager.ProcessAllMissing<RenderPassRegistry>();
-        registryManager.ProcessAllMissing<FactRegistry>();
-        registryManager.ProcessAllMissing<RenderGraphRegistry>();
+        registryManager.ProcessRegistry<ResourceMomentRegistry, RenderGraphModule>();
+        registryManager.ProcessRegistry<RenderPassRegistry, RenderGraphModule>();
+        registryManager.ProcessRegistry<FactRegistry, RenderGraphModule>();
+        registryManager.ProcessRegistry<RenderGraphRegistry, RenderGraphModule>();
     }
 
-    [TransitionFunction("remove_render_graph_registries")]
-    [OnDestroyScheduling]
-    public static void RemoveRegistries(IRegistryManager registryManager)
+    [TransitionFunction("process_render_graph_registries_exit")]
+    [OnFrameExitScheduling]
+    public static void ProcessRegistriesExit(IRegistryManager registryManager)
     {
-        registryManager.UnregisterAllRemaining<ResourceMomentRegistry>();
-        registryManager.UnregisterAllRemaining<RenderPassRegistry>();
-        registryManager.UnregisterAllRemaining<FactRegistry>();
-        registryManager.UnregisterAllRemaining<RenderGraphRegistry>();
+        registryManager.ProcessRegistry<ResourceMomentRegistry, RenderGraphModule>();
+        registryManager.ProcessRegistry<RenderPassRegistry, RenderGraphModule>();
+        registryManager.ProcessRegistry<FactRegistry, RenderGraphModule>();
+        registryManager.ProcessRegistry<RenderGraphRegistry, RenderGraphModule>();
     }
 }

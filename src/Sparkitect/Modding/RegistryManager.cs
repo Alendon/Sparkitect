@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using Serilog;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
@@ -9,7 +10,7 @@ using Sparkitect.Utils.DU;
 namespace Sparkitect.Modding;
 
 [StateService<IRegistryManager, CoreModule>]
-internal class RegistryManager : IRegistryManager
+internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
 {
     internal required IModManager ModManager { get; init; }
     internal required IIdentificationManager IdentificationManager { get; init; }
@@ -17,8 +18,11 @@ internal class RegistryManager : IRegistryManager
     internal required IDIService DIService { get; init; }
     internal required IResourceManager ResourceManager { get; init; }
 
-    // Track which mods are processed per registry (registry identifier -> set of mod IDs)
+    // Registry identifier -> set of mod IDs processed for it. Presence of a key = the registry is added.
     private readonly Dictionary<string, HashSet<string>> _processedModsByRegistry = new();
+
+    // Registry identifier -> owning module, recorded at add time so removal never re-resolves.
+    private readonly Dictionary<string, Identification> _moduleByRegistry = new();
 
     private bool _isMutationExpected;
 
@@ -26,22 +30,149 @@ internal class RegistryManager : IRegistryManager
 
     private HashSet<string>? _lastModSet;
     private IFactoryContainer<string, IRegistryBase>? _registryFactory;
-    
-    public void AddRegistry<TRegistry>() where TRegistry : class, IRegistry
+    private ICoreContainer? _lastCoreContainer;
+
+    private static readonly MethodInfo ProcessRegistryForModsMethod =
+        typeof(RegistryManager).GetMethod(nameof(ProcessRegistryForMods),
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    private GsmTransitionDirection CurrentDirection =>
+        ((IGameStateTransitionSignal)GameStateManager).TransitionDirection;
+
+    // ── Module-facing surface ──
+
+    public void ProcessRegistry<TRegistry, TModule>()
+        where TRegistry : class, IRegistry<TModule>
+        where TModule : IHasIdentification, IStateModule
     {
-        UpdateCache();
-        var identifier = TRegistry.Identifier;
-
-        IdentificationManager.RegisterCategory(identifier);
-        _processedModsByRegistry.Add(identifier, []);
-
-        if (TRegistry.ResourceFolder is { } folder)
+        switch (CurrentDirection)
         {
-            ResourceManager.RegisterResourceFolder(identifier, folder);
+            case GsmTransitionDirection.Enter:
+                PopulateMissingMods<TRegistry>();
+                break;
+            case GsmTransitionDirection.Exit:
+                ReverseAllRegistrations<TRegistry>();
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"ProcessRegistry<{typeof(TRegistry).Name}, {typeof(TModule).Name}>() must run inside a state " +
+                    "transition; the game-state manager reports no active transition direction.");
         }
     }
 
-    private ICoreContainer? _lastCoreContainer;
+    public IEnumerable<string> GetActiveRegistries() => _processedModsByRegistry.Keys;
+
+    public IEnumerable<string> GetProcessedMods<TRegistry>() where TRegistry : class, IRegistry
+    {
+        var registryIdentifier = TRegistry.Identifier;
+        return _processedModsByRegistry.TryGetValue(registryIdentifier, out var processedMods)
+            ? processedMods
+            : Enumerable.Empty<string>();
+    }
+
+    public bool IsRegistryActive<TRegistry>() where TRegistry : class, IRegistry =>
+        _processedModsByRegistry.ContainsKey(TRegistry.Identifier);
+
+    // ── Automatic instance lifecycle (GSM composite hooks) ──
+
+    public void AddModuleRegistries(Identification moduleId, ICoreContainer container)
+    {
+        UpdateCache(container);
+        foreach (var (identifier, instance) in _registryFactory.ResolveAll())
+        {
+            if (!ReadOwningModule(instance.GetType()).Equals(moduleId)) continue;
+            if (_processedModsByRegistry.ContainsKey(identifier)) continue;
+
+            AddRegistryTracking(identifier, instance.GetType());
+            _moduleByRegistry[identifier] = moduleId;
+        }
+    }
+
+    public void RemoveModuleRegistries(Identification moduleId)
+    {
+        var owned = _moduleByRegistry
+            .Where(kv => kv.Value.Equals(moduleId))
+            .Select(kv => kv.Key)
+            .ToList();
+
+        foreach (var identifier in owned)
+            RemoveRegistryTracking(identifier);
+    }
+
+    public void ProcessModuleRegistriesForMods(Identification moduleId, IReadOnlyList<string> modIds,
+        ICoreContainer container)
+    {
+        UpdateCache(container);
+        foreach (var (_, instance) in _registryFactory.ResolveAll())
+        {
+            var type = instance.GetType();
+            if (!ReadOwningModule(type).Equals(moduleId)) continue;
+            InvokeProcessForMods(type, modIds);
+        }
+    }
+
+    public void BootstrapRootRegistries(IReadOnlyList<string> modIds, ICoreContainer container)
+    {
+        // At root entry only CoreModule's registries resolve; their owning module is not registered yet, so
+        // add every currently-resolvable registry without owner filtering, then process it for the root mods
+        // (which registers the modules/states the finalize pass validates), then record the now-valid owner.
+        UpdateCache(container);
+        var registries = _registryFactory.ResolveAll();
+
+        foreach (var (identifier, instance) in registries)
+            if (!_processedModsByRegistry.ContainsKey(identifier))
+                AddRegistryTracking(identifier, instance.GetType());
+
+        foreach (var (_, instance) in registries)
+            InvokeProcessForMods(instance.GetType(), modIds);
+
+        foreach (var (identifier, instance) in registries)
+            _moduleByRegistry[identifier] = ReadOwningModule(instance.GetType());
+    }
+
+    private void AddRegistryTracking(string identifier, Type registryType)
+    {
+        IdentificationManager.RegisterCategory(identifier);
+        _processedModsByRegistry[identifier] = new HashSet<string>();
+
+        if (ReadResourceFolder(registryType) is { } folder)
+            ResourceManager.RegisterResourceFolder(identifier, folder);
+    }
+
+    private void RemoveRegistryTracking(string identifier)
+    {
+        // Bookkeeping only: drop the tracking entry. Registrations this registry created are reversed on the
+        // module-driven teardown path (ProcessRegistry at [OnFrameExit]); native/GPU resources are never
+        // touched here, so instance removal carries no device-idle ordering concern.
+        _processedModsByRegistry.Remove(identifier);
+        _moduleByRegistry.Remove(identifier);
+    }
+
+    private static Identification ReadOwningModule(Type registryType)
+    {
+        var property = registryType.GetProperty("OwningModule", BindingFlags.Public | BindingFlags.Static)
+            ?? throw new InvalidOperationException(
+                $"Registry '{registryType.Name}' exposes no static OwningModule; it must implement IRegistry<TModule>.");
+        return (Identification)property.GetValue(null)!;
+    }
+
+    private static string? ReadResourceFolder(Type registryType) =>
+        registryType.GetProperty("ResourceFolder", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as string;
+
+    private void InvokeProcessForMods(Type registryType, IReadOnlyList<string> modIds)
+    {
+        try
+        {
+            ProcessRegistryForModsMethod.MakeGenericMethod(registryType).Invoke(this, new object[] { modIds });
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException is not null)
+        {
+            throw tie.InnerException;
+        }
+    }
+
+    // ── Generation: populate / teardown ──
+
     [MemberNotNull(nameof(_registryFactory))]
     internal void UpdateCache(ICoreContainer? coreContainer = null)
     {
@@ -79,7 +210,11 @@ internal class RegistryManager : IRegistryManager
         return typedInstance;
     }
 
-    public void ProcessRegistry<TRegistry>(IReadOnlyList<string> modIds) where TRegistry : class, IRegistry
+    /// <summary>
+    /// Populates a registry from a specific set of mods. Retained as the internal path the GSM bootstrap
+    /// (root entry, mod-change) drives; module authors use the direction-detecting <see cref="ProcessRegistry{TRegistry,TModule}"/>.
+    /// </summary>
+    private void ProcessRegistryForMods<TRegistry>(IReadOnlyList<string> modIds) where TRegistry : class, IRegistry
     {
         var registryIdentifier = TRegistry.Identifier;
 
@@ -97,12 +232,10 @@ internal class RegistryManager : IRegistryManager
 
             var registry = CreateRegistryInstance<TRegistry>();
 
-            // Process registrations for each mod
             foreach (var modId in modIds)
             {
                 ProcessSingleModRegistration(registry, registryIdentifier, modId);
 
-                // Track that this mod is processed for this registry
                 if (!_processedModsByRegistry.TryGetValue(registryIdentifier, out var processedMods))
                 {
                     processedMods = new HashSet<string>();
@@ -120,19 +253,16 @@ internal class RegistryManager : IRegistryManager
         }
     }
 
-    public void ProcessAllMissing<TRegistry>() where TRegistry : class, IRegistry
+    private void PopulateMissingMods<TRegistry>() where TRegistry : class, IRegistry
     {
         var registryIdentifier = TRegistry.Identifier;
 
-        // Get all loaded mod IDs (runtime identification is ID-based)
         var allLoadedModIds = ModManager.LoadedMods.Select(m => m.Id).ToHashSet();
 
-        // Get already processed mods for this registry
         var processedMods = _processedModsByRegistry.TryGetValue(registryIdentifier, out var processed)
             ? processed
             : new HashSet<string>();
 
-        // Find missing mods
         var missingMods = allLoadedModIds.Except(processedMods).ToList();
 
         if (missingMods.Count == 0)
@@ -142,10 +272,10 @@ internal class RegistryManager : IRegistryManager
         }
 
         Log.Information("Processing {Count} missing mods for registry {RegistryIdentifier}", missingMods.Count, registryIdentifier);
-        ProcessRegistry<TRegistry>(missingMods);
+        ProcessRegistryForMods<TRegistry>(missingMods);
     }
 
-    public void UnregisterAllRemaining<TRegistry>() where TRegistry : class, IRegistry
+    private void ReverseAllRegistrations<TRegistry>() where TRegistry : class, IRegistry
     {
         var registryIdentifier = TRegistry.Identifier;
 
@@ -164,8 +294,7 @@ internal class RegistryManager : IRegistryManager
 
         var registry = CreateRegistryInstance<TRegistry>();
 
-        // Unregister all objects from each mod
-        var modsToUnregister = processedMods.ToArray(); // Copy to avoid modification during iteration
+        var modsToUnregister = processedMods.ToArray();
         foreach (var modId in modsToUnregister)
         {
             if (IdentificationManager.GetModId(modId) is not Result<ushort, ResolveError>.Ok(var numericModId))
@@ -188,39 +317,14 @@ internal class RegistryManager : IRegistryManager
         Log.Debug("Completed unregistering mods for registry {RegistryIdentifier}", registryIdentifier);
     }
 
-    public IEnumerable<string> GetActiveRegistries()
-    {
-        return _processedModsByRegistry.Keys;
-    }
-
-    public IEnumerable<string> GetProcessedMods<TRegistry>() where TRegistry : class, IRegistry
-    {
-        var registryIdentifier = TRegistry.Identifier;
-        return _processedModsByRegistry.TryGetValue(registryIdentifier, out var processedMods)
-            ? processedMods
-            : Enumerable.Empty<string>();
-    }
-
-    public bool IsRegistryActive<TRegistry>() where TRegistry : class, IRegistry
-    {
-        var registryIdentifier = TRegistry.Identifier;
-        return _processedModsByRegistry.ContainsKey(registryIdentifier);
-    }
-
     private void ProcessSingleModRegistration<TRegistry>(TRegistry registry, string registryIdentifier, string modId)
         where TRegistry : class, IRegistry
     {
-        // Query registrations for this specific registry type
-        // The generic attribute RegistrationsEntrypointAttribute<TRegistry> provides automatic filtering
         using var registrationsContainer = DIService.CreateEntrypointContainer<Registrations<TRegistry>>(
             new[] { modId });
 
         var registrations = registrationsContainer.ResolveMany();
 
-        // Build a resolution scope over the active container so value-providing registration
-        // methods can resolve DI parameters the same way all other DI-leaf code does. Registration
-        // providers carry no resolution metadata, so the scope falls back to direct container
-        // resolution (matching the prior container-based behaviour) while staying metadata-ready.
         var scope = DIService.BuildScope(
             GameStateManager.CurrentCoreContainer,
             new FacadeResolutionProvider(),
@@ -229,10 +333,7 @@ internal class RegistryManager : IRegistryManager
 
         foreach (var registration in registrations)
         {
-            // Initialize with the resolution scope
             registration.Initialize(scope);
-
-            // Process registrations with typed registry
             registration.ProcessRegistrations(registry);
         }
     }

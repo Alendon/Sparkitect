@@ -29,7 +29,7 @@ public class RegistryGeneratorAttributeArgParsingTests : SourceGeneratorTestBase
         namespace DiTest
         {
             [Registry(Identifier = "dummy")]
-            public class DummyRegistry : IRegistry
+            public class DummyRegistry : IRegistry<TestModule>
             {
                 [RegistryMethod] public void RegisterValue(Identification id, string value) { }
             }
@@ -66,7 +66,7 @@ public class RegistryGeneratorAttributeArgParsingTests : SourceGeneratorTestBase
         namespace DiTest
         {
             [Registry(Identifier = "dummy")]
-            public class DummyRegistry : IRegistry
+            public class DummyRegistry : IRegistry<TestModule>
             {
                 [RegistryMethod] public void RegisterValue(Identification id, string value) { }
             }

@@ -52,19 +52,23 @@ public partial class VulkanModule : IStateModule
         vulkanContext.BeginVulkanTeardown();
     }
 
-    [TransitionFunction("add_registries")]
-    [OnCreateScheduling]
-    public static void AddRegistries(IRegistryManager registryManager)
+    [TransitionFunction("process_shader_module_registry_enter")]
+    [OnFrameEnterScheduling]
+    [OrderAfter<CreateDeviceFunc>]
+    public static void ProcessShaderModuleRegistryEnter(IRegistryManager registryManager)
     {
-        registryManager.AddRegistry<ShaderModuleRegistry>();
+        registryManager.ProcessRegistry<ShaderModuleRegistry, VulkanModule>();
     }
 
-    [TransitionFunction("process_registries")]
-    [OnFrameEnterScheduling]
-    [OrderAfter<AddRegistriesFunc>]
-    public static void ProcessRegistries(IRegistryManager registryManager)
+    // Teardown on the generation path, with the device still valid: after wait-idle, before device destroy.
+    // This disposes VkShaderModule handles at shutdown (closes the shader-module leak).
+    [TransitionFunction("process_shader_module_registry_exit")]
+    [OnFrameExitScheduling]
+    [OrderAfter<BeginVulkanTeardownFunc>]
+    [OrderBefore<DestroyDeviceFunc>]
+    public static void ProcessShaderModuleRegistryExit(IRegistryManager registryManager)
     {
-        registryManager.ProcessAllMissing<ShaderModuleRegistry>();
+        registryManager.ProcessRegistry<ShaderModuleRegistry, VulkanModule>();
     }
 
     [TransitionFunction("destroy_device")]

@@ -58,7 +58,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
         namespace N;
         
         [Registry]
-        public class MyRegistry : IRegistry { }
+        public class MyRegistry : IRegistry<TestModule> { }
         """;
 
         TestSources.Add(("R2.cs", code));
@@ -73,7 +73,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
         using Sparkitect.Modding;
         
         [Registry(Identifier = "valid_id")]
-        public class GlobalRegistry : IRegistry { }
+        public class GlobalRegistry : IRegistry<TestModule> { }
         """;
 
         TestSources.Add(("R3.cs", code));
@@ -92,7 +92,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
             public class Outer
             {
                 [Registry(Identifier = "valid_id")]
-                public class Inner : IRegistry { }
+                public class Inner : IRegistry<TestModule> { }
             }
         }
         """;
@@ -111,7 +111,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
         namespace N;
         
         [Registry(Identifier = "bad-id")]
-        public class MyRegistry : IRegistry { }
+        public class MyRegistry : IRegistry<TestModule> { }
         """;
 
         TestSources.Add(("R5.cs", code));
@@ -128,7 +128,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
         namespace N;
         
         [Registry(Identifier = "good_id")]
-        public class MyRegistry : IRegistry { }
+        public class MyRegistry : IRegistry<TestModule> { }
         """;
 
         TestSources.Add(("R6.cs", code));
@@ -145,7 +145,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
         namespace N;
         
         [Registry(Identifier = "good_id_123")]
-        public class MyRegistry : IRegistry { }
+        public class MyRegistry : IRegistry<TestModule> { }
         """;
 
         TestSources.Add(("R6b.cs", code));

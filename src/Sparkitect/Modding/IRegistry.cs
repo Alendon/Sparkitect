@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
 
@@ -28,5 +29,24 @@ public interface IRegistry : IRegistryBase
     static abstract string Identifier { get; }
 
     static virtual string? ResourceFolder => null;
+}
+
+/// <summary>
+/// Registry contract carrying a type-encoded link to the module that owns it. Every registry declares
+/// its owning module through <typeparamref name="TModule"/>; the manager reads this link to add and remove
+/// the registry automatically over the module's lifecycle. The <c>[Registry(Identifier = "...")]</c>
+/// attribute remains the source-generation marker — the module link lives on the type argument, not the
+/// attribute.
+/// </summary>
+/// <typeparam name="TModule">The owning module. <see cref="IHasIdentification"/> makes
+/// <c>TModule.Identification</c> compile-guaranteed.</typeparam>
+[PublicAPI]
+public interface IRegistry<TModule> : IRegistry where TModule : IHasIdentification, IStateModule
+{
+    /// <summary>
+    /// The identification of the module that owns this registry. Emitted by the source generator into the
+    /// registry's generated partial as <c>TModule.Identification</c>.
+    /// </summary>
+    static abstract Identification OwningModule { get; }
 }
 

@@ -12,7 +12,7 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated;
 /// </summary>
 [Registry(Identifier = "render_graph_deprecated")]
 [PublicAPI]
-public partial class RenderGraphDeprecatedRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry
+public partial class RenderGraphDeprecatedRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry<RenderGraphDeprecatedModule>
 {
     [RegistryMethod]
     [KeyedFactoryGenerationMarker<IRenderGraph>]

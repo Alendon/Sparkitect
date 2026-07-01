@@ -40,7 +40,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         namespace DiTest;
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -67,7 +67,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         namespace DiTest;
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -95,7 +95,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         
         // Define a valid registry so attribute pattern is recognizable
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -122,7 +122,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         namespace DiTest;
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -149,7 +149,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         namespace DiTest;
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -176,7 +176,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         namespace DiTest;
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -200,7 +200,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         namespace DiTest;
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -228,7 +228,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         namespace DiTest;
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterType<T>(Identification id) where T : IDisposable { }
@@ -254,7 +254,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         public class Concrete { }
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -281,7 +281,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         namespace DiTest;
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -311,7 +311,7 @@ public sealed class RegistryProviderUsageAnalyzerTests : AnalyzerTestBase<Regist
         namespace DiTest;
 
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }

@@ -13,7 +13,7 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated;
 /// </summary>
 [Registry(Identifier = "graph_image")]
 [PublicAPI]
-public partial class GraphImageRegistry(IResourceRegistrationStore store) : IRegistry
+public partial class GraphImageRegistry(IResourceRegistrationStore store) : IRegistry<RenderGraphDeprecatedModule>
 {
     [RegistryMethod]
     public void RegisterSharedImage(Identification id, ImageDescription description)

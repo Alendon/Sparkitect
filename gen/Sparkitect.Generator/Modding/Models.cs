@@ -19,7 +19,8 @@ public record RegistryModel(
     bool IsExternal,
     ImmutableValueArray<RegisterMethodModel> RegisterMethods,
     ImmutableValueArray<(string Key, bool Required, bool Primary)> ResourceFiles,
-    string? DeclaringSgNamespace = null);
+    string? DeclaringSgNamespace = null,
+    string? OwningModuleFullName = null);
 
 public record FileRegistrationEntry(
     string RegistryClass,

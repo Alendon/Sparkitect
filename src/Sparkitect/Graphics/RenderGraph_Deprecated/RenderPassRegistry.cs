@@ -13,7 +13,7 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated;
 /// </summary>
 [Registry(Identifier = "render_pass_deprecated")]
 [PublicAPI]
-public partial class RenderPassDeprecatedRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry
+public partial class RenderPassDeprecatedRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry<RenderGraphDeprecatedModule>
 {
     [RegistryMethod]
     [KeyedFactoryGenerationMarker<IPass>]

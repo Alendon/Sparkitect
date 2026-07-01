@@ -4,7 +4,7 @@ using Sparkitect.Modding;
 namespace Sparkitect.Graphics.RenderGraph;
 
 [Registry(Identifier = "render_graph_fact")]
-public partial class FactRegistry : IRegistry
+public partial class FactRegistry : IRegistry<RenderGraphModule>
 {
     public required IRenderGraphManagerRegistryFacade _manager { private get; init; }
 

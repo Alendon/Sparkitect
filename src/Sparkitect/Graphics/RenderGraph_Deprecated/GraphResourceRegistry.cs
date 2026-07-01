@@ -12,7 +12,7 @@ namespace Sparkitect.Graphics.RenderGraph_Deprecated;
 /// </summary>
 [Registry(Identifier = "graph_resource")]
 [PublicAPI]
-public partial class GraphResourceRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry
+public partial class GraphResourceRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry<RenderGraphDeprecatedModule>
 {
     [RegistryMethod]
     public void RegisterResource<TResource>(Identification id)

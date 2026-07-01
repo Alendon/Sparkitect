@@ -6,7 +6,7 @@ namespace Sparkitect.Graphics.Vulkan;
 [Registry(Identifier = "shader_module")]
 [UseResourceFile(Key = "module", Required = true, Primary = true)]
 [PublicAPI]
-public partial class ShaderModuleRegistry(IShaderManager shaderManager) : IRegistry
+public partial class ShaderModuleRegistry(IShaderManager shaderManager) : IRegistry<VulkanModule>
 {
     [RegistryMethod]
     public void RegisterShaderModule(Identification id)

@@ -18,37 +18,26 @@ public partial class RenderGraphDeprecatedModule : IStateModule
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Vulkan];
 
-    [TransitionFunction("add_render_graph_registries_deprecated")]
-    [OnCreateScheduling]
-    public static void AddRegistries(IRegistryManager registryManager)
-    {
-        registryManager.AddRegistry<RenderPassDeprecatedRegistry>();
-        registryManager.AddRegistry<GraphResourceRegistry>();
-        registryManager.AddRegistry<RenderGraphDeprecatedRegistry>();
-        registryManager.AddRegistry<GraphImageRegistry>();
-    }
-
-    [TransitionFunction("process_render_graph_registries_deprecated")]
+    [TransitionFunction("process_render_graph_registries_deprecated_enter")]
     [OnFrameEnterScheduling]
-    [OrderAfter<AddRenderGraphRegistriesDeprecatedFunc>]
-    public static void ProcessRegistries(
+    public static void ProcessRegistriesEnter(
         IRegistryManager registryManager,
         IRenderGraphManagerStateFacade manager)
     {
-        registryManager.ProcessAllMissing<RenderPassDeprecatedRegistry>();
-        registryManager.ProcessAllMissing<GraphResourceRegistry>();
-        registryManager.ProcessAllMissing<RenderGraphDeprecatedRegistry>();
-        registryManager.ProcessAllMissing<GraphImageRegistry>();
+        registryManager.ProcessRegistry<RenderPassDeprecatedRegistry, RenderGraphDeprecatedModule>();
+        registryManager.ProcessRegistry<GraphResourceRegistry, RenderGraphDeprecatedModule>();
+        registryManager.ProcessRegistry<RenderGraphDeprecatedRegistry, RenderGraphDeprecatedModule>();
+        registryManager.ProcessRegistry<GraphImageRegistry, RenderGraphDeprecatedModule>();
         manager.PostRegistry();
     }
 
-    [TransitionFunction("remove_render_graph_registries_deprecated")]
-    [OnDestroyScheduling]
-    public static void RemoveRegistries(IRegistryManager registryManager)
+    [TransitionFunction("process_render_graph_registries_deprecated_exit")]
+    [OnFrameExitScheduling]
+    public static void ProcessRegistriesExit(IRegistryManager registryManager)
     {
-        registryManager.UnregisterAllRemaining<RenderPassDeprecatedRegistry>();
-        registryManager.UnregisterAllRemaining<GraphResourceRegistry>();
-        registryManager.UnregisterAllRemaining<RenderGraphDeprecatedRegistry>();
-        registryManager.UnregisterAllRemaining<GraphImageRegistry>();
+        registryManager.ProcessRegistry<RenderPassDeprecatedRegistry, RenderGraphDeprecatedModule>();
+        registryManager.ProcessRegistry<GraphResourceRegistry, RenderGraphDeprecatedModule>();
+        registryManager.ProcessRegistry<RenderGraphDeprecatedRegistry, RenderGraphDeprecatedModule>();
+        registryManager.ProcessRegistry<GraphImageRegistry, RenderGraphDeprecatedModule>();
     }
 }

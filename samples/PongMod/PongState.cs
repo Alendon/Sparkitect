@@ -25,9 +25,9 @@ public partial class PongState : IStateDescriptor
 
     [TransitionFunction("pong_init")]
     [OnCreateScheduling]
-    [OrderAfter<VulkanModule.ProcessRegistriesFunc>]
+    [OrderAfter<VulkanModule.ProcessShaderModuleRegistryEnterFunc>]
     [OrderAfter<VulkanModule.CreateDeviceFunc>]
-    [OrderBefore<RenderGraphModule.ProcessRenderGraphRegistriesFunc>]
+    [OrderBefore<RenderGraphModule.ProcessRenderGraphRegistriesEnterFunc>]
     public static void Initialize(IPongRuntimeService pongRuntime)
     {
         pongRuntime.Initialize();
@@ -36,7 +36,7 @@ public partial class PongState : IStateDescriptor
 
     [TransitionFunction("pong_create_graph")]
     [OnFrameEnterScheduling]
-    [OrderAfter<RenderGraphModule.ProcessRenderGraphRegistriesFunc>]
+    [OrderAfter<RenderGraphModule.ProcessRenderGraphRegistriesEnterFunc>]
     public static void CreateGraph(IPongRuntimeService pongRuntime) => pongRuntime.CreateGraph();
 
     [PerFrameFunction("pong_frame")]

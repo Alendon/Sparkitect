@@ -100,11 +100,11 @@ The property names are PascalCase conversions of the snake_case identifiers. Imp
 
 ## Defining a Registry
 
-Registries are partial classes implementing [`IRegistry`](xref:Sparkitect.Modding.IRegistry), annotated with [`[Registry]`](xref:Sparkitect.Modding.RegistryAttribute), and instantiated through DI:
+Registries are partial classes implementing [`IRegistry<TModule>`](xref:Sparkitect.Modding.IRegistry`1), annotated with [`[Registry]`](xref:Sparkitect.Modding.RegistryAttribute), and instantiated through DI. The type argument names the module that owns the registry — the manager reads this link to add and remove the registry automatically over the module's lifecycle:
 
 ```csharp
 [Registry(Identifier = "items")]
-public partial class ItemRegistry(IItemManager manager) : IRegistry
+public partial class ItemRegistry(IItemManager manager) : IRegistry<MyGameModule>
 {
     public static string Identifier => "items";
 
@@ -123,8 +123,9 @@ public partial class ItemRegistry(IItemManager manager) : IRegistry
 
 Key elements:
 
-- **`[Registry(Identifier = "...")]`**: Marks the class and sets the category identifier (must be snake_case, globally unique).
-- **`partial class`**: Required for source generator output (nested attributes, factory, configurator).
+- **`[Registry(Identifier = "...")]`**: Marks the class and sets the category identifier (must be snake_case, globally unique). The attribute is the source-generation marker; it stays non-generic.
+- **`IRegistry<TModule>`**: The type argument is the owning module (`TModule : IHasIdentification, IStateModule`). The source generator emits the module link the manager uses to add and remove the registry automatically. `TModule.Identification` is compile-guaranteed, so the link is fully type-checked.
+- **`partial class`**: Required for source generator output (nested attributes, factory, configurator, owning-module link).
 - **`static string Identifier`**: Must match the attribute value. Satisfies the [`IRegistry`](xref:Sparkitect.Modding.IRegistry) contract.
 - **Constructor injection**: Dependencies come from the current state's DI container.
 - **`Unregister(Identification)`**: Required by [`IRegistryBase`](xref:Sparkitect.Modding.IRegistryBase) for cleanup during teardown.
@@ -185,7 +186,7 @@ Registries that work with external files (shaders, textures, configs) declare th
 ```csharp
 [Registry(Identifier = "shader_module")]
 [UseResourceFile(Key = "module", Required = true, Primary = true)]
-public partial class ShaderModuleRegistry(IShaderManager shaderManager) : IRegistry
+public partial class ShaderModuleRegistry(IShaderManager shaderManager) : IRegistry<VulkanModule>
 {
     public static string Identifier => "shader_module";
     public static string ResourceFolder => "shaders";
@@ -265,38 +266,30 @@ absence of a parent in a state descriptor's `ParentId`.
 
 ## Registry Lifecycle
 
-Registries are state-triggered: they are added, processed, and torn down by transition functions rather than a global initialization pass. This makes registration composable across state boundaries.
+A registry has two lifecycles, and neither needs a hand-written add/remove step:
+
+- **Instance lifecycle (automatic).** The manager adds a registry's instance — category registration, resource folder, per-registry tracking — when its owning module (`IRegistry<TModule>`) is created, and removes it when the module is destroyed. This is bookkeeping only; it never touches native resources, so it carries no teardown-ordering concern.
+- **Generation lifecycle (module-driven).** A module populates and tears down its registries with a single [`ProcessRegistry<TRegistry, TModule>()`](xref:Sparkitect.Modding.IRegistryManager) call placed at both [`[OnFrameEnterScheduling]`](xref:Sparkitect.GameState.OnFrameEnterSchedulingAttribute) and [`[OnFrameExitScheduling]`](xref:Sparkitect.GameState.OnFrameExitSchedulingAttribute). The manager auto-detects the direction from the game-state transition — enter populates the mods not yet processed, exit reverses the whole snapshot — so the author never thinks about direction. Calling it outside a transition throws.
 
 ```csharp
-[TransitionFunction("init_items")]
-[OnCreateScheduling]
-private static void InitItems(IRegistryManager rm)
+[TransitionFunction("process_items_enter")]
+[OnFrameEnterScheduling]
+private static void ProcessItemsEnter(IRegistryManager rm)
 {
-    rm.AddRegistry<ItemRegistry>();
-    rm.ProcessAllMissing<ItemRegistry>();
+    rm.ProcessRegistry<ItemRegistry, MyGameModule>();
 }
 
-[TransitionFunction("cleanup_items")]
-[OnDestroyScheduling]
-private static void CleanupItems(IRegistryManager rm)
+[TransitionFunction("process_items_exit")]
+[OnFrameExitScheduling]
+private static void ProcessItemsExit(IRegistryManager rm)
 {
-    rm.UnregisterAllRemaining<ItemRegistry>();
+    rm.ProcessRegistry<ItemRegistry, MyGameModule>();
 }
 ```
 
-[`IRegistryManager`](xref:Sparkitect.Modding.IRegistryManager) methods:
+Both type arguments are written explicitly (the compiler will not infer `TModule` from `TRegistry`). On enter, the manager scans loaded mods for [`IRegisterMarker`](xref:Sparkitect.Modding.IRegisterMarker) attributes targeting this registry, resolves data from providers or resource files, and calls the registry method for each entry. On exit, it calls `Unregister(Identification)` for every tracked object and removes their identification mappings.
 
-| Method | Purpose |
-|--------|---------|
-| `AddRegistry<T>()` | Registers the category with the identification system and makes it available for processing |
-| `ProcessAllMissing<T>()` | Discovers and processes registration attributes from all loaded mods not yet processed for this registry |
-| `ProcessRegistry<T>(modIds)` | Processes only the specified mods (for targeted updates when new mods load) |
-| `UnregisterAllRemaining<T>()` | Cleans up all registered objects and removes tracked mods |
-
-The lifecycle within a state transition:
-1. `AddRegistry<T>()` registers the category identifier and resource folder
-2. `ProcessAllMissing<T>()` scans loaded mods for [`IRegisterMarker`](xref:Sparkitect.Modding.IRegisterMarker) attributes targeting this registry, resolves data from providers or resource files, and calls the registry method for each entry
-3. When the state is destroyed, `UnregisterAllRemaining<T>()` calls `Unregister(Identification)` for every tracked object and removes their identification mappings
+Resource disposal keyed to a specific ordering (for example a GPU handle that must be released while its device is still valid) belongs on this generation path at `[OnFrameExit]`, where the module controls timing — not on the automatic instance-remove.
 
 ## IHasIdentification: Consumption-Side Only
 

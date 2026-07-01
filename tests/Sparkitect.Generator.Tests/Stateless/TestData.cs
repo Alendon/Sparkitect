@@ -146,7 +146,7 @@ public static partial class TestData
             /// Test registry for stateless function tests.
             /// </summary>
             [Registry(Identifier = "test")]
-            public partial class TestRegistry : IRegistry
+            public partial class TestRegistry : IRegistry<TestModule>
             {
                 public static string Identifier => "test";
 

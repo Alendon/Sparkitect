@@ -32,7 +32,7 @@ public class RegistryGeneratorProviderCandidateTests : SourceGeneratorTestBase<R
             public interface IOther { }
 
             [Registry(Identifier = "dummy")]
-            public class DummyRegistry : IRegistry
+            public class DummyRegistry : IRegistry<TestModule>
             {
                 [RegistryMethod]
                 public void RegisterValue(Identification id, string value) { }
@@ -79,7 +79,7 @@ public class RegistryGeneratorProviderCandidateTests : SourceGeneratorTestBase<R
         namespace DiTest
         {
             [Registry(Identifier = "dummy")]
-            public class DummyRegistry : IRegistry
+            public class DummyRegistry : IRegistry<TestModule>
             {
                 [RegistryMethod]
                 public void RegisterValue(Identification id, string value) { }
@@ -117,7 +117,7 @@ public class RegistryGeneratorProviderCandidateTests : SourceGeneratorTestBase<R
         namespace DiTest
         {
             [Registry(Identifier = "dummy")]
-            public class DummyRegistry : IRegistry
+            public class DummyRegistry : IRegistry<TestModule>
             {
                 [RegistryMethod]
                 public void RegisterType(Identification id) { }

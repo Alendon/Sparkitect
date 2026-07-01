@@ -9,7 +9,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 /// </summary>
 [Registry(Identifier = "render_graph")]
 [PublicAPI]
-public partial class RenderGraphRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry
+public partial class RenderGraphRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry<RenderGraphModule>
 {
     [RegistryMethod]
     [KeyedFactoryGenerationMarker<IRenderGraph>]

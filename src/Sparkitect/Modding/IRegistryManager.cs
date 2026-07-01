@@ -1,56 +1,70 @@
 using JetBrains.Annotations;
+using Sparkitect.DI.Container;
+using Sparkitect.GameState;
 
 namespace Sparkitect.Modding;
 
 /// <summary>
-/// Manages registry processing and tracks which mods are registered per registry
+/// Manages registry generation and tracks which mods are processed per registry.
 /// </summary>
 [PublicAPI]
 public interface IRegistryManager
 {
     /// <summary>
-    /// Process a specific registry for the given mods
+    /// Populates or tears down a registry at a state-transition hook. Called at both
+    /// <c>[OnFrameEnter]</c> and <c>[OnFrameExit]</c>; the manager auto-detects the direction from the
+    /// game-state manager (enter populates missing mods, exit reverses the snapshot) and throws if no
+    /// transition is active.
     /// </summary>
-    void ProcessRegistry<TRegistry>(IReadOnlyList<string> modIds) where TRegistry : class, IRegistry;
+    /// <typeparam name="TRegistry">The registry type.</typeparam>
+    /// <typeparam name="TModule">The registry's owning module, matching <c>IRegistry&lt;TModule&gt;</c>.</typeparam>
+    void ProcessRegistry<TRegistry, TModule>()
+        where TRegistry : class, IRegistry<TModule>
+        where TModule : IHasIdentification, IStateModule;
 
     /// <summary>
-    /// Process all currently loaded mods that have not yet been processed for the given registry
+    /// Gets all active registry identifiers (added instances).
     /// </summary>
-    void ProcessAllMissing<TRegistry>() where TRegistry : class, IRegistry;
-
-    /// <summary>
-    /// Unregister all mods currently processed for the given registry
-    /// </summary>
-    void UnregisterAllRemaining<TRegistry>() where TRegistry : class, IRegistry;
-
-    /// <summary>
-    /// Adds a registry type to be managed. Must be called before processing registrations.
-    /// </summary>
-    void AddRegistry<TRegistry>() where TRegistry : class, IRegistry;
-
-    /// <summary>
-    /// Gets all active registry types that have been added.
-    /// </summary>
-    /// <returns>An enumerable of registry type names.</returns>
     IEnumerable<string> GetActiveRegistries();
 
     /// <summary>
-    /// Gets the mod IDs that have been processed for a specific registry.
+    /// Gets the mod IDs processed for a specific registry.
     /// </summary>
     /// <typeparam name="TRegistry">The registry type to query.</typeparam>
-    /// <returns>An enumerable of mod ID strings that have been processed, or empty if registry not active.</returns>
     IEnumerable<string> GetProcessedMods<TRegistry>() where TRegistry : class, IRegistry;
 
     /// <summary>
-    /// Checks if a registry type has been added and is active.
+    /// Checks whether a registry instance has been added.
     /// </summary>
     /// <typeparam name="TRegistry">The registry type to check.</typeparam>
-    /// <returns><c>true</c> if the registry is active; otherwise, <c>false</c>.</returns>
     bool IsRegistryActive<TRegistry>() where TRegistry : class, IRegistry;
 
     /// <summary>
     /// Gets whether registry mutations are currently expected.
-    /// Returns true during ProcessRegistry calls, false otherwise.
+    /// True during registry processing, false otherwise.
     /// </summary>
     bool IsMutationExpected { get; }
+}
+
+/// <summary>
+/// Internal composite seam the game-state manager drives: registry instances are added when their owning
+/// module is created and removed when it is destroyed, all keyed by the <c>IRegistry&lt;TModule&gt;</c>
+/// owning-module link. Instance add/remove is bookkeeping only and never touches native resources.
+/// </summary>
+internal interface IRegistryLifecycleManager
+{
+    /// <summary>Adds the instances of every registry owned by <paramref name="moduleId"/>.</summary>
+    void AddModuleRegistries(Identification moduleId, ICoreContainer container);
+
+    /// <summary>Removes the tracked instances of every registry owned by <paramref name="moduleId"/>.</summary>
+    void RemoveModuleRegistries(Identification moduleId);
+
+    /// <summary>Populates the registries owned by <paramref name="moduleId"/> for a specific mod set.</summary>
+    void ProcessModuleRegistriesForMods(Identification moduleId, IReadOnlyList<string> modIds, ICoreContainer container);
+
+    /// <summary>
+    /// Root-entry bootstrap: adds and populates every currently-resolvable registry (CoreModule's four) for
+    /// the root mods before the finalize pass, so states and modules are registered when it validates them.
+    /// </summary>
+    void BootstrapRootRegistries(IReadOnlyList<string> modIds, ICoreContainer container);
 }

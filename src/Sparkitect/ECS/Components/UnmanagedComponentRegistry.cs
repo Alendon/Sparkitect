@@ -10,7 +10,7 @@ namespace Sparkitect.ECS.Components;
 /// </summary>
 [Registry(Identifier = "unmanaged_component")]
 [PublicAPI]
-public partial class UnmanagedComponentRegistry(IComponentManager componentManager) : IRegistry
+public partial class UnmanagedComponentRegistry(IComponentManager componentManager) : IRegistry<EcsModule>
 {
     /// <inheritdoc/>
     public static string Identifier => "unmanaged_component";

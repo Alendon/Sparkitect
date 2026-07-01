@@ -9,7 +9,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 /// </summary>
 [Registry(Identifier = "render_pass")]
 [PublicAPI]
-public partial class RenderPassRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry
+public partial class RenderPassRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry<RenderGraphModule>
 {
     [RegistryMethod]
     [KeyedFactoryGenerationMarker<IPass>]

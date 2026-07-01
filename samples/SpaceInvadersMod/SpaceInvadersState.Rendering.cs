@@ -9,14 +9,14 @@ public partial class SpaceInvadersState
 {
     [TransitionFunction("si_init")]
     [OnCreateScheduling]
-    [OrderAfter<VulkanModule.ProcessRegistriesFunc>]
+    [OrderAfter<VulkanModule.ProcessShaderModuleRegistryEnterFunc>]
     [OrderAfter<VulkanModule.CreateDeviceFunc>]
-    [OrderBefore<RenderGraphDeprecatedModule.ProcessRenderGraphRegistriesDeprecatedFunc>]
+    [OrderBefore<RenderGraphDeprecatedModule.ProcessRenderGraphRegistriesDeprecatedEnterFunc>]
     static void Initialize(ISpaceInvadersRuntimeServiceStateFacade manager) => manager.Initialize();
 
     [TransitionFunction("si_create_graph")]
     [OnFrameEnterScheduling]
-    [OrderAfter<RenderGraphDeprecatedModule.ProcessRenderGraphRegistriesDeprecatedFunc>]
+    [OrderAfter<RenderGraphDeprecatedModule.ProcessRenderGraphRegistriesDeprecatedEnterFunc>]
     static void CreateGraph(ISpaceInvadersRuntimeServiceStateFacade manager) => manager.CreateGraph();
 
     [PerFrameFunction("si_check_window_closed")]

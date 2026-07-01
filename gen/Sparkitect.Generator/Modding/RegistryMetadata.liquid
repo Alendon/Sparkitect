@@ -15,6 +15,7 @@ public class {{ MetadataClassName }}
     public const bool IsExternal = {{ IsExternal }};
     public const string RegisterMethods = "{{ RegisterMethods }}";
     public const string ResourceFiles = "{{ ResourceFiles }}";
+    public const string OwningModule = "{{ OwningModule }}";
 
 {% for method in RegisterMethodsMetadata %}
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

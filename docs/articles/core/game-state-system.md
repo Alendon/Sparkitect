@@ -164,6 +164,30 @@ When transitioning between states, all eligible transition functions are resolve
 
 All eligible functions from both scheduling types are combined into one graph, sorted, and executed together. An `[OnCreateScheduling]` function can be ordered after an `[OnFrameEnterScheduling]` function when both are eligible; they coexist in the same execution graph.
 
+### Registries in Modules
+
+A module's registries are managed structurally through the transition lifecycle. A registry declares its owning module through the type argument of [`IRegistry<TModule>`](xref:Sparkitect.Modding.IRegistry`1); the manager reads that link to add the registry's instance when the module is created and remove it when the module is destroyed — there is no hand-written add or remove transition function.
+
+To populate and tear down a registry, a module calls a single direction-detecting [`ProcessRegistry<TRegistry, TModule>()`](xref:Sparkitect.Modding.IRegistryManager) at both `[OnFrameEnterScheduling]` and `[OnFrameExitScheduling]`. The manager reads the transition direction and populates on enter or reverses the snapshot on exit, so one call at both hooks covers the full lifecycle:
+
+```csharp
+[TransitionFunction("process_my_registry_enter")]
+[OnFrameEnterScheduling]
+private static void ProcessMyRegistryEnter(IRegistryManager rm)
+{
+    rm.ProcessRegistry<MyRegistry, MyGameModule>();
+}
+
+[TransitionFunction("process_my_registry_exit")]
+[OnFrameExitScheduling]
+private static void ProcessMyRegistryExit(IRegistryManager rm)
+{
+    rm.ProcessRegistry<MyRegistry, MyGameModule>();
+}
+```
+
+See the [Registry System](xref:sparkitect.core.registry-system) for the full registry lifecycle.
+
 ## Main Loop
 
 The main loop runs while a state is active:

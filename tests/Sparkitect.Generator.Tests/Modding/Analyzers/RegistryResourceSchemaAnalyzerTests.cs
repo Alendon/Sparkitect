@@ -66,7 +66,7 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
 
         namespace DiTest;
         [Registry(Identifier = "dummy")]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -95,7 +95,7 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
         namespace DiTest;
         [Registry(Identifier = "dummy")]
         [UseResourceFile(Key = "asset", Required = true)]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }
@@ -125,7 +125,7 @@ public sealed class RegistryResourceSchemaAnalyzerTests : AnalyzerTestBase<Regis
         [Registry(Identifier = "dummy")]
         [UseResourceFile(Key = "config", Required = true)]
         [UseResourceFile(Key = "data", Required = false)]
-        public class DummyRegistry : IRegistry
+        public class DummyRegistry : IRegistry<TestModule>
         {
             [RegistryMethod]
             public void RegisterValue(Identification id, string value) { }

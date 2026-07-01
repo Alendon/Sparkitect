@@ -16,6 +16,7 @@ public class RenderPassRegistry_Metadata
     public const bool IsExternal = false;
     public const string RegisterMethods = "RegisterRenderPass";
     public const string ResourceFiles = "";
+    public const string OwningModule = "global::Sparkitect.Modding.TestModule";
 
 
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

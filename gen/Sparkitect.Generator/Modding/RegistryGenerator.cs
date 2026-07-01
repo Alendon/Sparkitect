@@ -72,6 +72,9 @@ public partial class RegistryGenerator : IIncrementalGenerator
         // Emit per-registry nested attributes early to stabilize attribute resolution in subsequent passes
         context.RegisterSourceOutput(symbolRegistryModelsProvider, OutputRegistryAttributes);
 
+        // Emit the owning-module linkage partial for every registry (including External ones).
+        context.RegisterSourceOutput(symbolRegistryModelsProvider, OutputRegistryOwningModule);
+
         context.RegisterSourceOutput(symbolRegistryModelsProvider.Combine(buildSettings), OutputRegistryMetadata);
 
         // Generate keyed factory class (and metadata entrypoint) for each registry via DiPipeline
@@ -497,7 +500,24 @@ public partial class RegistryGenerator : IIncrementalGenerator
         //General Analyzer (Utility class): No Type outside defined root namespace
         //Alternative: Define "GeneratorBaseNamespace", where the generator places it general entries
         return new RegistryModel(symbol.Name, id, namespaceName!, isExternal, ExtractRegisterMethods(symbol),
-            ExtractResourceFiles(symbol));
+            ExtractResourceFiles(symbol), OwningModuleFullName: ExtractOwningModule(symbol));
+    }
+
+    /// <summary>
+    /// Reads the owning-module type from the constructed <c>IRegistry&lt;TModule&gt;</c> implemented by the
+    /// registry class. Detection is unchanged: the class matches because <c>IRegistry&lt;TModule&gt; : IRegistry</c>,
+    /// so the constructed interface is present in <see cref="INamedTypeSymbol.AllInterfaces"/> with a single
+    /// type argument (the bare non-generic <c>IRegistry</c> has zero). Returns null when a registry still
+    /// implements only the bare <c>IRegistry</c>.
+    /// </summary>
+    internal static string? ExtractOwningModule(INamedTypeSymbol symbol)
+    {
+        var constructed = symbol.AllInterfaces.FirstOrDefault(i =>
+            i.OriginalDefinition.ToDisplayString(DisplayFormats.NamespaceAndType) == RegistryInterface
+            && i.TypeArguments.Length == 1);
+        if (constructed is null) return null;
+
+        return constructed.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
     }
 
     internal static ImmutableValueArray<(string Key, bool Required, bool Primary)> ExtractResourceFiles(
@@ -706,6 +726,18 @@ public partial class RegistryGenerator : IIncrementalGenerator
         // capture it so cross-assembly consumers can reference the configurator attribute by FQN.
         var declaringSgNamespace = ((INamedTypeSymbol)metadata).ContainingNamespace?.ToDisplayString();
 
+        // Optional owning-module linkage. Read directly off the symbol (bypassing reader.Of so AllValid is
+        // never affected by an absent field) so pre-migration metadata still parses.
+        string? owningModule = null;
+        var owningModuleField = ((INamedTypeSymbol)metadata).GetMembers("OwningModule")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (owningModuleField is { IsConst: true, HasConstantValue: true, ConstantValue: string owningModuleData }
+            && !string.IsNullOrEmpty(owningModuleData))
+        {
+            owningModule = owningModuleData;
+        }
+
         model = new RegistryModel(
             Of("TypeName"),
             Of("Key"),
@@ -713,7 +745,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
             reader.OfBool("IsExternal"),
             methodModels.ToImmutableValueArray(),
             resourceFiles.ToImmutableValueArray(),
-            declaringSgNamespace);
+            declaringSgNamespace,
+            owningModule);
 
         allValid &= reader.AllValid;
 

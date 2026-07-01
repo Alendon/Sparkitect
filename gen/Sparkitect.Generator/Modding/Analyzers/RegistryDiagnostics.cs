@@ -16,8 +16,8 @@ public static class RegistryDiagnostics
 
     // Shape / Registry type-level (01-09)
     public static readonly DiagnosticDescriptor RegistryRequiresInterface =
-        new("SPARK0201", "[Registry] requires IRegistry",
-            "Type '{0}' has [Registry] but doesn't implement IRegistry. Add ': IRegistry' to the type declaration.",
+        new("SPARK0201", "[Registry] requires IRegistry<TModule>",
+            "Type '{0}' has [Registry] but doesn't implement IRegistry<TModule>. Add ': IRegistry<OwningModule>' to the type declaration, naming the module that owns this registry.",
             Category, DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor RegistryMissingIdentifier =

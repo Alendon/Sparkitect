@@ -9,7 +9,7 @@ namespace Sparkitect.GameState;
 /// </summary>
 [Registry(Identifier = "state_module")]
 [PublicAPI]
-public partial class ModuleRegistry(IGameStateManagerRegistryFacade gameStateManager) : IRegistry
+public partial class ModuleRegistry(IGameStateManagerRegistryFacade gameStateManager) : IRegistry<CoreModule>
 {
     /// <summary>
     /// Registers a state module with the game state system.

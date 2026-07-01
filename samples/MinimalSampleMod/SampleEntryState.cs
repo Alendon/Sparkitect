@@ -32,7 +32,7 @@ public partial class SampleEntryState : IStateDescriptor
 
     [TransitionFunction("dummy_value_read")]
     [OnCreateScheduling]
-    [OrderAfter<SampleModule.ProcessRegistryFunc>]
+    [OrderAfter<SampleModule.ProcessRegistryEnterFunc>]
     public static void ReadDummyValues(IDummyValueManager dummyValueManager)
     {
         Log.Information("Dummy value from method registry: {value}",dummyValueManager.GetDummyValue(DummyID.MinimalSampleMod.Hello1));

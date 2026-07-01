@@ -49,7 +49,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
 
 
             [Registry(Identifier = "test")]
-            public class TestRegistry : IRegistry {}
+            public class TestRegistry : IRegistry<TestModule> {}
             """));
 
         var (_, compilation) = await GetInitialCompilationAsync(token);
@@ -138,7 +138,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             // No namespace - class at global level
 
             [Registry(Identifier = "test")]
-            public class TestRegistry : IRegistry {}
+            public class TestRegistry : IRegistry<TestModule> {}
             """));
 
         var (_, compilation) = await GetInitialCompilationAsync(token);
@@ -161,7 +161,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             namespace DiTest;
 
             [Registry()] // No Identifier provided
-            public class TestRegistry : IRegistry {}
+            public class TestRegistry : IRegistry<TestModule> {}
             """));
 
         var (_, compilation) = await GetInitialCompilationAsync(token);
@@ -418,16 +418,10 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         using Sparkitect.DI.GeneratorAttributes;
         using Sparkitect.Modding;
 
-        namespace Sparkitect.Modding
-        {
-            public interface IRegistryBase { }
-            public interface IRegistry : IRegistryBase { }
-        }
-
         namespace DiTest
         {
             [Registry(Identifier = "render_pass")]
-            public partial class RenderPassRegistry : global::Sparkitect.Modding.IRegistry
+            public partial class RenderPassRegistry : global::Sparkitect.Modding.IRegistry<global::Sparkitect.Modding.TestModule>
             {
                 [RegistryMethod]
                 [KeyedFactoryGenerationMarkerAttribute<IRenderPass>]
@@ -513,7 +507,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
             namespace DiTest;
 
             [Registry(Identifier = "dummy")]
-            public partial class DummyRegistry : IRegistry
+            public partial class DummyRegistry : IRegistry<TestModule>
             {
                 [RegistryMethod]
                 public partial void RegisterItem<T>(Identification id) where T : class;

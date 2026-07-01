@@ -11,7 +11,7 @@ namespace Sparkitect.Graphics.RenderGraph.Moments;
 /// </summary>
 [Registry(Identifier = "graph_moment")]
 [PublicAPI]
-public partial class ResourceMomentRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry
+public partial class ResourceMomentRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry<RenderGraphModule>
 {
     /// <summary>Registers a resource moment: binds <paramref name="id"/> to <paramref name="definition"/>, which carries the moment's resource type.</summary>
     [RegistryMethod]
