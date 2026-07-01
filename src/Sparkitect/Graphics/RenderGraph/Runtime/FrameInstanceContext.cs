@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using Sparkitect.Graphing.Descriptions;
 using Sparkitect.Graphing.Ledger;
+using Sparkitect.Modding;
 
 namespace Sparkitect.Graphics.RenderGraph.Runtime;
 
@@ -28,5 +29,16 @@ public sealed class FrameInstanceContext : IInstanceContext
                 "valid during Execute, after the frame loop binds a fresh InstanceContext.");
 
         return _current.Resolve(reference);
+    }
+
+    /// <inheritdoc/>
+    public T ResolveMoment<T>(Identification moment)
+    {
+        if (_current is null)
+            throw new InvalidOperationException(
+                "FrameInstanceContext.ResolveMoment: no per-frame instance context is bound. Fetch is only " +
+                "valid during Execute, after the frame loop binds a fresh InstanceContext.");
+
+        return _current.ResolveMoment<T>(moment);
     }
 }

@@ -8,10 +8,10 @@ using Sparkitect.Modding.IDs;
 namespace PongMod.Resources;
 
 /// <summary>
-/// Declaration of the compute write view: it births the shared target leaf and publishes the
-/// <c>target</c> moment (cross-pass identity for the shared image), then instantiates the
-/// <see cref="WriteViewFact"/> carrying the extent intent + format so the fact resolves a VMA-transient
-/// leaf sized to the swapchain.
+/// Declaration of the compute write view. It sub-declares the shared VMA-transient image leaf and marks
+/// the <c>target</c> moment on that plain <see cref="ImageResource"/> reference — the cross-pass identity
+/// the copy pass's read view re-resolves through the moment — then instantiates the
+/// <see cref="WriteViewFact"/> over that same leaf.
 /// </summary>
 [PublicAPI]
 public sealed record WriteViewDescription : IResourceDescription<StorageWriteView>
@@ -25,12 +25,13 @@ public sealed record WriteViewDescription : IResourceDescription<StorageWriteVie
     /// <inheritdoc/>
     public DeclaredFact<StorageWriteView> Declare(IResourceTransaction tx)
     {
-        // Birth the write view and publish the target moment on its increment (D-01): the shared image's
-        // cross-pass identity, consumed by the copy pass's read view.
-        tx.Increment(tx.Self<StorageWriteView>(), GraphMomentID.PongMod.Target);
+        // Sub-declare the shared transient leaf and mark the target moment on that plain ImageResource ref:
+        // the target is a real image, so the moment's increment node resolves to it directly and the read
+        // view re-resolves the SAME chain through the moment.
+        var leafRef = tx.Declare(new TransientImageDescription { Extent = Extent, Format = Format });
+        tx.Increment(leafRef, GraphMomentID.PongMod.Target);
 
-        // The DI keyed factory builds the fact without per-declaration data; flow the extent + format in.
         var fact = tx.InstantiateFact<WriteViewFact>();
-        return fact with { Extent = Extent, Format = Format };
+        return fact with { LeafRef = leafRef };
     }
 }

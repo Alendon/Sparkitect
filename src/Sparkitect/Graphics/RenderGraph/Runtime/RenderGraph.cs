@@ -217,14 +217,24 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
         return GraphNodeId.None;
     }
 
-    // The recorded pass root whose declared resource chain equals the given chain, or null if none.
+    // The recorded pass root that owns the given chain. Tries a direct match first (a top-level root whose
+    // declared chain equals it — MinimalSampleMod's top-level finishline), then walks composite ownership:
+    // when a finishline increment lives on a sub-declared chain, climb TryGetOwningChain to the composite
+    // root that sub-declared it. Returns null when no root matches and no further owner exists.
     private RootResource? FindRootByChain(GraphNodeId chain)
     {
-        if (chain.IsNone) return null;
-        foreach (var passRoots in _passRoots)
-            foreach (var root in passRoots)
-                if (root.ResourceChain == chain)
-                    return root;
+        var current = chain;
+        while (!current.IsNone)
+        {
+            foreach (var passRoots in _passRoots)
+                foreach (var root in passRoots)
+                    if (root.ResourceChain == current)
+                        return root;
+
+            if (!_transaction.TryGetOwningChain(current, out var owner))
+                return null;
+            current = owner;
+        }
         return null;
     }
 

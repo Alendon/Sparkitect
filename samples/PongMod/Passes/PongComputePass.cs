@@ -1,49 +1,52 @@
-using System.Collections.Immutable;
 using PongMod.CompilerGenerated.IdExtensions;
+using PongMod.Resources;
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.RenderGraph_Deprecated;
-using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
+using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Graphing;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Utils.DU;
-using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassDeprecatedRegistry;
+using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace PongMod.Passes;
 
 /// <summary>
-/// Compute draw pass. Declares a storage view + push descriptor over the shared registered image,
-/// builds its own pipeline/layout from the descriptor's derived set layout plus the
-/// <see cref="PongGameData"/> push range, and dispatches one workgroup per 8x8 pixel tile. A
-/// compute-storage write view drives the General-layout transition before the dispatch.
+/// Compute draw pass on the new render-graph model. Uses the single storage write view over the shared
+/// target (which publishes the <c>target</c> moment) plus a push descriptor composed over it, builds its
+/// own pipeline/layout from the descriptor's derived set layout plus the <see cref="PongGameData"/> push
+/// range, and dispatches one workgroup per 8x8 pixel tile. The write view contributes the General-layout
+/// transition as a lifecycle hook — the render graph dispatches it before this pass's Execute, so the
+/// pass performs no layout transition itself.
 /// </summary>
 [RenderPassRegistry.RegisterPass("pong_compute")]
 internal sealed partial class PongComputePass(IPongRuntimeService pong, IVulkanContext vulkanContext, IShaderManager shaderManager)
     : ComputePass, IDisposable
 {
-    [GraphResource] private IGraphResource<WriteableImage> _write = null!;
-    [GraphResource] private IGraphResource<StorageImageView> _target = null!;
-    [GraphResource] private IGraphResource<Descriptor> _descriptor = null!;
+    private IGraphResource<StorageWriteView> _write = null!;
+    private IGraphResource<PongDescriptor> _descriptor = null!;
 
     private VkPipelineLayout? _pipelineLayout;
     private VkPipeline? _computePipeline;
 
     public override void Setup(ISetupContext ctx)
     {
-        // Compute-storage write view: drives the General transition for the dispatch (D-11).
-        _write = ctx.Declare(
-            new WriteableImageRequest.FromRegistered(GraphImageID.PongMod.Target, WriteUsage.ComputeStorage));
+        // One write view over the shared target (D-14 — the deprecated write + storage-view collapse into
+        // one composite): it births/publishes the target moment and drives the General transition via its
+        // pre-execute hook. The push descriptor binds that view at (set 0, binding 0) and derives its set
+        // layout at Declare through the graph-local cache.
+        _write = ctx.Use(new WriteViewDescription());
 
-        // Storage view + push descriptor binding it at (set 0, binding 0). The view must be
-        // declared before the descriptor so the descriptor can read its DescriptorType at Declare.
-        _target = ctx.Declare(new StorageImageViewRequest.FromRegistered(GraphImageID.PongMod.Target));
-        _descriptor = ctx.Declare(new DescriptorRequest(
-        [
-            new DescriptorBinding(Binding: 0, ArrayIndex: 0, _target),
-        ]));
+        var descriptor = new PongDescriptorDescription(_write);
+        _descriptor = ctx.Use(descriptor);
 
-        BuildPipeline(_descriptor.Fetch().SetLayout);
+        // The descriptor's set layout is produced during its Declare (which ctx.Use runs inside the setup
+        // transaction) and is frame-independent — cache-owned (D-12), fully determined by the bound view's
+        // static descriptor type (D-11). So the pass-owned pipeline/layout is built here at Setup, read
+        // straight off the description. No first-frame Fetch deferral: Fetch is a runtime (per-frame
+        // instance) concern, but a set layout is Setup-derived data the description exposes directly.
+        BuildPipeline(descriptor.SetLayout);
     }
 
     private unsafe void BuildPipeline(VkDescriptorSetLayout setLayout)
@@ -90,12 +93,6 @@ internal sealed partial class PongComputePass(IPongRuntimeService pong, IVulkanC
         var groupCountX = (extent.Width + 7) / 8;
         var groupCountY = (extent.Height + 7) / 8;
         commandBuffer.Dispatch(groupCountX, groupCountY, 1);
-    }
-
-    protected override void InvokeSlotPreExecuteHooks(VkCommandBuffer commandBuffer)
-    {
-        // Transition the shared image to General before the compute write.
-        _write.Fetch().PreExecute(commandBuffer);
     }
 
     public void Dispose()

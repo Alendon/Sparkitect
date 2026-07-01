@@ -46,7 +46,7 @@ public sealed partial class RenderGraph
         // Inform the backing provider of this frame's acquired index, then bind a FRESH per-frame
         // instance context so the leaf resolves against the current index (Pitfall 3: N=1 cache).
         ImageManager.InformAcquiredIndex(imageIndex);
-        var instanceContext = new InstanceContext(_transaction);
+        var instanceContext = new InstanceContext(_transaction, _plan.ResolvedMoments, _ledger);
         _frameContext.Bind(instanceContext);
 
         // One-time, post-setup validation (D-03): the finishline present target must resolve to a

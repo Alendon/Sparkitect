@@ -20,6 +20,7 @@ public sealed class ResourceTransaction : IResourceTransaction
     private readonly DeclarationLedger _ledger;
     private readonly IFactoryContainer<Identification, DeclaredFact>? _factFactory;
     private readonly Dictionary<GraphNodeId, object> _factsByResource = [];
+    private readonly Dictionary<GraphNodeId, GraphNodeId> _owningChainBySubChain = [];
     private readonly HashSet<object> _declaredInstances = new(ReferenceEqualityComparer.Instance);
     private readonly Stack<GraphNodeId> _selfResources = [];
 
@@ -65,6 +66,12 @@ public sealed class ResourceTransaction : IResourceTransaction
         }
 
         var resourceRef = _ledger.Declare<TSub>(Identification.Empty);
+        if (_selfResources.Count > 0)
+        {
+            // A nested sub-declaration: the enclosing description's chain owns this sub-chain.
+            _owningChainBySubChain[resourceRef.Resource] = _selfResources.Peek();
+        }
+
         _selfResources.Push(resourceRef.Resource);
         DeclaredFact<TSub> fact;
         try
@@ -114,6 +121,14 @@ public sealed class ResourceTransaction : IResourceTransaction
         _factsByResource.TryGetValue(reference.Resource, out var facts)
             ? (DeclaredFact<T>)facts
             : null;
+
+    /// <summary>
+    /// Resolves the chain that owns <paramref name="subChain"/> — the enclosing description that
+    /// sub-declared it. Returns false for a top-level chain (no owner). The render graph walks a
+    /// sub-declared increment's chain up to the composite root that publishes it.
+    /// </summary>
+    internal bool TryGetOwningChain(GraphNodeId subChain, out GraphNodeId owningChain) =>
+        _owningChainBySubChain.TryGetValue(subChain, out owningChain);
 
     private GraphNodeId LastResource() =>
         _ledger.Nodes.Count > 0 ? _ledger.Nodes[^1].Resource : GraphNodeId.None;

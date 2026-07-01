@@ -4,8 +4,8 @@ using PongMod.CompilerGenerated.IdExtensions;
 using Serilog;
 using Silk.NET.Input;
 using Sparkitect.GameState;
-using Sparkitect.Graphics.RenderGraph_Deprecated;
-using Sparkitect.Graphics.RenderGraph_Deprecated.Runtime;
+using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph.Runtime;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Windowing;
@@ -21,7 +21,7 @@ internal class PongRuntimeService : IPongRuntimeService
     private float _lastFrameTime;
 
     private ISparkitWindow? _window;
-    private RenderGraphDeprecated? _renderGraph;
+    private RenderGraph? _renderGraph;
 
     public required IWindowManager WindowManager { private get; init; }
     public required IRenderGraphManager RenderGraphManager { private get; init; }
@@ -53,11 +53,11 @@ internal class PongRuntimeService : IPongRuntimeService
     {
         if (_renderGraph is not null) return;
 
-        _renderGraph = RenderGraphManager.CreateGraph<RenderGraphDeprecated>(
+        _renderGraph = RenderGraphManager.CreateGraph<RenderGraph>(
             new List<Identification>
             {
-                RenderPassDeprecatedID.PongMod.PongCompute,
-                RenderPassDeprecatedID.PongMod.PongCopy,
+                RenderPassID.PongMod.PongCompute,
+                RenderPassID.PongMod.PongCopy,
             },
             _window);
         _renderGraph.MaxFrameRate = 120;

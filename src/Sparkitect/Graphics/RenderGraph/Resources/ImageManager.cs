@@ -20,6 +20,11 @@ public sealed class ImageManager : IImageManager
     private readonly IVulkanContext _vulkanContext;
     private VkSwapchain? _swapchain;
     private uint _acquiredIndex;
+
+    // The per-graph VMA allocation cache for the transient storage image: allocated once and reused for the
+    // graph's lifetime so it is not reallocated every frame. This is NOT the cross-pass identity source —
+    // shared-target identity flows through the graph's chain-keyed resolution (the sub-declared leaf marked
+    // with the target moment), not through this singleton.
     private ImageResource? _transientLeaf;
 
     public ImageManager(IVulkanContext vulkanContext) => _vulkanContext = vulkanContext;
@@ -50,7 +55,9 @@ public sealed class ImageManager : IImageManager
     /// <inheritdoc/>
     public ImageResource ResolveTransientLeaf(ExtentIntent intent, Format format)
     {
-        // N=1 stable: the transient backing is allocated once and reused for the graph's lifetime.
+        // Allocation cache: the transient backing is allocated once and reused for the graph's lifetime
+        // (removing this cache would reallocate the storage image every frame). Cross-pass identity is the
+        // graph's concern — resolved through the chain-keyed instance context, not read back from here.
         if (_transientLeaf is not null)
             return _transientLeaf;
 
