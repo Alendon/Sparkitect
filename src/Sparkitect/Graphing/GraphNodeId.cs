@@ -2,12 +2,7 @@ using JetBrains.Annotations;
 
 namespace Sparkitect.Graphing;
 
-/// <summary>
-/// Value identity of a ledger node, minted when a declaration is recorded — never derived from
-/// location, naming, or declaration order. Provenance lives as metadata on the node, not in this
-/// identity. Graph services key on it for dependencies, diagnostics, and tooling; it is not
-/// author-facing.
-/// </summary>
+/// <summary>Value identity of a ledger node, minted when a declaration is recorded — never derived from location, naming, or declaration order. Not author-facing.</summary>
 [PublicAPI]
 public readonly struct GraphNodeId : IEquatable<GraphNodeId>
 {
@@ -21,10 +16,6 @@ public readonly struct GraphNodeId : IEquatable<GraphNodeId>
     /// <summary>True when this is the unset identity.</summary>
     public bool IsNone => _value == 0;
 
-    /// <summary>
-    /// Mints the node identity for the given monotonically increasing ordinal. Minting is the
-    /// ledger's responsibility; ordinals are an internal counter, not a stable external address.
-    /// </summary>
     internal static GraphNodeId Mint(int ordinal) => new(ordinal + 1);
 
     /// <inheritdoc/>

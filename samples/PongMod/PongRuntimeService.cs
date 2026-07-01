@@ -92,19 +92,16 @@ internal class PongRuntimeService : IPongRuntimeService
 
     private void UpdateSimulation()
     {
-        // Poll input for paddle movement
         if (_window != null)
         {
             var keyboard = _window.Keyboard;
             var paddleSpeed = 0.8f;
 
-            // Left paddle: W/S
             if (keyboard.IsKeyDown(Key.W))
                 MoveLeftPaddle(-paddleSpeed * DeltaTime);
             if (keyboard.IsKeyDown(Key.S))
                 MoveLeftPaddle(paddleSpeed * DeltaTime);
 
-            // Right paddle: Up/Down arrows
             if (keyboard.IsKeyDown(Key.Up))
                 MoveRightPaddle(-paddleSpeed * DeltaTime);
             if (keyboard.IsKeyDown(Key.Down))

@@ -4,9 +4,8 @@ using Sparkitect.Graphics.Vulkan.VulkanObjects;
 namespace Sparkitect.Graphics.RenderGraph;
 
 /// <summary>
-/// Receives the engine's swapchain as externally-managed state. The swapchain is not a graph
-/// resource — it is delivered after graph construction (and on every subsequent re-publish / resize)
-/// through this handler, reached via <see cref="IRenderGraph.GetHandler{THandler}"/>.
+/// Receives the engine's swapchain as externally-managed state (not a graph resource); delivered after
+/// construction and on every re-publish/resize via <see cref="IRenderGraph.GetHandler{THandler}"/>.
 /// </summary>
 [PublicAPI]
 public interface ISwapchainHandler

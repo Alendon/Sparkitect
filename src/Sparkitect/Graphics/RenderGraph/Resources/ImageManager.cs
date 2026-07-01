@@ -9,9 +9,8 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 /// <summary>
-/// The concrete leaf backing provider for swapchain-origin images. It holds the applied swapchain and
-/// the index the graph informed for the current frame; its resolve reads that index's backing and
-/// constructs a single-index leaf. It owns no per-index arrays — the index lives here, in the resolve.
+/// The concrete leaf backing provider for swapchain-origin images. Holds the applied swapchain and the
+/// current frame's acquired index; its resolve reads that index's backing and constructs a single-index leaf.
 /// </summary>
 [PublicAPI]
 [GraphLocal<IImageManager, IRenderGraph>]
@@ -21,10 +20,7 @@ public sealed class ImageManager : IImageManager
     private VkSwapchain? _swapchain;
     private uint _acquiredIndex;
 
-    // The per-graph VMA allocation cache for the transient storage image: allocated once and reused for the
-    // graph's lifetime so it is not reallocated every frame. This is NOT the cross-pass identity source —
-    // shared-target identity flows through the graph's chain-keyed resolution (the sub-declared leaf marked
-    // with the target moment), not through this singleton.
+    // Allocated once and reused for the graph's lifetime; not the cross-pass identity source.
     private ImageResource? _transientLeaf;
 
     public ImageManager(IVulkanContext vulkanContext) => _vulkanContext = vulkanContext;
@@ -55,9 +51,6 @@ public sealed class ImageManager : IImageManager
     /// <inheritdoc/>
     public ImageResource ResolveTransientLeaf(ExtentIntent intent, Format format)
     {
-        // Allocation cache: the transient backing is allocated once and reused for the graph's lifetime
-        // (removing this cache would reallocate the storage image every frame). Cross-pass identity is the
-        // graph's concern — resolved through the chain-keyed instance context, not read back from here.
         if (_transientLeaf is not null)
             return _transientLeaf;
 
@@ -84,5 +77,14 @@ public sealed class ImageManager : IImageManager
             initialLayout: ImageLayout.Undefined,
             initialAccess: 0);
         return _transientLeaf;
+    }
+
+    /// <inheritdoc/>
+    public void DisposeTransient()
+    {
+        // Freeing a transient today fully disposes its VMA backing; resource aliasing will replace this
+        // with reuse of a shared allocation.
+        _transientLeaf?.Backing.Dispose();
+        _transientLeaf = null;
     }
 }

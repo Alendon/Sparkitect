@@ -6,20 +6,15 @@ using Sparkitect.Modding.IDs;
 
 namespace PongMod.Resources;
 
-/// <summary>
-/// Declaration of the copy pass's read view: it references the <c>target</c> moment (the cross-pass
-/// identity the compute write view published) so the copy pass orders after the compute pass with no
-/// explicit ordering attribute, then instantiates the <see cref="ReadViewFact"/>, which re-resolves the
-/// same shared N=1 leaf through that moment as a blit source.
-/// </summary>
+/// <summary>Declares the copy pass's read view over the <c>target</c> moment, ordering it after the compute pass with no explicit ordering attribute.</summary>
 [PublicAPI]
 public sealed record ReadViewDescription : IResourceDescription<TransferSrcReadView>
 {
     /// <inheritdoc/>
     public DeclaredFact<TransferSrcReadView> Declare(IResourceTransaction tx)
     {
-        // Reference the target moment (never increment it): the Read-after-Increment edge that sequences
-        // the copy pass after the compute pass. Ordering-only.
+        // Reference (never increment) the target moment: the Read-after-Increment edge that sequences this
+        // pass after the compute pass.
         tx.ReferenceMoment(GraphMomentID.PongMod.Target);
 
         return tx.InstantiateFact<ReadViewFact>();

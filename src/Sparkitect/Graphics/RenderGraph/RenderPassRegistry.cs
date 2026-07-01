@@ -5,10 +5,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 
 /// <summary>
 /// Stock pass registry. Mods register concrete <see cref="IPass"/> implementations via the
-/// generator-emitted <c>[RenderPassRegistry.RegisterPass(...)]</c> attribute; the keyed-factory marker
-/// drives the configurator generation consumed by
-/// <see cref="Sparkitect.DI.IDIService.BuildFactoryContainer{TKey,TBase}"/>. Each registration forwards
-/// the id into <see cref="IRenderGraphManagerRegistryFacade"/>.
+/// generator-emitted <c>[RenderPassRegistry.RegisterPass(...)]</c> attribute.
 /// </summary>
 [Registry(Identifier = "render_pass")]
 [PublicAPI]

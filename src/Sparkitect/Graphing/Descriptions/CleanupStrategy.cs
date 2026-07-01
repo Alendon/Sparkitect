@@ -2,17 +2,14 @@ using JetBrains.Annotations;
 
 namespace Sparkitect.Graphing.Descriptions;
 
-/// <summary>
-/// How a declared fact's resolved instance is released when the graph tears down. A property of the
-/// fact; how a release is honoured is decided by the backing provider, never by the graph.
-/// </summary>
+/// <summary>How a declared fact's resolved instance is released at graph teardown. How a release is honoured is the backing provider's decision, never the graph's.</summary>
 [PublicAPI]
 public enum CleanupStrategy
 {
-    /// <summary>Nothing to release — e.g. a composite of sub-resources plus CPU-side metadata.</summary>
+    /// <summary>Nothing to release.</summary>
     None,
 
-    /// <summary>The fact's instance directly disposes an owned object (e.g. a view disposing its handle).</summary>
+    /// <summary>The instance directly disposes an owned object.</summary>
     Dispose,
 
     /// <summary>Manager-backed: the instance signals release and its backing provider decides how to honour it.</summary>

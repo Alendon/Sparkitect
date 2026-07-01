@@ -4,9 +4,8 @@ using Sparkitect.Modding;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 /// <summary>
-/// Resolves a swapchain-backed image leaf through the graph-local image manager and returns it as a
-/// plain <see cref="ImageResource"/> a composite can sub-declare as its present-target backing. Cleanup
-/// is <see cref="CleanupStrategy.Release"/>: the swapchain owns the backing, not this leaf.
+/// Resolves a swapchain-backed image leaf through the graph-local image manager. Cleanup is
+/// <see cref="CleanupStrategy.Release"/>: the swapchain owns the backing, not this leaf.
 /// </summary>
 [FactRegistry.Register("swapchain_image")]
 public sealed partial record SwapchainImageFact(IImageManager? Provider)

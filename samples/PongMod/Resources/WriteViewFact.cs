@@ -10,16 +10,10 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace PongMod.Resources;
 
-/// <summary>
-/// Builds the compute write view's live instance: resolves the sub-declared shared transient leaf through
-/// the graph (the same N=1 instance the read view resolves via the target moment), creates one
-/// <see cref="VkImageView"/> over it, and wraps both in a <see cref="StorageWriteView"/>. The leaf comes
-/// from the graph via <see cref="LeafRef"/>, set by the description at Declare.
-/// </summary>
+/// <summary>Builds the compute write view: resolves the sub-declared transient leaf, creates a <see cref="VkImageView"/> over it, and wraps both in a <see cref="StorageWriteView"/>.</summary>
 [FactRegistry.Register("pong_write_view")]
 public sealed partial record WriteViewFact : DeclaredFact<StorageWriteView>, IHasIdentification
 {
-    /// <summary>The sub-declared transient leaf, set by the description at Declare.</summary>
     public ResourceRef<ImageResource> LeafRef { get; init; }
 
     /// <inheritdoc/>

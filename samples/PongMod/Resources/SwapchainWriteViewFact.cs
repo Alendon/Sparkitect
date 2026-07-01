@@ -6,17 +6,11 @@ using Sparkitect.Modding;
 
 namespace PongMod.Resources;
 
-/// <summary>
-/// Builds the copy pass's swapchain write view: resolves the sub-declared swapchain leaf dependency-first
-/// (the same cached instance the present target resolves) and composes a hook-contributing
-/// <see cref="SwapchainWriteView"/> over it. Cleanup is <see cref="CleanupStrategy.None"/>: the composite
-/// owns no disposable object — the leaf's own fact releases the swapchain-owned backing.
-/// </summary>
+/// <summary>Builds the copy pass's swapchain write view by resolving the sub-declared leaf and composing a hook-contributing <see cref="SwapchainWriteView"/> over it.</summary>
 [FactRegistry.Register("pong_swapchain_write_view")]
 public sealed partial record SwapchainWriteViewFact
     : DeclaredFact<SwapchainWriteView>, IHasIdentification
 {
-    /// <summary>The sub-declared swapchain leaf, set by the description at Declare.</summary>
     public ResourceRef<ImageResource> Leaf { get; init; }
 
     /// <inheritdoc/>

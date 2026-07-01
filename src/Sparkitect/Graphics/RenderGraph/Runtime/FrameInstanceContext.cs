@@ -7,18 +7,22 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 
 /// <summary>
 /// A rebindable indirection over the per-frame <see cref="InstanceContext"/>. Pass handles capture this
-/// proxy once at setup (via <see cref="GraphSetupContext.Use{TResource}"/>); every frame the graph swaps
-/// in a fresh <see cref="InstanceContext"/> over the setup transaction so a handle's <c>Fetch</c>
-/// resolves against the currently-acquired index (N=1, the index-changes-each-frame contract). Without
-/// this indirection a handle would pin the setup-time context and cache a stale single-index leaf.
+/// proxy once at setup; every frame the graph swaps in a fresh context so a handle's <c>Fetch</c> resolves
+/// against the currently-acquired index. Without it a handle would pin the setup-time context and cache a stale leaf.
 /// </summary>
 [PublicAPI]
-public sealed class FrameInstanceContext : IInstanceContext
+public sealed class FrameInstanceContext : IInstanceContext, IDisposable
 {
     private IInstanceContext? _current;
 
     /// <summary>Binds the instance context resolution flows through for the current frame.</summary>
-    public void Bind(IInstanceContext current) => _current = current;
+    public void Bind(IInstanceContext current)
+    {
+        // The previous frame's GPU work is complete (the frame loop waits the in-flight fence before
+        // binding), so its per-frame instances are safe to dispose here.
+        (_current as IDisposable)?.Dispose();
+        _current = current;
+    }
 
     /// <inheritdoc/>
     public T Resolve<T>(ResourceRef<T> reference)
@@ -41,4 +45,7 @@ public sealed class FrameInstanceContext : IInstanceContext
 
         return _current.ResolveMoment<T>(moment);
     }
+
+    /// <summary>Disposes the last-bound per-frame context at graph teardown.</summary>
+    public void Dispose() => (_current as IDisposable)?.Dispose();
 }

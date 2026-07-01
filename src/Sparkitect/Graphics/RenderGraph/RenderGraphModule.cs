@@ -9,10 +9,9 @@ using Sparkitect.Stateless;
 namespace Sparkitect.Graphics.RenderGraph;
 
 /// <summary>
-/// Clean-room render-graph infrastructure module. Registers the pass, render-graph-type, and
-/// resource-moment registries; construction is thin and GameState-owned, so there is no post-registry
-/// finalization. The resource-moment registry must be processed before any graph Setup so the reserved
-/// moment ids (e.g. the finishline) are assigned before pass declarations reference them.
+/// Render-graph infrastructure module. Registers the pass, render-graph-type, and resource-moment
+/// registries. The resource-moment registry must be processed before any graph Setup so reserved moment
+/// ids (e.g. the finishline) are assigned before pass declarations reference them.
 /// </summary>
 [ModuleRegistry.RegisterModule("render_graph")]
 [PublicAPI]

@@ -7,9 +7,7 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 /// <summary>
 /// One binding in a descriptor-set layout's shape: the ordered <paramref name="Binding"/> index, its
-/// static <paramref name="Type"/>, and the <paramref name="Stages"/> it is visible to. A
-/// <c>record struct</c>, so a sequence of these carries value equality — the key material the layout
-/// cache dedupes on.
+/// static <paramref name="Type"/>, and the <paramref name="Stages"/> it is visible to.
 /// </summary>
 [PublicAPI]
 public readonly record struct DescriptorLayoutBinding(
@@ -19,16 +17,14 @@ public readonly record struct DescriptorLayoutBinding(
 
 /// <summary>
 /// A graph-local get-or-create cache for push-descriptor <see cref="VkDescriptorSetLayout"/>s, keyed by
-/// binding shape. Identical shapes share one owned layout; the cache disposes every layout it owns at
-/// graph teardown. Seed of a future general usage-level-disposable layer — not generalized now (D-12).
+/// binding shape. Identical shapes share one owned layout, disposed at graph teardown.
 /// </summary>
 [PublicAPI]
 public interface IDescriptorLayoutCache
 {
     /// <summary>
     /// Returns the layout for <paramref name="bindings"/>, creating it (with
-    /// <see cref="DescriptorSetLayoutCreateFlags.PushDescriptorBitKhr"/>) on first request and returning
-    /// the cached instance when the same ordered binding shape recurs.
+    /// <see cref="DescriptorSetLayoutCreateFlags.PushDescriptorBitKhr"/>) on first request.
     /// </summary>
     VkDescriptorSetLayout GetOrCreate(ImmutableArray<DescriptorLayoutBinding> bindings);
 }

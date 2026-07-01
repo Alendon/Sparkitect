@@ -7,12 +7,7 @@ using Sparkitect.Modding.IDs;
 
 namespace PongMod.Resources;
 
-/// <summary>
-/// Builds the copy pass's read view: re-resolves the shared VMA-transient leaf through the target moment
-/// (the same N=1 instance the compute write view sub-declared and published) and wraps it, layout-only, in
-/// a <see cref="TransferSrcReadView"/>. Identity flows through the graph's chain-keyed resolution, so both
-/// views share one leaf and one tracked layout state.
-/// </summary>
+/// <summary>Builds the copy pass's read view by re-resolving the shared transient leaf through the target moment — the same N=1 instance the write view published, so both share one tracked layout state.</summary>
 [FactRegistry.Register("pong_read_view")]
 public sealed partial record ReadViewFact : DeclaredFact<TransferSrcReadView>, IHasIdentification
 {

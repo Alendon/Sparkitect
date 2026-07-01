@@ -4,9 +4,8 @@ using Sparkitect.Graphing.Descriptions;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 /// <summary>
-/// Shared engine description for a swapchain-backed present-target leaf. It declares only the plain
-/// <see cref="ImageResource"/> backing and marks no moment — the finishline marking is the caller's
-/// concern (a composite increments the finishline on the reference this sub-declaration returns).
+/// Description for a swapchain-backed present-target leaf. Declares only the plain
+/// <see cref="ImageResource"/> backing and marks no moment — the finishline marking is the caller's concern.
 /// </summary>
 [PublicAPI]
 public sealed record SwapchainImageDescription : IResourceDescription<ImageResource>

@@ -7,18 +7,7 @@ using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Graphing.Compile;
 
-/// <summary>
-/// The Link phase of the two-phase compile. Collection (minting nodes, recording the Read/Increment
-/// relations) already happened on the supplied <see cref="DeclarationLedger"/>; Link resolves each
-/// resource's symbolic epochs to concrete positions, validates the three structural diagnostics with
-/// full provenance, derives data-flow ordering topologically from the relations alone, and emits a
-/// GPU-free <see cref="CompiledPlan"/>.
-/// </summary>
-/// <remarks>
-/// Resolution happens here and only here — a declaration's outcome never depends on pass-setup
-/// order, so two declaration orders over the same declarations produce an identical plan. Diagnostics
-/// are returned as <see cref="CompileError"/> cases, never thrown.
-/// </remarks>
+/// <summary>The Link phase of the compile: resolves each resource's symbolic epochs, validates the structural diagnostics, derives data-flow ordering, and emits a GPU-free <see cref="CompiledPlan"/>. Diagnostics are returned as <see cref="CompileError"/> cases, never thrown.</summary>
 [PublicAPI]
 public sealed class GraphCompiler
 {
@@ -27,10 +16,7 @@ public sealed class GraphCompiler
     /// <summary>Creates a compiler over an already-collected ledger.</summary>
     public GraphCompiler(DeclarationLedger ledger) => _ledger = ledger;
 
-    /// <summary>
-    /// Runs Link: validates fork, unproducible-read, and cycle in turn (each short-circuiting to its
-    /// provenance-carrying diagnostic), then derives ordering and resolves epochs into a plan.
-    /// </summary>
+    /// <summary>Runs Link: validates fork, unproducible-read, and cycle in turn, then derives ordering and resolves epochs into a plan.</summary>
     public Result<CompiledPlan, CompileError> Link()
     {
         if (DetectFork() is { } fork)
@@ -43,9 +29,8 @@ public sealed class GraphCompiler
             return unproducible;
         }
 
-        // Bind moments BEFORE building the ordering graph: a moment reference resolves to its single
-        // marked increment, and that binding is precisely what lets a cross-pass moment read
-        // contribute a produce-before-consume ordering edge (and participate in the cycle check).
+        // Bind moments before building the ordering graph: the binding is what lets a cross-pass moment
+        // read contribute a produce-before-consume edge (and participate in the cycle check).
         if (BindMoments(out var resolvedMoments) is { } momentError)
         {
             return momentError;
@@ -53,10 +38,8 @@ public sealed class GraphCompiler
 
         var graph = BuildOrderingGraph(resolvedMoments);
 
-        // Cycle detection via the in-repo QuikGraph idiom: TopologicalSortAlgorithm throws
-        // NonAcyclicGraphException on a cycle. We translate that into a provenance-carrying DU case
-        // rather than letting the exception escape (the deprecated compiler threw a string). The
-        // moment edges folded in above are included, so a moment-induced cycle surfaces here.
+        // TopologicalSortAlgorithm throws NonAcyclicGraphException on a cycle; translate it into a
+        // provenance-carrying DU case rather than letting it escape.
         var topo = new TopologicalSortAlgorithm<GraphNodeId, Edge<GraphNodeId>>(graph);
         try
         {
@@ -71,18 +54,10 @@ public sealed class GraphCompiler
         return BuildPlan(ordered, resolvedMoments);
     }
 
-    /// <summary>
-    /// MOMENT BINDING: binds each referenced moment to exactly one marked increment. A referenced
-    /// moment with ZERO marked increments is an <see cref="CompileError.UndefinedMoment"/> (naming the
-    /// moment and its readers); TWO is a <see cref="CompileError.DuplicateMoment"/> (naming both marked
-    /// increment provenances). Exactly ONE resolves the moment to that increment's result epoch.
-    /// Marking rides the description ctor Identification — never a pass-level verb (binding is link-stage).
-    /// </summary>
     private CompileError? BindMoments(out Dictionary<Identification, ResolvedMoment> resolvedMoments)
     {
         resolvedMoments = [];
 
-        // Marked increments grouped by the moment they publish (a node is marked by RecordMoment).
         var markedByMoment = new Dictionary<Identification, List<LedgerNode>>();
         foreach (var node in _ledger.Nodes)
         {
@@ -100,7 +75,6 @@ public sealed class GraphCompiler
             marks.Add(node);
         }
 
-        // Readers grouped by the moment they reference (preserving reference order).
         var readersByMoment = new Dictionary<Identification, List<GraphNodeId>>();
         foreach (var momentRead in _ledger.MomentReads)
         {
@@ -132,10 +106,6 @@ public sealed class GraphCompiler
         return null;
     }
 
-    /// <summary>
-    /// FORK: any source epoch from which more than one increment is declared. Concurrent writers are
-    /// structurally inexpressible — names both produced epochs and their shared source.
-    /// </summary>
     private CompileError.Fork? DetectFork()
     {
         var bySource = new Dictionary<GraphNodeId, GraphNodeId>();
@@ -152,11 +122,6 @@ public sealed class GraphCompiler
         return null;
     }
 
-    /// <summary>
-    /// UNPRODUCIBLE READ: a Read whose target epoch has no producing increment — the base epoch is
-    /// the canonical case, but any never-incremented epoch qualifies. Names the reader and the
-    /// unproducible epoch node.
-    /// </summary>
     private CompileError.UnproducibleRead? DetectUnproducibleRead()
     {
         var producible = new HashSet<GraphNodeId>();
@@ -176,12 +141,6 @@ public sealed class GraphCompiler
         return null;
     }
 
-    /// <summary>
-    /// Builds the data-flow ordering graph over ledger nodes per requirements §Data-Flow Ordering:
-    /// every Read orders the reader after that epoch's producing increment; every Increment orders
-    /// after its source epoch and after that source epoch's declared readers (the anti-dependency);
-    /// every moment read orders the reader after the marked increment the moment resolves to.
-    /// </summary>
     private BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> BuildOrderingGraph(
         IReadOnlyDictionary<Identification, ResolvedMoment> resolvedMoments)
     {
@@ -192,21 +151,19 @@ public sealed class GraphCompiler
             graph.AddVertex(node.Id);
         }
 
-        // Increment: produced node orders after its source epoch.
         foreach (var increment in _ledger.Increments)
         {
             AddEdge(graph, increment.SourceNode, increment.ProducedNode);
         }
 
-        // Read: the reader orders after the producing increment of the read epoch.
         foreach (var read in _ledger.Reads)
         {
             EnsureVertex(graph, read.Reader);
             AddEdge(graph, read.EpochNode, read.Reader);
         }
 
-        // Increment anti-dependency: the produced node also orders after every reader declared
-        // against its source epoch (the increment must not clobber a reader still consuming it).
+        // Anti-dependency: the produced node also orders after every reader declared against its source
+        // epoch, so an increment cannot clobber a reader still consuming it.
         foreach (var increment in _ledger.Increments)
         {
             var source = NodeById(increment.SourceNode);
@@ -222,10 +179,8 @@ public sealed class GraphCompiler
             }
         }
 
-        // Moment read: the reader orders after the marked increment its moment resolves to. This is
-        // the produce-before-consume edge a cross-pass moment reference contributes. A moment with no
-        // resolved producer was already rejected by BindMoments (UndefinedMoment), so any read that
-        // reaches here has a bound increment; a read without one is skipped defensively.
+        // A moment with no resolved producer was already rejected by BindMoments, so an unresolved read
+        // here is skipped defensively.
         foreach (var momentRead in _ledger.MomentReads)
         {
             if (!resolvedMoments.TryGetValue(momentRead.Moment, out var resolved))
@@ -240,14 +195,10 @@ public sealed class GraphCompiler
         return graph;
     }
 
-    /// <summary>
-    /// Derives the ordered node sequence with a mint-order tiebreak among equally-ready nodes (Kahn's
-    /// pass), so the output is deterministic regardless of edge-insertion order. The structural
-    /// guarantee that the graph is acyclic is already established by the topological-sort cycle check.
-    /// </summary>
     private List<GraphNodeId> DeriveOrdering(BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> graph)
     {
-        // Mint order is the ledger's node order; it is the stable tiebreak among ready nodes.
+        // Mint order (the ledger's node order) is the stable tiebreak among ready nodes, so the output
+        // is deterministic regardless of edge-insertion order.
         var mintOrder = new List<GraphNodeId>();
         var seen = new HashSet<GraphNodeId>();
         foreach (var node in _ledger.Nodes)
@@ -299,7 +250,6 @@ public sealed class GraphCompiler
         return ordered;
     }
 
-    /// <summary>Resolves each chain's symbolic epochs to concrete positions and assembles the plan.</summary>
     private CompiledPlan BuildPlan(
         IReadOnlyList<GraphNodeId> ordered,
         IReadOnlyDictionary<Identification, ResolvedMoment> resolvedMoments)
@@ -322,8 +272,7 @@ public sealed class GraphCompiler
 
     private List<GraphNodeId> FindCycleParticipants(BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> graph)
     {
-        // Repeatedly strip zero-in-degree vertices; whatever cannot be stripped participates in a
-        // cycle. Mirrors the Kahn's pass but keeps the residual instead of the emitted order.
+        // Repeatedly strip zero-in-degree vertices; whatever cannot be stripped participates in a cycle.
         var inDegree = new Dictionary<GraphNodeId, int>();
         foreach (var vertex in graph.Vertices)
         {

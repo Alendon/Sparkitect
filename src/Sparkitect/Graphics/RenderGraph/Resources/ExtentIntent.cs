@@ -5,10 +5,8 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 /// <summary>
 /// A symbolic image-extent request carried on a description and resolved to a concrete
-/// <see cref="Silk.NET.Vulkan.Extent2D"/> at instance time by <see cref="IImageManager"/> — never a
-/// baked size. The union is closed: <see cref="ToString"/>-style switches over it have no default arm,
-/// so a future case (e.g. a computed ratio or a custom size) is a compile error until handled. Only
-/// <see cref="MatchSwapchain"/> exists now; it commits to no resize behaviour.
+/// <see cref="Silk.NET.Vulkan.Extent2D"/> at instance time by <see cref="IImageManager"/> — never a baked
+/// size. The union is closed: switches over it have no default arm, so a new case is a compile error until handled.
 /// </summary>
 [DiscriminatedUnion]
 [PublicAPI]

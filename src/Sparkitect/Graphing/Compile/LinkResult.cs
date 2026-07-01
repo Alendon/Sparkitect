@@ -3,15 +3,7 @@ using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Graphing.Compile;
 
-/// <summary>
-/// The outcome of a Link: either a structurally valid <see cref="CompiledPlan"/> or the first
-/// structural <see cref="CompileError"/> encountered. Diagnostics are provenance-carrying DU cases,
-/// never exceptions — a caller pattern-matches the error rather than parsing a message string.
-/// </summary>
-/// <remarks>
-/// A thin wrapper over the workhorse <see cref="Result{TOk, TError}"/> that names the compile
-/// outcome and exposes its two constructors without leaking the generic shape at call sites.
-/// </remarks>
+/// <summary>The outcome of a Link: either a valid <see cref="CompiledPlan"/> or the first <see cref="CompileError"/>. A thin wrapper over <see cref="Result{TOk, TError}"/> that names the two outcomes.</summary>
 [PublicAPI]
 public static class LinkResult
 {

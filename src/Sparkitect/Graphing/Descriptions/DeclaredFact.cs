@@ -10,10 +10,7 @@ public interface DeclaredFact
     public CleanupStrategy CleanupStrategy { get; }
 }
 
-/// <summary>
-/// The immutable facts of a declaration: it owns construction of the live <typeparamref name="T"/>
-/// instance from an <see cref="IInstanceContext"/>.
-/// </summary>
+/// <summary>The immutable facts of a declaration: it owns construction of the live <typeparamref name="T"/> instance from an <see cref="IInstanceContext"/>.</summary>
 [PublicAPI]
 public interface DeclaredFact<T> : DeclaredFact
 {

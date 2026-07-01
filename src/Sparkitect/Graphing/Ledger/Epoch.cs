@@ -2,16 +2,7 @@ using JetBrains.Annotations;
 
 namespace Sparkitect.Graphing.Ledger;
 
-/// <summary>
-/// A symbolic position in a resource's intra-frame dataflow. An epoch is plan structure, not a
-/// resolved integer at collect time — authored code never sees an epoch number, and resolution to
-/// concrete positions happens during the Link phase. Epochs are advanced only by declared
-/// increments and are identical in shape every frame.
-/// </summary>
-/// <remarks>
-/// The base epoch is a resource's introduced-but-unfilled state: it may be held (it is the input
-/// of the first increment) but never read, because it has no producing increment.
-/// </remarks>
+/// <summary>A symbolic position in a resource's intra-frame dataflow. Plan structure, not a resolved integer at collect time — authored code never sees an epoch number. Advanced only by declared increments. The base epoch is holdable but never readable (no producing increment).</summary>
 [PublicAPI]
 public readonly struct Epoch : IEquatable<Epoch>
 {

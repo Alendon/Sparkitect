@@ -3,12 +3,7 @@ using Sparkitect.Modding;
 
 namespace Sparkitect.Graphing.Ledger;
 
-/// <summary>
-/// One <c>(resource, epoch)</c> entry in the ledger: a single readable (or base) position of one
-/// resource chain. Carries the producing-increment provenance, the readers recorded against this
-/// epoch, and the optional moment marking. The node's value identity is <see cref="Id"/>, minted by
-/// the ledger; provenance is metadata here, never the identity.
-/// </summary>
+/// <summary>One <c>(resource, epoch)</c> entry in the ledger: a single readable (or base) position of one resource chain. Its value identity is <see cref="Id"/>; provenance is metadata, never the identity.</summary>
 [PublicAPI]
 public sealed class LedgerNode
 {
@@ -45,10 +40,7 @@ public sealed class LedgerNode
     /// <summary>Declaration provenance (the declaring pass/description), metadata only.</summary>
     public Identification Provenance { get; }
 
-    /// <summary>
-    /// The node identity of the epoch this increment advanced from, or <see cref="GraphNodeId.None"/>
-    /// for a base-epoch node (which has no producing increment).
-    /// </summary>
+    /// <summary>The node identity of the epoch this increment advanced from, or <see cref="GraphNodeId.None"/> for a base-epoch node.</summary>
     public GraphNodeId ProducingIncrementSource { get; }
 
     /// <summary>True for a base-epoch node — holdable, never readable, no producing increment.</summary>

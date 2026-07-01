@@ -10,13 +10,10 @@ using Sparkitect.Windowing;
 namespace Sparkitect.Graphics.RenderGraph.Runtime;
 
 /// <summary>
-/// Thin, GameState-owned render-graph manager. Holds the pass, fact, render-graph-type, and
-/// resource-moment catalogs and drives construction of render-graph instances via
-/// <see cref="CreateGraph{TRenderGraph}"/>. Each graph is resolved through the registry's generated
-/// keyed factory against a per-graph child container — layered over the host container and populated
-/// with the <c>[GraphLocal&lt;,IRenderGraph&gt;]</c> services — so graph-local managers (e.g. the image
-/// manager) and facts resolve their dependencies from that scope. The resource-moment catalog is the
-/// demoted moment store: a simple collection owned here, not a separate service.
+/// GameState-owned render-graph manager. Holds the pass, fact, render-graph-type, and resource-moment
+/// catalogs and drives construction via <see cref="CreateGraph{TRenderGraph}"/>. Each graph resolves
+/// against a per-graph child container layered over the host container and populated with its
+/// <c>[GraphLocal&lt;,IRenderGraph&gt;]</c> services, so graph-local managers and facts resolve from that scope.
 /// </summary>
 [StateService<IRenderGraphManager, RenderGraphModule>]
 [PublicAPI]
@@ -53,9 +50,7 @@ internal sealed class RenderGraphManager :
         var hostContainer = GameStateManager.CurrentCoreContainer;
         var modIdList = GameStateManager.LoadedMods.ToList();
 
-        // Per-render-graph core container: collects [GraphLocal<,IRenderGraph>] configurator
-        // entrypoints layered over the host container. With no graph-local services registered it
-        // resolves identically to the host container via parent fallback.
+        // Per-render-graph container layered over the host; falls back to the host container by parent lookup.
         var graphContainer = DIService.BuildConfiguredContainer<IGraphLocalConfigurator>(
             hostContainer,
             modIdList,

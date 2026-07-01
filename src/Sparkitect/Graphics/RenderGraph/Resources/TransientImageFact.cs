@@ -5,10 +5,9 @@ using Sparkitect.Modding;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 /// <summary>
-/// Resolves a VMA-transient image leaf through the graph-local image manager and returns it as a plain
-/// <see cref="ImageResource"/> a composite can sub-declare as its shared cross-pass target backing. The
-/// <see cref="ExtentIntent"/> + <see cref="Format"/> flow in from the description via a record
-/// <c>with</c>. Cleanup is <see cref="CleanupStrategy.Release"/>: the image manager owns the VMA backing.
+/// Resolves a VMA-transient image leaf through the graph-local image manager. The
+/// <see cref="ExtentIntent"/> + <see cref="Format"/> flow in from the description via a record <c>with</c>.
+/// Cleanup is <see cref="CleanupStrategy.Release"/>: the image manager owns the VMA backing.
 /// </summary>
 [FactRegistry.Register("transient_image")]
 public sealed partial record TransientImageFact(IImageManager? Provider)

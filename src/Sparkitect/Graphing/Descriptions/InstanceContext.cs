@@ -5,26 +5,20 @@ using Sparkitect.Modding;
 
 namespace Sparkitect.Graphing.Descriptions;
 
-/// <summary>
-/// The concrete <see cref="IInstanceContext"/> for one in-flight frame (N=1). It resolves a reference
-/// by building the facts registered for that resource via the originating <see cref="ResourceTransaction"/>,
-/// caching the built instance per resource so the same reference yields the same instance within the
-/// frame. Construction is dependency-first: a fact's <c>CreateInstance</c> resolves its own
-/// sub-references through this same context before composing its instance.
-/// </summary>
+/// <summary>The concrete <see cref="IInstanceContext"/> for one in-flight frame (N=1). Resolves a reference by building the resource's registered facts, caching per resource so the same reference yields the same instance. Construction is dependency-first.</summary>
 [PublicAPI]
-public sealed class InstanceContext : IInstanceContext
+public sealed class InstanceContext : IInstanceContext, IDisposable
 {
     private readonly ResourceTransaction _transaction;
     private readonly IReadOnlyDictionary<Identification, ResolvedMoment>? _resolvedMoments;
     private readonly DeclarationLedger? _ledger;
     private readonly Dictionary<GraphNodeId, object?> _instancesByResource = [];
+    // Built instances paired with the fact that made them, in build order, so teardown can honour each
+    // fact's CleanupStrategy (dependents dispose before dependencies).
+    private readonly List<(object? Instance, DeclaredFact Fact)> _built = [];
+    private bool _disposed;
 
-    /// <summary>
-    /// Creates an instance context resolving against <paramref name="transaction"/>'s facts. Supplying the
-    /// plan's <paramref name="resolvedMoments"/> and the <paramref name="ledger"/> enables
-    /// <see cref="ResolveMoment{T}"/>; without them, moment resolution is unavailable.
-    /// </summary>
+    /// <summary>Creates a context resolving against <paramref name="transaction"/>'s facts. Supplying <paramref name="resolvedMoments"/> and <paramref name="ledger"/> enables <see cref="ResolveMoment{T}"/>; without them, moment resolution is unavailable.</summary>
     public InstanceContext(
         ResourceTransaction transaction,
         IReadOnlyDictionary<Identification, ResolvedMoment>? resolvedMoments = null,
@@ -49,6 +43,7 @@ public sealed class InstanceContext : IInstanceContext
 
         var instance = facts.CreateInstance(this);
         _instancesByResource[reference.Resource] = instance;
+        _built.Add((instance, facts));
         return instance;
     }
 
@@ -71,5 +66,21 @@ public sealed class InstanceContext : IInstanceContext
 
         var reference = _ledger.ReferenceTo<T>(resolved.IncrementNode);
         return Resolve(reference);
+    }
+
+    /// <summary>Releases this frame's built instances by honouring each fact's <see cref="CleanupStrategy"/>.</summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        for (var i = _built.Count - 1; i >= 0; i--)
+        {
+            var (instance, fact) = _built[i];
+            if (fact.CleanupStrategy is CleanupStrategy.Dispose)
+                (instance as IDisposable)?.Dispose();
+        }
+
+        _built.Clear();
     }
 }

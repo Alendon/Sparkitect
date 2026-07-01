@@ -7,42 +7,24 @@ using Sundew.DiscriminatedUnions;
 
 namespace PongMod.Resources;
 
-/// <summary>
-/// Execute-time payload a bindable view hands the descriptor so the descriptor — not the view —
-/// builds the <see cref="WriteDescriptorSet"/>. The union is closed (only <see cref="StorageImage"/>
-/// for now — StorageBuffer arrives with the Space Invaders migration); the <see cref="ToWrite"/> switch
-/// has no default arm, so a new unhandled case is a compile error.
-/// </summary>
+/// <summary>Execute-time payload a bindable view hands the descriptor to build a write; a closed union whose <see cref="ToWrite"/> switch has no default arm, so an unhandled case is a compile error.</summary>
 [DiscriminatedUnion]
 [PublicAPI]
 public abstract partial record DescriptorBindingPayload
 {
-    /// <summary>A storage-image binding: an image view bound at a layout.</summary>
     public sealed partial record StorageImage(VkImageView View, ImageLayout Layout) : DescriptorBindingPayload;
 
-    /// <summary>
-    /// Holds the resource-info struct a <see cref="WriteDescriptorSet"/> points at. The caller owns this
-    /// storage and must keep it alive (un-moved) for as long as the produced write is used — push
-    /// descriptors read through <see cref="WriteDescriptorSet.PImageInfo"/> at
-    /// <c>vkCmdPushDescriptorSet</c> time.
-    /// </summary>
+    /// <summary>Holds the resource-info struct a write points at; the caller must keep it alive until the write is consumed, since push descriptors read through its pointer at push time.</summary>
     [StructLayout(LayoutKind.Explicit)]
     public struct WriteInfoStorage
     {
-        /// <summary>Image-info slot, set for a <see cref="StorageImage"/> payload.</summary>
         [FieldOffset(0)] public DescriptorImageInfo ImageInfo;
     }
 
-    /// <summary>
-    /// Build the Vulkan <see cref="WriteDescriptorSet"/> for this payload at <paramref name="binding"/>.
-    /// The pointed-to info struct is written into caller-owned <paramref name="storage"/> so the write's
-    /// pointer stays valid for the caller's scope (the descriptor pins/scopes it during its push).
-    /// <see cref="WriteDescriptorSet.DstSet"/> is left default — push descriptors ignore it.
-    /// </summary>
+    /// <summary>Builds the write at <paramref name="binding"/>, pointing it at caller-owned <paramref name="storage"/> so the pointer stays valid for the caller's scope.</summary>
     public unsafe WriteDescriptorSet ToWrite(uint binding, ref WriteInfoStorage storage)
     {
-        // Capture the storage address up front so the switch arm (which cannot take a `ref`
-        // parameter) can point the write at the caller-owned info slot.
+        // Switch arms can't take a ref param, so capture the storage address up front.
         var storagePtr = (WriteInfoStorage*)Unsafe.AsPointer(ref storage);
         return this switch
         {

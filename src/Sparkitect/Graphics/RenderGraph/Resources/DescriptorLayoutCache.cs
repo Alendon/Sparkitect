@@ -10,11 +10,9 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 /// <summary>
-/// The graph-local descriptor-layout cache. Lives in the per-graph child DI container (fact-ctor
-/// injectable); get-or-creates a push-descriptor <see cref="VkDescriptorSetLayout"/> keyed by the
-/// ordered binding shape, deduping identical shapes intra-graph, and disposes every owned layout at
-/// graph teardown. The graph calls <c>DeviceWaitIdle</c> before disposing its graph-local services, so
-/// disposal here is safe (D-12).
+/// The graph-local descriptor-layout cache. Get-or-creates a push-descriptor
+/// <see cref="VkDescriptorSetLayout"/> keyed by the ordered binding shape, deduping identical shapes
+/// intra-graph, and disposes every owned layout at graph teardown.
 /// </summary>
 [PublicAPI]
 [GraphLocal<IDescriptorLayoutCache, IRenderGraph>]
@@ -74,10 +72,7 @@ public sealed class DescriptorLayoutCache : IDescriptorLayoutCache, IDisposable
         return ok.Value;
     }
 
-    /// <summary>
-    /// Value-equal key over an ordered binding shape. <see cref="DescriptorLayoutBinding"/> is a
-    /// <c>record struct</c>, so the sequence compares and hashes element-wise.
-    /// </summary>
+    /// <summary>Value-equal key over an ordered binding shape, comparing and hashing element-wise.</summary>
     private readonly struct ShapeKey : IEquatable<ShapeKey>
     {
         private readonly ImmutableArray<DescriptorLayoutBinding> _bindings;

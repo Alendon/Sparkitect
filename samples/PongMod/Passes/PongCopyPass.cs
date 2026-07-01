@@ -7,13 +7,7 @@ using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 
 namespace PongMod.Passes;
 
-/// <summary>
-/// Pong-owned copy pass on the new render-graph model. Reads the shared render target (transfer-src) and
-/// blits it onto the swapchain image (transfer-dst). The read view references the <c>target</c> moment,
-/// so the copy pass orders after the compute pass via the data-flow (Read-after-Increment) edge with no
-/// explicit ordering attribute. Both layout transitions and the present transition are contributed by the
-/// views as lifecycle hooks; the pass issues none itself.
-/// </summary>
+/// <summary>Copy pass: blits the shared render target (transfer-src) onto the swapchain image (transfer-dst). Orders after the compute pass via the target-moment read edge, with no explicit ordering attribute; the views contribute all layout and present transitions as lifecycle hooks.</summary>
 [RenderPassRegistry.RegisterPass("pong_copy")]
 internal sealed partial class PongCopyPass : ComputePass
 {

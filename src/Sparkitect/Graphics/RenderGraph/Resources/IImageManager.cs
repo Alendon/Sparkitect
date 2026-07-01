@@ -15,11 +15,14 @@ public interface IImageManager
     ImageResource ResolveSwapchainLeaf();
 
     /// <summary>
-    /// Resolves a single (N=1) VMA-transient image leaf sized from <paramref name="intent"/> in
-    /// <paramref name="format"/>. The <see cref="ExtentIntent"/> is resolved to a concrete extent at
-    /// call time (e.g. <see cref="ExtentIntent.MatchSwapchain"/> ⇒ the applied swapchain's extent). The
-    /// backing is allocated once and the same leaf is returned on subsequent resolves within the graph
-    /// lifetime; it is not swapchain-indexed.
+    /// Resolves a VMA-transient image leaf sized from <paramref name="intent"/> in
+    /// <paramref name="format"/>. The backing is allocated once and reused for the graph's lifetime; it is not swapchain-indexed.
     /// </summary>
     ImageResource ResolveTransientLeaf(ExtentIntent intent, Format format);
+
+    /// <summary>
+    /// Frees the manager-owned transient backing at graph teardown (the <see cref="Sparkitect.Graphing.Descriptions.CleanupStrategy.Release"/>
+    /// path for the VMA transient). Swapchain leaves are owned by the swapchain and are not freed here.
+    /// </summary>
+    void DisposeTransient();
 }

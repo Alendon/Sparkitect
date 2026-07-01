@@ -5,10 +5,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 
 /// <summary>
 /// Stock render-graph registry. Concrete <see cref="IRenderGraph"/> implementations register via the
-/// generator-emitted <c>[RenderGraphRegistry.RegisterRenderGraph(...)]</c> attribute; the keyed-factory
-/// marker drives generation of the construction-side configurator consumed by
-/// <see cref="Sparkitect.DI.IDIService.BuildFactoryContainer{TKey,TBase}"/>. Each registration forwards
-/// the id into <see cref="IRenderGraphManagerRegistryFacade"/>.
+/// generator-emitted <c>[RenderGraphRegistry.RegisterRenderGraph(...)]</c> attribute.
 /// </summary>
 [Registry(Identifier = "render_graph")]
 [PublicAPI]

@@ -5,9 +5,8 @@ using Sparkitect.Graphing.Descriptions;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 /// <summary>
-/// Shared engine description for a VMA-transient image leaf. It declares only the plain
-/// <see cref="ImageResource"/> backing, carrying the transient sizing intent, and marks no moment — the
-/// compute write view that sub-declares it marks the target moment on the reference it returns.
+/// Description for a VMA-transient image leaf. Declares only the plain <see cref="ImageResource"/>
+/// backing, carrying the transient sizing intent, and marks no moment.
 /// </summary>
 [PublicAPI]
 public sealed record TransientImageDescription : IResourceDescription<ImageResource>

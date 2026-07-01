@@ -16,19 +16,13 @@ public class ImageResource
     /// <summary>The image format.</summary>
     public Format Format { get; }
 
-    /// <summary>
-    /// The backing's current layout. Public and mutable: callers issuing their own barriers write it
-    /// directly to keep custom synchronization coherent; <see cref="TransitionTo"/> writes it for the
-    /// common path.
-    /// </summary>
+    /// <summary>The backing's current layout. Mutable: callers issuing their own barriers write it directly to stay coherent.</summary>
     public ImageLayout CurrentLayout { get; set; }
 
     /// <summary>The backing's current access mask, written alongside <see cref="CurrentLayout"/>.</summary>
     public AccessFlags CurrentAccess { get; set; }
     
-    /// <summary>
-    /// Constructs a leaf scoped to one acquired swapchain backing with its initial tracked state.
-    /// </summary>
+    /// <summary>Constructs a leaf over one backing with its initial tracked state.</summary>
     public ImageResource(
         VkImage backing,
         Extent2D extent,
@@ -44,9 +38,8 @@ public class ImageResource
     }
 
     /// <summary>
-    /// Emits a layout transition for the backing and writes the resulting layout / access back into the
-    /// leaf's carried state. No-op if the backing is already in <paramref name="newLayout"/>. The source
-    /// stage is derived from the current access (top-of-pipe when no prior access).
+    /// Emits a layout transition and writes the resulting layout/access back into the leaf's carried state.
+    /// No-op if already in <paramref name="newLayout"/>; the source stage is derived from the current access.
     /// </summary>
     public void TransitionTo(
         VkCommandBuffer commandBuffer,
@@ -71,11 +64,18 @@ public class ImageResource
         CurrentAccess = newAccess;
     }
 
-    private static PipelineStageFlags DeriveStage(AccessFlags access) => access switch
+    private static PipelineStageFlags DeriveStage(AccessFlags access)
     {
-        AccessFlags.TransferWriteBit => PipelineStageFlags.TransferBit,
-        AccessFlags.ShaderWriteBit => PipelineStageFlags.ComputeShaderBit,
-        AccessFlags.ColorAttachmentWriteBit => PipelineStageFlags.ColorAttachmentOutputBit,
-        _ => PipelineStageFlags.TopOfPipeBit,
-    };
+        if (access == 0) return PipelineStageFlags.TopOfPipeBit;
+
+        var stage = (PipelineStageFlags)0;
+        if ((access & (AccessFlags.TransferReadBit | AccessFlags.TransferWriteBit)) != 0)
+            stage |= PipelineStageFlags.TransferBit;
+        if ((access & (AccessFlags.ShaderReadBit | AccessFlags.ShaderWriteBit)) != 0)
+            stage |= PipelineStageFlags.ComputeShaderBit;
+        if ((access & (AccessFlags.ColorAttachmentReadBit | AccessFlags.ColorAttachmentWriteBit)) != 0)
+            stage |= PipelineStageFlags.ColorAttachmentOutputBit;
+
+        return stage == 0 ? PipelineStageFlags.AllCommandsBit : stage;
+    }
 }

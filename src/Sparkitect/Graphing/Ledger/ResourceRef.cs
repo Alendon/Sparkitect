@@ -2,12 +2,7 @@ using JetBrains.Annotations;
 
 namespace Sparkitect.Graphing.Ledger;
 
-/// <summary>
-/// An opaque, typed, epoch-qualified structural reference to a resource at one symbolic epoch.
-/// Distinct from <see cref="IGraphResource{T}"/>: a reference is description-internal wiring that
-/// lives inside facts and is never fetched. It is minted only by ledger transaction verbs —
-/// references cannot be constructed, only received — and is valid because the ledger recognizes it.
-/// </summary>
+/// <summary>An opaque, typed, epoch-qualified structural reference to a resource at one symbolic epoch. Distinct from <see cref="IGraphResource{T}"/>: description-internal wiring that lives inside facts, never fetched. Minted only by ledger transaction verbs.</summary>
 /// <typeparam name="T">The resource type the reference points at, carried by C# generic shape.</typeparam>
 [PublicAPI]
 public readonly struct ResourceRef<T> : IEquatable<ResourceRef<T>>

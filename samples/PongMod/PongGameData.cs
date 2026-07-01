@@ -3,36 +3,26 @@ using System.Runtime.InteropServices;
 
 namespace PongMod;
 
-/// <summary>
-/// Game state data structure - designed for push constants.
-/// All positions normalized to [0,1] range.
-/// </summary>
+/// <summary>Game state, laid out for push constants; positions are normalized to [0,1].</summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct PongGameData
 {
-    // Paddle positions (Y center, X is fixed at edges)
+    // Only paddle Y is stored; X is fixed at the edges.
     public float LeftPaddleY;
     public float RightPaddleY;
 
-    // Paddle dimensions
     public float PaddleWidth;
     public float PaddleHeight;
 
-    // Ball state
     public Vector2 BallPosition;
     public Vector2 BallVelocity;
     public float BallRadius;
 
-    /// <summary>
-    /// Background clear color RGB. Values in [0,1] range.
-    /// </summary>
     public Vector3 BackgroundColor;
 
-    // Scores
     public int LeftScore;
     public int RightScore;
 
-    // Screen dimensions for compute shader
     public uint ScreenWidth;
     public uint ScreenHeight;
 

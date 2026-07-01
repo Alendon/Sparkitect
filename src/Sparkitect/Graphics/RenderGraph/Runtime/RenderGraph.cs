@@ -37,17 +37,18 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     private FrameInstanceContext _frameContext = null!;
     private CompiledPlan _plan = null!;
 
-    // The passes, run in the frame loop; _passRoots[i] holds pass i's plan-derived root resources
-    // (parallel to _passes) so the frame loop can type-cast each root to the lifecycle hook interfaces.
+    // The per-graph container owning the graph-local service singletons; disposed at teardown so its
+    // IDisposable services (e.g. the descriptor-layout cache) release their GPU objects.
+    private ICoreContainer _graphContainer = null!;
+
+    // _passRoots[i] holds pass i's root resources (parallel to _passes).
     private readonly List<ComputePass> _passes = [];
     private readonly List<IReadOnlyList<RootResource>> _passRoots = [];
 
-    // The present target: the finishline-marked leaf whose carried state the graph asserts is
-    // PresentSrcKhr (the present transition is contributed by a hook, not issued by the RG).
+    // The finishline-marked present-target leaf; the graph asserts its carried state is PresentSrcKhr.
     private IGraphResource<ImageResource>? _presentTarget;
 
-    // The plan-derived root resource that published the finishline moment; the frame loop dispatches
-    // the finishline (present) hook on it after all passes run. Its swapchain backing is validated once.
+    // The root that published the finishline moment; the frame loop dispatches the present hook on it after all passes.
     private RootResource? _finishlinePublisher;
     private bool _presentBackingValidated;
 
@@ -55,7 +56,9 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     private VkCommandBuffer _commandBuffer = null!;
     private VkFence _inFlightFence = null!;
     private VkSemaphore _acquireSemaphore = null!;
-    private VkSemaphore _presentSemaphore = null!;
+    // One present semaphore per swapchain image: a binary semaphore signaled for present must not be
+    // re-signaled until its prior present consumed it, which the in-flight fence does not guarantee across images.
+    private VkSemaphore[] _presentSemaphores = null!;
     private VkQueue _graphicsQueue = null!;
     private bool _disposed;
     private bool _setupComplete;
@@ -63,9 +66,7 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     
     public required IImageManager ImageManager { private get; init; }
 
-    /// <summary>
-    /// Max frames per second; 0 = uncapped. Paced by a busy-wait in <see cref="RunFrame"/>.
-    /// </summary>
+    /// <summary>Max frames per second; 0 = uncapped.</summary>
     public uint MaxFrameRate { get; set; }
 
     internal RenderGraph(
@@ -97,14 +98,13 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
                 "RenderGraph.Setup: already invoked. Setup runs exactly once per render graph instance.");
 
         _window = window;
+        _graphContainer = graphContainer;
         var modIdList = _gameStateManager.LoadedMods.ToList();
 
         var (queueFamily, queue) = ResolveGraphicsQueue(_vulkanContext);
 
-        // Build the declaration ledger: resolve each pass, run its single-Use Setup against the graph's
-        // setup context, then reference the finishline so binding has a consumer. Facts resolve through
-        // the fact keyed factory built against the per-graph container, so a fact's DI dependencies
-        // (e.g. the graph-local IImageManager) are injected from that scope.
+        // Facts resolve through the fact keyed factory built against the per-graph container, so a fact's
+        // DI dependencies (e.g. the graph-local IImageManager) are injected from that scope.
         _ledger = new DeclarationLedger();
         using var factFactory = FactRegistry.BuildRegisterContainer(
             _diService, graphContainer, provider: null, modIdList);
@@ -128,16 +128,14 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
                     $"Render pass {id} ({pass.GetType().FullName}) is not a ComputePass — the walking skeleton " +
                     "only supports compute-category passes.");
 
-            // Bracket the pass's single-Use Setup so the setup context records the root resource
-            // handles this pass declares (D-07a). The RG stays decoupled from pass-private fields.
+            // Bracket the pass's Setup so the context records the root resource handles it declares.
             setupContext.BeginPass();
             computePass.Setup(setupContext);
             _passRoots.Add(setupContext.EndPass());
             _passes.Add(computePass);
         }
 
-        // The RG references the finishline moment as a consumer so an unmarked finishline surfaces
-        // UndefinedMoment naming this present reader (rather than silently producing no present binding).
+        // Reference the finishline moment as a consumer so an unmarked finishline surfaces UndefinedMoment.
         _transaction.Declare(new FinishlineReaderDescription());
 
         var linkResult = new GraphCompiler(_ledger).Link();
@@ -146,9 +144,8 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
                 $"RenderGraph.Setup: graph compilation failed: {linkError.Value}.");
         _plan = ((Result<CompiledPlan, CompileError>.Ok)linkResult).Value;
 
-        // Resolve the present target from the graph itself: the finishline moment binds at link to the
-        // single increment that marked it, so its published image is the present target. Mint a reference
-        // to that bound node and wrap it in a frame-context handle the frame loop re-fetches each frame.
+        // The finishline moment binds at link to the single increment that marked it; its published image
+        // is the present target, wrapped in a frame-context handle the frame loop re-fetches each frame.
         if (!_plan.ResolvedMoments.TryGetValue(GraphMomentID.Sparkitect.Finishline, out var finishline))
             throw new InvalidOperationException(
                 "RenderGraph.Setup: the finishline moment was not published — exactly one pass must mark " +
@@ -156,10 +153,8 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
         var presentRef = _ledger.ReferenceTo<ImageResource>(finishline.IncrementNode);
         _presentTarget = new GraphResourceHandle<ImageResource>(presentRef, _frameContext);
 
-        // Correlate the finishline-publishing ROOT resource: the moment's marked increment lives on the
-        // same resource chain the publishing description declared, so match the recorded pass root whose
-        // chain id equals that increment's chain (not by re-deriving from the leaf). The frame loop
-        // dispatches the finishline (present) hook on this root after ALL passes have executed.
+        // Correlate the finishline-publishing root: the marked increment lives on the same chain the
+        // publishing description declared, so match the recorded pass root whose chain id equals it.
         _finishlinePublisher = FindRootByChain(ResolveChain(finishline.IncrementNode));
 
         var poolResult = _vulkanContext.CreateCommandPool(
@@ -183,10 +178,15 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
             throw new InvalidOperationException("RenderGraph: CreateSemaphore (acquire) failed.");
         _acquireSemaphore = acqOk.Value;
 
-        var presResult = _vulkanContext.CreateSemaphore();
-        if (presResult is not Result<VkSemaphore, VkApiResult>.Ok presOk)
-            throw new InvalidOperationException("RenderGraph: CreateSemaphore (present) failed.");
-        _presentSemaphore = presOk.Value;
+        var imageCount = _window.Swapchain.Images.Length;
+        _presentSemaphores = new VkSemaphore[imageCount];
+        for (var i = 0; i < imageCount; i++)
+        {
+            var presResult = _vulkanContext.CreateSemaphore();
+            if (presResult is not Result<VkSemaphore, VkApiResult>.Ok presOk)
+                throw new InvalidOperationException("RenderGraph: CreateSemaphore (present) failed.");
+            _presentSemaphores[i] = presOk.Value;
+        }
 
         _graphicsQueue = queue;
         _lastFrameTimestamp = Stopwatch.GetTimestamp();
@@ -208,7 +208,7 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
         throw new InvalidOperationException("RenderGraph: no graphics-capable queue family found on physical device.");
     }
 
-    // The chain (declaring resource node) a ledger node belongs to; None when the node is unknown.
+    // The chain (declaring resource node) a ledger node belongs to; None when unknown.
     private GraphNodeId ResolveChain(GraphNodeId nodeId)
     {
         foreach (var node in _ledger.Nodes)
@@ -217,10 +217,8 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
         return GraphNodeId.None;
     }
 
-    // The recorded pass root that owns the given chain. Tries a direct match first (a top-level root whose
-    // declared chain equals it — MinimalSampleMod's top-level finishline), then walks composite ownership:
-    // when a finishline increment lives on a sub-declared chain, climb TryGetOwningChain to the composite
-    // root that sub-declared it. Returns null when no root matches and no further owner exists.
+    // The recorded pass root that owns the given chain. Tries a direct match first, then walks composite
+    // ownership via TryGetOwningChain. Returns null when no root matches and no further owner exists.
     private RootResource? FindRootByChain(GraphNodeId chain)
     {
         var current = chain;
@@ -247,7 +245,19 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
 
         if (_setupComplete)
         {
-            _presentSemaphore.Dispose();
+            // GPU is idle: dispose the last frame's per-frame instances (Dispose-strategy views) and free
+            // the manager-owned transient backing (Release-strategy), before any device object is destroyed.
+            _frameContext.Dispose();
+            ImageManager.DisposeTransient();
+
+            // Passes destroy their owned pipelines/layouts; the graph container disposes the graph-local
+            // service singletons (ImageManager is not IDisposable, so DisposeTransient above is not doubled).
+            foreach (var pass in _passes)
+                pass.Dispose();
+            _graphContainer.Dispose();
+
+            foreach (var presentSemaphore in _presentSemaphores)
+                presentSemaphore.Dispose();
             _acquireSemaphore.Dispose();
             _inFlightFence.Dispose();
             _commandPool.Dispose();

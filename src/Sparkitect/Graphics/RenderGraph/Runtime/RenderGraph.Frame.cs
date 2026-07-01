@@ -10,14 +10,10 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 public sealed partial class RenderGraph
 {
     /// <summary>
-    /// Hand-wired per-frame Vulkan orchestration at 1-frame-in-flight. Waits for the previous frame,
-    /// acquires the next swapchain image, informs the backing provider of the acquired index, binds a
-    /// fresh per-frame instance context, then for each pass dispatches its plan-derived root resources'
-    /// pre-execute lifecycle hooks (type-cast to <see cref="IPreExecuteHook"/>) before the pass executes.
-    /// After all passes it dispatches the finishline (present) hook on the finishline-publishing root
-    /// (<see cref="IFinishlineHook"/>) and then asserts the present target's carried state is
-    /// <see cref="ImageLayout.PresentSrcKhr"/> — the graph issues NO barriers or transitions itself; sync
-    /// is entirely hook-contributed. Finally it submits and presents.
+    /// Per-frame Vulkan orchestration at 1-frame-in-flight: waits, acquires, binds a fresh instance
+    /// context, dispatches each pass's pre-execute hooks then its Execute, dispatches the finishline hook,
+    /// asserts the present target is <see cref="ImageLayout.PresentSrcKhr"/>, then submits and presents.
+    /// The graph issues NO barriers itself; sync is entirely hook-contributed.
     /// </summary>
     public void RunFrame()
     {
@@ -43,15 +39,13 @@ public sealed partial class RenderGraph
                 "RenderGraph: AcquireNextImage failed (resize is not supported).");
         var imageIndex = acqOk.Value;
 
-        // Inform the backing provider of this frame's acquired index, then bind a FRESH per-frame
-        // instance context so the leaf resolves against the current index (Pitfall 3: N=1 cache).
+        // Bind a FRESH per-frame instance context so the leaf resolves against the current acquired index.
         ImageManager.InformAcquiredIndex(imageIndex);
         var instanceContext = new InstanceContext(_transaction, _plan.ResolvedMoments, _ledger);
         _frameContext.Bind(instanceContext);
 
-        // One-time, post-setup validation (D-03): the finishline present target must resolve to a
-        // swapchain-backed image. Deferred to the first frame because Fetch requires a bound instance
-        // context (unavailable during Setup); the resolution is build-once and never changes after.
+        // One-time validation: the present target must resolve to a swapchain-backed image. Deferred to
+        // the first frame because Fetch requires a bound instance context (unavailable during Setup).
         if (!_presentBackingValidated)
         {
             ValidatePresentTargetIsSwapchainBacked();
@@ -61,10 +55,8 @@ public sealed partial class RenderGraph
         _commandBuffer.Reset();
         _commandBuffer.Begin(CommandBufferUsageFlags.OneTimeSubmitBit);
 
-        // Run the passes. Before each pass Executes, dispatch the pre-execute lifecycle hook on each of
-        // that pass's plan-derived root resources by type-casting the resolved instance to the hook
-        // interface (D-07/D-07a) — replacing the deprecated pass-invoked PreExecute calls. A root's hook
-        // body reconciles its own carried state and may cascade to any sub-resources it owns.
+        // Before each pass Executes, dispatch the pre-execute hook on each of its root resources by
+        // type-casting the resolved instance to the hook interface.
         for (var i = 0; i < _passes.Count; i++)
         {
             foreach (var root in _passRoots[i])
@@ -74,14 +66,12 @@ public sealed partial class RenderGraph
             _passes[i].Execute(_commandBuffer);
         }
 
-        // Finishline position: after ALL passes, dispatch the finishline hook on the finishline-publishing
-        // root (Pitfall 2 — the present transition must fire after the final pass, e.g. after a blit). The
-        // present-layout transition is contributed here by the resource, never issued by the RG (D-09).
+        // After ALL passes, dispatch the finishline hook on the publishing root: the present transition
+        // must fire after the final pass (e.g. after a blit) and is contributed by the resource, not the RG.
         if (_finishlinePublisher is { } publisher && publisher.Fetch() is IFinishlineHook finishlineHook)
             finishlineHook.OnFinishline(_commandBuffer);
 
-        // Present-readiness assert (D-09): the RG issues NO present transition — it reads the present
-        // target's carried state and fails fast with named context if a hook left it non-presentable.
+        // Present-readiness assert: the RG issues no present transition — it fails fast if a hook left the target non-presentable.
         var presentLeaf = _presentTarget!.Fetch();
         if (presentLeaf.CurrentLayout != ImageLayout.PresentSrcKhr)
             throw new InvalidOperationException(
@@ -91,19 +81,19 @@ public sealed partial class RenderGraph
 
         _commandBuffer.End();
 
+        var presentSemaphore = _presentSemaphores[imageIndex];
         _graphicsQueue.Submit(
             _commandBuffer,
             waitSemaphores: [_acquireSemaphore],
             waitStages: [PipelineStageFlags.TransferBit],
-            signalSemaphores: [_presentSemaphore],
+            signalSemaphores: [presentSemaphore],
             fence: _inFlightFence);
 
-        _ = _window.Swapchain.Present(imageIndex, _presentSemaphore, _graphicsQueue);
+        _ = _window.Swapchain.Present(imageIndex, presentSemaphore, _graphicsQueue);
     }
 
-    // Validates once that the finishline present target resolves to one of the swapchain's images. The
-    // finishline moment names the presentable swapchain output (D-09); a non-swapchain backing here is a
-    // wiring error surfaced with named context before any present is attempted.
+    // Validates once that the present target resolves to one of the swapchain's images; a non-swapchain
+    // backing is a wiring error surfaced before any present is attempted.
     private void ValidatePresentTargetIsSwapchainBacked()
     {
         var presentBacking = _presentTarget!.Fetch().Backing;

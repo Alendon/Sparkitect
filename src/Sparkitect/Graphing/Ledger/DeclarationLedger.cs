@@ -3,13 +3,7 @@ using Sparkitect.Modding;
 
 namespace Sparkitect.Graphing.Ledger;
 
-/// <summary>
-/// The single compile truth: it stores ledger nodes and per-resource epoch chains, mints opaque
-/// <see cref="ResourceRef{T}"/>s, records the two relations (Read and Increment) plus moment
-/// markings, and exposes the query surface compilation reads. Refs are handed out eagerly but
-/// unresolved — epoch positions are symbolic here; resolution to concrete positions happens later,
-/// in the Link phase, so a declaration's outcome never depends on pass-setup order.
-/// </summary>
+/// <summary>The single compile truth: stores ledger nodes and per-resource epoch chains, mints opaque <see cref="ResourceRef{T}"/>s, records the Read and Increment relations plus moment markings, and exposes the query surface compilation reads. Refs are handed out eagerly but with symbolic (unresolved) epoch positions.</summary>
 [PublicAPI]
 public sealed class DeclarationLedger
 {
@@ -32,10 +26,7 @@ public sealed class DeclarationLedger
     /// <summary>The recorded moment-reference edges (a consume node referencing a moment by id).</summary>
     public IReadOnlyList<MomentReadEdge> MomentReads => _momentReads;
 
-    /// <summary>
-    /// Declares a new resource: mints its base-epoch node and returns a base-epoch reference. The
-    /// base epoch is holdable but never readable — it has no producing increment until incremented.
-    /// </summary>
+    /// <summary>Declares a new resource: mints its base-epoch node and returns a base-epoch reference (holdable, never readable until incremented).</summary>
     /// <typeparam name="T">The resource type, carried onto the node and the minted reference.</typeparam>
     /// <param name="provenance">The declaring pass/description identity, recorded as node metadata.</param>
     public ResourceRef<T> Declare<T>(Identification provenance)
@@ -54,10 +45,7 @@ public sealed class DeclarationLedger
         return new ResourceRef<T>(resource, Epoch.Base);
     }
 
-    /// <summary>
-    /// Records a Read of an already-minted reference by the given reader, registering a reader edge
-    /// against that epoch's node.
-    /// </summary>
+    /// <summary>Records a Read of an already-minted reference by the given reader, registering a reader edge against that epoch's node.</summary>
     public void RecordRead<T>(ResourceRef<T> reference, GraphNodeId reader)
     {
         var node = NodeFor(reference.Resource, reference.Epoch);
@@ -65,11 +53,7 @@ public sealed class DeclarationLedger
         _reads.Add(new ReadEdge(node.Id, reader, reference.Resource, reference.Epoch));
     }
 
-    /// <summary>
-    /// Records an Increment advancing the referenced resource one epoch. Mints the post-increment
-    /// node and reference (the same mechanic whether the target is a sub-resource or the resource
-    /// the declaration itself resolves to) and returns the new reference.
-    /// </summary>
+    /// <summary>Records an Increment advancing the referenced resource one epoch, minting the post-increment node and reference.</summary>
     /// <param name="reference">The source-epoch reference being advanced.</param>
     /// <param name="provenance">The increment's provenance, recorded as the new node's metadata.</param>
     public ResourceRef<T> RecordIncrement<T>(ResourceRef<T> reference, Identification provenance)
@@ -90,11 +74,7 @@ public sealed class DeclarationLedger
         return new ResourceRef<T>(reference.Resource, nextEpoch);
     }
 
-    /// <summary>
-    /// Marks the increment producing the referenced epoch with a moment. Marking is publishing: the
-    /// moment thereafter resolves to this increment's result epoch. Marking the base epoch is
-    /// meaningless (it has no producing increment) and is rejected.
-    /// </summary>
+    /// <summary>Marks the increment producing the referenced epoch with a moment; the moment thereafter resolves to this increment's result epoch. Marking the base epoch is rejected.</summary>
     public void RecordMoment<T>(ResourceRef<T> reference, Identification moment)
     {
         var node = NodeFor(reference.Resource, reference.Epoch);
@@ -106,22 +86,11 @@ public sealed class DeclarationLedger
         node.Mark(moment);
     }
 
-    /// <summary>
-    /// Records that a consume node references a moment by its id (without yet knowing which increment
-    /// marks it — that binding happens in the Link phase). A referenced moment with no marked increment
-    /// is an UndefinedMoment; the recorded readers name who referenced it.
-    /// </summary>
+    /// <summary>Records that a consume node references a moment by its id; the binding to a marked increment happens in the Link phase.</summary>
     public void RecordMomentRead(Identification moment, GraphNodeId reader) =>
         _momentReads.Add(new MomentReadEdge(moment, reader));
 
-    /// <summary>
-    /// Mints a reference to an already-recorded node by its <paramref name="nodeId"/> — the bridge for
-    /// fetching a resource the plan bound elsewhere (e.g. a moment's published increment, whose
-    /// <see cref="Compile.ResolvedMoment.IncrementNode"/> names the produced node). The reference carries
-    /// the node's chain identity and epoch, so resolving it yields that chain's instance. The node must
-    /// exist and carry resource type <typeparamref name="T"/>; the reference is ledger-minted, so it
-    /// resolves like any other.
-    /// </summary>
+    /// <summary>Mints a reference to an already-recorded node by its <paramref name="nodeId"/> — the bridge for fetching a resource the plan bound elsewhere (e.g. a moment's published increment). The node must exist and carry resource type <typeparamref name="T"/>.</summary>
     public ResourceRef<T> ReferenceTo<T>(GraphNodeId nodeId)
     {
         foreach (var node in _nodes)
