@@ -1,14 +1,13 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.RenderGraph.Hooks;
-using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 
-namespace PongMod.Resources;
+namespace Sparkitect.Graphics.RenderGraph.Resources;
 
-/// <summary>The compute pass's write view over the shared render target: one <see cref="VkImageView"/> over an N=1 transient leaf that publishes the <c>target</c> moment. Serves as the descriptor's storage-image binding source, contributes the compute-write layout transition as a pre-execute hook, and exposes the backing <see cref="VkImage"/> for the copy pass's read view.</summary>
+/// <summary>A compute pass's write view over a shared render target: one <see cref="VkImageView"/> over an N=1 transient leaf that publishes a caller-supplied target moment. Serves as the descriptor's storage-image binding value, contributes the compute-write layout transition as a pre-execute hook, and exposes the backing <see cref="VkImage"/> for a downstream read view.</summary>
 [PublicAPI]
-public sealed class StorageWriteView : IDescriptorBindingSource, IPreExecuteHook, IDisposable
+public sealed class StorageWriteView : IDescriptorValue, IPreExecuteHook, IDisposable
 {
     private readonly ImageResource _leaf;
     private readonly VkImageView _view;
@@ -25,8 +24,8 @@ public sealed class StorageWriteView : IDescriptorBindingSource, IPreExecuteHook
 
     public VkImageView View => _view;
 
-    /// <summary>Static descriptor type read at Setup for layout derivation off this concrete view type.</summary>
-    public static DescriptorType DescriptorType => Silk.NET.Vulkan.DescriptorType.StorageImage;
+    /// <summary>Descriptor type read at Setup for layout derivation.</summary>
+    public DescriptorType DescriptorType => Silk.NET.Vulkan.DescriptorType.StorageImage;
 
     /// <inheritdoc/>
     public DescriptorBindingPayload DescribeBinding() =>

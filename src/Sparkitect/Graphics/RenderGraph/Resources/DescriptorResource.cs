@@ -3,15 +3,15 @@ using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 
-namespace PongMod.Resources;
+namespace Sparkitect.Graphics.RenderGraph.Resources;
 
-/// <summary>A push-descriptor composite: a single set (no pool, no allocated set) composed from an ordered <see cref="DescriptorBinding"/> list and pushed inline via <c>VK_KHR_push_descriptor</c> at <c>firstSet:0</c>.</summary>
+/// <summary>A push-descriptor composite: a single set (no pool, no allocated set) built from an ordered <see cref="IDescriptorValue"/> list and pushed inline via <c>VK_KHR_push_descriptor</c> at <c>firstSet:0</c>. Each value's slot is its position in the list.</summary>
 [PublicAPI]
-public sealed class PongDescriptor
+public sealed class DescriptorResource
 {
-    private readonly ImmutableArray<DescriptorBinding> _bindings;
+    private readonly ImmutableArray<IDescriptorValue> _bindings;
 
-    public PongDescriptor(VkDescriptorSetLayout setLayout, ImmutableArray<DescriptorBinding> bindings)
+    public DescriptorResource(VkDescriptorSetLayout setLayout, ImmutableArray<IDescriptorValue> bindings)
     {
         SetLayout = setLayout;
         _bindings = bindings;
@@ -20,7 +20,7 @@ public sealed class PongDescriptor
     /// <summary>The derived set layout (cache-owned); frame-independent, so it is safe to read at Setup.</summary>
     public VkDescriptorSetLayout SetLayout { get; }
 
-    /// <summary>Builds and pushes a write per binding at <c>firstSet:0</c>; each write's info struct lives in stack-local storage kept alive across the push so its pointers never dangle.</summary>
+    /// <summary>Builds and pushes one write per binding at <c>firstSet:0</c>; each write's info struct lives in stack-local storage kept alive across the push so its pointers never dangle.</summary>
     public void Push(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, PipelineBindPoint bindPoint)
     {
         var count = _bindings.Length;
@@ -38,9 +38,8 @@ public sealed class PongDescriptor
 
         for (var i = 0; i < count; i++)
         {
-            var binding = _bindings[i];
-            var payload = binding.View.Fetch().DescribeBinding();
-            writes[i] = payload.ToWrite(binding.Binding, ref storage[i]);
+            var payload = _bindings[i].DescribeBinding();
+            writes[i] = payload.ToWrite((uint)i, ref storage[i]);
         }
 
         cmd.PushDescriptorSet(bindPoint, pipelineLayout, firstSet: 0, writes);

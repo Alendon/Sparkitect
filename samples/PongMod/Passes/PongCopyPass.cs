@@ -1,8 +1,10 @@
-using PongMod.Resources;
+using PongMod.CompilerGenerated.IdExtensions;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Graphing;
+using Sparkitect.Modding.IDs;
 using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 
 namespace PongMod.Passes;
@@ -16,7 +18,7 @@ internal sealed partial class PongCopyPass : ComputePass
 
     public override void Setup(ISetupContext ctx)
     {
-        _source = ctx.Use(new ReadViewDescription());
+        _source = ctx.Use(new TransferSrcReadViewDescription { TargetMoment = GraphMomentID.PongMod.Target });
         _swapchain = ctx.Use(new SwapchainWriteViewDescription());
     }
 

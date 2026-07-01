@@ -66,6 +66,9 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     
     public required IImageManager ImageManager { private get; init; }
 
+    // The graph-local storage-buffer backing provider, injected from the per-graph container alongside ImageManager.
+    public required IBufferManager BufferManager { private get; init; }
+
     /// <summary>Max frames per second; 0 = uncapped.</summary>
     public uint MaxFrameRate { get; set; }
 
@@ -249,6 +252,7 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
             // the manager-owned transient backing (Release-strategy), before any device object is destroyed.
             _frameContext.Dispose();
             ImageManager.DisposeTransient();
+            BufferManager.DisposeBuffers();
 
             // Passes destroy their owned pipelines/layouts; the graph container disposes the graph-local
             // service singletons (ImageManager is not IDisposable, so DisposeTransient above is not doubled).

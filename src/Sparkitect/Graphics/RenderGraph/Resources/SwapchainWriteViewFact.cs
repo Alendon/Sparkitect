@@ -1,13 +1,11 @@
-using Sparkitect.Graphics.RenderGraph;
-using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphing.Descriptions;
 using Sparkitect.Graphing.Ledger;
 using Sparkitect.Modding;
 
-namespace PongMod.Resources;
+namespace Sparkitect.Graphics.RenderGraph.Resources;
 
-/// <summary>Builds the copy pass's swapchain write view by resolving the sub-declared leaf and composing a hook-contributing <see cref="SwapchainWriteView"/> over it.</summary>
-[FactRegistry.Register("pong_swapchain_write_view")]
+/// <summary>Builds the swapchain write view by resolving the sub-declared leaf and composing a hook-contributing <see cref="SwapchainWriteView"/> over it.</summary>
+[FactRegistry.Register("swapchain_write_view")]
 public sealed partial record SwapchainWriteViewFact
     : DeclaredFact<SwapchainWriteView>, IHasIdentification
 {

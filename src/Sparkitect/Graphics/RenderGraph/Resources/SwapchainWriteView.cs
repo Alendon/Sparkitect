@@ -1,12 +1,11 @@
 using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.RenderGraph.Hooks;
-using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 
-namespace PongMod.Resources;
+namespace Sparkitect.Graphics.RenderGraph.Resources;
 
-/// <summary>The copy pass's transfer-dst swapchain write view (finishline publisher): a thin composite over the swapchain leaf that contributes both its transfer-dst (pre-execute) and present (finishline) transitions as lifecycle hooks, and exposes the backing <see cref="VkImage"/> as the blit destination.</summary>
+/// <summary>The transfer-dst swapchain write view (finishline publisher): a thin composite over the swapchain leaf that contributes both its transfer-dst (pre-execute) and present (finishline) transitions as lifecycle hooks, and exposes the backing <see cref="VkImage"/> as the blit destination.</summary>
 [PublicAPI]
 public sealed class SwapchainWriteView : IPreExecuteHook, IFinishlineHook
 {

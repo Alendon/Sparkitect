@@ -1,7 +1,7 @@
 using PongMod.CompilerGenerated.IdExtensions;
-using PongMod.Resources;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Graphing;
@@ -18,16 +18,18 @@ internal sealed partial class PongComputePass(IPongRuntimeService pong, IVulkanC
     : ComputePass
 {
     private IGraphResource<StorageWriteView> _write = null!;
-    private IGraphResource<PongDescriptor> _descriptor = null!;
+    private IGraphResource<DescriptorResource> _descriptor = null!;
 
     private VkPipelineLayout? _pipelineLayout;
     private VkPipeline? _computePipeline;
 
     public override void Setup(ISetupContext ctx)
     {
-        _write = ctx.Use(new WriteViewDescription());
+        _write = ctx.Use(new StorageWriteViewDescription { TargetMoment = GraphMomentID.PongMod.Target });
 
-        var descriptor = new PongDescriptorDescription(_write);
+        // Bind the write view at slot 0 through the general engine descriptor.
+        var descriptor = new DescriptorResourceDescription(
+            new DescriptorBinding(DescriptorType.StorageImage, _write));
         _descriptor = ctx.Use(descriptor);
 
         // The set layout is produced during Declare (run inside ctx.Use's setup transaction) and is
