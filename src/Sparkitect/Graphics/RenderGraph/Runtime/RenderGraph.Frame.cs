@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.RenderGraph.Hooks;
+using Sparkitect.Graphics.RenderGraph.Push;
 using Sparkitect.Graphing.Descriptions;
 using Sparkitect.Utils.DU;
 using VkApiResult = Silk.NET.Vulkan.Result;
@@ -43,6 +44,16 @@ public sealed partial class RenderGraph
         ImageManager.InformAcquiredIndex(imageIndex);
         var instanceContext = new InstanceContext(_transaction, _plan.ResolvedMoments, _ledger);
         _frameContext.Bind(instanceContext);
+
+        // Frame-start external push: bind each registered pushed moment's latest snapshot to its
+        // chain-head instance before any pass runs. The rebind is unconditional — when nothing new was
+        // published this frame the store returns the previous snapshot, keeping the chain head bound. L2
+        // only binds the snapshot here; the birth increment is the L1 chain-head epoch (synthesized at Setup).
+        foreach (var pushedMoment in _pushedMoments)
+        {
+            var pushed = instanceContext.ResolveMoment<PushedResource>(pushedMoment);
+            pushed.Bind(_pushStore.Latest(pushedMoment));
+        }
 
         // One-time validation: the present target must resolve to a swapchain-backed image. Deferred to
         // the first frame because Fetch requires a bound instance context (unavailable during Setup).

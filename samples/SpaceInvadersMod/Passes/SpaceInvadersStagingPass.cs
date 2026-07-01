@@ -1,52 +1,59 @@
 using System.Runtime.InteropServices;
-using Silk.NET.Vulkan;
 using SpaceInvadersMod.CompilerGenerated.IdExtensions;
-using Sparkitect.Graphics.RenderGraph_Deprecated;
-using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
+using SpaceInvadersMod.Resources;
+using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Graphing;
 using Sparkitect.Modding.IDs;
-using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassDeprecatedRegistry;
+using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 
 namespace SpaceInvadersMod.Passes;
 
 /// <summary>
-/// First pass in the graph. Copies the current published entity list from the manager's mapped host
-/// buffer into the shared device-local entity buffer, then barriers the device buffer so the compute
-/// pass reads a complete write (TransferWrite -> ShaderRead, Transfer -> ComputeShader). Runs first,
-/// so it carries no ordering edge. Reads its inputs through the entity-list manager's public
-/// cross-assembly accessors and the storage-buffer view's public buffer accessor.
+/// Staging pass: memcpys the pushed CPU entity snapshot (the <c>entities_raw</c> read view) into the staging
+/// host buffer, copies host-&gt;device (the X:0-&gt;X:1 staging advance), and publishes the device-buffer
+/// composite by sealing its element count on the <c>entities_gpu</c> moment. Its data-flow position — reading
+/// the pushed snapshot, producing the composite the compute pass consumes — derives all ordering; the
+/// transfer-&gt;compute barrier lives in the consuming read view's pre-execute hook, so this pass records none.
 /// </summary>
 [RenderPassRegistry.RegisterPass("space_invaders_staging")]
-[PassConfiguration]
-internal sealed partial class SpaceInvadersStagingPass(IEntityListResourceManager entityListManager) : ComputePass
+internal sealed partial class SpaceInvadersStagingPass : ComputePass
 {
-    [GraphResource] private IGraphResource<StorageBufferView> _deviceBuffer = null!;
+    private IGraphResource<EntitiesRawReadView> _snapshot = null!;
+    private IGraphResource<StagingBuffer> _staging = null!;
+    private IGraphResource<EntityListResource> _entities = null!;
 
     public override void Setup(ISetupContext ctx)
     {
-        _deviceBuffer = ctx.Declare(new BufferRequest.FromRegistered(GraphBufferID.SpaceInvadersMod.Entities));
+        // The pushed CPU snapshot the ECS published through the external-push door.
+        _snapshot = ctx.Use(new EntitiesRawReadViewDescription(GraphMomentID.SpaceInvadersMod.EntitiesRaw));
+
+        // Host+device staging pair; the device increment is the X:0->X:1 staging-copy advance.
+        var staging = new StagingDescription();
+        _staging = ctx.Use(staging);
+
+        // Publish the device buffer as the entities_gpu composite (Variant A: thread the staged device ref).
+        _entities = ctx.Use(new EntityListResourceDescription(
+            staging.PopulatedBuffer, GraphMomentID.SpaceInvadersMod.EntitiesGpu));
     }
 
     public override unsafe void Execute(VkCommandBuffer commandBuffer)
     {
-        var current = entityListManager.Current;
-        if (current is null || current.Count == 0)
-            return;
+        var snapshot = _snapshot.Fetch().Entities;
+        var staging = _staging.Fetch();
+        var count = snapshot.Length;
 
-        var hostBuffer = entityListManager.HostBuffer;
-        var deviceBuffer = _deviceBuffer.Fetch().Buffer;
+        if (count > 0)
+        {
+            var source = MemoryMarshal.AsBytes(snapshot);
+            var destination = new Span<byte>((void*)staging.Host.MappedData, source.Length);
+            source.CopyTo(destination);
 
-        var byteCount = current.ByteSize;
-        var source = MemoryMarshal.AsBytes(current.Elements);
-        var destination = new Span<byte>((void*)hostBuffer.MappedData, (int)byteCount);
-        source.CopyTo(destination);
+            commandBuffer.CopyBuffer(staging.Host.Backing, staging.Device.Backing, (ulong)source.Length);
+        }
 
-        commandBuffer.CopyBuffer(hostBuffer, deviceBuffer, byteCount);
-        commandBuffer.BufferBarrier(
-            deviceBuffer,
-            srcStage: PipelineStageFlags.TransferBit,
-            dstStage: PipelineStageFlags.ComputeShaderBit,
-            srcAccess: AccessFlags.TransferWriteBit,
-            dstAccess: AccessFlags.ShaderReadBit);
+        // Materialize + seal the count on the published composite (epoch 1); the compute pass reads it off here.
+        _entities.Fetch().SetCount(count);
     }
 }

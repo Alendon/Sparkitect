@@ -6,6 +6,7 @@ using Sparkitect.CompilerGenerated.KeyedFactoryExtensions;
 using Sparkitect.DI;
 using Sparkitect.DI.Container;
 using Sparkitect.GameState;
+using Sparkitect.Graphics.RenderGraph.Push;
 using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
@@ -13,6 +14,7 @@ using Sparkitect.Graphing;
 using Sparkitect.Graphing.Compile;
 using Sparkitect.Graphing.Descriptions;
 using Sparkitect.Graphing.Ledger;
+using Sparkitect.Metadata;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Utils.DU;
@@ -23,7 +25,8 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 
 [PublicAPI]
 [RenderGraphRegistry.RegisterRenderGraph("stock")]
-public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler, ISwapchainHandler, IDisposable
+public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler, ISwapchainHandler,
+    IExternalPushHandler, IDisposable
 {
     private readonly IVulkanContext _vulkanContext;
     private readonly IDIService _diService;
@@ -44,6 +47,14 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     // _passRoots[i] holds pass i's root resources (parallel to _passes).
     private readonly List<ComputePass> _passes = [];
     private readonly List<IReadOnlyList<RootResource>> _passRoots = [];
+
+    // Graph-owned swap-copy store for externally-pushed snapshots, keyed by moment; the publish door
+    // delegates here and the frame-start step reads each moment's latest snapshot from it.
+    private readonly PushStore _pushStore = new();
+
+    // The registered externally-pushed moments this graph synthesized a chain head for at Setup; the
+    // frame-start step rebinds each one's latest snapshot before the pass loop.
+    private readonly List<Identification> _pushedMoments = [];
 
     // The finishline-marked present-target leaf; the graph asserts its carried state is PresentSrcKhr.
     private IGraphResource<ImageResource>? _presentTarget;
@@ -89,10 +100,15 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
         if (typeof(THandler) == typeof(IRenderGraph)) return (THandler)(object)this;
         if (typeof(THandler) == typeof(IRenderGraphSetupHandler)) return (THandler)(object)this;
         if (typeof(THandler) == typeof(ISwapchainHandler)) return (THandler)(object)this;
+        if (typeof(THandler) == typeof(IExternalPushHandler)) return (THandler)(object)this;
         return null;
     }
 
     public void SetSwapchain(VkSwapchain swapchain) => ImageManager.SetSwapchain(swapchain);
+
+    /// <inheritdoc/>
+    public void Publish<T>(Identification moment, ReadOnlySpan<T> data) where T : unmanaged =>
+        _pushStore.Publish(moment, data);
 
     public void Setup(IEnumerable<Identification> passIds, ISparkitWindow window, ICoreContainer graphContainer)
     {
@@ -136,6 +152,25 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
             computePass.Setup(setupContext);
             _passRoots.Add(setupContext.EndPass());
             _passes.Add(computePass);
+        }
+
+        // For each registered externally-pushed moment, synthesize a marked birth increment (a pushed-leaf
+        // chain head) so GraphCompiler.BindMoments binds it and its readers link with no pass authoring the
+        // mark — mirroring the finishline consumer declaration below. Config is Identification-mapped
+        // metadata read through the general metadata mechanism.
+        var pushConfigs = new Dictionary<Identification, ExternalPushConfig>();
+        using (var pushContainer = _diService.CreateEntrypointContainer<
+                   ApplyMetadataEntrypoint<ExternalPushConfig>>(modIdList))
+        {
+            pushContainer.ProcessMany(ep => ep.CollectMetadata(pushConfigs));
+        }
+
+        foreach (var (momentId, _) in _renderGraphManager.RegisteredResourceMoments)
+        {
+            if (!pushConfigs.ContainsKey(momentId))
+                continue;
+            _transaction.Declare(new PushedLeafDescription(momentId));
+            _pushedMoments.Add(momentId);
         }
 
         // Reference the finishline moment as a consumer so an unmarked finishline surfaces UndefinedMoment.

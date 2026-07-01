@@ -1,59 +1,57 @@
-using System.Collections.Immutable;
 using System.Numerics;
 using SpaceInvadersMod.CompilerGenerated.IdExtensions;
 using Silk.NET.Vulkan;
-using Sparkitect.Graphics.RenderGraph_Deprecated;
-using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
+using SpaceInvadersMod.Resources;
+using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Graphing;
 using Sparkitect.Modding.IDs;
-using Sparkitect.Stateless;
 using Sparkitect.Utils.DU;
-using RenderPassRegistry = Sparkitect.Graphics.RenderGraph_Deprecated.RenderPassDeprecatedRegistry;
+using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace SpaceInvadersMod.Passes;
 
 /// <summary>
-/// Compute draw pass. Declares a storage view over the shared target image at binding 0 and a storage
-/// buffer view over the shared entity buffer at binding 1, builds its pipeline from the descriptor's
-/// derived set layout plus the <see cref="SpaceInvadersGameData"/> push range, and dispatches one
-/// workgroup per 8x8 pixel tile. A compute-storage write view drives the General-layout transition
-/// before the dispatch. Ordered after the staging pass so the device buffer holds a complete write.
+/// Compute draw pass. Binds the shared target's storage-write view at slot 0 and the published entity-list
+/// composite (device buffer) at slot 1 through one push descriptor, builds its pipeline from the derived set
+/// layout plus the <see cref="SpaceInvadersGameData"/> push range, and dispatches one workgroup per 8x8 pixel
+/// tile. The entity count is read straight off the composite via the <c>entities_gpu</c> moment — never
+/// through a DI-fetched manager. Data-flow ordering (reads entities_gpu, publishes target) sequences it after
+/// staging and before copy; the write and read views contribute all layout/sync as pre-execute hooks.
 /// </summary>
 [RenderPassRegistry.RegisterPass("space_invaders_compute")]
-[PassConfiguration]
-[OrderAfter<SpaceInvadersStagingPass>]
 internal sealed partial class SpaceInvadersComputePass(
     ISpaceInvadersRuntimeService si,
-    IEntityListResourceManager entityListManager,
     IVulkanContext vulkanContext,
     IShaderManager shaderManager)
-    : ComputePass, IDisposable
+    : ComputePass
 {
-    [GraphResource] private IGraphResource<WriteableImage> _write = null!;
-    [GraphResource] private IGraphResource<StorageImageView> _target = null!;
-    [GraphResource] private IGraphResource<StorageBufferView> _entities = null!;
-    [GraphResource] private IGraphResource<Descriptor> _descriptor = null!;
+    private IGraphResource<EntityListReadView> _input = null!;
+    private IGraphResource<StorageWriteView> _write = null!;
+    private IGraphResource<DescriptorResource> _descriptor = null!;
 
     private VkPipelineLayout? _pipelineLayout;
     private VkPipeline? _computePipeline;
 
     public override void Setup(ISetupContext ctx)
     {
-        _write = ctx.Declare(
-            new WriteableImageRequest.FromRegistered(GraphImageID.SpaceInvadersMod.Target, WriteUsage.ComputeStorage));
+        // Read the published composite off the entities_gpu moment (count + device buffer); its pre-execute
+        // hook reconciles the device buffer transfer->compute.
+        _input = ctx.Use(new EntityListReadViewDescription(GraphMomentID.SpaceInvadersMod.EntitiesGpu));
 
-        _target = ctx.Declare(new StorageImageViewRequest.FromRegistered(GraphImageID.SpaceInvadersMod.Target));
-        _entities = ctx.Declare(new BufferRequest.FromRegistered(GraphBufferID.SpaceInvadersMod.Entities));
+        // Publish the shared target; the write view contributes the General-layout transition as a hook.
+        _write = ctx.Use(new StorageWriteViewDescription { TargetMoment = GraphMomentID.SpaceInvadersMod.Target });
 
-        _descriptor = ctx.Declare(new DescriptorRequest(
-        [
-            new DescriptorBinding(Binding: 0, ArrayIndex: 0, _target),
-            new DescriptorBinding(Binding: 1, ArrayIndex: 0, _entities),
-        ]));
+        // image@0 from the write view, buffer@1 from the entity-list device buffer.
+        var descriptor = new DescriptorResourceDescription(
+            new DescriptorBinding(DescriptorType.StorageImage, _write),
+            new DescriptorBinding(DescriptorType.StorageBuffer, _input));
+        _descriptor = ctx.Use(descriptor);
 
-        BuildPipeline(_descriptor.Fetch().SetLayout);
+        BuildPipeline(descriptor.SetLayout);
     }
 
     private unsafe void BuildPipeline(VkDescriptorSetLayout setLayout)
@@ -93,7 +91,7 @@ internal sealed partial class SpaceInvadersComputePass(
 
         var gameData = new SpaceInvadersGameData
         {
-            EntityCount = (uint)(entityListManager.Current?.Count ?? 0),
+            EntityCount = (uint)_input.Fetch().Count,
             ScreenWidth = extent.Width,
             ScreenHeight = extent.Height,
             Padding = 0f,
@@ -106,13 +104,7 @@ internal sealed partial class SpaceInvadersComputePass(
         commandBuffer.Dispatch(groupCountX, groupCountY, 1);
     }
 
-    protected override void InvokeSlotPreExecuteHooks(VkCommandBuffer commandBuffer)
-    {
-        // Transition the shared image to General before the compute write.
-        _write.Fetch().PreExecute(commandBuffer);
-    }
-
-    public void Dispose()
+    public override void Dispose()
     {
         _computePipeline?.Dispose();
         _pipelineLayout?.Dispose();

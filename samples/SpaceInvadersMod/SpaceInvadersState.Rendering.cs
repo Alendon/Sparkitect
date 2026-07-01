@@ -1,5 +1,5 @@
 using Sparkitect.GameState;
-using Sparkitect.Graphics.RenderGraph_Deprecated;
+using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Stateless;
 
@@ -11,12 +11,12 @@ public partial class SpaceInvadersState
     [OnCreateScheduling]
     [OrderAfter<VulkanModule.ProcessShaderModuleRegistryEnterFunc>]
     [OrderAfter<VulkanModule.CreateDeviceFunc>]
-    [OrderBefore<RenderGraphDeprecatedModule.ProcessRenderGraphRegistriesDeprecatedEnterFunc>]
+    [OrderBefore<RenderGraphModule.ProcessRenderGraphRegistriesEnterFunc>]
     static void Initialize(ISpaceInvadersRuntimeServiceStateFacade manager) => manager.Initialize();
 
     [TransitionFunction("si_create_graph")]
     [OnFrameEnterScheduling]
-    [OrderAfter<RenderGraphDeprecatedModule.ProcessRenderGraphRegistriesDeprecatedEnterFunc>]
+    [OrderAfter<RenderGraphModule.ProcessRenderGraphRegistriesEnterFunc>]
     static void CreateGraph(ISpaceInvadersRuntimeServiceStateFacade manager) => manager.CreateGraph();
 
     [PerFrameFunction("si_check_window_closed")]

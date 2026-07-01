@@ -12,9 +12,9 @@ using Sparkitect.ECS.Components;
 using Sparkitect.ECS.Storage;
 using Sparkitect.ECS.Systems;
 using Sparkitect.GameState;
-using Sparkitect.Graphics.RenderGraph_Deprecated;
-using Sparkitect.Graphics.RenderGraph_Deprecated.Resources;
-using Sparkitect.Graphics.RenderGraph_Deprecated.Runtime;
+using Sparkitect.Graphics.RenderGraph;
+using Sparkitect.Graphics.RenderGraph.Push;
+using Sparkitect.Graphics.RenderGraph.Runtime;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Utils;
@@ -35,7 +35,7 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     private RenderEntity[] _renderBuffer = new RenderEntity[SpaceInvadersConstants.MaxRenderEntities];
     private bool _isGameplayActive;
     private ISparkitWindow? _window;
-    private RenderGraphDeprecated? _renderGraph;
+    private RenderGraph? _renderGraph;
     private StorageHandle _playerStorageHandle;
     private StorageHandle _enemyStorageHandle;
 
@@ -86,12 +86,12 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     {
         if (_renderGraph is not null) return;
 
-        _renderGraph = RenderGraphManager.CreateGraph<RenderGraphDeprecated>(
+        _renderGraph = RenderGraphManager.CreateGraph<RenderGraph>(
             new List<Identification>
             {
-                RenderPassDeprecatedID.SpaceInvadersMod.SpaceInvadersStaging,
-                RenderPassDeprecatedID.SpaceInvadersMod.SpaceInvadersCompute,
-                RenderPassDeprecatedID.SpaceInvadersMod.SpaceInvadersCopy,
+                RenderPassID.SpaceInvadersMod.SpaceInvadersStaging,
+                RenderPassID.SpaceInvadersMod.SpaceInvadersCompute,
+                RenderPassID.SpaceInvadersMod.SpaceInvadersCopy,
             },
             _window!);
         _renderGraph.MaxFrameRate = 120;
@@ -103,16 +103,17 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     public void RunFrame() => _renderGraph?.RunFrame();
 
     /// <summary>
-    /// Maps the supplied <see cref="RenderEntity"/> span onto the engine-neutral
-    /// <see cref="GpuRenderEntity"/>, builds a pooled <see cref="EntityListResource"/>, and publishes it
-    /// through the graph's external-resource door.
+    /// Maps the supplied <see cref="RenderEntity"/> span onto the layout-compatible
+    /// <see cref="GpuRenderEntity"/> and publishes it through the graph's external-push door, keyed by the
+    /// <c>entities_raw</c> moment. The graph swap-copies the span into its own snapshot, so the caller's
+    /// reusable buffer is free to mutate immediately.
     /// </summary>
     public void PublishEntities(ReadOnlySpan<RenderEntity> entities)
     {
         if (_renderGraph is null) return;
 
         var mapped = MemoryMarshal.Cast<RenderEntity, GpuRenderEntity>(entities);
-        EntityListResource.Create(mapped).Apply(_renderGraph);
+        _renderGraph.GetHandler<IExternalPushHandler>()!.Publish(GraphMomentID.SpaceInvadersMod.EntitiesRaw, mapped);
     }
 
     public void ShutdownGraph()
