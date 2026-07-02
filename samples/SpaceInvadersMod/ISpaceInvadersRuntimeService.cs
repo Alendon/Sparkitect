@@ -20,6 +20,9 @@ public interface ISpaceInvadersRuntimeService
     /// <summary>Whether the window is still open.</summary>
     bool IsOpen { get; }
 
+    /// <summary>Pumps the window's OS event queue; must run every frame.</summary>
+    void PollWindow();
+
     RenderEntity[] GetRenderBuffer();
 
     /// <summary>

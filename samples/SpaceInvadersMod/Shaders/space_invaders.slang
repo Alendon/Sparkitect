@@ -58,8 +58,11 @@ void computeMain(uint3 dispatchThreadID : SV_DispatchThreadID)
                 halfH = 0.01;
                 entityColor = float3(1.0, 1.0, 1.0);
                 break;
-            default:
-                continue;
+            default: // Unknown type - zero extents skip it by geometry
+                halfW = 0.0;
+                halfH = 0.0;
+                entityColor = float3(0.0, 0.0, 0.0);
+                break;
         }
 
         if (abs(uv.x - e.position.x) < halfW && abs(uv.y - e.position.y) < halfH)

@@ -38,20 +38,19 @@ internal sealed partial class SpaceInvadersStagingPass : ComputePass
             staging.PopulatedBuffer, GraphMomentID.SpaceInvadersMod.EntitiesGpu));
     }
 
-    public override unsafe void Execute(VkCommandBuffer commandBuffer)
+    public override void Execute(VkCommandBuffer commandBuffer)
     {
         var snapshot = _snapshot.Fetch().Entities;
         var staging = _staging.Fetch();
         var count = snapshot.Length;
 
-        if (count > 0)
-        {
-            var source = MemoryMarshal.AsBytes(snapshot);
-            var destination = new Span<byte>((void*)staging.Host.MappedData, source.Length);
-            source.CopyTo(destination);
+        // Write grows both leaves to the pushed byte count (floored to a nonzero minimum) and memcpys into the
+        // host-mapped backing; the device leaf the compute pass reads later is the identity-preserved backing.
+        var source = MemoryMarshal.AsBytes(snapshot);
+        staging.Write(source);
 
+        if (source.Length > 0)
             commandBuffer.CopyBuffer(staging.Host.Backing, staging.Device.Backing, (ulong)source.Length);
-        }
 
         // Materialize + seal the count on the published composite (epoch 1); the compute pass reads it off here.
         _entities.Fetch().SetCount(count);

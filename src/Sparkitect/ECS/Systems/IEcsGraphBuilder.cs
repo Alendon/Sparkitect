@@ -9,8 +9,8 @@ public interface IEcsGraphBuilder
 {
     /// <summary>
     /// Builds the execution graph by walking the system tree.
-    /// Groups become active graph nodes with implicit parent-to-child edges.
-    /// Ordering constraints from metadata are applied as additional edges.
+    /// Each group sorts its direct children locally from the metadata ordering constraints
+    /// (siblings only); child group spans splice in depth-first, keeping members contiguous.
     /// </summary>
     void BuildFromTree(
         SystemTreeNode root,

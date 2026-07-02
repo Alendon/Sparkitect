@@ -8,7 +8,8 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 [PublicAPI]
 public class BufferResource
 {
-    public VkBuffer Backing { get; }
+    /// <summary>The VMA backing. Private set so a grow can swap it in place (identity-preserving) via <see cref="SwapBacking"/>.</summary>
+    public VkBuffer Backing { get; private set; }
 
     /// <summary>The logical byte size requested at resolve; may be below the backing's grown capacity. Mutable so a reused backing reports the latest data-driven size.</summary>
     public ulong ByteSize { get; set; }
@@ -33,6 +34,19 @@ public class BufferResource
         ByteSize = byteSize;
         CurrentAccess = initialAccess;
         CurrentStage = initialStage;
+    }
+
+    /// <summary>
+    /// Swaps in a freshly grown backing while keeping this object's identity, so consumers that resolve the
+    /// same leaf later in the frame observe the grown backing. The new backing is untracked hardware, so the
+    /// carried barrier state resets to top-of-pipe — the next barrier transitions from a clean baseline.
+    /// </summary>
+    internal void SwapBacking(VkBuffer backing, ulong byteSize)
+    {
+        Backing = backing;
+        ByteSize = byteSize;
+        CurrentAccess = 0;
+        CurrentStage = PipelineStageFlags.TopOfPipeBit;
     }
 
     /// <summary>

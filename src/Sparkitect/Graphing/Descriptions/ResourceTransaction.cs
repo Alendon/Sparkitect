@@ -28,7 +28,7 @@ public sealed class ResourceTransaction : IResourceTransaction
 
     /// <inheritdoc/>
     public void Read<T>(ResourceRef<T> reference) =>
-        _ledger.RecordRead(reference, reference.Resource);
+        _ledger.RecordRead(reference, CurrentSelf());
 
     /// <inheritdoc/>
     public ResourceRef<T> Increment<T>(ResourceRef<T> reference) =>
@@ -115,7 +115,7 @@ public sealed class ResourceTransaction : IResourceTransaction
     {
         if (_selfResources.Count == 0)
         {
-            throw new InvalidOperationException("ReferenceMoment is only valid inside a description's Declare.");
+            throw new InvalidOperationException("Read/ReferenceMoment are only valid inside a description's Declare.");
         }
 
         return _selfResources.Peek();

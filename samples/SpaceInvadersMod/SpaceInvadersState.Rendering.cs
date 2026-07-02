@@ -19,8 +19,13 @@ public partial class SpaceInvadersState
     [OrderAfter<RenderGraphModule.ProcessRenderGraphRegistriesEnterFunc>]
     static void CreateGraph(ISpaceInvadersRuntimeServiceStateFacade manager) => manager.CreateGraph();
 
+    [PerFrameFunction("si_poll_window")]
+    [PerFrameScheduling]
+    static void PollWindow(ISpaceInvadersRuntimeService runtime) => runtime.PollWindow();
+
     [PerFrameFunction("si_check_window_closed")]
     [PerFrameScheduling]
+    [OrderAfter<SiPollWindowFunc>]
     static void CheckWindowClosed(ISpaceInvadersRuntimeService runtime, IGameStateManager gameStateManager)
     {
         if (!runtime.IsOpen)

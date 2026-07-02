@@ -7,22 +7,32 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 public interface IBufferManager
 {
     /// <summary>
-    /// The data-driven byte size the next leaf resolve uses. The producing side (staging) writes it from the
-    /// pushed snapshot before resolve; it is a manager-owned current-size lookup, never a description parameter.
+    /// Resolves the host-mapped storage buffer leaf. Parameterless and lazy: the first call constructs the leaf
+    /// over a floor-sized backing (never zero) so the fact can build it before any data size is known; the same
+    /// leaf instance is reused for the graph's lifetime and carries barrier state across uses. Size is driven at
+    /// write time through <see cref="GrowHostLeaf"/>.
     /// </summary>
-    ulong CurrentByteSize { get; set; }
+    BufferResource ResolveHostLeaf();
 
     /// <summary>
-    /// Resolves the host-mapped storage buffer leaf sized to <paramref name="byteSize"/>. The backing is grown
-    /// to fit and reused for the graph's lifetime; the same leaf instance carries barrier state across uses.
+    /// Resolves the device-local storage buffer leaf. Parameterless and lazy like <see cref="ResolveHostLeaf"/>;
+    /// the same physical backing spans the staging-write and shader-read uses, grown at write time through
+    /// <see cref="GrowDeviceLeaf"/>.
     /// </summary>
-    BufferResource ResolveHostLeaf(ulong byteSize);
+    BufferResource ResolveDeviceLeaf();
 
     /// <summary>
-    /// Resolves the device-local storage buffer leaf sized to <paramref name="byteSize"/>. Grown to fit and
-    /// reused like the host leaf; the same physical backing spans the staging-write and shader-read uses.
+    /// Grows the host leaf to the written byte count (floored to a nonzero minimum) identity-preservingly: the
+    /// same <see cref="BufferResource"/> object swaps its backing internally so later resolves see the grown
+    /// backing. A within-capacity request reuses the backing.
     /// </summary>
-    BufferResource ResolveDeviceLeaf(ulong byteSize);
+    BufferResource GrowHostLeaf(ulong byteSize);
+
+    /// <summary>
+    /// Grows the device leaf to the written byte count (floored to a nonzero minimum) identity-preservingly,
+    /// mirroring <see cref="GrowHostLeaf"/>.
+    /// </summary>
+    BufferResource GrowDeviceLeaf(ulong byteSize);
 
     /// <summary>
     /// Frees the manager-owned buffer backings at graph teardown (the

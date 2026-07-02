@@ -42,6 +42,11 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     private KhrSurface? _khrSurface;
     private KhrPushDescriptor? _khrPushDescriptor;
 
+    // Pending validation-layer ERROR captured by DebugCallback. Thread-static because the callback is
+    // static and the loader invokes it synchronously on the offending call's thread, so the managed
+    // check-and-throw below reads it on that same thread right after the call returns.
+    [ThreadStatic] private static string? _pendingValidationError;
+
     public required IDIService ModDIService { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
     public required ICliArgumentHandler CliArgumentHandler { private get; init; }
@@ -206,7 +211,10 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         switch (messageSeverity)
         {
             case DebugUtilsMessageSeverityFlagsEXT.ErrorBitExt:
+                // Capture, do not throw: we cannot unwind across the native loader callback frame. The
+                // managed check-and-throw drains this slot at the next chokepoint on the same thread.
                 Log.Error("[Vulkan] {Message}", message);
+                _pendingValidationError = message;
                 break;
             case DebugUtilsMessageSeverityFlagsEXT.WarningBitExt:
                 Log.Warning("[Vulkan] {Message}", message);
@@ -220,6 +228,19 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
 
         return Vk.False;
+    }
+
+    /// <summary>
+    /// Throws <see cref="VulkanValidationException"/> if the validation layer captured an ERROR since the
+    /// last drain, clearing the slot first. Called at chokepoints (every Create* exit, per-pass and
+    /// submit/present in the frame loop) so a defect surfaces at the offending call, never swallowed.
+    /// </summary>
+    public void ThrowIfPendingValidationError()
+    {
+        var captured = _pendingValidationError;
+        if (captured is null) return;
+        _pendingValidationError = null;
+        throw new VulkanValidationException(captured);
     }
 
     public void SelectPhysicalDevice()
@@ -410,8 +431,10 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
 
         var result = VkApi.CreateCommandPool(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var pool);
 
+        ThrowIfPendingValidationError();
         if (result != VkApiResult.Success || pool.Handle == 0) return result;
 
+        ThrowIfPendingValidationError();
         return new VkCommandPool(pool, this, callerContext);
     }
 
@@ -429,7 +452,9 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 Flags = options.Flags,
             };
             var result = VkApi.CreateDescriptorPool(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var pool);
+            ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
+            ThrowIfPendingValidationError();
             return new VkDescriptorPool(pool, this, callerContext);
         }
     }
@@ -442,7 +467,9 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             Flags = flags
         };
         var result = VkApi.CreateSemaphore(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var semaphore);
+        ThrowIfPendingValidationError();
         if (result != VkApiResult.Success) return result;
+        ThrowIfPendingValidationError();
         return new VkSemaphore(semaphore, this, callerContext);
     }
 
@@ -454,7 +481,9 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             Flags = flags
         };
         var result = VkApi.CreateFence(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var fence);
+        ThrowIfPendingValidationError();
         if (result != VkApiResult.Success) return result;
+        ThrowIfPendingValidationError();
         return new VkFence(fence, this, callerContext);
     }
 
@@ -471,7 +500,9 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 Flags = options.Flags,
             };
             var result = VkApi.CreateDescriptorSetLayout(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var layout);
+            ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
+            ThrowIfPendingValidationError();
             return new VkDescriptorSetLayout(layout, this, callerContext);
         }
     }
@@ -499,7 +530,9 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 PPushConstantRanges = pushConstantsPtr,
             };
             var result = VkApi.CreatePipelineLayout(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var layout);
+            ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
+            ThrowIfPendingValidationError();
             return new VkPipelineLayout(layout, this, callerContext);
         }
     }
@@ -529,7 +562,9 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 Layout = options.Layout.Handle,
             };
             var result = VkApi.CreateComputePipelines(VkDevice.Handle, default, 1, createInfo, DefaultAllocationCallbacks, out var pipeline);
+            ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
+            ThrowIfPendingValidationError();
             return new VkPipeline(pipeline, this, callerContext);
         }
     }
@@ -545,7 +580,9 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 CodeSize = (nuint)spirvCode.Length * sizeof(uint),
             };
             var result = VkApi.CreateShaderModule(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var module);
+            ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
+            ThrowIfPendingValidationError();
             return new VkShaderModule(module, this, callerContext);
         }
     }
@@ -568,8 +605,10 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         };
 
         var result = VmaAllocator.CreateImage(in imageInfo, in allocInfo, out var image, out var allocation, out _);
+        ThrowIfPendingValidationError();
         if (result != VkApiResult.Success) return result;
 
+        ThrowIfPendingValidationError();
         return new VkImage(
             image,
             imageInfo.Format,
@@ -594,8 +633,10 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         };
 
         var result = VmaAllocator.CreateBuffer(in bufferInfo, in allocInfo, out var buffer, out var allocation, out var allocationInfo);
+        ThrowIfPendingValidationError();
         if (result != VkApiResult.Success) return result;
 
+        ThrowIfPendingValidationError();
         return new VkBuffer(
             buffer, bufferInfo.Size, bufferInfo.Usage,
             allocation, allocationInfo.MappedData, this, callerContext);
@@ -670,7 +711,9 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             UnnormalizedCoordinates = options.UnnormalizedCoordinates,
         };
         var result = VkApi.CreateSampler(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var sampler);
+        ThrowIfPendingValidationError();
         if (result != VkApiResult.Success) return result;
+        ThrowIfPendingValidationError();
         return new VkSampler(sampler, this, callerContext);
     }
 

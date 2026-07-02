@@ -45,6 +45,10 @@ public sealed partial class RenderGraph
         var instanceContext = new InstanceContext(_transaction, _plan.ResolvedMoments, _ledger);
         _frameContext.Bind(instanceContext);
 
+        // Frame-start drain: surface (and clear) any validation ERROR captured outside a frame boundary
+        // before this frame's work begins — between-frames hygiene for the pending-error slot.
+        _vulkanContext.ThrowIfPendingValidationError();
+
         // Frame-start external push: bind each registered pushed moment's latest snapshot to its
         // chain-head instance before any pass runs. The rebind is unconditional — when nothing new was
         // published this frame the store returns the previous snapshot, keeping the chain head bound. L2
@@ -75,6 +79,9 @@ public sealed partial class RenderGraph
                     preHook.PreExecute(_commandBuffer);
 
             _passes[i].Execute(_commandBuffer);
+
+            // Per-pass chokepoint: a recording defect throws here at pass granularity with the VUID text.
+            _vulkanContext.ThrowIfPendingValidationError();
         }
 
         // After ALL passes, dispatch the finishline hook on the publishing root: the present transition
@@ -100,7 +107,13 @@ public sealed partial class RenderGraph
             signalSemaphores: [presentSemaphore],
             fence: _inFlightFence);
 
+        // Submit chokepoint: a submit-time validation defect throws before present.
+        _vulkanContext.ThrowIfPendingValidationError();
+
         _ = _window.Swapchain.Present(imageIndex, presentSemaphore, _graphicsQueue);
+
+        // Present chokepoint: a present-time validation defect throws rather than being dropped.
+        _vulkanContext.ThrowIfPendingValidationError();
     }
 
     // Validates once that the present target resolves to one of the swapchain's images; a non-swapchain

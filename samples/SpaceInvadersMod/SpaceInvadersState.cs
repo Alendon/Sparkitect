@@ -23,6 +23,7 @@ public partial class SpaceInvadersState : IStateDescriptor
 
     [PerFrameFunction("process_input")]
     [PerFrameScheduling]
+    [OrderAfter<SiPollWindowFunc>]
     [OrderBefore<SimulateEcsWorldFunc>]
     static void ProcessInput(ISpaceInvadersRuntimeServiceStateFacade manager)
     {

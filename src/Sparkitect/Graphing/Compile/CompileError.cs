@@ -1,3 +1,4 @@
+using System.Text;
 using JetBrains.Annotations;
 using Sparkitect.Graphing.Ledger;
 using Sparkitect.Modding;
@@ -17,13 +18,30 @@ public abstract partial record CompileError
         GraphNodeId SecondIncrement) : CompileError;
 
     /// <summary>A cycle in the data-flow ordering, naming the participating nodes.</summary>
-    public sealed partial record Cycle(IReadOnlyList<GraphNodeId> Participants) : CompileError;
+    public sealed partial record Cycle(IReadOnlyList<GraphNodeId> Participants) : CompileError
+    {
+        /// <summary>Renders the participant ids instead of the backing list's type name.</summary>
+        protected override bool PrintMembers(StringBuilder builder)
+        {
+            builder.Append("Participants = [").Append(string.Join(", ", Participants)).Append(']');
+            return true;
+        }
+    }
 
     /// <summary>A Read of an epoch with no producing increment (the base epoch is the canonical case).</summary>
     public sealed partial record UnproducibleRead(GraphNodeId Reader, GraphNodeId UnproducibleEpoch) : CompileError;
 
     /// <summary>A referenced moment with no marked increment, naming the moment and its readers.</summary>
-    public sealed partial record UndefinedMoment(Identification Moment, IReadOnlyList<GraphNodeId> Readers) : CompileError;
+    public sealed partial record UndefinedMoment(Identification Moment, IReadOnlyList<GraphNodeId> Readers) : CompileError
+    {
+        /// <summary>Renders the reader ids instead of the backing list's type name.</summary>
+        protected override bool PrintMembers(StringBuilder builder)
+        {
+            builder.Append("Moment = ").Append(Moment)
+                .Append(", Readers = [").Append(string.Join(", ", Readers)).Append(']');
+            return true;
+        }
+    }
 
     /// <summary>Two increments marked with the same moment, naming the moment and both provenances.</summary>
     public sealed partial record DuplicateMoment(

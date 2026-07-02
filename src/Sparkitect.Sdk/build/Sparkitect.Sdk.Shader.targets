@@ -6,6 +6,11 @@
         <SlangCompilerPath Condition="'$(SlangCompilerPath)' == '' AND '$(VULKAN_SDK)' != '' AND Exists('$(VULKAN_SDK)/bin/slangc.exe')">$(VULKAN_SDK)/bin/slangc.exe</SlangCompilerPath>
         <SlangCompilerPath Condition="'$(SlangCompilerPath)' == ''">slangc</SlangCompilerPath>
 
+        <!-- Configurable spirv-val path with fallbacks (mirrors SlangCompilerPath) -->
+        <SpirvValPath Condition="'$(SpirvValPath)' == '' AND '$(VULKAN_SDK)' != '' AND Exists('$(VULKAN_SDK)/bin/spirv-val')">$(VULKAN_SDK)/bin/spirv-val</SpirvValPath>
+        <SpirvValPath Condition="'$(SpirvValPath)' == '' AND '$(VULKAN_SDK)' != '' AND Exists('$(VULKAN_SDK)/bin/spirv-val.exe')">$(VULKAN_SDK)/bin/spirv-val.exe</SpirvValPath>
+        <SpirvValPath Condition="'$(SpirvValPath)' == ''">spirv-val</SpirvValPath>
+
         <!-- Resource directory (may be redefined in Sparkitect.Sdk.targets, but needed here for early evaluation) -->
         <SparkitectResourceDirectory Condition="'$(SparkitectResourceDirectory)' == ''">$(MSBuildProjectDirectory)/Resources</SparkitectResourceDirectory>
 
@@ -51,6 +56,33 @@
             <UpToDateCheckBuilt Include="$(SlangShaderOutputPath)/%(SlangShader.Filename).spv"
                                 Original="%(SlangShader.FullPath)" />
         </ItemGroup>
+    </Target>
+
+    <!-- Validate compiled SPIR-V with spirv-val: hard gate when the tool is present, skipped cleanly when absent -->
+    <Target Name="ValidateSlangShaders"
+            AfterTargets="CompileSlangShaders"
+            Condition="'@(SlangShader)' != ''">
+
+        <!-- Probe for spirv-val. A bare PATH tool cannot be detected with Exists, so run the version
+             query with ContinueOnError and capture the exit code (0 = present, non-zero = absent). -->
+        <Exec Command="&quot;$(SpirvValPath)&quot; --version"
+              ContinueOnError="true"
+              StandardOutputImportance="Low"
+              StandardErrorImportance="Low">
+            <Output TaskParameter="ExitCode" PropertyName="_SpirvValProbeExitCode" />
+        </Exec>
+
+        <!-- Real validation runs only when the probe found the tool. Default error handling
+             (ContinueOnError false) makes invalid SPIR-V a HARD build failure. -->
+        <Exec Condition="'$(_SpirvValProbeExitCode)' == '0'"
+              Command="&quot;$(SpirvValPath)&quot; &quot;$(SlangShaderOutputPath)/%(SlangShader.Filename).spv&quot;"
+              WorkingDirectory="$(MSBuildProjectDirectory)"
+              StandardOutputImportance="Low"
+              StandardErrorImportance="High" />
+
+        <Message Condition="'$(_SpirvValProbeExitCode)' != '0'"
+                 Importance="Normal"
+                 Text="spirv-val not found (probe exit $(_SpirvValProbeExitCode)); skipping SPIR-V validation." />
     </Target>
 
     <!-- Clean target -->

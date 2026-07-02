@@ -5,148 +5,134 @@ namespace Sparkitect.ECS.Systems;
 
 internal class EcsGraphBuilder : IEcsGraphBuilder
 {
-    private readonly ExecutionGraphBuilder _inner = new();
     private readonly HashSet<Identification> _groupIds = new();
     private readonly Dictionary<Identification, Identification> _parentMap = new(); // childId -> parentGroupId
+    private SystemTreeNode? _root;
+    private IReadOnlyDictionary<Identification, IScheduling>? _systemMetadata;
+    private IReadOnlyDictionary<Identification, SystemGroupScheduling>? _groupMetadata;
 
     public void BuildFromTree(
         SystemTreeNode root,
         IReadOnlyDictionary<Identification, IScheduling> systemMetadata,
         IReadOnlyDictionary<Identification, SystemGroupScheduling> groupMetadata)
     {
-        WalkNode(root, parentGroupId: null, systemMetadata, groupMetadata);
+        _root = root;
+        _systemMetadata = systemMetadata;
+        _groupMetadata = groupMetadata;
+
+        IndexNode(root, parentGroupId: null);
+        ValidateConstraints(root, parentGroupId: null);
     }
 
-    private void WalkNode(
-        SystemTreeNode node,
-        Identification? parentGroupId,
-        IReadOnlyDictionary<Identification, IScheduling> systemMetadata,
-        IReadOnlyDictionary<Identification, SystemGroupScheduling> groupMetadata)
+    private void IndexNode(SystemTreeNode node, Identification? parentGroupId)
     {
-        _inner.AddNode(node.Id);
-
         if (node.IsGroup)
-        {
             _groupIds.Add(node.Id);
+        if (parentGroupId is not null)
+            _parentMap[node.Id] = parentGroupId.Value;
 
-            if (parentGroupId is not null)
-            {
-                _parentMap[node.Id] = parentGroupId.Value;
-                // Implicit edge: parent group -> child group (parent sorts before child)
-                _inner.AddEdge(parentGroupId.Value, node.Id, optional: false);
-            }
-
-            // Apply group ordering constraints
-            if (groupMetadata.TryGetValue(node.Id, out var groupSched))
-            {
-                ApplyOrderingEdges(node.Id, groupSched.OrderAfter, groupSched.OrderBefore, parentGroupId);
-            }
-
-            // Recurse children
-            foreach (var child in node.Children)
-            {
-                WalkNode(child, node.Id, systemMetadata, groupMetadata);
-            }
-        }
-        else
-        {
-            // System node (leaf)
-            if (parentGroupId is not null)
-            {
-                _parentMap[node.Id] = parentGroupId.Value;
-                // Implicit edge: parent group -> system (parent sorts before system)
-                _inner.AddEdge(parentGroupId.Value, node.Id, optional: false);
-            }
-
-            // Apply system ordering constraints
-            if (systemMetadata.TryGetValue(node.Id, out var sched) && sched is EcsSystemScheduling ess)
-            {
-                ApplyOrderingEdges(node.Id, ess.OrderAfter, ess.OrderBefore, parentGroupId);
-            }
-        }
+        foreach (var child in node.Children)
+            IndexNode(child, node.Id);
     }
 
-    private void ApplyOrderingEdges(
-        Identification nodeId,
-        IReadOnlyList<OrderAfterAttribute> orderAfter,
-        IReadOnlyList<OrderBeforeAttribute> orderBefore,
-        Identification? parentGroupId)
+    // Ordering constraints may only reference siblings. The full tree is indexed before validation,
+    // so forward references to nodes in later-walked groups are caught too.
+    private void ValidateConstraints(SystemTreeNode node, Identification? parentGroupId)
     {
-        foreach (var after in orderAfter)
+        if (parentGroupId is not null)
         {
-            if (IsCrossGroupEdge(nodeId, after.Other, parentGroupId))
-            {
-                throw new InvalidOperationException(
-                    $"Cross-group ordering constraint: {nodeId} OrderAfter {after.Other} - nodes are not siblings in the same group.");
-            }
-            _inner.AddEdge(after.Other, nodeId, after.Optional);
+            var (orderAfter, orderBefore) = ConstraintsFor(node);
+            foreach (var after in orderAfter)
+                ThrowIfCrossGroup(node.Id, after.Other, parentGroupId.Value, "OrderAfter");
+            foreach (var before in orderBefore)
+                ThrowIfCrossGroup(node.Id, before.Other, parentGroupId.Value, "OrderBefore");
         }
 
-        foreach (var before in orderBefore)
-        {
-            if (IsCrossGroupEdge(nodeId, before.Other, parentGroupId))
-            {
-                throw new InvalidOperationException(
-                    $"Cross-group ordering constraint: {nodeId} OrderBefore {before.Other} - nodes are not siblings in the same group.");
-            }
-            _inner.AddEdge(nodeId, before.Other, before.Optional);
-        }
+        foreach (var child in node.Children)
+            ValidateConstraints(child, node.Id);
     }
 
-    private bool IsCrossGroupEdge(Identification nodeId, Identification otherId, Identification? nodeParentGroupId)
+    private void ThrowIfCrossGroup(
+        Identification nodeId, Identification otherId, Identification parentGroupId, string verb)
     {
-        // If the other node has a known parent and it differs from this node's parent, it's cross-group
-        if (nodeParentGroupId is null) return false;
-        if (!_parentMap.TryGetValue(otherId, out var otherParent)) return false;
-        return otherParent != nodeParentGroupId.Value;
+        // Targets outside the tree are handled by edge optionality at the local sort.
+        if (!_parentMap.TryGetValue(otherId, out var otherParent))
+            return;
+        if (otherParent != parentGroupId)
+            throw new InvalidOperationException(
+                $"Cross-group ordering constraint: {nodeId} {verb} {otherId} - nodes are not siblings in the same group.");
     }
 
     public EcsExecutionGraph Resolve()
     {
-        var sortedAll = _inner.Resolve();
+        if (_root is null)
+            throw new InvalidOperationException("BuildFromTree must be called before Resolve.");
 
-        // Build group skip ranges: for each group at index i, find the index AFTER its last descendant
+        var sortedAll = new List<Identification>();
         var groupSkipRanges = new Dictionary<int, int>();
-        var sortedSystems = new List<Identification>(); // Public view: systems only
+        AppendGroupSpan(_root, sortedAll, groupSkipRanges);
 
-        // Map Identification -> index in sorted list
-        var idToIndex = new Dictionary<Identification, int>();
-        for (int i = 0; i < sortedAll.Count; i++)
-            idToIndex[sortedAll[i]] = i;
-
-        // Build sorted systems list (excludes groups)
-        for (int i = 0; i < sortedAll.Count; i++)
+        var sortedSystems = new List<Identification>();
+        foreach (var id in sortedAll)
         {
-            if (!_groupIds.Contains(sortedAll[i]))
-                sortedSystems.Add(sortedAll[i]);
-        }
-
-        // For each group, find the furthest descendant index
-        foreach (var groupId in _groupIds)
-        {
-            if (!idToIndex.TryGetValue(groupId, out var groupIndex)) continue;
-
-            int maxDescendantIndex = groupIndex;
-            for (int i = groupIndex + 1; i < sortedAll.Count; i++)
-            {
-                if (IsDescendantOf(sortedAll[i], groupId))
-                    maxDescendantIndex = i;
-            }
-            // Skip-to = one past the last descendant
-            groupSkipRanges[groupIndex] = maxDescendantIndex + 1;
+            if (!_groupIds.Contains(id))
+                sortedSystems.Add(id);
         }
 
         return new EcsExecutionGraph(sortedAll, sortedSystems, _groupIds, groupSkipRanges, _parentMap);
     }
 
-    private bool IsDescendantOf(Identification nodeId, Identification ancestorId)
+    // Each group sorts its DIRECT children locally and splices child spans depth-first: group members
+    // stay contiguous, ordering against a sibling group orders against its whole span, and gate skip
+    // ranges are exact by construction.
+    private void AppendGroupSpan(
+        SystemTreeNode group, List<Identification> sortedAll, Dictionary<int, int> skipRanges)
     {
-        var current = nodeId;
-        while (_parentMap.TryGetValue(current, out var parent))
+        var gateIndex = sortedAll.Count;
+        sortedAll.Add(group.Id);
+
+        var local = new ExecutionGraphBuilder();
+        var childrenById = new Dictionary<Identification, SystemTreeNode>();
+        foreach (var child in group.Children)
         {
-            if (parent == ancestorId) return true;
-            current = parent;
+            childrenById[child.Id] = child;
+            local.AddNode(child.Id);
         }
-        return false;
+
+        foreach (var child in group.Children)
+        {
+            var (orderAfter, orderBefore) = ConstraintsFor(child);
+            foreach (var after in orderAfter)
+                local.AddEdge(after.Other, child.Id, after.Optional);
+            foreach (var before in orderBefore)
+                local.AddEdge(child.Id, before.Other, before.Optional);
+        }
+
+        foreach (var id in local.Resolve())
+        {
+            var child = childrenById[id];
+            if (child.IsGroup)
+                AppendGroupSpan(child, sortedAll, skipRanges);
+            else
+                sortedAll.Add(child.Id);
+        }
+
+        // Skip-to = one past the group's whole span.
+        skipRanges[gateIndex] = sortedAll.Count;
+    }
+
+    private (IReadOnlyList<OrderAfterAttribute> After, IReadOnlyList<OrderBeforeAttribute> Before)
+        ConstraintsFor(SystemTreeNode node)
+    {
+        if (node.IsGroup)
+        {
+            return _groupMetadata!.TryGetValue(node.Id, out var groupSched)
+                ? (groupSched.OrderAfter, groupSched.OrderBefore)
+                : ([], []);
+        }
+
+        return _systemMetadata!.TryGetValue(node.Id, out var sched) && sched is EcsSystemScheduling ess
+            ? (ess.OrderAfter, ess.OrderBefore)
+            : ([], []);
     }
 }

@@ -12,7 +12,8 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// <see cref="CleanupStrategy.None"/> — the host and device leaves own their own Release via the buffer manager.
 /// </summary>
 [FactRegistry.Register("staging")]
-public sealed partial record StagingFacts : DeclaredFact<StagingBuffer>, IHasIdentification
+public sealed partial record StagingFacts(IBufferManager? Provider)
+    : DeclaredFact<StagingBuffer>, IHasIdentification
 {
     /// <summary>The host-mapped leaf ref (base epoch); the CPU memcpy target.</summary>
     public ResourceRef<BufferResource> Host { get; init; }
@@ -24,8 +25,15 @@ public sealed partial record StagingFacts : DeclaredFact<StagingBuffer>, IHasIde
     public ResourceRef<BufferResource> Staged { get; init; }
 
     /// <inheritdoc/>
-    public StagingBuffer CreateInstance(IInstanceContext ctx) =>
-        new(ctx.Resolve(Host), ctx.Resolve(Device));
+    public StagingBuffer CreateInstance(IInstanceContext ctx)
+    {
+        if (Provider is null)
+            throw new InvalidOperationException(
+                "StagingFacts.CreateInstance: no buffer backing provider was injected. The graph-local " +
+                "IBufferManager must be resolvable when the fact factory builds this fact.");
+
+        return new(ctx.Resolve(Host), ctx.Resolve(Device), Provider);
+    }
 
     public CleanupStrategy CleanupStrategy => CleanupStrategy.None;
 }

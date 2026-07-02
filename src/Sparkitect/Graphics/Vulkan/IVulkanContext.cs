@@ -31,6 +31,12 @@ public interface IVulkanContext
     KhrPushDescriptor KhrPushDescriptor { get; }
 
     /// <summary>
+    /// Throws <see cref="VulkanValidationException"/> if the validation layer captured an ERROR since the
+    /// last drain. Called at chokepoints so a validation defect surfaces unswallowed at the offending call.
+    /// </summary>
+    void ThrowIfPendingValidationError();
+
+    /// <summary>
     /// Gets a specific queue by family and index.
     /// </summary>
     /// <returns>The queue, or null if not found.</returns>
