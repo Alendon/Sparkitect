@@ -1,25 +1,26 @@
 ---
 uid: sparkitect.ecs
 title: ECS Module
-description: Entity Component System framework and emergent features
+description: Framework-first Entity Component System with capability-driven storage, source-generated queries, and concurrent system scheduling
 ---
 
 # ECS Module
 
-**Status:** Design — modeling the framework before implementation.
+The ECS is a framework-first Entity Component System: the core defines minimal structural contracts, and storage, identity, iteration, and scheduling all emerge from implementations that plug into those contracts. It follows the same design mentality as the rest of Sparkitect — a type-safe protocol at the core, concrete behavior in the pieces built on top.
 
-The ECS follows the same design philosophy as the rest of Sparkitect: minimal structural
-contracts at the core, concrete behavior emerges from implementations. The pattern that drives
-Stateless Functions, Scheduling, and the Registry system applies here in the same way.
+You write components, queries, and systems as small declarations. Source generators turn them into typed entity handles, capability filters, and a concurrent execution plan.
 
-## Documentation
+## Usage
 
-- <xref:sparkitect.ecs.ecs-requirements> — Design decisions and constraints
-- <xref:sparkitect.ecs.ecs-design> — Semantic design model covering core contracts, emergent
-  features, and how they relate
+Read these in order:
 
-## Design Approach
+- <xref:sparkitect.ecs.components> — declare component structs and register them.
+- <xref:sparkitect.ecs.worlds-storage> — create a world, add archetype storage, spawn entities.
+- <xref:sparkitect.ecs.queries> — declare component queries and iterate matched entities.
+- <xref:sparkitect.ecs.systems> — write systems, group them, order and toggle their execution.
+- <xref:sparkitect.ecs.command-buffers> — defer structural changes through command buffers.
 
-The ECS is designed by modeling concrete emergent features first (archetype storage,
-relationships, spatial queries), then extracting the minimal framework contracts those
-features require. The core is shaped by real usage rather than speculative abstraction.
+## Design & internals
+
+- <xref:sparkitect.ecs.ecs-requirements> — design decisions and constraints, condensed to intent.
+- <xref:sparkitect.ecs.ecs-design> — the layered design model and forward-looking work.

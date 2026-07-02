@@ -1,4 +1,14 @@
 - name: Render Graph Overview
   href: index.md
+- name: Authoring Passes
+  href: pass-authoring.md
+- name: Descriptions, Facts, and Moments
+  href: descriptions-and-moments.md
+- name: Composite Resources
+  href: composites.md
+- name: Data-Flow Ordering
+  href: data-flow-ordering.md
+- name: External Push and Externally-Managed State
+  href: external-push.md
 - name: Render Graph Requirements
   href: rendergraph-requirements.md

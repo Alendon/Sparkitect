@@ -1,22 +1,39 @@
 ---
 uid: sparkitect.rendergraph
 title: Render Graph
-description: Render graph module for managed rendering pipelines and GPU resource lifecycle
+description: Stock GPU render graph — pass authoring, resource declaration, data-flow ordering, and external push
 ---
 
 # Render Graph
 
-**Status:** Requirements gathering — collecting stakeholder requirements before design.
+The render graph is the stock engine layer for GPU rendering: passes declare the resources they use, and the graph derives execution order, synchronization, and per-frame resource resolution from those declarations. You never write a barrier or an ordering index; you declare data usage and the graph compiles the rest.
 
-The render graph provides the stock engine layer for GPU rendering pipelines: pass execution
-ordering, frame-resolved resource views, command recording orchestration, synchronization, and
-data flow between rendering stages. The foundational layer stays small; resource and GPU
-semantics live in stock or extension-defined graph contracts.
+Sparkitect ships no game-specific passes. You build a pipeline from stock graph components and your own passes. Mods extend it by registering passes, resource descriptions, and cross-pass moments.
 
-Sparkitect does not ship game-specific rendering passes. You build the pipeline using stock render
-graph components and your own passes. Mods extend it by adding passes, injecting effects, or
-registering compatible resource views and handlers.
+A pass is a partial class that overrides `Setup` (declares resource usage) and `Execute` (records GPU work). The one declaration verb is `ctx.Use(description)`, which returns an [`IGraphResource<T>`](xref:Sparkitect.Graphing.IGraphResource`1) handle the pass fetches each frame:
 
-## Documentation
+```csharp
+[RenderPassRegistry.RegisterPass("clear_color")]
+internal sealed partial class ClearColorPass : ComputePass
+{
+    private IGraphResource<ImageResource> _target = null!;
 
-- <xref:sparkitect.rendergraph.requirements> — Stakeholder requirements and design constraints
+    public override void Setup(ISetupContext ctx) =>
+        _target = ctx.Use(new ClearColorImageDescription());
+
+    public override void Execute(VkCommandBuffer commandBuffer) =>
+        commandBuffer.ClearColorImage(_target.Fetch().Backing, ImageLayout.TransferDstOptimal, in clearColor);
+}
+```
+
+## Usage
+
+- <xref:sparkitect.rendergraph.pass-authoring> — Writing passes: `Setup`/`Execute`, resource handles, dependency boundaries
+- <xref:sparkitect.rendergraph.descriptions-and-moments> — Descriptions, facts, and the moment system for cross-pass references
+- <xref:sparkitect.rendergraph.composites> — Composite resources, declaration products, and cleanup strategies
+- <xref:sparkitect.rendergraph.data-flow-ordering> — How Read/Increment edges become execution order
+- <xref:sparkitect.rendergraph.external-push> — Feeding external data in and driving swapchain presentation
+
+## Design
+
+- <xref:sparkitect.rendergraph.requirements> — Design rationale and forward-looking direction (resize, source-generated authoring, aliasing)
