@@ -5,9 +5,11 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+/// <summary>Records GPU commands (barriers, copies, binds, dispatches) for submission through a <see cref="VkQueue"/>.</summary>
 [PublicAPI]
 public class VkCommandBuffer : VulkanObject
 {
+    /// <summary>Wraps a command buffer allocated from <paramref name="pool"/>.</summary>
     public VkCommandBuffer(CommandBuffer commandBuffer, IVulkanContext vulkanContext, VkCommandPool pool,
         CallerContext callerContext = default) : base(vulkanContext, callerContext)
     {
@@ -15,12 +17,17 @@ public class VkCommandBuffer : VulkanObject
         ParentPool = pool;
     }
 
+    /// <summary>The underlying Silk.NET <see cref="CommandBuffer"/> handle.</summary>
     public CommandBuffer Handle { get; }
+
+    /// <summary>The pool this buffer was allocated from and is freed with.</summary>
     public VkCommandPool ParentPool { get; }
 
+    /// <summary>Resets the buffer to the initial state, discarding previously recorded commands.</summary>
     public VkApiResult Reset(CommandBufferResetFlags flags = 0)
         => Vk.ResetCommandBuffer(Handle, flags);
 
+    /// <summary>Begins recording. Must be called before recording any commands.</summary>
     public VkApiResult Begin(CommandBufferUsageFlags flags = 0)
     {
         var beginInfo = new CommandBufferBeginInfo
@@ -31,9 +38,11 @@ public class VkCommandBuffer : VulkanObject
         return Vk.BeginCommandBuffer(Handle, in beginInfo);
     }
 
+    /// <summary>Ends recording. Must be called before the buffer is submitted.</summary>
     public VkApiResult End()
         => Vk.EndCommandBuffer(Handle);
 
+    /// <summary>Records a color-aspect image layout/access barrier over the first mip level and array layer.</summary>
     public void ImageBarrier(
         VkImage image,
         ImageLayout oldLayout, ImageLayout newLayout,
@@ -49,6 +58,7 @@ public class VkCommandBuffer : VulkanObject
             });
     }
 
+    /// <summary>Records an image layout/access barrier over the given <paramref name="subresourceRange"/>.</summary>
     public unsafe void ImageBarrier(
         VkImage image,
         ImageLayout oldLayout, ImageLayout newLayout,
@@ -100,9 +110,11 @@ public class VkCommandBuffer : VulkanObject
         Vk.CmdPipelineBarrier(Handle, srcStage, dstStage, 0, 0, null, 1, &barrier, 0, null);
     }
 
+    /// <summary>Binds a pipeline at the given <paramref name="bindPoint"/> for subsequent draws or dispatches.</summary>
     public void BindPipeline(PipelineBindPoint bindPoint, VkPipeline pipeline)
         => Vk.CmdBindPipeline(Handle, bindPoint, pipeline.Handle);
 
+    /// <summary>Binds a single descriptor set starting at <paramref name="firstSet"/>.</summary>
     public unsafe void BindDescriptorSets(
         PipelineBindPoint bindPoint,
         VkPipelineLayout layout,
@@ -114,6 +126,7 @@ public class VkCommandBuffer : VulkanObject
             1, &handle, 0, null);
     }
 
+    /// <summary>Binds a contiguous range of descriptor sets starting at <paramref name="firstSet"/>.</summary>
     public unsafe void BindDescriptorSets(
         PipelineBindPoint bindPoint,
         VkPipelineLayout layout,
@@ -153,6 +166,7 @@ public class VkCommandBuffer : VulkanObject
         }
     }
 
+    /// <summary>Uploads <paramref name="data"/> as push constants at <paramref name="offset"/> for the given shader stages.</summary>
     public unsafe void PushConstants<T>(
         VkPipelineLayout layout,
         ShaderStageFlags stageFlags,
@@ -165,9 +179,11 @@ public class VkCommandBuffer : VulkanObject
         }
     }
 
+    /// <summary>Dispatches a compute workload of the given workgroup counts.</summary>
     public void Dispatch(uint groupCountX, uint groupCountY, uint groupCountZ)
         => Vk.CmdDispatch(Handle, groupCountX, groupCountY, groupCountZ);
 
+    /// <summary>Clears the whole color aspect of <paramref name="image"/> to <paramref name="color"/>.</summary>
     public void ClearColorImage(VkImage image, ImageLayout imageLayout, in ClearColorValue color)
     {
         var range = new ImageSubresourceRange
@@ -179,6 +195,7 @@ public class VkCommandBuffer : VulkanObject
         Vk.CmdClearColorImage(Handle, image.Handle, imageLayout, in color, 1, in range);
     }
 
+    /// <summary>Clears the given subresource <paramref name="range"/> of <paramref name="image"/> to <paramref name="color"/>.</summary>
     public void ClearColorImage(
         VkImage image, ImageLayout imageLayout, in ClearColorValue color,
         in ImageSubresourceRange range)
@@ -186,6 +203,7 @@ public class VkCommandBuffer : VulkanObject
         Vk.CmdClearColorImage(Handle, image.Handle, imageLayout, in color, 1, in range);
     }
 
+    /// <summary>Records a filtered blit of <paramref name="region"/> from one image to another.</summary>
     public void BlitImage(
         VkImage srcImage, ImageLayout srcLayout,
         VkImage dstImage, ImageLayout dstLayout,
@@ -232,6 +250,7 @@ public class VkCommandBuffer : VulkanObject
         BlitImage(src, srcLayout, dst, dstLayout, in blit, filter);
     }
 
+    /// <inheritdoc/>
     public override void Destroy()
     {
         ParentPool.FreeCommandBuffers(this);

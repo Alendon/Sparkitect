@@ -24,14 +24,19 @@ public sealed class PerFrameScheduling : IScheduling
     private readonly OrderAfterAttribute[] _orderAfter;
     private readonly OrderBeforeAttribute[] _orderBefore;
 
+    /// <inheritdoc/>
     public Identification OwnerId { get; set; }
 
+    /// <summary>Creates the scheduling with its ordering constraints.</summary>
+    /// <param name="orderAfter">Functions this one must run after.</param>
+    /// <param name="orderBefore">Functions this one must run before.</param>
     public PerFrameScheduling(OrderAfterAttribute[] orderAfter, OrderBeforeAttribute[] orderBefore)
     {
         _orderAfter = orderAfter;
         _orderBefore = orderBefore;
     }
 
+    /// <summary>Adds the owning function to the per-frame graph when its owner is loaded in the state stack.</summary>
     public void BuildGraph(IExecutionGraphBuilder builder, PerFrameContext context, Identification functionId)
     {
         if (!context.IsModuleLoaded(OwnerId) && context.StateStack[^1].StateId != OwnerId) return;

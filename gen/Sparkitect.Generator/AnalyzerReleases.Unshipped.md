@@ -1,71 +1,55 @@
-## Release 1.1
+; Unshipped analyzer release
+; https://github.com/dotnet/roslyn-analyzers/blob/main/src/Microsoft.CodeAnalysis.Analyzers/ReleaseTrackingAnalyzers.Help.md
 
 ### New Rules
 
-<!-- Category 02: Registry/Modding Diagnostics -->
-
-| SPARK0201 | Sparkitect | Error    | Registry requires IRegistry                                           |
-| SPARK0202 | Sparkitect | Error    | Registry missing Identifier                                           |
-| SPARK0203 | Sparkitect | Error    | Registry must be top-level in a namespace                             |
-| SPARK0204 | Sparkitect | Error    | Duplicate category key                                                |
-| SPARK0205 | Sparkitect | Warning  | Duplicate registry type names across namespaces                       |
-| SPARK0206 | Sparkitect | Error    | Category Identifier must be snake_case (letters, digits, underscores) |
-| SPARK0210 | Sparkitect | Error    | [RegistryMethod] outside a registry                                   |
-| SPARK0211 | Sparkitect | Error    | Invalid registry method signature                                     |
-| SPARK0212 | Sparkitect | Error    | Too many type parameters                                              |
-| SPARK0213 | Sparkitect | Error    | Generic value method mismatch                                         |
-| SPARK0214 | Sparkitect | Error    | First parameter must be Identification                                |
-| SPARK0215 | Sparkitect | Error    | Duplicate registry method names                                       |
-| SPARK0216 | Sparkitect | Error    | UseResourceFile missing Key                                           |
-| SPARK0217 | Sparkitect | Error    | Duplicate resource file key                                           |
-| SPARK0218 | Sparkitect | Error    | Multiple primary resource files                                       |
-| SPARK0220 | Sparkitect | Error    | Provider missing id                                                   |
-| SPARK0221 | Sparkitect | Error    | Provider member must be static                                        |
-| SPARK0222 | Sparkitect | Error    | Unknown registry reference                                            |
-| SPARK0223 | Sparkitect | Error    | Unknown registry method                                               |
-| SPARK0224 | Sparkitect | Error    | Provider kind mismatch                                                |
-| SPARK0225 | Sparkitect | Error    | Provider return type incompatible                                     |
-| SPARK0226 | Sparkitect | Error    | Type does not satisfy generic constraints                             |
-| SPARK0230 | Sparkitect | Error    | Duplicate registration id within a registry                           |
-| SPARK0231 | Sparkitect | Error    | Registration id must be snake_case (letters, digits, underscores)     |
-| SPARK0232 | Sparkitect | Warning  | DI parameter guidance (prefer abstract/interface or nullable)         |
-| SPARK0242 | Sparkitect | Error    | YAML unknown registry/method in key                                   |
-| SPARK0243 | Sparkitect | Warning  | YAML unknown file key                                                 |
-| SPARK0244 | Sparkitect | Error    | YAML missing required file key                                        |
-| SPARK0245 | Sparkitect | Error    | YAML duplicate id per registry                                        |
-| SPARK0250 | Sparkitect | Error    | Duplicate normalized property name collision                          |
-
-<!-- Category 03: GameState/StateService Diagnostics -->
-
-| SPARK0301 | Sparkitect | Error    | StateService does not implement declared interface                    |
-| SPARK0302 | Sparkitect | Error    | StateService does not implement required facade                       |
-| SPARK0304 | Sparkitect | Error    | Facade interface missing [FacadeFor] attribute                        |
-| SPARK0305 | Sparkitect | Error    | FacadeFor attribute inconsistent with service facade declaration      |
-
-<!-- Category 04: Stateless Function Diagnostics -->
-
-| SPARK0401 | Sparkitect | Error    | Stateless function must be static                                     |
-| SPARK0402 | Sparkitect | Error    | Multiple scheduling attributes not allowed                            |
-| SPARK0403 | Sparkitect | Warning  | Parameter may not be DI-resolvable                                    |
-| SPARK0404 | Sparkitect | Error    | Container must implement IHasIdentification                           |
-| SPARK0405 | Sparkitect | Warning  | Ordering attribute without scheduling                                 |
-
-<!-- Category 05: Naming Diagnostics -->
-
-| SPARK0501 | Sparkitect | Error    | ModId must be snake_case                                              |
-| SPARK0502 | Sparkitect | Error    | Identifier must be snake_case                                         |
-
-### Removed Rules
-
-| Rule ID   | Category   | Severity | Notes                                                                            |
-|-----------|------------|----------|----------------------------------------------------------------------------------|
-| SPARK0101 | Sparkitect | Warning  | Removed: DI Only abstract/interface dependencies (DiFactoryAnalyzer deleted)      |
-| SPARK0102 | Sparkitect | Error    | Removed: DI Only one constructor (DiFactoryAnalyzer deleted)                      |
-| SPARK0103 | Sparkitect | Warning  | Removed: DI Required properties init-only (DiFactoryAnalyzer deleted)             |
-| SPARK0104 | Sparkitect | Warning  | Removed: DI Single generation marker (DiFactoryAnalyzer deleted)                  |
-| SPARK0105 | Sparkitect | Error    | Removed: DI Conflicting generation markers (DiFactoryAnalyzer deleted)            |
-| SPARK0106 | Sparkitect | Error    | Removed: DI KeyedFactory missing key (DiFactoryAnalyzer deleted)                  |
-| SPARK0107 | Sparkitect | Error    | Removed: DI Invalid key property (DiFactoryAnalyzer deleted)                      |
-| SPARK0108 | Sparkitect | Error    | Removed: DI Conflicting key associations (DiFactoryAnalyzer deleted)              |
-| SPARK0231 | Sparkitect | Error    | Replaced by SPARK0502 via [SnakeCase] attribute on generated provider attributes  |
-| SPARK0303 | Sparkitect | Error    | Removed: StateService interface missing StateFacade attribute (facades now optional) |
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------
+SPARK0201 | Sparkitect | Error | [Registry] requires IRegistry<TModule>
+SPARK0202 | Sparkitect | Error | Registry must specify Identifier
+SPARK0203 | Sparkitect | Error | Registry must be top-level in a namespace
+SPARK0204 | Sparkitect | Error | Duplicate registry category Identifier
+SPARK0205 | Sparkitect | Warning | Duplicate registry type names across namespaces
+SPARK0206 | Sparkitect | Error | Category Identifier must be snake_case
+SPARK0210 | Sparkitect | Error | [RegistryMethod] only inside registries
+SPARK0211 | Sparkitect | Error | Invalid [RegistryMethod] signature
+SPARK0212 | Sparkitect | Error | Registry method has too many type parameters
+SPARK0213 | Sparkitect | Error | Generic value method mismatch
+SPARK0214 | Sparkitect | Error | First parameter must be Identification
+SPARK0215 | Sparkitect | Error | Duplicate registry method name
+SPARK0216 | Sparkitect | Error | UseResourceFile missing Key
+SPARK0217 | Sparkitect | Error | Duplicate resource file key
+SPARK0218 | Sparkitect | Error | Multiple primary resource files
+SPARK0220 | Sparkitect | Error | Provider attribute requires id
+SPARK0221 | Sparkitect | Error | Provider member must be static
+SPARK0222 | Sparkitect | Error | Referenced registry not discoverable
+SPARK0223 | Sparkitect | Error | Unknown registry method
+SPARK0224 | Sparkitect | Error | Provider kind does not match registry method
+SPARK0225 | Sparkitect | Error | Provider return type incompatible
+SPARK0226 | Sparkitect | Error | Type does not satisfy generic constraints
+SPARK0230 | Sparkitect | Error | Duplicate registration id
+SPARK0232 | Sparkitect | Warning | Prefer abstract/interface DI parameters
+SPARK0242 | Sparkitect | Error | Unknown registry/method in YAML key
+SPARK0243 | Sparkitect | Warning | Unknown file key in YAML
+SPARK0244 | Sparkitect | Error | Missing required file key in YAML
+SPARK0245 | Sparkitect | Error | Duplicate id in YAML
+SPARK0250 | Sparkitect | Error | Duplicate property name after normalization
+SPARK0260 | Sparkitect | Error | [KeyedFactoryGenerationMarker] only on type-registration registry methods
+SPARK0261 | Sparkitect | Error | Marker-flagged registry method missing required constraints
+SPARK0262 | Sparkitect | Warning | Hand-authored ': IHasIdentification' without a registration attribute
+SPARK0263 | Sparkitect | Warning | Registered concrete missing explicit ': IHasIdentification'
+SPARK0301 | Sparkitect | Error | StateService does not implement declared interface
+SPARK0302 | Sparkitect | Error | StateService does not implement required facade
+SPARK0304 | Sparkitect | Error | Facade interface missing [FacadeFor] attribute
+SPARK0305 | Sparkitect | Error | FacadeFor attribute inconsistent with service facade declaration
+SPARK0401 | Sparkitect | Error | Stateless function must be static
+SPARK0402 | Sparkitect | Error | Multiple scheduling attributes not allowed
+SPARK0403 | Sparkitect | Warning | Parameter may not be DI-resolvable
+SPARK0404 | Sparkitect | Error | Container must implement IHasIdentification
+SPARK0405 | Sparkitect | Warning | Ordering attribute without scheduling
+SPARK0406 | Sparkitect | Error | Stateless function must not access non-public static state
+SPARK0501 | Sparkitect | Error | ModId must be snake_case
+SPARK0502 | Sparkitect | Error | Identifier must be snake_case
+SPARK0601 | Sparkitect | Error | Optional mod type leakage
+SPARK0602 | Sparkitect | Error | Unguarded optional mod call
+SPARK0603 | Sparkitect | Error | Invalid optional mod ID

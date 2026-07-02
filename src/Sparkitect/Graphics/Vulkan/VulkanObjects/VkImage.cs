@@ -7,9 +7,11 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+/// <summary>Owns a Vulkan image and its metadata. Whether the handle is destroyed depends on its <see cref="ImageBacking"/>.</summary>
 [PublicAPI]
 public class VkImage : VulkanObject
 {
+    /// <summary>Wraps an existing <see cref="Image"/> handle, recording its format, extent, and how it is backed.</summary>
     public VkImage(
         Image handle,
         Format format,
@@ -32,13 +34,28 @@ public class VkImage : VulkanObject
         Backing = backing;
     }
 
+    /// <summary>The underlying Silk.NET <see cref="Image"/> handle.</summary>
     public Image Handle { get; }
+
+    /// <summary>The pixel format of the image.</summary>
     public Format Format { get; }
+
+    /// <summary>The width, height, and depth of the image in texels.</summary>
     public Extent3D Extent { get; }
+
+    /// <summary>The number of mip levels.</summary>
     public uint MipLevels { get; }
+
+    /// <summary>The number of array layers.</summary>
     public uint ArrayLayers { get; }
+
+    /// <summary>Whether the image is 1D, 2D, or 3D.</summary>
     public ImageType ImageType { get; }
+
+    /// <summary>The usage flags the image was created with.</summary>
     public ImageUsageFlags Usage { get; }
+
+    /// <summary>How the native handle is backed, which determines whether <see cref="Destroy"/> frees it.</summary>
     public ImageBacking Backing { get; }
 
     /// <summary>
@@ -77,7 +94,7 @@ public class VkImage : VulkanObject
 
         unsafe
         {
-            var result = Vk.CreateImageView(Device, createInfo, AllocationCallbacks, out var imageView);
+            var result = Vk.CreateImageView(Device, in createInfo, AllocationCallbacks, out var imageView);
             if (result != VkApiResult.Success)
                 return result;
 
@@ -115,6 +132,7 @@ public class VkImage : VulkanObject
         };
     }
 
+    /// <inheritdoc/>
     public override void Destroy()
     {
         switch (Backing)

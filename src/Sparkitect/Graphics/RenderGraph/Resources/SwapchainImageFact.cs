@@ -22,5 +22,6 @@ public sealed partial record SwapchainImageFact(IImageManager? Provider)
         return Provider.ResolveSwapchainLeaf();
     }
 
+    /// <summary>Releases the manager-held swapchain leaf state at graph teardown; the images themselves are swapchain-owned.</summary>
     public CleanupStrategy CleanupStrategy => CleanupStrategy.Release;
 }

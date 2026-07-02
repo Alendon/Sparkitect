@@ -4,11 +4,13 @@ using Silk.NET.Vulkan.Extensions.KHR;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+/// <summary>Owns a window surface (VK_KHR_surface) and queries its swapchain-relevant capabilities.</summary>
 [PublicAPI]
 public class VkSurface : VulkanObject
 {
     private readonly KhrSurface _khrSurface;
 
+    /// <summary>Wraps an existing <see cref="SurfaceKHR"/> handle together with the <see cref="KhrSurface"/> extension.</summary>
     public VkSurface(SurfaceKHR handle, KhrSurface khrSurface, IVulkanContext vulkanContext)
         : base(vulkanContext)
     {
@@ -16,14 +18,17 @@ public class VkSurface : VulkanObject
         _khrSurface = khrSurface;
     }
 
+    /// <summary>The underlying Silk.NET <see cref="SurfaceKHR"/> handle.</summary>
     public SurfaceKHR Handle { get; }
 
+    /// <summary>Returns the surface capabilities (extents, image-count bounds, transforms) for <paramref name="physicalDevice"/>.</summary>
     public SurfaceCapabilitiesKHR GetCapabilities(PhysicalDevice physicalDevice)
     {
         _khrSurface.GetPhysicalDeviceSurfaceCapabilities(physicalDevice, Handle, out var capabilities);
         return capabilities;
     }
 
+    /// <summary>Returns the surface formats <paramref name="physicalDevice"/> supports for this surface.</summary>
     public unsafe SurfaceFormatKHR[] GetFormats(PhysicalDevice physicalDevice)
     {
         uint count = 0;
@@ -40,6 +45,7 @@ public class VkSurface : VulkanObject
         return formats;
     }
 
+    /// <summary>Returns the present modes <paramref name="physicalDevice"/> supports for this surface.</summary>
     public unsafe PresentModeKHR[] GetPresentModes(PhysicalDevice physicalDevice)
     {
         uint count = 0;
@@ -56,12 +62,14 @@ public class VkSurface : VulkanObject
         return modes;
     }
 
+    /// <summary>Whether the given queue family on <paramref name="physicalDevice"/> can present to this surface.</summary>
     public bool GetPhysicalDeviceSurfaceSupport(PhysicalDevice physicalDevice, uint queueFamilyIndex)
     {
         _khrSurface.GetPhysicalDeviceSurfaceSupport(physicalDevice, queueFamilyIndex, Handle, out var supported);
         return supported;
     }
 
+    /// <inheritdoc/>
     public override unsafe void Destroy()
     {
         _khrSurface.DestroySurface(VulkanContext.VkInstance.Handle, Handle, AllocationCallbacks);

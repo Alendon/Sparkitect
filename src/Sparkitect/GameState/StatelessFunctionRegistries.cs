@@ -11,6 +11,7 @@ namespace Sparkitect.GameState;
 [PublicAPI]
 public sealed partial class PerFrameRegistry : StatelessFunctionRegistryBase, IRegistry<CoreModule>
 {
+    /// <inheritdoc/>
     public static string Identifier => "perframe_function";
 }
 
@@ -21,5 +22,6 @@ public sealed partial class PerFrameRegistry : StatelessFunctionRegistryBase, IR
 [PublicAPI]
 public sealed partial class TransitionRegistry : StatelessFunctionRegistryBase, IRegistry<CoreModule>
 {
+    /// <inheritdoc/>
     public static string Identifier => "transition_function";
 }

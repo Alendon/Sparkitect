@@ -5,9 +5,11 @@ using Sparkitect.Graphics.Vulkan.VulkanObjects;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 
+/// <summary>A single image leaf: one backing <see cref="VkImage"/> plus its carried layout/access state, transitioned in place as passes use it.</summary>
 [PublicAPI]
 public class ImageResource
 {
+    /// <summary>The backing image this leaf wraps.</summary>
     public VkImage Backing { get; }
 
     /// <summary>The image extent.</summary>

@@ -6,10 +6,14 @@ using Sparkitect.Modding;
 namespace Sparkitect.Stateless;
 
 
-//Non generic base class, to be able to pass a generic type without the sub types, when only SG or non CLR compliant usage is  required
+/// <summary>
+/// Non-generic base for all stateless-function attributes. Exposes the registration identifier
+/// without the generic context/registry type parameters, for source-generator access.
+/// </summary>
 [PublicAPI]
 public abstract class StatelessFunctionAttribute : Attribute
 {
+    /// <summary>The unique identifier under which the function is registered.</summary>
     public abstract string Identifier { get; }
 }
 
@@ -25,8 +29,10 @@ public abstract class StatelessFunctionAttribute<TContext, TRegistry> : Stateles
     where TContext : class
     where TRegistry : IRegistry
 {
+    /// <inheritdoc/>
     public override string Identifier { get; }
 
+    /// <summary>Creates the attribute with the registration identifier for this function.</summary>
     protected StatelessFunctionAttribute(string identifier) => Identifier = identifier;
 }
 
@@ -61,6 +67,7 @@ public sealed class TransitionFunctionAttribute(string identifier)
 [PublicAPI]
 public abstract class ParentIdAttribute : Attribute
 {
+    /// <summary>The resolved identification of the declared parent (owner).</summary>
     public abstract Identification Other { get; }
 }
 
@@ -75,6 +82,7 @@ public abstract class ParentIdAttribute : Attribute
 public sealed class ParentIdAttribute<TOwner> : ParentIdAttribute
     where TOwner : IHasIdentification
 {
+    /// <inheritdoc/>
     public override Identification Other => TOwner.Identification;
 }
 

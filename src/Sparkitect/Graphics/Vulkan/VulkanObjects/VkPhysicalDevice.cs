@@ -3,9 +3,11 @@ using Silk.NET.Vulkan;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+/// <summary>Wraps a Vulkan physical device (GPU) and exposes its capability and format queries.</summary>
 [PublicAPI]
 public class VkPhysicalDevice : VulkanObject
 {
+    /// <summary>Wraps the <paramref name="physicalDevice"/> handle selected for <paramref name="vulkanContext"/>.</summary>
     public VkPhysicalDevice(IVulkanContext vulkanContext, PhysicalDevice physicalDevice)
         : base(vulkanContext)
     {

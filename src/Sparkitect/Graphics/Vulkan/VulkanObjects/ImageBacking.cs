@@ -12,8 +12,13 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public abstract partial record ImageBacking
 {
+    /// <summary>The handle is owned by a swapchain and is not destroyed with the image.</summary>
     public sealed partial record Swapchain : ImageBacking;
+
+    /// <summary>The handle is backed by a VMA allocation that the image destroys on disposal.</summary>
+    /// <param name="Value">The VMA allocation backing the image.</param>
     public sealed partial record VmaAllocated(VmaAllocation Value) : ImageBacking;
 
+    /// <summary>Wraps a VMA allocation as a <see cref="VmaAllocated"/> backing.</summary>
     public static implicit operator ImageBacking(VmaAllocation vmaAllocation) => _VmaAllocated(vmaAllocation);
 }

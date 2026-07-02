@@ -22,7 +22,9 @@ public abstract partial record DescriptorBindingPayload
     [StructLayout(LayoutKind.Explicit)]
     public struct WriteInfoStorage
     {
+        /// <summary>The image-info the write points at when the payload is a <see cref="StorageImage"/>.</summary>
         [FieldOffset(0)] public DescriptorImageInfo ImageInfo;
+        /// <summary>The buffer-info the write points at when the payload is a <see cref="StorageBuffer"/>; overlaps <see cref="ImageInfo"/>.</summary>
         [FieldOffset(0)] public DescriptorBufferInfo BufferInfo;
     }
 

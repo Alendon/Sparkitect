@@ -3,6 +3,7 @@ using JetBrains.Annotations;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 
+/// <summary>Graph-local provider of the host-mapped and device-local storage-buffer leaves, grown-to-fit and reused for the graph's lifetime.</summary>
 [PublicAPI]
 public interface IBufferManager
 {

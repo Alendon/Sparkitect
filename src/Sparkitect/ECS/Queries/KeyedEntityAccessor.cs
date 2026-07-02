@@ -5,7 +5,7 @@ namespace Sparkitect.ECS.Queries;
 
 /// <summary>
 /// Per-entity accessor wrapping <see cref="EntityAccessor"/> with an associated entity key.
-/// Used by <see cref="ComponentQuery{TKey}"/> to expose keys alongside component data.
+/// Used by generated keyed component queries to expose keys alongside component data.
 /// </summary>
 [PublicAPI]
 public readonly struct KeyedEntityAccessor<TKey>

@@ -27,9 +27,12 @@ public readonly struct GraphNodeId : IEquatable<GraphNodeId>
     /// <inheritdoc/>
     public override int GetHashCode() => _value;
 
+    /// <summary>Value equality over node identity.</summary>
     public static bool operator ==(GraphNodeId left, GraphNodeId right) => left.Equals(right);
 
+    /// <summary>Value inequality over node identity.</summary>
     public static bool operator !=(GraphNodeId left, GraphNodeId right) => !left.Equals(right);
 
+    /// <summary>Debug rendering as <c>node:none</c> or <c>node:{ordinal}</c>.</summary>
     public override string ToString() => IsNone ? "node:none" : $"node:{_value - 1}";
 }

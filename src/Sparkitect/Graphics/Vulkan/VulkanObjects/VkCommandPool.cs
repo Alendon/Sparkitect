@@ -7,20 +7,23 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+/// <summary>Owns a command pool and the command buffers allocated from it. Destroying the pool invalidates all of them.</summary>
 [PublicAPI]
 public class VkCommandPool : VulkanObject
 {
     private readonly HashSet<VkCommandBuffer> _allocatedBuffers = [];
 
+    /// <summary>Wraps an existing <see cref="CommandPool"/> handle owned by <paramref name="vulkanContext"/>.</summary>
     public VkCommandPool(CommandPool pCommandPool, IVulkanContext vulkanContext, CallerContext callerContext = default)
         : base(vulkanContext, callerContext)
     {
         Handle = pCommandPool;
     }
 
+    /// <summary>The underlying Silk.NET <see cref="CommandPool"/> handle.</summary>
     public CommandPool Handle { get; }
-    
 
+    /// <summary>Allocates a single command buffer of the given <paramref name="level"/> from this pool.</summary>
     public Result<VkCommandBuffer, VkApiResult> AllocateCommandBuffer(CommandBufferLevel level,
         [InjectCallerContext] CallerContext callerContext = default)
     {
@@ -32,7 +35,7 @@ public class VkCommandPool : VulkanObject
             Level = level
         };
 
-        var result = Vk.AllocateCommandBuffers(Device, allocInfo, out var commandBuffer);
+        var result = Vk.AllocateCommandBuffers(Device, in allocInfo, out var commandBuffer);
 
         if (result != VkApiResult.Success) return result;
 
@@ -41,6 +44,7 @@ public class VkCommandPool : VulkanObject
         return buffer;
     }
 
+    /// <summary>Allocates <paramref name="amount"/> command buffers of the given <paramref name="level"/> into a new array.</summary>
     public Result<VkCommandBuffer[], VkApiResult> AllocateCommandBuffers(CommandBufferLevel level, int amount,
         [InjectCallerContext] CallerContext callerContext = default)
     {
@@ -51,6 +55,7 @@ public class VkCommandPool : VulkanObject
         return buffers;
     }
 
+    /// <summary>Allocates command buffers of the given <paramref name="level"/> into the caller-provided <paramref name="target"/> span.</summary>
     public VkApiResult AllocateCommandBuffers(CommandBufferLevel level, Span<VkCommandBuffer> target,
         CallerContext callerContext = default)
     {
@@ -66,7 +71,7 @@ public class VkCommandPool : VulkanObject
             ? stackalloc CommandBuffer[target.Length]
             : new CommandBuffer[target.Length];
 
-        var result = Vk.AllocateCommandBuffers(Device, allocInfo, out buffers[0]);
+        var result = Vk.AllocateCommandBuffers(Device, in allocInfo, out buffers[0]);
 
         if (result != VkApiResult.Success) return result;
 
@@ -80,11 +85,13 @@ public class VkCommandPool : VulkanObject
         return result;
     }
 
+    /// <summary>Resets the pool, recycling the memory of all command buffers allocated from it.</summary>
     public VkApiResult Reset(CommandPoolResetFlags flags)
     {
         return Vk.ResetCommandPool(Device, Handle, flags);
     }
 
+    /// <summary>Frees the given command buffers back to the pool. Each buffer must have been allocated from this pool.</summary>
     public unsafe void FreeCommandBuffers(params ReadOnlySpan<VkCommandBuffer> buffers)
     {
         if (buffers.Length == 0) return;
@@ -120,6 +127,7 @@ public class VkCommandPool : VulkanObject
         }
     }
 
+    /// <inheritdoc/>
     public override unsafe void Destroy()
     {
         foreach (var buffer in _allocatedBuffers)

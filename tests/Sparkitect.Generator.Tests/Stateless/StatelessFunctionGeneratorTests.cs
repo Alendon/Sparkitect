@@ -326,52 +326,6 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
     }
 
     [Test]
-    public async Task TryExtractStatelessFunction_TypeOnlyTypedRegistrationContract_GeneratesWrapper(CancellationToken token)
-    {
-        // Phase 49.3-04 Rule-4 expansion: containing types that acquire IHasIdentification ONLY
-        // through RegistryGenerator auto-emit (a sibling generator) are invisible to this
-        // generator within the same compilation pass. Marking the base interface with
-        // [TypedRegistrationContract] restores discovery.
-        TestSources.Add(("TestModule.cs", """
-            #pragma warning disable SPARK0262
-            using StatelessTest;
-            using Sparkitect.Modding;
-            using Sparkitect.Stateless;
-
-            namespace TestMod;
-
-            // The "production" base interface — does NOT extend IHasIdentification (post-D-09).
-            [TypedRegistrationContract]
-            public interface IFakeStateModule
-            {
-            }
-
-            // The user-source partial declaration: derives from the contract interface, but
-            // does NOT itself list ': IHasIdentification'. The auto-emit partial that would
-            // add IHasIdentification is invisible here (would come from RegistryGenerator
-            // in a real compilation; we don't run RegistryGenerator in this test).
-            public partial class TestModule : IFakeStateModule
-            {
-                [TestFunction("init")]
-                [TestScheduling]
-                public static void Initialize() { }
-            }
-            """));
-
-        var (_, driverRunResult) = await RunGeneratorAsync(token);
-
-        // The SF generator should still emit the *Func wrapper for the method, because the
-        // containing type derives from a [TypedRegistrationContract]-annotated interface.
-        var wrapperFiles = driverRunResult.GeneratedTrees
-            .Select(t => System.IO.Path.GetFileName(t.FilePath))
-            .Where(f => f.Contains("Wrapper"))
-            .ToList();
-
-        await Assert.That(wrapperFiles).IsNotEmpty();
-        await Assert.That(wrapperFiles.Any(f => f.Contains("TestModule") && f.Contains("init"))).IsTrue();
-    }
-
-    [Test]
     public async Task TryExtractStatelessFunction_PrivateMethod_GeneratesNothing(CancellationToken token)
     {
         // Private methods should be ignored by the generator

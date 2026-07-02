@@ -8,7 +8,6 @@ namespace Sparkitect.GameState;
 /// Defines a state module - a reusable unit of functionality composed into states.
 /// Modules contain state functions and declare dependencies on other modules.
 /// </summary>
-[TypedRegistrationContract]
 [PublicAPI]
 public interface IStateModule
 {

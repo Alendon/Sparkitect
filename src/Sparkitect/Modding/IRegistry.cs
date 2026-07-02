@@ -28,6 +28,7 @@ public interface IRegistry : IRegistryBase
     /// </summary>
     static abstract string Identifier { get; }
 
+    /// <summary>Optional resource sub-folder this registry loads files from; null when it owns no files.</summary>
     static virtual string? ResourceFolder => null;
 }
 

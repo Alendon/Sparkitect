@@ -1,4 +1,3 @@
-using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
@@ -12,9 +11,8 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// The concrete leaf backing provider for swapchain-origin images. Holds the applied swapchain and the
 /// current frame's acquired index; its resolve reads that index's backing and constructs a single-index leaf.
 /// </summary>
-[PublicAPI]
 [GraphLocal<IImageManager, IRenderGraph>]
-public sealed class ImageManager : IImageManager
+internal sealed class ImageManager : IImageManager
 {
     private readonly IVulkanContext _vulkanContext;
     private VkSwapchain? _swapchain;

@@ -14,8 +14,7 @@ public interface IComponentAccess<TKey> : ICapability
     /// <summary>
     /// Returns a reference to the component value at the given slot.
     /// </summary>
-    /// <typeparam name="T">The unmanaged component type.</typeparam>
-    /// <param name="componentId">The component identification to locate the correct column.</param>
+    /// <typeparam name="T">The unmanaged component type that also identifies the column.</typeparam>
     /// <param name="slot">The slot index within the storage.</param>
     /// <returns>A reference to the component value.</returns>
     ref T Get<T>(TKey slot) where T : unmanaged, IHasIdentification;
@@ -23,8 +22,7 @@ public interface IComponentAccess<TKey> : ICapability
     /// <summary>
     /// Sets the component value at the given slot.
     /// </summary>
-    /// <typeparam name="T">The unmanaged component type.</typeparam>
-    /// <param name="componentId">The component identification to locate the correct column.</param>
+    /// <typeparam name="T">The unmanaged component type that also identifies the column.</typeparam>
     /// <param name="slot">The slot index within the storage.</param>
     /// <param name="value">The value to store.</param>
     void Set<T>(TKey slot, T value) where T : unmanaged, IHasIdentification;

@@ -12,6 +12,7 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 [FactRegistry.Register("storage_write_view")]
 public sealed partial record StorageWriteViewFact : DeclaredFact<StorageWriteView>, IHasIdentification
 {
+    /// <summary>Structural ref to the shared transient leaf the view writes; flowed in by the description at Declare.</summary>
     public ResourceRef<ImageResource> LeafRef { get; init; }
 
     /// <inheritdoc/>

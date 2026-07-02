@@ -14,11 +14,13 @@ public struct ComponentExclusionRequirement : ICapabilityRequirement<IChunkedIte
 {
     private readonly HashSet<Identification> _excludedComponents;
 
+    /// <summary>Creates the requirement from the component ids that must be absent.</summary>
     public ComponentExclusionRequirement(IReadOnlyList<Identification> componentIds)
     {
         _excludedComponents = new HashSet<Identification>(componentIds);
     }
 
+    /// <summary>Returns true when the storage contains none of the excluded components.</summary>
     public bool Matches(ComponentSetMetadata metadata)
     {
         return ComponentSetMatcher.ContainsNone(_excludedComponents, metadata.Components);
@@ -35,11 +37,13 @@ public struct ComponentExclusionRequirement<TKey> : ICapabilityRequirement<IChun
 {
     private readonly HashSet<Identification> _excludedComponents;
 
+    /// <summary>Creates the requirement from the component ids that must be absent.</summary>
     public ComponentExclusionRequirement(IReadOnlyList<Identification> componentIds)
     {
         _excludedComponents = new HashSet<Identification>(componentIds);
     }
 
+    /// <summary>Returns true when the storage contains none of the excluded components.</summary>
     public bool Matches(ComponentSetMetadata metadata)
     {
         return ComponentSetMatcher.ContainsNone(_excludedComponents, metadata.Components);

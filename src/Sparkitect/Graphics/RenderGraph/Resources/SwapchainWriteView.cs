@@ -11,8 +11,10 @@ public sealed class SwapchainWriteView : IPreExecuteHook, IFinishlineHook
 {
     private readonly ImageResource _leaf;
 
+    /// <summary>Composes the swapchain <paramref name="leaf"/> as the frame's transfer-dst and finishline publisher.</summary>
     public SwapchainWriteView(ImageResource leaf) => _leaf = leaf;
 
+    /// <summary>The backing swapchain image, exposed as the blit destination.</summary>
     public VkImage Backing => _leaf.Backing;
 
     /// <summary>Pre-execute hook: reconcile the leaf to transfer-dst so the copy can blit into it.</summary>

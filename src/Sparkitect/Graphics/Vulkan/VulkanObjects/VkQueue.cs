@@ -14,6 +14,7 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public sealed class VkQueue : VulkanObject
 {
+    /// <summary>Wraps a queue retrieved from the device, recording its family, index, and capability flags.</summary>
     public VkQueue(
         Queue handle,
         uint familyIndex,
@@ -120,8 +121,8 @@ public sealed class VkQueue : VulkanObject
         return Vk.QueueSubmit(Handle, 1, in submitInfo, default);
     }
 
+    /// <summary>No-op: queues are owned by the device and never destroyed individually.</summary>
     public override void Destroy()
     {
-        // Vulkan queues are owned by the device, not destroyed individually.
     }
 }

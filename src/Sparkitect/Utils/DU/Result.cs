@@ -15,10 +15,18 @@ namespace Sparkitect.Utils.DU;
 [PublicAPI]
 public abstract partial record Result<TOk, TError>
 {
+    /// <summary>Wraps a success payload as the <see cref="Ok"/> arm.</summary>
     public static implicit operator Result<TOk, TError>(TOk value) => new Ok(value);
+
+    /// <summary>Wraps a failure payload as the <see cref="Error"/> arm.</summary>
     public static implicit operator Result<TOk, TError>(TError value) => new Error(value);
 
+    /// <summary>Success arm carrying a <typeparamref name="TOk"/> payload.</summary>
+    /// <param name="Value">The success payload.</param>
     public sealed partial record Ok(TOk Value) : Result<TOk, TError>;
+
+    /// <summary>Failure arm carrying a <typeparamref name="TError"/> payload.</summary>
+    /// <param name="Value">The failure payload.</param>
     public sealed partial record Error(TError Value) : Result<TOk, TError>;
 }
 
@@ -30,8 +38,13 @@ public abstract partial record Result<TOk, TError>
 [PublicAPI]
 public abstract partial record Result<TError>
 {
+    /// <summary>Wraps a failure payload as the <see cref="Error"/> arm.</summary>
     public static implicit operator Result<TError>(TError value) => new Error(value);
 
+    /// <summary>Success arm; carries no payload.</summary>
     public sealed partial record Ok() : Result<TError>;
+
+    /// <summary>Failure arm carrying a <typeparamref name="TError"/> payload.</summary>
+    /// <param name="Value">The failure payload.</param>
     public sealed partial record Error(TError Value) : Result<TError>;
 }

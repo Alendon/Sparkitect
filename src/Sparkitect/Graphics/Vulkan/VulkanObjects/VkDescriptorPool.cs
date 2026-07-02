@@ -6,19 +6,23 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+/// <summary>Owns a descriptor pool and the descriptor sets allocated from it. Resetting or destroying the pool invalidates all of them.</summary>
 [PublicAPI]
 public class VkDescriptorPool : VulkanObject
 {
     private readonly HashSet<VkDescriptorSet> _allocatedSets = [];
 
+    /// <summary>Wraps an existing <see cref="DescriptorPool"/> handle owned by <paramref name="vulkanContext"/>.</summary>
     public VkDescriptorPool(DescriptorPool handle, IVulkanContext vulkanContext, CallerContext callerContext = default)
         : base(vulkanContext, callerContext)
     {
         Handle = handle;
     }
 
+    /// <summary>The underlying Silk.NET <see cref="DescriptorPool"/> handle.</summary>
     public DescriptorPool Handle { get; }
 
+    /// <summary>Allocates a single descriptor set matching <paramref name="layout"/> from this pool.</summary>
     public unsafe Result<VkDescriptorSet, VkApiResult> AllocateDescriptorSet(
         DescriptorSetLayout layout,
         [InjectCallerContext] CallerContext callerContext = default)
@@ -31,7 +35,7 @@ public class VkDescriptorPool : VulkanObject
             PSetLayouts = &layout
         };
 
-        var result = Vk.AllocateDescriptorSets(Device, allocInfo, out var descriptorSet);
+        var result = Vk.AllocateDescriptorSets(Device, in allocInfo, out var descriptorSet);
         if (result != VkApiResult.Success) return result;
 
         var set = new VkDescriptorSet(descriptorSet, VulkanContext, this, callerContext);
@@ -39,6 +43,7 @@ public class VkDescriptorPool : VulkanObject
         return set;
     }
 
+    /// <summary>Allocates one descriptor set per entry in <paramref name="layouts"/> from this pool.</summary>
     public unsafe Result<VkDescriptorSet[], VkApiResult> AllocateDescriptorSets(
         ReadOnlySpan<DescriptorSetLayout> layouts,
         [InjectCallerContext] CallerContext callerContext = default)
@@ -61,7 +66,7 @@ public class VkDescriptorPool : VulkanObject
 
             fixed (DescriptorSet* handlesPtr = handles)
             {
-                var result = Vk.AllocateDescriptorSets(Device, allocInfo, handlesPtr);
+                var result = Vk.AllocateDescriptorSets(Device, in allocInfo, handlesPtr);
                 if (result != VkApiResult.Success) return result;
             }
 
@@ -76,6 +81,7 @@ public class VkDescriptorPool : VulkanObject
         }
     }
 
+    /// <summary>Recycles all descriptor sets allocated from this pool, returning them to it.</summary>
     public VkApiResult Reset(uint flags = 0)
     {
         foreach (var set in _allocatedSets)
@@ -85,6 +91,7 @@ public class VkDescriptorPool : VulkanObject
         return Vk.ResetDescriptorPool(Device, Handle, flags);
     }
 
+    /// <inheritdoc/>
     public override unsafe void Destroy()
     {
         foreach (var set in _allocatedSets)

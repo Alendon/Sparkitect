@@ -1,10 +1,8 @@
-using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.ECS.Systems;
 
-[PublicAPI]
-public sealed class EcsExecutionGraph
+internal sealed class EcsExecutionGraph
 {
     /// <summary>
     /// All nodes (groups + systems) in topological order. Used internally for gate/skip execution.

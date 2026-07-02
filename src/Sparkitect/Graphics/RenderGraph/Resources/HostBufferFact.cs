@@ -23,5 +23,6 @@ public sealed partial record HostBufferFact(IBufferManager? Provider)
         return Provider.ResolveHostLeaf();
     }
 
+    /// <summary>Frees the manager-owned host backing at graph teardown.</summary>
     public CleanupStrategy CleanupStrategy => CleanupStrategy.Release;
 }

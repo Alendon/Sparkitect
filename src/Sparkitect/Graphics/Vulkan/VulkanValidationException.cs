@@ -7,6 +7,7 @@ namespace Sparkitect.Graphics.Vulkan;
 /// </summary>
 public sealed class VulkanValidationException : Exception
 {
+    /// <summary>Creates the exception carrying the validation-layer <paramref name="message"/>.</summary>
     public VulkanValidationException(string message) : base(message)
     {
     }

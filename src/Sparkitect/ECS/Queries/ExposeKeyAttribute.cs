@@ -19,5 +19,6 @@ public sealed class ExposeKeyAttribute<TKey> : Attribute
     /// </summary>
     public bool Required { get; }
 
+    /// <summary>Creates the attribute; <paramref name="required"/> selects required vs opportunistic keyed iteration.</summary>
     public ExposeKeyAttribute(bool required) => Required = required;
 }

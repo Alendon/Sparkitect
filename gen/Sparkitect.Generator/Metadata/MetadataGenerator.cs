@@ -41,10 +41,8 @@ public class MetadataGenerator : IIncrementalGenerator
                 "System.Runtime.CompilerServices.CompilerGeneratedAttribute"))
             return null;
 
-        // Check identification on the type. Sibling-generator auto-emit of IHasIdentification
-        // is invisible to this SG within the same compilation pass, so widen the check via
-        // IdentificationContract — accepts user-source `: IHasIdentification` AND
-        // [TypedRegistrationContract] on a base/interface.
+        // Check identification on the type via IdentificationContract — the direct user-source
+        // `: IHasIdentification` declaration is observable to this SG.
         if (!IdentificationContract.IsIdentified(symbol))
             return null;
 

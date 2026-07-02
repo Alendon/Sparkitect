@@ -23,5 +23,6 @@ public interface IStatelessFunction
     /// <param name="scope">The resolution scope for resolving dependencies.</param>
     public void Initialize(IResolutionScope scope);
 
+    /// <summary>The identification of the wrapped stateless function.</summary>
     public Identification Identification { get; }
 }

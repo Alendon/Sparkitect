@@ -9,10 +9,15 @@ using Sparkitect.Stateless;
 
 namespace Sparkitect.ECS;
 
+/// <summary>
+/// State module that installs the ECS: registers the component, system-group, and system registries
+/// and drives their registration passes on state entry and exit. Depends on the core module.
+/// </summary>
 [ModuleRegistry.RegisterModule("ecs")]
 [PublicAPI]
 public partial class EcsModule : IStateModule, IHasIdentification
 {
+    /// <inheritdoc/>
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
 
     [OnFrameEnterScheduling]

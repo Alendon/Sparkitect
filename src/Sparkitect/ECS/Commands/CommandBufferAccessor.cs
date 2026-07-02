@@ -20,6 +20,7 @@ public class CommandBufferAccessor : ICommandBufferAccessor
     // Key space is tiny (typically 1 distinct TKey: int). Thread-safe for parallel access.
     private static readonly ConcurrentDictionary<Type, ConstructorInfo> ConstructorCache = new();
 
+    /// <summary>Creates an accessor that records command buffers against the given world.</summary>
     public CommandBufferAccessor(IWorld world)
     {
         _world = world;

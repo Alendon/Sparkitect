@@ -6,11 +6,7 @@ using Silk.NET.Vulkan;
 
 namespace Sparkitect.Graphics.Vulkan;
 
-/// <summary>
-/// Represents a queue family request for device creation.
-/// </summary>
-[PublicAPI]
-public record QueueFamilyRequest(uint QueueFamilyIndex, uint QueueCount, float[] Priorities);
+internal record QueueFamilyRequest(uint QueueFamilyIndex, uint QueueCount, float[] Priorities);
 
 /// <summary>
 /// Context for configuring Vulkan device creation.
@@ -18,24 +14,46 @@ public record QueueFamilyRequest(uint QueueFamilyIndex, uint QueueCount, float[]
 [PublicAPI]
 public interface IVulkanDeviceConfigurationContext
 {
+    /// <summary>The device extensions available on the selected physical device.</summary>
     IReadOnlyList<string> AvailableExtensions { get; }
+
+    /// <summary>The queue family properties of the selected physical device.</summary>
     IReadOnlyList<QueueFamilyProperties> QueueFamilyProperties { get; }
 
-    // Available features (read-only, queried from physical device)
+    /// <summary>The core features the physical device supports.</summary>
     PhysicalDeviceFeatures AvailableFeatures { get; }
+
+    /// <summary>The Vulkan 1.1 features the physical device supports.</summary>
     PhysicalDeviceVulkan11Features AvailableFeatures11 { get; }
+
+    /// <summary>The Vulkan 1.2 features the physical device supports.</summary>
     PhysicalDeviceVulkan12Features AvailableFeatures12 { get; }
+
+    /// <summary>The Vulkan 1.3 features the physical device supports.</summary>
     PhysicalDeviceVulkan13Features AvailableFeatures13 { get; }
 
-    // Enabled features (mutable, set by mods)
+    /// <summary>The core features to enable on the device; mods mutate this in place.</summary>
     ref PhysicalDeviceFeatures EnabledFeatures { get; }
+
+    /// <summary>The Vulkan 1.1 features to enable; mods mutate this in place.</summary>
     ref PhysicalDeviceVulkan11Features EnabledFeatures11 { get; }
+
+    /// <summary>The Vulkan 1.2 features to enable; mods mutate this in place.</summary>
     ref PhysicalDeviceVulkan12Features EnabledFeatures12 { get; }
+
+    /// <summary>The Vulkan 1.3 features to enable; mods mutate this in place.</summary>
     ref PhysicalDeviceVulkan13Features EnabledFeatures13 { get; }
 
+    /// <summary>Whether the named device extension is available.</summary>
     bool IsExtensionAvailable(string extensionName);
+
+    /// <summary>Enables the named device extension; returns false if unavailable or already enabled.</summary>
     bool AddExtension(string extensionName);
+
+    /// <summary>Requests <paramref name="count"/> queues from <paramref name="queueFamilyIndex"/>, replacing any prior request for that family.</summary>
     void RequestQueues(uint queueFamilyIndex, uint count, float[]? priorities = null);
+
+    /// <summary>Returns the closest-matching queue family index for <paramref name="requiredFlags"/>, or null if none qualifies.</summary>
     uint? FindQueueFamily(QueueFlags requiredFlags);
 }
 

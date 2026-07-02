@@ -7,13 +7,15 @@ using Sparkitect.Stateless;
 
 namespace Sparkitect.Graphics.Vulkan;
 
+/// <summary>State module that drives Vulkan lifecycle: instance, physical device, logical device, and shader-module processing.</summary>
 [ModuleRegistry.RegisterModule("vulkan")]
 [PublicAPI]
 public partial class VulkanModule : IStateModule, IHasIdentification
 {
-    
+    /// <inheritdoc/>
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
 
+    /// <summary>Initializes the Vulkan context (loads the API and allocation callbacks).</summary>
     [TransitionFunction("vulkan_init")]
     [OnCreateScheduling]
     public static void VulkanInit(IVulkanContextStateFacade vulkanContext)
@@ -21,6 +23,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         vulkanContext.Initialize();
     }
 
+    /// <summary>Creates the Vulkan instance after configurators have run.</summary>
     [TransitionFunction("create_instance")]
     [OnCreateScheduling]
     [OrderAfter<VulkanInitFunc>]
@@ -29,6 +32,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         vulkanContext.CreateInstance();
     }
 
+    /// <summary>Selects the physical device to use.</summary>
     [TransitionFunction("select_physical_device")]
     [OnCreateScheduling]
     [OrderAfter<CreateInstanceFunc>]
@@ -37,6 +41,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         vulkanContext.SelectPhysicalDevice();
     }
 
+    /// <summary>Creates the logical device and retrieves its queues.</summary>
     [TransitionFunction("create_device")]
     [OnCreateScheduling]
     [OrderAfter<SelectPhysicalDeviceFunc>]
@@ -45,6 +50,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         vulkanContext.CreateDevice();
     }
 
+    /// <summary>Begins teardown by waiting for the device to become idle.</summary>
     [TransitionFunction("begin_vulkan_teardown")]
     [OnDestroyScheduling]
     public static void BeginVulkanTeardown(IVulkanContextStateFacade vulkanContext)
@@ -52,6 +58,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         vulkanContext.BeginVulkanTeardown();
     }
 
+    /// <summary>Processes newly registered shader modules on frame enter.</summary>
     [TransitionFunction("process_shader_module_registry_enter")]
     [OnFrameEnterScheduling]
     [OrderAfter<CreateDeviceFunc>]
@@ -60,8 +67,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         registryManager.ProcessRegistry<ShaderModuleRegistry, VulkanModule>();
     }
 
-    // Teardown on the generation path, with the device still valid: after wait-idle, before device destroy.
-    // This disposes VkShaderModule handles at shutdown (closes the shader-module leak).
+    /// <summary>Disposes shader-module handles at shutdown while the device is still valid.</summary>
     [TransitionFunction("process_shader_module_registry_exit")]
     [OnFrameExitScheduling]
     [OrderAfter<BeginVulkanTeardownFunc>]
@@ -71,6 +77,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         registryManager.ProcessRegistry<ShaderModuleRegistry, VulkanModule>();
     }
 
+    /// <summary>Destroys the logical device.</summary>
     [TransitionFunction("destroy_device")]
     [OnDestroyScheduling]
     [OrderAfter<BeginVulkanTeardownFunc>]
@@ -79,6 +86,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         vulkanContext.DestroyDevice();
     }
 
+    /// <summary>Releases the selected physical device.</summary>
     [TransitionFunction("destroy_physical_device")]
     [OnDestroyScheduling]
     [OrderAfter<DestroyDeviceFunc>]
@@ -87,6 +95,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         vulkanContext.DestroyPhysicalDevice();
     }
 
+    /// <summary>Destroys the Vulkan instance.</summary>
     [TransitionFunction("destroy_instance")]
     [OnDestroyScheduling]
     [OrderAfter<DestroyPhysicalDeviceFunc>]
@@ -95,6 +104,7 @@ public partial class VulkanModule : IStateModule, IHasIdentification
         vulkanContext.DestroyInstance();
     }
 
+    /// <summary>Finalizes Vulkan shutdown and releases the context.</summary>
     [TransitionFunction("vulkan_shutdown")]
     [OnDestroyScheduling]
     [OrderAfter<DestroyInstanceFunc>]

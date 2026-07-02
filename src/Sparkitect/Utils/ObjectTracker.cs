@@ -13,33 +13,39 @@ public sealed class ObjectTracker<T> : IObjectTracker<T> where T : notnull
 {
     private readonly ConcurrentDictionary<T, CallerContext> _tracked = new();
 
+    /// <inheritdoc/>
     public IObjectTracker<T>.Handle Track(T obj)
     {
         return Track(obj, default);
     }
 
+    /// <inheritdoc/>
     public IObjectTracker<T>.Handle Track(T obj, CallerContext callsite)
     {
         _tracked.TryAdd(obj, callsite);
         return new IObjectTracker<T>.Handle(this, obj);
     }
 
+    /// <inheritdoc/>
     public void Untrack(T obj)
     {
         _tracked.TryRemove(obj, out _);
     }
 
+    /// <inheritdoc/>
     public ICollection<T> GetTracked()
     {
         return _tracked.Keys;
     }
 
+    /// <inheritdoc/>
     public IEnumerable<(T Object, CallerContext Callsite)> GetTrackingEntries()
     {
         foreach (var kvp in _tracked)
             yield return (kvp.Key, kvp.Value);
     }
 
+    /// <inheritdoc/>
     public void DumpToLog(string context = "")
     {
         var prefix = string.IsNullOrEmpty(context) ? "ObjectTracker" : $"ObjectTracker[{context}]";
@@ -51,5 +57,6 @@ public sealed class ObjectTracker<T> : IObjectTracker<T> where T : notnull
         }
     }
 
+    /// <inheritdoc/>
     public int Count => _tracked.Count;
 }

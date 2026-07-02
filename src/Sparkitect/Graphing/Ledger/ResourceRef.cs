@@ -32,9 +32,12 @@ public readonly struct ResourceRef<T> : IEquatable<ResourceRef<T>>
     /// <inheritdoc/>
     public override int GetHashCode() => HashCode.Combine(Resource, Epoch);
 
+    /// <summary>Value equality over resource identity and epoch.</summary>
     public static bool operator ==(ResourceRef<T> left, ResourceRef<T> right) => left.Equals(right);
 
+    /// <summary>Value inequality over resource identity and epoch.</summary>
     public static bool operator !=(ResourceRef<T> left, ResourceRef<T> right) => !left.Equals(right);
 
+    /// <summary>Debug rendering as <c>ref&lt;T&gt;(node@epoch)</c>.</summary>
     public override string ToString() => $"ref<{typeof(T).Name}>({Resource}@{Epoch})";
 }

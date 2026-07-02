@@ -187,12 +187,11 @@ public static class RegistryDiagnostics
             "or remove the ': IHasIdentification' declaration. Test fixtures may suppress with #pragma warning disable SPARK0262.",
             Category, DiagnosticSeverity.Warning, true);
 
-    public static readonly DiagnosticDescriptor TypedRegistrationContractMissing =
+    public static readonly DiagnosticDescriptor MissingExplicitIdentification =
         new("SPARK0263",
-            "Typed-registration contract base type missing [TypedRegistrationContract]",
-            "Type '{0}' is constrained as the base of a typed-registration registry method ('{1}') " +
-            "but does not carry [TypedRegistrationContract]. Add [TypedRegistrationContract] to '{0}' so " +
-            "sibling source generators (e.g. StatelessFunctionGenerator) can discover derived types whose " +
-            "IHasIdentification implementation arrives only through Registry-Generator auto-emit.",
+            "Registered concrete missing explicit ': IHasIdentification'",
+            "Type '{0}' carries a registration attribute but does not declare ': IHasIdentification' in user source. " +
+            "Add ': IHasIdentification' to '{0}' so its generated Identification member satisfies the registration " +
+            "constraint; without it the generated registration fails with CS0311.",
             Category, DiagnosticSeverity.Warning, true);
 }

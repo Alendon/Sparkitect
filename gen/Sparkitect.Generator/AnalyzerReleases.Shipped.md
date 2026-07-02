@@ -1,4 +1,2 @@
-## Release 1.0
-
-No shipped rules yet. See Unshipped for current diagnostics.
-
+; Shipped analyzer release
+; https://github.com/dotnet/roslyn-analyzers/blob/main/src/Microsoft.CodeAnalysis.Analyzers/ReleaseTrackingAnalyzers.Help.md

@@ -11,9 +11,13 @@ namespace Sparkitect.ECS.Systems;
 [PublicAPI]
 public sealed class EcsSystemResourceAccess
 {
+    /// <summary>Component ids the system reads.</summary>
     public IReadOnlySet<Identification> ReadComponentIds { get; }
+
+    /// <summary>Component ids the system writes.</summary>
     public IReadOnlySet<Identification> WriteComponentIds { get; }
 
+    /// <summary>Creates the access record from the aggregated read and write component id sets.</summary>
     public EcsSystemResourceAccess(
         IReadOnlySet<Identification> readComponentIds,
         IReadOnlySet<Identification> writeComponentIds)

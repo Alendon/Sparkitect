@@ -44,14 +44,14 @@ public sealed unsafe class SoAStorage : IStorage<int>, IChunkedIteration, IChunk
         }
     }
 
+    /// <inheritdoc/>
+    public int Count => _count;
+
     /// <summary>
     /// Sets the storage handle after registration with the World.
     /// Must be called before <see cref="Assign"/> so that BindEntity can reference this storage.
     /// </summary>
     /// <param name="handle">The handle returned by <see cref="IWorld.AddStorage"/>.</param>
-    /// <inheritdoc/>
-    public int Count => _count;
-
     public void SetHandle(StorageHandle handle)
     {
         _handle = handle;

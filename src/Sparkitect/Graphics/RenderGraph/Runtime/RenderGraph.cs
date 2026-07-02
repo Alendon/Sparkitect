@@ -23,6 +23,7 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.RenderGraph.Runtime;
 
+/// <summary>The stock render graph: the L2 GPU/Vulkan specialization that runs registered passes, drives per-frame present, and exposes its capabilities as typed handlers. Registered as <c>"stock"</c> and resolved through <see cref="IRenderGraph"/>.</summary>
 [PublicAPI]
 [RenderGraphRegistry.RegisterRenderGraph("stock")]
 public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler, ISwapchainHandler,
@@ -75,9 +76,10 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     private bool _setupComplete;
     private long _lastFrameTimestamp;
     
+    /// <summary>Graph-local image backing provider, injected from the per-graph container.</summary>
     public required IImageManager ImageManager { private get; init; }
 
-    // The graph-local storage-buffer backing provider, injected from the per-graph container alongside ImageManager.
+    /// <summary>Graph-local storage-buffer backing provider, injected from the per-graph container alongside <see cref="ImageManager"/>.</summary>
     public required IBufferManager BufferManager { private get; init; }
 
     /// <summary>Max frames per second; 0 = uncapped.</summary>
@@ -95,6 +97,7 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
         _renderGraphManager = renderGraphManager;
     }
 
+    /// <inheritdoc/>
     public THandler? GetHandler<THandler>() where THandler : class
     {
         if (typeof(THandler) == typeof(IRenderGraph)) return (THandler)(object)this;
@@ -104,12 +107,14 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
         return null;
     }
 
+    /// <inheritdoc/>
     public void SetSwapchain(VkSwapchain swapchain) => ImageManager.SetSwapchain(swapchain);
 
     /// <inheritdoc/>
     public void Publish<T>(Identification moment, ReadOnlySpan<T> data) where T : unmanaged =>
         _pushStore.Publish(moment, data);
 
+    /// <summary>Builds the graph once: runs each pass's Setup, compiles the declarations into an order, and wires the per-graph container. Throws if invoked a second time.</summary>
     public void Setup(IEnumerable<Identification> passIds, ISparkitWindow window, ICoreContainer graphContainer)
     {
         if (_setupComplete)
@@ -274,6 +279,7 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
         return null;
     }
 
+    /// <summary>Waits for the device to idle, then tears down the graph's owned GPU objects. Idempotent.</summary>
     public void Dispose()
     {
         if (_disposed) return;

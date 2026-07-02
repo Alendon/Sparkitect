@@ -7,7 +7,6 @@ namespace Sparkitect.GameState;
 /// Defines a state descriptor - a specific runtime configuration composed from modules.
 /// States form a parent-child hierarchy and define which modules they include.
 /// </summary>
-[TypedRegistrationContract]
 [PublicAPI]
 public interface IStateDescriptor
 {

@@ -11,6 +11,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 [PublicAPI]
 public partial class RenderGraphRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry<RenderGraphModule>
 {
+    /// <summary>Registers render-graph type <typeparamref name="TGraph"/> under <paramref name="id"/>; called by generated code from the <c>[RegisterRenderGraph]</c> attribute, not directly.</summary>
     [RegistryMethod]
     [KeyedFactoryGenerationMarker<IRenderGraph>]
     public void RegisterRenderGraph<TGraph>(Identification id)
@@ -19,8 +20,10 @@ public partial class RenderGraphRegistry(IRenderGraphManagerRegistryFacade manag
         managerFacade.AddRenderGraphType(id);
     }
 
+    /// <summary>The registry's stable identifier.</summary>
     public static string Identifier => "render_graph";
 
+    /// <summary>Removes the render-graph type registered under <paramref name="id"/>. No-op: graph types are not unregistered at runtime.</summary>
     public void Unregister(Identification id)
     {
     }

@@ -19,6 +19,7 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan;
 
+/// <summary>Default <see cref="IVulkanContext"/> implementation and the GSM state service driving the Vulkan lifecycle.</summary>
 [StateService<IVulkanContext, VulkanModule>]
 [PublicAPI]
 public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
@@ -26,13 +27,28 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     private const string ValidationLayerName = "VK_LAYER_KHRONOS_validation";
     private const string DebugUtilsExtensionName = "VK_EXT_debug_utils";
 
+    /// <inheritdoc/>
     public Vk VkApi { get; private set; } = null!;
+
+    /// <inheritdoc/>
     public VkInstance VkInstance { get; private set; } = null!;
+
+    /// <inheritdoc/>
     public VkPhysicalDevice VkPhysicalDevice { get; private set; } = null!;
+
+    /// <inheritdoc/>
     public VkDevice VkDevice { get; private set; } = null!;
+
+    /// <inheritdoc/>
     public VmaAllocator VmaAllocator { get; private set; } = null!;
+
+    /// <inheritdoc/>
     public AllocationCallbacks* DefaultAllocationCallbacks { get; }
+
+    /// <inheritdoc/>
     public IObjectTracker<VulkanObject> ObjectTracker { get; private set; } = null!;
+
+    /// <inheritdoc/>
     public KhrPushDescriptor KhrPushDescriptor => _khrPushDescriptor
         ?? throw new InvalidOperationException("KhrPushDescriptor accessed before device creation");
 
@@ -47,21 +63,28 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     // check-and-throw below reads it on that same thread right after the call returns.
     [ThreadStatic] private static string? _pendingValidationError;
 
+    /// <summary>The mod DI service used to resolve configurator and selector entrypoints.</summary>
     public required IDIService ModDIService { private get; init; }
+
+    /// <summary>The game state manager providing the loaded mod set.</summary>
     public required IGameStateManager GameStateManager { private get; init; }
+
+    /// <summary>The CLI argument handler.</summary>
     public required ICliArgumentHandler CliArgumentHandler { private get; init; }
 
-    // Optional - present if WindowingModule is active
+    /// <summary>The window manager, present only when the windowing module is active.</summary>
     public required IWindowManager? WindowManager { private get; init; }
 
     private bool ValidationEnabled() => true;
 
+    /// <inheritdoc/>
     public void Initialize()
     {
         VkApi = Vk.GetApi();
         ObjectTracker = new ObjectTracker<VulkanObject>();
     }
 
+    /// <inheritdoc/>
     public void CreateInstance()
     {
         var configContext = new VulkanInstanceConfigurationContext(VkApi);
@@ -139,7 +162,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 PpEnabledExtensionNames = (byte**)extensionPtr
             };
 
-            var result = VkApi.CreateInstance(instanceCreateInfo, DefaultAllocationCallbacks, out var instance);
+            var result = VkApi.CreateInstance(in instanceCreateInfo, DefaultAllocationCallbacks, out var instance);
             if (result != Result.Success)
                 throw new InvalidOperationException($"Failed to create Vulkan instance: {result}");
 
@@ -187,7 +210,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             PfnUserCallback = new PfnDebugUtilsMessengerCallbackEXT(DebugCallback)
         };
 
-        var result = _debugUtils!.CreateDebugUtilsMessenger(VkInstance.Handle, createInfo, DefaultAllocationCallbacks,
+        var result = _debugUtils!.CreateDebugUtilsMessenger(VkInstance.Handle, in createInfo, DefaultAllocationCallbacks,
             out _debugMessenger);
         if (result != Result.Success)
         {
@@ -243,6 +266,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         throw new VulkanValidationException(captured);
     }
 
+    /// <inheritdoc/>
     public void SelectPhysicalDevice()
     {
         var devices = VkInstance.EnumeratePhysicalDevices();
@@ -293,6 +317,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         };
     }
 
+    /// <inheritdoc/>
     public void CreateDevice()
     {
         var configContext = new VulkanDeviceConfigurationContext(VkApi, VkPhysicalDevice.PhysicalDevice);
@@ -385,7 +410,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                         PpEnabledExtensionNames = (byte**)extensionPtr
                     };
 
-                    var result = VkApi.CreateDevice(VkPhysicalDevice.PhysicalDevice, deviceCreateInfo,
+                    var result = VkApi.CreateDevice(VkPhysicalDevice.PhysicalDevice, in deviceCreateInfo,
                         DefaultAllocationCallbacks, out var device);
                     if (result != Result.Success)
                         throw new InvalidOperationException($"Failed to create Vulkan device: {result}");
@@ -420,6 +445,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             Vk.Version13);
     }
 
+    /// <inheritdoc/>
     public Result<VkCommandPool, VkApiResult> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex, [InjectCallerContext] CallerContext callerContext = default)
     {
         CommandPoolCreateInfo createInfo = new()
@@ -429,7 +455,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             QueueFamilyIndex = queueFamilyIndex
         };
 
-        var result = VkApi.CreateCommandPool(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var pool);
+        var result = VkApi.CreateCommandPool(VkDevice.Handle, in createInfo, DefaultAllocationCallbacks, out var pool);
 
         ThrowIfPendingValidationError();
         if (result != VkApiResult.Success || pool.Handle == 0) return result;
@@ -438,6 +464,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         return new VkCommandPool(pool, this, callerContext);
     }
 
+    /// <inheritdoc/>
     public Result<VkDescriptorPool, VkApiResult> CreateDescriptorPool(VkDescriptorPoolCreateOptions options, [InjectCallerContext] CallerContext callerContext = default)
     {
         var poolSizesSpan = options.PoolSizes.AsSpan();
@@ -451,7 +478,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 PPoolSizes = poolSizesPtr,
                 Flags = options.Flags,
             };
-            var result = VkApi.CreateDescriptorPool(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var pool);
+            var result = VkApi.CreateDescriptorPool(VkDevice.Handle, in createInfo, DefaultAllocationCallbacks, out var pool);
             ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
             ThrowIfPendingValidationError();
@@ -459,6 +486,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
     }
 
+    /// <inheritdoc/>
     public Result<VkSemaphore, VkApiResult> CreateSemaphore(SemaphoreCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default)
     {
         var createInfo = new SemaphoreCreateInfo
@@ -466,13 +494,14 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             SType = StructureType.SemaphoreCreateInfo,
             Flags = flags
         };
-        var result = VkApi.CreateSemaphore(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var semaphore);
+        var result = VkApi.CreateSemaphore(VkDevice.Handle, in createInfo, DefaultAllocationCallbacks, out var semaphore);
         ThrowIfPendingValidationError();
         if (result != VkApiResult.Success) return result;
         ThrowIfPendingValidationError();
         return new VkSemaphore(semaphore, this, callerContext);
     }
 
+    /// <inheritdoc/>
     public Result<VkFence, VkApiResult> CreateFence(FenceCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default)
     {
         var createInfo = new FenceCreateInfo
@@ -480,13 +509,14 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             SType = StructureType.FenceCreateInfo,
             Flags = flags
         };
-        var result = VkApi.CreateFence(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var fence);
+        var result = VkApi.CreateFence(VkDevice.Handle, in createInfo, DefaultAllocationCallbacks, out var fence);
         ThrowIfPendingValidationError();
         if (result != VkApiResult.Success) return result;
         ThrowIfPendingValidationError();
         return new VkFence(fence, this, callerContext);
     }
 
+    /// <inheritdoc/>
     public Result<VkDescriptorSetLayout, VkApiResult> CreateDescriptorSetLayout(VkDescriptorSetLayoutCreateOptions options, [InjectCallerContext] CallerContext callerContext = default)
     {
         var bindingsSpan = options.Bindings.AsSpan();
@@ -499,7 +529,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 PBindings = bindingsPtr,
                 Flags = options.Flags,
             };
-            var result = VkApi.CreateDescriptorSetLayout(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var layout);
+            var result = VkApi.CreateDescriptorSetLayout(VkDevice.Handle, in createInfo, DefaultAllocationCallbacks, out var layout);
             ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
             ThrowIfPendingValidationError();
@@ -507,6 +537,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
     }
 
+    /// <inheritdoc/>
     public Result<VkPipelineLayout, VkApiResult> CreatePipelineLayout(VkPipelineLayoutCreateOptions options, [InjectCallerContext] CallerContext callerContext = default)
     {
         var setLayouts = options.SetLayouts;
@@ -529,7 +560,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 PushConstantRangeCount = (uint)pushConstantsSpan.Length,
                 PPushConstantRanges = pushConstantsPtr,
             };
-            var result = VkApi.CreatePipelineLayout(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var layout);
+            var result = VkApi.CreatePipelineLayout(VkDevice.Handle, in createInfo, DefaultAllocationCallbacks, out var layout);
             ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
             ThrowIfPendingValidationError();
@@ -537,6 +568,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
     }
 
+    /// <inheritdoc/>
     public Result<VkPipeline, VkApiResult> CreateComputePipeline(VkComputePipelineCreateOptions options, [InjectCallerContext] CallerContext callerContext = default)
     {
         var byteCount = Encoding.UTF8.GetByteCount(options.EntryPoint);
@@ -561,7 +593,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 Stage = stageInfo,
                 Layout = options.Layout.Handle,
             };
-            var result = VkApi.CreateComputePipelines(VkDevice.Handle, default, 1, createInfo, DefaultAllocationCallbacks, out var pipeline);
+            var result = VkApi.CreateComputePipelines(VkDevice.Handle, default, 1, in createInfo, DefaultAllocationCallbacks, out var pipeline);
             ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
             ThrowIfPendingValidationError();
@@ -569,6 +601,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
     }
 
+    /// <inheritdoc/>
     public Result<VkShaderModule, VkApiResult> CreateShaderModule(ReadOnlySpan<uint> spirvCode, [InjectCallerContext] CallerContext callerContext = default)
     {
         fixed (uint* codePtr = spirvCode)
@@ -579,7 +612,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
                 PCode = codePtr,
                 CodeSize = (nuint)spirvCode.Length * sizeof(uint),
             };
-            var result = VkApi.CreateShaderModule(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var module);
+            var result = VkApi.CreateShaderModule(VkDevice.Handle, in createInfo, DefaultAllocationCallbacks, out var module);
             ThrowIfPendingValidationError();
             if (result != VkApiResult.Success) return result;
             ThrowIfPendingValidationError();
@@ -587,6 +620,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         }
     }
 
+    /// <inheritdoc/>
     public Result<VkImage, VkApiResult> CreateImage(VkImageCreateOptions options, in VmaAllocationCreateInfo allocInfo, [InjectCallerContext] CallerContext callerContext = default)
     {
         var imageInfo = new ImageCreateInfo
@@ -622,6 +656,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             callerContext);
     }
 
+    /// <inheritdoc/>
     public Result<VkBuffer, VkApiResult> CreateBuffer(VkBufferCreateOptions options, in VmaAllocationCreateInfo allocInfo, [InjectCallerContext] CallerContext callerContext = default)
     {
         var bufferInfo = new BufferCreateInfo
@@ -642,6 +677,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             allocation, allocationInfo.MappedData, this, callerContext);
     }
 
+    /// <inheritdoc/>
     public Result<VkImage, VkApiResult> CreateStorageImage2D(
         Extent2D extent,
         Format format,
@@ -657,6 +693,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         return CreateImage(options, in allocInfo, callerContext);
     }
 
+    /// <inheritdoc/>
     public Result<VkBuffer, VkApiResult> CreateMappedStorageBuffer(
         ulong size,
         [InjectCallerContext] CallerContext callerContext = default)
@@ -687,6 +724,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         return CreateBuffer(options, in allocInfo, callerContext);
     }
 
+    /// <inheritdoc/>
     public Result<VkSampler, VkApiResult> CreateSampler(
         VkSamplerCreateOptions options,
         [InjectCallerContext] CallerContext callerContext = default)
@@ -710,13 +748,14 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             BorderColor = options.BorderColor,
             UnnormalizedCoordinates = options.UnnormalizedCoordinates,
         };
-        var result = VkApi.CreateSampler(VkDevice.Handle, createInfo, DefaultAllocationCallbacks, out var sampler);
+        var result = VkApi.CreateSampler(VkDevice.Handle, in createInfo, DefaultAllocationCallbacks, out var sampler);
         ThrowIfPendingValidationError();
         if (result != VkApiResult.Success) return result;
         ThrowIfPendingValidationError();
         return new VkSampler(sampler, this, callerContext);
     }
 
+    /// <inheritdoc/>
     public VkSurface? CreateSurface(IWindow window)
     {
         if (window.VkSurface == null || _khrSurface == null)
@@ -761,6 +800,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             _queuesByFamily.Values.Sum(q => q.Count), _queuesByFamily.Count);
     }
 
+    /// <inheritdoc/>
     public VkQueue? GetQueue(uint familyIndex, uint queueIndex)
     {
         return _queuesByFamily.TryGetValue(familyIndex, out var queues)
@@ -768,6 +808,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             : null;
     }
 
+    /// <inheritdoc/>
     public IReadOnlyList<VkQueue> GetQueuesForFamily(uint familyIndex)
     {
         return _queuesByFamily.TryGetValue(familyIndex, out var queues) ? queues : [];
@@ -782,6 +823,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         VkDevice?.WaitIdle();
     }
 
+    /// <inheritdoc/>
     public void DestroyDevice()
     {
         VmaAllocator?.Dispose();
@@ -798,12 +840,14 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         VkDevice = null!;
     }
 
+    /// <inheritdoc/>
     public void DestroyPhysicalDevice()
     {
         VkPhysicalDevice?.Dispose();
         VkPhysicalDevice = null!;
     }
 
+    /// <inheritdoc/>
     public void DestroyInstance()
     {
         if (_debugUtils != null && _debugMessenger.Handle != 0)
@@ -818,6 +862,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
         VkInstance = null!;
     }
 
+    /// <inheritdoc/>
     public void Shutdown()
     {
         var leakedCount = ObjectTracker.Count;

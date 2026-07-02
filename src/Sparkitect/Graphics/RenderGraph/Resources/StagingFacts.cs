@@ -35,5 +35,6 @@ public sealed partial record StagingFacts(IBufferManager? Provider)
         return new(ctx.Resolve(Host), ctx.Resolve(Device), Provider);
     }
 
+    /// <summary>Holds no independently-owned backing; releases nothing at teardown.</summary>
     public CleanupStrategy CleanupStrategy => CleanupStrategy.None;
 }

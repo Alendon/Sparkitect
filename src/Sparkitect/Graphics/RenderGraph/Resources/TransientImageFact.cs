@@ -30,5 +30,6 @@ public sealed partial record TransientImageFact(IImageManager? Provider)
         return Provider.ResolveTransientLeaf(Extent, Format);
     }
 
+    /// <summary>Frees the manager-owned transient backing at graph teardown.</summary>
     public CleanupStrategy CleanupStrategy => CleanupStrategy.Release;
 }

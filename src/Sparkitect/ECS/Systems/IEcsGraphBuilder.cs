@@ -1,11 +1,9 @@
-using JetBrains.Annotations;
 using Sparkitect.Modding;
 using Sparkitect.Stateless;
 
 namespace Sparkitect.ECS.Systems;
 
-[PublicAPI]
-public interface IEcsGraphBuilder
+internal interface IEcsGraphBuilder
 {
     /// <summary>
     /// Builds the execution graph by walking the system tree.

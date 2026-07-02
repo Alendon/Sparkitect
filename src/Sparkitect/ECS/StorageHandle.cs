@@ -52,11 +52,13 @@ public readonly struct StorageHandle : IEquatable<StorageHandle>
         return $"Storage({Index}:{Generation})";
     }
 
+    /// <summary>Returns true when both handles share the same index and generation.</summary>
     public static bool operator ==(StorageHandle left, StorageHandle right)
     {
         return left.Equals(right);
     }
 
+    /// <summary>Returns true when the handles differ in index or generation.</summary>
     public static bool operator !=(StorageHandle left, StorageHandle right)
     {
         return !left.Equals(right);

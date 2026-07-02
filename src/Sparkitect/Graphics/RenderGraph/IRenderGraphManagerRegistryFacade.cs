@@ -23,5 +23,6 @@ public interface IRenderGraphManagerRegistryFacade
     /// <summary>Record resource moment <paramref name="id"/> and the <paramref name="definition"/> carrying its resource type.</summary>
     void AddResourceMoment(Identification id, ResourceMomentDefinition definition);
 
+    /// <summary>Track fact type <typeparamref name="TFact"/> as a known declared fact.</summary>
     void AddFact<TFact>() where TFact : IHasIdentification;
 }

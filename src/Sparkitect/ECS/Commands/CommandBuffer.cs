@@ -25,6 +25,7 @@ public abstract class CommandBuffer : ICommandBuffer
     /// <summary>Whether this buffer represents entity creation (vs modification).</summary>
     internal bool IsCreate { get; }
 
+    /// <summary>Initializes the buffer for the target entity and storage; <paramref name="isCreate"/> marks a creation buffer.</summary>
     protected CommandBuffer(EntityId entityId, StorageHandle storageHandle, bool isCreate)
     {
         EntityId = entityId;

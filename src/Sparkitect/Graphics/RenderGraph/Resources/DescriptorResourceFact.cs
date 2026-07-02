@@ -11,8 +11,10 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 public sealed partial record DescriptorResourceFact(IDescriptorLayoutCache? Cache)
     : DeclaredFact<DescriptorResource>, IHasIdentification
 {
+    /// <summary>The cache-derived push-descriptor set layout, flowed in by the description at Declare.</summary>
     public VkDescriptorSetLayout SetLayout { get; init; } = null!;
 
+    /// <summary>The ordered binding values the descriptor pushes; slot = position.</summary>
     public ImmutableArray<IDescriptorValue> Bindings { get; init; } = ImmutableArray<IDescriptorValue>.Empty;
 
     /// <inheritdoc/>

@@ -7,11 +7,19 @@ namespace Sparkitect.Stateless;
 //   - Must only be applied to methods with a StatelessFunctionAttribute
 //   - Must be combined with a matching scheduling attribute
 
+/// <summary>
+/// Non-generic base for "run before" ordering constraints. Use the generic
+/// <see cref="OrderBeforeAttribute{TOther}"/> in mod code; this base exists for source-generator
+/// and non-generic access to the resolved target.
+/// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public abstract class OrderBeforeAttribute() : Attribute
 {
+    /// <summary>The identification of the function this constraint orders against.</summary>
     public abstract Identification Other { get; }
+
+    /// <summary>When true, the constraint is dropped if <see cref="Other"/> is absent instead of throwing.</summary>
     public abstract bool Optional { get; }
 
     /// <summary>
@@ -24,11 +32,19 @@ public abstract class OrderBeforeAttribute() : Attribute
     }
 }
 
+/// <summary>
+/// Non-generic base for "run after" ordering constraints. Use the generic
+/// <see cref="OrderAfterAttribute{TOther}"/> in mod code; this base exists for source-generator
+/// and non-generic access to the resolved target.
+/// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public abstract class OrderAfterAttribute() : Attribute
 {
+    /// <summary>The identification of the function this constraint orders against.</summary>
     public abstract Identification Other { get; }
+
+    /// <summary>When true, the constraint is dropped if <see cref="Other"/> is absent instead of throwing.</summary>
     public abstract bool Optional { get; }
 
     /// <summary>
@@ -42,23 +58,42 @@ public abstract class OrderAfterAttribute() : Attribute
 }
 
 
+/// <summary>
+/// Orders the annotated function or system group to run before <typeparamref name="TOther"/>.
+/// Set <see cref="IsOptional"/> to tolerate a missing target.
+/// </summary>
+/// <typeparam name="TOther">The target that carries an <see cref="IHasIdentification"/>.</typeparam>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class OrderBeforeAttribute<TOther>() : OrderBeforeAttribute
     where TOther : IHasIdentification
 {
+    /// <inheritdoc/>
     public override Identification Other => TOther.Identification;
+
+    /// <inheritdoc/>
     public override bool Optional => IsOptional;
+
+    /// <summary>When true, the constraint is skipped if <typeparamref name="TOther"/> is not present.</summary>
     public bool IsOptional { get; set; } = false;
 }
 
+/// <summary>
+/// Orders the annotated function or system group to run after <typeparamref name="TOther"/>.
+/// Set <see cref="IsOptional"/> to tolerate a missing target.
+/// </summary>
+/// <typeparam name="TOther">The target that carries an <see cref="IHasIdentification"/>.</typeparam>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class OrderAfterAttribute<TOther>() : OrderAfterAttribute
     where TOther : IHasIdentification
 {
+    /// <inheritdoc/>
     public override Identification Other => TOther.Identification;
 
+    /// <inheritdoc/>
     public override bool Optional => IsOptional;
+
+    /// <summary>When true, the constraint is skipped if <typeparamref name="TOther"/> is not present.</summary>
     public bool IsOptional { get; set; } = false;
 }

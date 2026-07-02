@@ -122,9 +122,8 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             }
         }
 
-        // Check identification on containing type. Cross-generator visibility forces us to
-        // accept both direct `: IHasIdentification` and `[TypedRegistrationContract]` on a
-        // base/interface — see <see cref="IdentificationContract"/> for the full rationale.
+        // Check identification on containing type — the direct user-source `: IHasIdentification`
+        // is observable here; see <see cref="IdentificationContract"/> for the rationale.
         var isIdentified = IdentificationContract.IsIdentified(containingType);
 
         // Either containing type is identified (directly or via auto-emit contract), OR method

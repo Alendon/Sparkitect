@@ -12,12 +12,14 @@ namespace Sparkitect.ECS.Queries;
 public sealed class WriteComponents<T1> : ComponentAccessAttribute
     where T1 : unmanaged, IHasIdentification;
 
+/// <summary>Declares two components for read-write access. See <see cref="WriteComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class WriteComponents<T1, T2> : ComponentAccessAttribute
     where T1 : unmanaged, IHasIdentification
     where T2 : unmanaged, IHasIdentification;
 
+/// <summary>Declares three components for read-write access. See <see cref="WriteComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class WriteComponents<T1, T2, T3> : ComponentAccessAttribute
@@ -25,6 +27,7 @@ public sealed class WriteComponents<T1, T2, T3> : ComponentAccessAttribute
     where T2 : unmanaged, IHasIdentification
     where T3 : unmanaged, IHasIdentification;
 
+/// <summary>Declares four components for read-write access. See <see cref="WriteComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class WriteComponents<T1, T2, T3, T4> : ComponentAccessAttribute
@@ -33,6 +36,7 @@ public sealed class WriteComponents<T1, T2, T3, T4> : ComponentAccessAttribute
     where T3 : unmanaged, IHasIdentification
     where T4 : unmanaged, IHasIdentification;
 
+/// <summary>Declares five components for read-write access. See <see cref="WriteComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class WriteComponents<T1, T2, T3, T4, T5> : ComponentAccessAttribute
@@ -42,6 +46,7 @@ public sealed class WriteComponents<T1, T2, T3, T4, T5> : ComponentAccessAttribu
     where T4 : unmanaged, IHasIdentification
     where T5 : unmanaged, IHasIdentification;
 
+/// <summary>Declares six components for read-write access. See <see cref="WriteComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class WriteComponents<T1, T2, T3, T4, T5, T6> : ComponentAccessAttribute
@@ -52,6 +57,7 @@ public sealed class WriteComponents<T1, T2, T3, T4, T5, T6> : ComponentAccessAtt
     where T5 : unmanaged, IHasIdentification
     where T6 : unmanaged, IHasIdentification;
 
+/// <summary>Declares seven components for read-write access. See <see cref="WriteComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class WriteComponents<T1, T2, T3, T4, T5, T6, T7> : ComponentAccessAttribute
@@ -63,6 +69,7 @@ public sealed class WriteComponents<T1, T2, T3, T4, T5, T6, T7> : ComponentAcces
     where T6 : unmanaged, IHasIdentification
     where T7 : unmanaged, IHasIdentification;
 
+/// <summary>Declares eight components for read-write access. See <see cref="WriteComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class WriteComponents<T1, T2, T3, T4, T5, T6, T7, T8> : ComponentAccessAttribute
@@ -75,6 +82,7 @@ public sealed class WriteComponents<T1, T2, T3, T4, T5, T6, T7, T8> : ComponentA
     where T7 : unmanaged, IHasIdentification
     where T8 : unmanaged, IHasIdentification;
 
+/// <summary>Declares nine components for read-write access. See <see cref="WriteComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class WriteComponents<T1, T2, T3, T4, T5, T6, T7, T8, T9> : ComponentAccessAttribute

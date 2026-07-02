@@ -12,8 +12,10 @@ public sealed record StorageWriteViewDescription : IResourceDescription<StorageW
     /// <summary>The target moment marked on the leaf; a read view re-resolves the same chain through it.</summary>
     public required Identification TargetMoment { get; init; }
 
+    /// <summary>The transient leaf's extent intent; defaults to matching the swapchain.</summary>
     public ExtentIntent Extent { get; init; } = new ExtentIntent.MatchSwapchain();
 
+    /// <summary>The transient leaf's image format; defaults to <c>R8G8B8A8Unorm</c>.</summary>
     public Format Format { get; init; } = Format.R8G8B8A8Unorm;
 
     /// <inheritdoc/>

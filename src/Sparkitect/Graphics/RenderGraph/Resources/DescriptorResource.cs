@@ -11,6 +11,7 @@ public sealed class DescriptorResource
 {
     private readonly ImmutableArray<IDescriptorValue> _bindings;
 
+    /// <summary>Builds the push-descriptor composite over the cache-derived <paramref name="setLayout"/> and ordered <paramref name="bindings"/>.</summary>
     public DescriptorResource(VkDescriptorSetLayout setLayout, ImmutableArray<IDescriptorValue> bindings)
     {
         SetLayout = setLayout;

@@ -31,7 +31,7 @@ public interface IChunkedIteration : ICapability
 
 /// <summary>
 /// Generic extension of <see cref="IChunkedIteration"/> that provides entity key access during iteration.
-/// Systems needing entity keys for command buffer operations use this via <see cref="Queries.ComponentQuery{TKey}"/>.
+/// Systems needing entity keys for command buffer operations use this via the generated keyed component query.
 /// </summary>
 [PublicAPI]
 public interface IChunkedIteration<TKey> : IChunkedIteration

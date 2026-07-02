@@ -1,4 +1,4 @@
-﻿using Silk.NET.Vulkan;
+using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using JetBrains.Annotations;
 using Silk.NET.Windowing;
@@ -12,16 +12,30 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan;
 
+/// <summary>The Vulkan device context: owns the core handles and creates tracked GPU resources.</summary>
 [StateFacade<IVulkanContextStateFacade>]
 [PublicAPI]
 public interface IVulkanContext
 {
+    /// <summary>The raw Silk.NET Vulkan API entry point.</summary>
     Vk VkApi { get; }
+
+    /// <summary>The Vulkan instance.</summary>
     VkInstance VkInstance { get; }
+
+    /// <summary>The selected physical device.</summary>
     VkPhysicalDevice VkPhysicalDevice { get; }
+
+    /// <summary>The logical device.</summary>
     VkDevice VkDevice { get; }
+
+    /// <summary>The VMA allocator backing image and buffer memory.</summary>
     VmaAllocator VmaAllocator { get; }
+
+    /// <summary>The allocation callbacks passed to every native create/destroy call.</summary>
     unsafe AllocationCallbacks* DefaultAllocationCallbacks { get; }
+
+    /// <summary>The tracker that records live <see cref="VulkanObject"/> handles for leak diagnostics.</summary>
     IObjectTracker<VulkanObject> ObjectTracker { get; }
 
     /// <summary>
@@ -42,19 +56,37 @@ public interface IVulkanContext
     /// <returns>The queue, or null if not found.</returns>
     VkQueue? GetQueue(uint familyIndex, uint queueIndex);
 
+    /// <summary>Creates a tracked command pool for the given queue family.</summary>
     Result<VkCommandPool, VkApiResult> CreateCommandPool(CommandPoolCreateFlags flags, uint queueFamilyIndex, [InjectCallerContext] CallerContext callerContext = default);
 
+    /// <summary>Creates a tracked descriptor pool from <paramref name="options"/>.</summary>
     Result<VkDescriptorPool, VkApiResult> CreateDescriptorPool(VkDescriptorPoolCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
 
+    /// <summary>Creates a tracked semaphore.</summary>
     Result<VkSemaphore, VkApiResult> CreateSemaphore(SemaphoreCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>Creates a tracked fence.</summary>
     Result<VkFence, VkApiResult> CreateFence(FenceCreateFlags flags = 0, [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>Creates a tracked descriptor set layout from <paramref name="options"/>.</summary>
     Result<VkDescriptorSetLayout, VkApiResult> CreateDescriptorSetLayout(VkDescriptorSetLayoutCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>Creates a tracked pipeline layout from <paramref name="options"/>.</summary>
     Result<VkPipelineLayout, VkApiResult> CreatePipelineLayout(VkPipelineLayoutCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>Creates a tracked compute pipeline from <paramref name="options"/>.</summary>
     Result<VkPipeline, VkApiResult> CreateComputePipeline(VkComputePipelineCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>Creates a tracked sampler from <paramref name="options"/>.</summary>
     Result<VkSampler, VkApiResult> CreateSampler(VkSamplerCreateOptions options, [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>Creates a tracked shader module from SPIR-V <paramref name="spirvCode"/>.</summary>
     Result<VkShaderModule, VkApiResult> CreateShaderModule(ReadOnlySpan<uint> spirvCode, [InjectCallerContext] CallerContext callerContext = default);
 
+    /// <summary>Creates a tracked image with VMA-backed memory from <paramref name="options"/>.</summary>
     Result<VkImage, VkApiResult> CreateImage(VkImageCreateOptions options, in VmaAllocationCreateInfo allocInfo, [InjectCallerContext] CallerContext callerContext = default);
+
+    /// <summary>Creates a tracked buffer with VMA-backed memory from <paramref name="options"/>.</summary>
     Result<VkBuffer, VkApiResult> CreateBuffer(VkBufferCreateOptions options, in VmaAllocationCreateInfo allocInfo, [InjectCallerContext] CallerContext callerContext = default);
 
     /// <summary>
@@ -94,13 +126,21 @@ public interface IVulkanContext
     IReadOnlyList<VkQueue> GetQueuesForFamily(uint familyIndex);
 }
 
+/// <summary>Generated state-facade surface exposing the Vulkan lifecycle transitions to the GSM.</summary>
 [FacadeFor<IVulkanContext>]
 [PublicAPI]
 public interface IVulkanContextStateFacade
 {
+    /// <summary>Loads the Vulkan API and prepares the context.</summary>
     void Initialize();
+
+    /// <summary>Creates the Vulkan instance.</summary>
     void CreateInstance();
+
+    /// <summary>Selects the physical device.</summary>
     void SelectPhysicalDevice();
+
+    /// <summary>Creates the logical device and its queues.</summary>
     void CreateDevice();
 
     /// <summary>
@@ -113,8 +153,15 @@ public interface IVulkanContextStateFacade
     /// </summary>
     void BeginVulkanTeardown();
 
+    /// <summary>Destroys the logical device.</summary>
     void DestroyDevice();
+
+    /// <summary>Releases the selected physical device.</summary>
     void DestroyPhysicalDevice();
+
+    /// <summary>Destroys the Vulkan instance.</summary>
     void DestroyInstance();
+
+    /// <summary>Finalizes shutdown and releases the context.</summary>
     void Shutdown();
 }

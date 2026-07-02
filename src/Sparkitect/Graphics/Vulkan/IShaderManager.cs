@@ -21,6 +21,7 @@ public interface IShaderManager
     /// <exception cref="InvalidOperationException">Thrown when SPIR-V validation fails.</exception>
     void RegisterModule(Identification id);
 
+    /// <summary>Returns the registered shader module for <paramref name="id"/>, or false if none is registered.</summary>
     bool TryGetRegisteredShaderModule(Identification id, [NotNullWhen(true)] out VkShaderModule? shaderModule);
 
     /// <summary>
@@ -30,6 +31,7 @@ public interface IShaderManager
     void UnregisterModule(Identification id);
 }
 
+/// <summary>Generated state-facade surface for <see cref="IShaderManager"/>.</summary>
 [FacadeFor<IShaderManager>]
 [PublicAPI]
 public interface IShaderManagerStateFacade;

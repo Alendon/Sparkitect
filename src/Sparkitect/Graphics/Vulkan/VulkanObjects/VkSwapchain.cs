@@ -7,6 +7,7 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+/// <summary>Owns the swapchain, its per-image wrappers, and their views; recreated on resize or when out of date.</summary>
 [PublicAPI]
 public class VkSwapchain : VulkanObject
 {
@@ -16,15 +17,31 @@ public class VkSwapchain : VulkanObject
     private VkImageView[] _imageViews;
     private SwapchainConfig _config;
 
+    /// <summary>The underlying Silk.NET <see cref="SwapchainKHR"/> handle.</summary>
     public SwapchainKHR Handle => _handle;
+
+    /// <summary>The surface this swapchain presents to.</summary>
     public VkSurface Surface { get; }
+
+    /// <summary>The format of the swapchain images.</summary>
     public Format ImageFormat { get; private set; }
+
+    /// <summary>The color space of the swapchain images.</summary>
     public ColorSpaceKHR ColorSpace { get; private set; }
+
+    /// <summary>The current image extent in pixels.</summary>
     public Extent2D Extent { get; private set; }
+
+    /// <summary>The number of images in the swapchain.</summary>
     public uint ImageCount => (uint)_images.Length;
+
+    /// <summary>The swapchain image wrappers, owned by the swapchain.</summary>
     public ReadOnlySpan<VkImage> Images => _images;
+
+    /// <summary>The image views over <see cref="Images"/>.</summary>
     public ReadOnlySpan<VkImageView> ImageViews => _imageViews;
 
+    /// <summary>Creates a swapchain for <paramref name="surface"/> sized to <paramref name="width"/> x <paramref name="height"/>.</summary>
     public VkSwapchain(
         VkSurface surface,
         SwapchainConfig config,
@@ -98,7 +115,7 @@ public class VkSwapchain : VulkanObject
             PSwapchains = &swapchain,
             PImageIndices = &imageIndex,
         };
-        return _khrSwapchain.QueuePresent(presentQueue.Handle, presentInfo);
+        return _khrSwapchain.QueuePresent(presentQueue.Handle, in presentInfo);
     }
 
     /// <summary>
@@ -144,7 +161,7 @@ public class VkSwapchain : VulkanObject
             OldSwapchain = oldSwapchain
         };
 
-        var result = _khrSwapchain.CreateSwapchain(Device, createInfo, AllocationCallbacks, out var newSwapchain);
+        var result = _khrSwapchain.CreateSwapchain(Device, in createInfo, AllocationCallbacks, out var newSwapchain);
         if (result != VkApiResult.Success)
             throw new InvalidOperationException($"Failed to create swapchain: {result}");
 
@@ -297,6 +314,7 @@ public class VkSwapchain : VulkanObject
         return count;
     }
 
+    /// <inheritdoc/>
     public override unsafe void Destroy()
     {
         DestroyImageViews();

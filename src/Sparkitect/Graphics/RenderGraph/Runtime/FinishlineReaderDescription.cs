@@ -32,5 +32,6 @@ public sealed record FinishlineReaderFact : DeclaredFact<FinishlineReader>
     /// <inheritdoc/>
     public FinishlineReader CreateInstance(IInstanceContext ctx) => new();
 
+    /// <summary>Holds no owned GPU objects; releases nothing at teardown.</summary>
     public CleanupStrategy CleanupStrategy => CleanupStrategy.None;
 }

@@ -5,6 +5,7 @@ using Sparkitect.Graphics.Vulkan.VulkanObjects;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 
+/// <summary>A single storage-buffer leaf: one VMA backing plus its carried access/stage state, grown in place and barriered as passes use it.</summary>
 [PublicAPI]
 public class BufferResource
 {

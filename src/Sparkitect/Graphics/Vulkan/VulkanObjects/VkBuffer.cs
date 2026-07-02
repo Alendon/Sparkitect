@@ -6,11 +6,13 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+/// <summary>Owns a VMA-allocated buffer and its backing device memory, optionally persistently mapped.</summary>
 [PublicAPI]
 public class VkBuffer : VulkanObject
 {
     private readonly VmaAllocation _allocation;
 
+    /// <summary>Wraps a buffer allocated through VMA, recording its size, usage, and mapped pointer.</summary>
     public VkBuffer(
         Buffer handle,
         ulong size,
@@ -27,8 +29,13 @@ public class VkBuffer : VulkanObject
         MappedData = mappedData;
     }
 
+    /// <summary>The underlying Silk.NET <see cref="Buffer"/> handle.</summary>
     public Buffer Handle { get; }
+
+    /// <summary>The buffer size in bytes.</summary>
     public ulong Size { get; }
+
+    /// <summary>The usage flags the buffer was created with.</summary>
     public BufferUsageFlags Usage { get; }
 
     /// <summary>
@@ -37,6 +44,7 @@ public class VkBuffer : VulkanObject
     /// </summary>
     public nint MappedData { get; }
 
+    /// <inheritdoc/>
     public override void Destroy()
     {
         VulkanContext.VmaAllocator.DestroyBuffer(Handle, _allocation);

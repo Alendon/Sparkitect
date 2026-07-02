@@ -23,5 +23,6 @@ public sealed partial record DeviceBufferFact(IBufferManager? Provider)
         return Provider.ResolveDeviceLeaf();
     }
 
+    /// <summary>Frees the manager-owned device backing at graph teardown.</summary>
     public CleanupStrategy CleanupStrategy => CleanupStrategy.Release;
 }

@@ -13,6 +13,7 @@ public sealed class DescriptorResourceDescription : IResourceDescription<Descrip
     private readonly ImmutableArray<IDescriptorValue> _descriptors;
     private VkDescriptorSetLayout? _setLayout;
 
+    /// <summary>Builds a push-descriptor description over <paramref name="descriptors"/>; each value's slot is its position in the span.</summary>
     public DescriptorResourceDescription(params ReadOnlySpan<IDescriptorValue> descriptors)
     {
         _descriptors = ImmutableArray.Create(descriptors);

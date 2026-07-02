@@ -9,6 +9,7 @@ namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 [PublicAPI]
 public class VkDevice : VulkanObject
 {
+    /// <summary>Wraps an existing logical <paramref name="device"/> handle owned by <paramref name="vulkanContext"/>.</summary>
     public VkDevice(
         IVulkanContext vulkanContext, Device device)
         : base(vulkanContext)

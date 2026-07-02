@@ -2,9 +2,14 @@ using JetBrains.Annotations;
 
 namespace Sparkitect.Modding;
 
+/// <summary>
+/// Marks a type as carrying a compile-time <see cref="Identification"/>. Registered and identified
+/// concretes must declare this interface explicitly so source generators can discover the link.
+/// </summary>
 [PublicAPI]
 public interface IHasIdentification
 {
+    /// <summary>The type's identification, resolved without an instance.</summary>
     public static abstract Identification Identification { get; }
 }
 
@@ -15,6 +20,7 @@ public interface IHasIdentification
 [PublicAPI]
 public static class IdentificationHelper
 {
+    /// <summary>Reads the static-abstract <see cref="IHasIdentification.Identification"/> for a compile-time type.</summary>
     public static Identification Read<T>() where T : IHasIdentification => T.Identification;
 
     /// <summary>

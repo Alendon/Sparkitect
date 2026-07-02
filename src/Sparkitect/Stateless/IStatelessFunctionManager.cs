@@ -4,6 +4,10 @@ using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
 
+/// <summary>
+/// Tracks registered stateless-function wrapper types and instantiates them against a resolution scope.
+/// One instance is registered per core container as a state service.
+/// </summary>
 [PublicAPI]
 public interface IStatelessFunctionManager
 {
@@ -19,6 +23,7 @@ public interface IStatelessFunctionManager
         IReadOnlyList<Identification> sortedIds,
         IResolutionScope scope);
 
+    /// <summary>Creates a fresh <see cref="IExecutionGraphBuilder"/> for ordering a single execution pass.</summary>
     IExecutionGraphBuilder CreateGraphBuilder();
 
     /// <summary>

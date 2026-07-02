@@ -11,6 +11,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 [PublicAPI]
 public partial class RenderPassRegistry(IRenderGraphManagerRegistryFacade managerFacade) : IRegistry<RenderGraphModule>
 {
+    /// <summary>Registers pass <typeparamref name="TPass"/> under <paramref name="id"/>; called by generated code from the <c>[RegisterPass]</c> attribute, not directly.</summary>
     [RegistryMethod]
     [KeyedFactoryGenerationMarker<IPass>]
     public void RegisterPass<TPass>(Identification id)
@@ -19,8 +20,10 @@ public partial class RenderPassRegistry(IRenderGraphManagerRegistryFacade manage
         managerFacade.AddPass(id);
     }
 
+    /// <summary>The registry's stable identifier.</summary>
     public static string Identifier => "render_pass";
 
+    /// <summary>Removes the pass registered under <paramref name="id"/>. No-op: passes are not unregistered at runtime.</summary>
     public void Unregister(Identification id)
     {
     }

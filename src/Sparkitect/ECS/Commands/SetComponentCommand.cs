@@ -15,6 +15,7 @@ public class SetComponentCommand<T> : ICommand
 {
     private readonly T _value;
 
+    /// <summary>Creates the command carrying the component value to set at playback.</summary>
     public SetComponentCommand(T value) => _value = value;
 
     /// <inheritdoc/>

@@ -9,5 +9,6 @@ namespace Sparkitect.Graphics.RenderGraph;
 [PublicAPI]
 public interface IRenderGraph
 {
+    /// <summary>Returns the graph's implementation of <typeparamref name="THandler"/>, or <c>null</c> when the graph does not expose that capability.</summary>
     THandler? GetHandler<THandler>() where THandler : class;
 }

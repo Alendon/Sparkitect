@@ -13,12 +13,14 @@ namespace Sparkitect.ECS.Queries;
 public sealed class ExcludeComponents<T1> : ComponentAccessAttribute
     where T1 : unmanaged, IHasIdentification;
 
+/// <summary>Excludes two component types. See <see cref="ExcludeComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class ExcludeComponents<T1, T2> : ComponentAccessAttribute
     where T1 : unmanaged, IHasIdentification
     where T2 : unmanaged, IHasIdentification;
 
+/// <summary>Excludes three component types. See <see cref="ExcludeComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class ExcludeComponents<T1, T2, T3> : ComponentAccessAttribute
@@ -26,6 +28,7 @@ public sealed class ExcludeComponents<T1, T2, T3> : ComponentAccessAttribute
     where T2 : unmanaged, IHasIdentification
     where T3 : unmanaged, IHasIdentification;
 
+/// <summary>Excludes four component types. See <see cref="ExcludeComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class ExcludeComponents<T1, T2, T3, T4> : ComponentAccessAttribute
@@ -34,6 +37,7 @@ public sealed class ExcludeComponents<T1, T2, T3, T4> : ComponentAccessAttribute
     where T3 : unmanaged, IHasIdentification
     where T4 : unmanaged, IHasIdentification;
 
+/// <summary>Excludes five component types. See <see cref="ExcludeComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class ExcludeComponents<T1, T2, T3, T4, T5> : ComponentAccessAttribute
@@ -43,6 +47,7 @@ public sealed class ExcludeComponents<T1, T2, T3, T4, T5> : ComponentAccessAttri
     where T4 : unmanaged, IHasIdentification
     where T5 : unmanaged, IHasIdentification;
 
+/// <summary>Excludes six component types. See <see cref="ExcludeComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class ExcludeComponents<T1, T2, T3, T4, T5, T6> : ComponentAccessAttribute
@@ -53,6 +58,7 @@ public sealed class ExcludeComponents<T1, T2, T3, T4, T5, T6> : ComponentAccessA
     where T5 : unmanaged, IHasIdentification
     where T6 : unmanaged, IHasIdentification;
 
+/// <summary>Excludes seven component types. See <see cref="ExcludeComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class ExcludeComponents<T1, T2, T3, T4, T5, T6, T7> : ComponentAccessAttribute
@@ -64,6 +70,7 @@ public sealed class ExcludeComponents<T1, T2, T3, T4, T5, T6, T7> : ComponentAcc
     where T6 : unmanaged, IHasIdentification
     where T7 : unmanaged, IHasIdentification;
 
+/// <summary>Excludes eight component types. See <see cref="ExcludeComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class ExcludeComponents<T1, T2, T3, T4, T5, T6, T7, T8> : ComponentAccessAttribute
@@ -76,6 +83,7 @@ public sealed class ExcludeComponents<T1, T2, T3, T4, T5, T6, T7, T8> : Componen
     where T7 : unmanaged, IHasIdentification
     where T8 : unmanaged, IHasIdentification;
 
+/// <summary>Excludes nine component types. See <see cref="ExcludeComponents{T1}"/>.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
 public sealed class ExcludeComponents<T1, T2, T3, T4, T5, T6, T7, T8, T9> : ComponentAccessAttribute

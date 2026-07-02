@@ -1,10 +1,8 @@
-using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 
 namespace Sparkitect.Graphics.Vulkan;
 
-[PublicAPI]
-public static class ContextUtilitiesExtension
+internal static class ContextUtilitiesExtension
 {
     extension(IVulkanContext vulkanContext)
     {

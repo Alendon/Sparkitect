@@ -52,17 +52,25 @@ public interface IObjectTracker<T>
     /// </summary>
     int Count { get; }
 
+    /// <summary>
+    /// Disposable-style token returned by <see cref="Track(T)"/>. Calling <see cref="Free"/> untracks
+    /// the object without needing a reference to the tracker at the release site.
+    /// </summary>
     public readonly struct Handle
     {
         private readonly IObjectTracker<T> _tracker;
         private readonly T value;
 
+        /// <summary>Creates a handle bound to a tracker and the tracked object.</summary>
+        /// <param name="tracker">The tracker that issued this handle.</param>
+        /// <param name="value">The tracked object.</param>
         public Handle(IObjectTracker<T> tracker, T value)
         {
             _tracker = tracker;
             this.value = value;
         }
 
+        /// <summary>Untracks the object this handle refers to.</summary>
         public void Free()
         {
             _tracker.Untrack(value);

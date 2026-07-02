@@ -38,21 +38,23 @@ Registries like [`StateRegistry`](xref:Sparkitect.GameState.StateRegistry) and [
 
 ```csharp
 [StateRegistry.RegisterState("sample")]
-public partial class SampleEntryState : IStateDescriptor
+public partial class SampleEntryState : IStateDescriptor, IHasIdentification
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
     public static IReadOnlyList<Identification> Modules => [StateModuleID.MyMod.Sample];
 }
 ```
 
-> **Note (49.3+):** The Registry Generator auto-emits a partial declaration making the registered
-> type implement [`IHasIdentification`](xref:Sparkitect.Modding.IHasIdentification) — you do **not**
-> hand-author the `static Identification Identification` property. Authoring the
-> `[Registry.RegisterX("...")]` attribute on a `partial class` (or `partial struct` / `partial record`)
-> is the sole authoring entry point for both registration and identification. Hand-authoring the
-> property on a registered concrete produces a duplicate-member compile error; see
-> [IHasIdentification: Consumption-Side Only](#ihasidentification-consumption-side-only) for the
-> consumption pattern.
+> **Note:** A registered concrete declares `: IHasIdentification` explicitly in its own source. The
+> Registry Generator emits only the `static Identification Identification` member — not the interface
+> base-list. The declaration must live in user source because sibling source generators cannot see
+> auto-emit output, and they discover registration-driving concretes by testing for the interface
+> directly. Authoring the `[Registry.RegisterX("...")]` attribute on a `partial class` (or
+> `partial struct` / `partial record`) that declares `: IHasIdentification` covers both registration
+> and identification; hand-authoring the `Identification` property itself produces a duplicate-member
+> compile error. A registered concrete missing the explicit declaration is flagged by the `SPARK0263`
+> analyzer (warning). See
+> [IHasIdentification: Consumption-Side Only](#ihasidentification-consumption-side-only).
 
 The generator embeds the type reference directly in the registration call (`registry.RegisterState<SampleEntryState>(id)`), so the registered class must satisfy whatever generic constraints the registry method declares.
 
@@ -293,8 +295,8 @@ Resource disposal keyed to a specific ordering (for example a GPU handle that mu
 
 ## IHasIdentification: Consumption-Side Only
 
-[`IHasIdentification`](xref:Sparkitect.Modding.IHasIdentification) is implemented only on **final
-concrete types** registered through the Registry Generator (since 49.3). Do not:
+[`IHasIdentification`](xref:Sparkitect.Modding.IHasIdentification) is declared only on **final
+concrete types** registered through the Registry Generator. Do not:
 
 - Extend `IHasIdentification` on an interface or abstract class. Static-abstract members cannot be
   forwarded through a base; every concrete must implement them. The `HasIdentificationMisuse`
@@ -318,8 +320,8 @@ public void DispatchByIdentification<T>(T instance)
 ```
 
 For framework code that needs a non-generic indirect read, `IdentificationHelper.Read<T>()` is
-available. Cross-generator surfaces that need to discover registration-driving contracts (e.g.,
-`StatelessFunctionGenerator` widening to all registered final types) walk the
-[`TypedRegistrationContractAttribute`](xref:Sparkitect.Modding.TypedRegistrationContractAttribute)
-marker and the `SPARK0263` analyzer (warning) promotes the marker on `TBase` candidates referenced
-by `[RegistryMethod]` generic constraints.
+available. Cross-generator surfaces that discover registration-driving concretes (e.g.,
+`StatelessFunctionGenerator`) test for `IHasIdentification` directly among a concrete's implemented
+interfaces — which is why every registered concrete must declare it in user source. The `SPARK0263`
+analyzer (warning) flags a concrete that carries a registration attribute but is missing the
+explicit `: IHasIdentification` declaration.

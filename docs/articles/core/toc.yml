@@ -16,3 +16,5 @@
   href: stateless-functions.md
 - name: Registry System
   href: registry-system.md
+- name: Utility Infrastructure
+  href: utility-infrastructure.md

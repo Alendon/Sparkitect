@@ -16,10 +16,16 @@ public class SystemGroupScheduling
     private readonly OrderBeforeAttribute[] _orderBefore;
     private readonly ParentIdAttribute? _parentId;
 
+    /// <summary>Constraints ordering this group after its siblings.</summary>
     public IReadOnlyList<OrderAfterAttribute> OrderAfter => _orderAfter;
+
+    /// <summary>Constraints ordering this group before its siblings.</summary>
     public IReadOnlyList<OrderBeforeAttribute> OrderBefore => _orderBefore;
+
+    /// <summary>The parent group's identification, or null when the group is a root.</summary>
     public Identification? ParentGroupId => _parentId?.Other;
 
+    /// <summary>Creates the group scheduling metadata from its ordering and parent attributes.</summary>
     public SystemGroupScheduling(
         OrderAfterAttribute[] orderAfter,
         OrderBeforeAttribute[] orderBefore,

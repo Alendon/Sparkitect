@@ -3,18 +3,21 @@ using Silk.NET.Vulkan;
 
 namespace Sparkitect.Graphics.Vulkan.VulkanObjects;
 
+/// <summary>Owns the Vulkan instance and exposes physical-device enumeration and instance-level queries.</summary>
 [PublicAPI]
 public class VkInstance : VulkanObject
 {
-    // Custom allocation callbacks for Vulkan. Null uses default system allocator.
+    // Null uses the default system allocator.
     private readonly unsafe AllocationCallbacks* _allocationCallbacks = null;
 
+    /// <summary>Wraps an existing <see cref="Instance"/> handle owned by <paramref name="vulkanContext"/>.</summary>
     public VkInstance(Instance handle, IVulkanContext vulkanContext)
         : base(vulkanContext)
     {
         Handle = handle;
     }
 
+    /// <summary>The underlying Silk.NET <see cref="Instance"/> handle.</summary>
     public Instance Handle { get; }
 
     /// <summary>

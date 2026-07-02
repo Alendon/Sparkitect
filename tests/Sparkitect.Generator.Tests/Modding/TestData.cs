@@ -53,8 +53,5 @@ public static partial class TestData
 
         [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
         public sealed class KeyedFactoryGenerationMarkerAttribute<TBase> : Attribute where TBase : class { }
-
-        [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
-        public sealed class TypedRegistrationContractAttribute : Attribute { }
         """);
 }

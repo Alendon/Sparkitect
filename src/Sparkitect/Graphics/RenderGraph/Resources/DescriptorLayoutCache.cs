@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using JetBrains.Annotations;
 using Silk.NET.Vulkan;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
@@ -14,9 +13,8 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// <see cref="VkDescriptorSetLayout"/> keyed by the ordered binding shape, deduping identical shapes
 /// intra-graph, and disposes every owned layout at graph teardown.
 /// </summary>
-[PublicAPI]
 [GraphLocal<IDescriptorLayoutCache, IRenderGraph>]
-public sealed class DescriptorLayoutCache : IDescriptorLayoutCache, IDisposable
+internal sealed class DescriptorLayoutCache : IDescriptorLayoutCache, IDisposable
 {
     private readonly IVulkanContext _vulkanContext;
     private readonly Dictionary<ShapeKey, VkDescriptorSetLayout> _layouts = new();

@@ -6,7 +6,6 @@ namespace Sparkitect.Graphics.Vulkan;
 /// <summary>
 /// Marks classes as Vulkan device configurator entrypoints.
 /// </summary>
-/// </summary>
 [AttributeUsage(AttributeTargets.Class)]
 [PublicAPI]
 [MeansImplicitUse]

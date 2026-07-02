@@ -1,4 +1,3 @@
-using JetBrains.Annotations;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Graphing;
@@ -14,9 +13,8 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 /// within capacity reuses the leaf so its barrier state spans uses. A zero-byte request is a wiring defect
 /// and throws; a nonzero floor keeps an empty-push frame's leaf bindable.
 /// </summary>
-[PublicAPI]
 [GraphLocal<IBufferManager, IRenderGraph>]
-public sealed class BufferManager : IBufferManager
+internal sealed class BufferManager : IBufferManager
 {
     // The minimal backing size so an empty-push frame still yields a bindable leaf for the descriptor/compute-read.
     private const ulong MinBackingBytes = 256;

@@ -32,9 +32,12 @@ public readonly struct Epoch : IEquatable<Epoch>
     /// <inheritdoc/>
     public override int GetHashCode() => _step;
 
+    /// <summary>Value equality over the symbolic step.</summary>
     public static bool operator ==(Epoch left, Epoch right) => left.Equals(right);
 
+    /// <summary>Value inequality over the symbolic step.</summary>
     public static bool operator !=(Epoch left, Epoch right) => !left.Equals(right);
 
+    /// <summary>Debug rendering as <c>epoch:base</c> or <c>epoch:{step}</c>.</summary>
     public override string ToString() => IsBase ? "epoch:base" : $"epoch:{_step}";
 }

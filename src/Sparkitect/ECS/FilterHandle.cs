@@ -43,11 +43,13 @@ public readonly struct FilterHandle : IEquatable<FilterHandle>
         return $"Filter({Index})";
     }
 
+    /// <summary>Returns true when both handles reference the same filter index.</summary>
     public static bool operator ==(FilterHandle left, FilterHandle right)
     {
         return left.Equals(right);
     }
 
+    /// <summary>Returns true when the handles reference different filter indices.</summary>
     public static bool operator !=(FilterHandle left, FilterHandle right)
     {
         return !left.Equals(right);

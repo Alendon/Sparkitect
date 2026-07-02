@@ -5,13 +5,17 @@ using Sparkitect.Graphics.Vulkan.VulkanObjects;
 namespace Sparkitect.Graphics.RenderGraph.Resources;
 
 
+/// <summary>Graph-local provider of image leaves: the swapchain-origin leaf for the current acquired index and a reused VMA-transient leaf.</summary>
 [PublicAPI]
 public interface IImageManager
 {
+    /// <summary>Applies the swapchain the swapchain-origin leaves resolve from; call before resolving one.</summary>
     void SetSwapchain(VkSwapchain swapchain);
 
+    /// <summary>Sets the acquired swapchain image <paramref name="index"/> the next swapchain-leaf resolve reads.</summary>
     void InformAcquiredIndex(uint index);
 
+    /// <summary>Resolves a single-index leaf over the current frame's acquired swapchain image.</summary>
     ImageResource ResolveSwapchainLeaf();
 
     /// <summary>

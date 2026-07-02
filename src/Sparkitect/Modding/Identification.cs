@@ -15,11 +15,13 @@ namespace Sparkitect.Modding;
 [PublicAPI]
 public readonly struct Identification : IEquatable<Identification>
 {
+    /// <summary>Returns true when both identifications have the same mod, category, and item IDs.</summary>
     public static bool operator ==(Identification left, Identification right)
     {
         return left.Equals(right);
     }
 
+    /// <summary>Returns true when the identifications differ in any of the three IDs.</summary>
     public static bool operator !=(Identification left, Identification right)
     {
         return !left.Equals(right);
@@ -95,6 +97,7 @@ public readonly struct Identification : IEquatable<Identification>
         return HashCode.Combine(ModId, CategoryId, ItemId);
     }
 
+    /// <summary>Returns the numeric "modId:categoryId:itemId" form.</summary>
     public override string ToString()
     {
         return $"{ModId}:{CategoryId}:{ItemId}";

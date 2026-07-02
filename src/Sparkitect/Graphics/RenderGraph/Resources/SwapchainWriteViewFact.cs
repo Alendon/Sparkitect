@@ -9,6 +9,7 @@ namespace Sparkitect.Graphics.RenderGraph.Resources;
 public sealed partial record SwapchainWriteViewFact
     : DeclaredFact<SwapchainWriteView>, IHasIdentification
 {
+    /// <summary>Structural ref to the swapchain leaf the view targets; flowed in by the description at Declare.</summary>
     public ResourceRef<ImageResource> Leaf { get; init; }
 
     /// <inheritdoc/>

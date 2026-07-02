@@ -12,16 +12,20 @@ public sealed class StorageWriteView : IDescriptorValue, IPreExecuteHook, IDispo
     private readonly ImageResource _leaf;
     private readonly VkImageView _view;
 
+    /// <summary>Wraps the shared transient <paramref name="leaf"/> with the owned <paramref name="view"/> the compute shader writes through.</summary>
     public StorageWriteView(ImageResource leaf, VkImageView view)
     {
         _leaf = leaf;
         _view = view;
     }
 
+    /// <summary>The shared transient leaf this view writes; a downstream read view re-resolves the same leaf.</summary>
     public ImageResource UnderlyingImage => _leaf;
 
+    /// <summary>The backing image, exposed for a downstream read view.</summary>
     public VkImage Backing => _leaf.Backing;
 
+    /// <summary>The owned image view bound as the compute storage-image target.</summary>
     public VkImageView View => _view;
 
     /// <summary>Descriptor type read at Setup for layout derivation.</summary>

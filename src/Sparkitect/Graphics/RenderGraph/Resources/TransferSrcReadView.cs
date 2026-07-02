@@ -11,10 +11,13 @@ public sealed class TransferSrcReadView : IPreExecuteHook
 {
     private readonly ImageResource _leaf;
 
+    /// <summary>Composes the same shared transient <paramref name="leaf"/> a write view published so both track one layout state.</summary>
     public TransferSrcReadView(ImageResource leaf) => _leaf = leaf;
 
+    /// <summary>The shared transient leaf this view reads.</summary>
     public ImageResource UnderlyingImage => _leaf;
 
+    /// <summary>The backing image, exposed as the blit source.</summary>
     public VkImage Backing => _leaf.Backing;
 
     /// <summary>Pre-execute hook: reconcile the shared leaf to transfer-src before the copy blits from it.</summary>
