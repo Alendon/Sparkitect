@@ -10,5 +10,13 @@
   href: data-flow-ordering.md
 - name: External Push and Externally-Managed State
   href: external-push.md
+- name: Internals — Graphing Core
+  href: internals-graphing-core.md
+- name: Internals — Resource Model
+  href: internals-resource-model.md
+- name: Internals — Ledger and Epochs
+  href: internals-ledger-epochs.md
+- name: Internals — Compilation
+  href: internals-compilation.md
 - name: Render Graph Requirements
   href: rendergraph-requirements.md

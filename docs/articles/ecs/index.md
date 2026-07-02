@@ -20,7 +20,17 @@ Read these in order:
 - <xref:sparkitect.ecs.systems> — write systems, group them, order and toggle their execution.
 - <xref:sparkitect.ecs.command-buffers> — defer structural changes through command buffers.
 
-## Design & internals
+## Internals
+
+Engine internals, separate from the mod-author usage pages:
+
+- <xref:sparkitect.ecs.internals-architecture> — the three layers and how they map to the namespaces.
+- <xref:sparkitect.ecs.internals-capabilities> — the capability contract and filter resolution.
+- <xref:sparkitect.ecs.internals-storage> — the reference SoA storage.
+- <xref:sparkitect.ecs.internals-query-sg> — what the query source generator emits.
+- <xref:sparkitect.ecs.internals-scheduling> — system ordering and the sequential executor.
+
+## Design
 
 - <xref:sparkitect.ecs.ecs-requirements> — design decisions and constraints, condensed to intent.
 - <xref:sparkitect.ecs.ecs-design> — the layered design model and forward-looking work.

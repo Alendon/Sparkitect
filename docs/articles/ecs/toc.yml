@@ -10,6 +10,16 @@
   href: systems-and-groups.md
 - name: Command Buffers
   href: command-buffers.md
+- name: "Internals: Architecture"
+  href: internals-architecture.md
+- name: "Internals: Capabilities"
+  href: internals-capabilities.md
+- name: "Internals: Storage"
+  href: internals-storage.md
+- name: "Internals: Query Generation"
+  href: internals-query-sg.md
+- name: "Internals: Scheduling"
+  href: internals-scheduling.md
 - name: ECS Requirements
   href: ecs-requirements.md
 - name: ECS Design Model

@@ -34,6 +34,15 @@ internal sealed partial class ClearColorPass : ComputePass
 - <xref:sparkitect.rendergraph.data-flow-ordering> — How Read/Increment edges become execution order
 - <xref:sparkitect.rendergraph.external-push> — Feeding external data in and driving swapchain presentation
 
+## Internals
+
+Engine internals, not the mod-author surface — the generic core beneath the stock render graph.
+
+- <xref:sparkitect.rendergraph.internals-graphing-core> — The L0/L1/L2 layering and the core/specialization seam
+- <xref:sparkitect.rendergraph.internals-resource-model> — Description → fact → instance, resolved through graph-local DI
+- <xref:sparkitect.rendergraph.internals-ledger-epochs> — The declaration ledger and its symbolic epoch chains
+- <xref:sparkitect.rendergraph.internals-compilation> — The staged Link phase and the GPU-free compiled plan
+
 ## Design
 
 - <xref:sparkitect.rendergraph.requirements> — Design rationale and forward-looking direction (resize, source-generated authoring, aliasing)
