@@ -6,7 +6,7 @@ description: Wrapper types, result handling, CallerContext tracking, and resourc
 
 # Vulkan Graphics System
 
-Sparkitect wraps Vulkan with C# types that provide type safety, automatic resource tracking, and debugging capabilities while maintaining full access to the Vulkan API.
+Sparkitect wraps Vulkan with C# types that add type safety, automatic resource tracking, and debugging while keeping full access to the raw Silk.NET API.
 
 ## IVulkanContext Interface
 
@@ -20,19 +20,15 @@ public class MyRenderer : IMyRenderer
 
     public void Initialize()
     {
-        // Access raw Vulkan API for advanced operations
-        var vk = VulkanContext.VkApi;
+        var vk = VulkanContext.VkApi;          // raw Silk.NET API for advanced operations
         var device = VulkanContext.VkDevice;
 
-        // Create Vulkan objects through the context
         var poolResult = VulkanContext.CreateCommandPool(
             CommandPoolCreateFlags.ResetCommandBufferBit,
             graphicsQueueFamily);
     }
 }
 ```
-
-Key properties and methods:
 
 **Properties:**
 
@@ -42,117 +38,142 @@ Key properties and methods:
 | `VkInstance` | `VkInstance` | Wrapped Vulkan instance |
 | `VkPhysicalDevice` | `VkPhysicalDevice` | Wrapped physical device |
 | `VkDevice` | `VkDevice` | Wrapped logical device |
-| `DefaultAllocationCallbacks` | `AllocationCallbacks*` | Default Vulkan allocation callbacks (unsafe) |
+| `VmaAllocator` | `VmaAllocator` | VMA allocator backing image and buffer memory |
+| `DefaultAllocationCallbacks` | `AllocationCallbacks*` | Allocation callbacks passed to every native create/destroy call (unsafe) |
 | `ObjectTracker` | `IObjectTracker<VulkanObject>` | Resource lifecycle tracker |
+| `KhrPushDescriptor` | `KhrPushDescriptor` | Loaded `VK_KHR_push_descriptor` device-extension handle |
 
 **Object creation methods:**
 
+Every `Create*` method returns [`Result<T, VkApiResult>`](xref:Sparkitect.Utils.DU.Result`2), where `VkApiResult` is Silk.NET's `Result` enum. Structured creation takes an options record; convenience overloads cover the common compute cases.
+
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `CreateCommandPool()` | `VkResult<VkCommandPool>` | Create a command pool |
-| `CreateSemaphore()` | `VkResult<VkSemaphore>` | Create a semaphore |
-| `CreateFence()` | `VkResult<VkFence>` | Create a fence |
-| `CreateDescriptorPool()` | `VkResult<VkDescriptorPool>` | Create a descriptor pool |
-| `CreateDescriptorSetLayout()` | `VkResult<VkDescriptorSetLayout>` | Create a descriptor set layout |
-| `CreatePipelineLayout()` | `VkResult<VkPipelineLayout>` | Create a pipeline layout |
-| `CreateComputePipeline()` | `VkResult<VkPipeline>` | Create a compute pipeline |
-| `CreateSurface()` | `VkSurface?` | Create a Vulkan surface for a window |
+| `CreateCommandPool(flags, queueFamilyIndex)` | `Result<VkCommandPool, VkApiResult>` | Command pool for a queue family |
+| `CreateSemaphore(flags = 0)` | `Result<VkSemaphore, VkApiResult>` | Semaphore |
+| `CreateFence(flags = 0)` | `Result<VkFence, VkApiResult>` | Fence |
+| `CreateDescriptorPool(VkDescriptorPoolCreateOptions)` | `Result<VkDescriptorPool, VkApiResult>` | Descriptor pool |
+| `CreateDescriptorSetLayout(VkDescriptorSetLayoutCreateOptions)` | `Result<VkDescriptorSetLayout, VkApiResult>` | Descriptor set layout |
+| `CreatePipelineLayout(VkPipelineLayoutCreateOptions)` | `Result<VkPipelineLayout, VkApiResult>` | Pipeline layout |
+| `CreateComputePipeline(VkComputePipelineCreateOptions)` | `Result<VkPipeline, VkApiResult>` | Compute pipeline |
+| `CreateSampler(VkSamplerCreateOptions)` | `Result<VkSampler, VkApiResult>` | Sampler |
+| `CreateShaderModule(ReadOnlySpan<uint> spirv)` | `Result<VkShaderModule, VkApiResult>` | Shader module from SPIR-V |
+| `CreateImage(VkImageCreateOptions, in VmaAllocationCreateInfo)` | `Result<VkImage, VkApiResult>` | VMA-backed image |
+| `CreateBuffer(VkBufferCreateOptions, in VmaAllocationCreateInfo)` | `Result<VkBuffer, VkApiResult>` | VMA-backed buffer |
+| `CreateStorageImage2D(extent, format, ...)` | `Result<VkImage, VkApiResult>` | 2D storage image (compute target) |
+| `CreateMappedStorageBuffer(size)` | `Result<VkBuffer, VkApiResult>` | Persistently-mapped upload buffer |
+| `CreateDeviceStorageBuffer(size)` | `Result<VkBuffer, VkApiResult>` | Device-local transfer-copy target |
+| `CreateSurface(IWindow window)` | `VkSurface?` | Window surface (null on failure) |
 
 **Query methods:**
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `GetQueue()` | `VulkanQueue?` | Get a specific queue by family and index |
-| `GetQueuesForFamily()` | `IReadOnlyList<VulkanQueue>` | Get all queues belonging to a queue family |
+| `GetQueue(familyIndex, queueIndex)` | `VkQueue?` | A specific queue, or null if not found |
+| `GetQueuesForFamily(familyIndex)` | `IReadOnlyList<VkQueue>` | All queues in a family |
 
-### VulkanQueue Type
+The context also exposes `ThrowIfPendingValidationError()`, called at chokepoints so a captured validation-layer error surfaces at the offending call instead of being swallowed.
 
-`GetQueue()` and `GetQueuesForFamily()` return [`VulkanQueue`](xref:Sparkitect.Graphics.Vulkan.VulkanObjects.VulkanQueue) instances. This type wraps a native Vulkan queue with metadata:
+### VkQueue Type
+
+`GetQueue()` and `GetQueuesForFamily()` return [`VkQueue`](xref:Sparkitect.Graphics.Vulkan.VulkanObjects.VkQueue), a [`VulkanObject`](xref:Sparkitect.Graphics.Vulkan.VulkanObject) that wraps a native queue with metadata:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Handle` | `Queue` | The native Vulkan queue handle (for API calls) |
-| `FamilyIndex` | `uint` | The queue family this queue belongs to |
-| `QueueIndex` | `uint` | The index of this queue within its family |
-| `Capabilities` | `QueueFlags` | The capability flags of this queue's family (Graphics, Compute, Transfer, etc.) |
+| `Handle` | `Queue` | Native Vulkan queue handle |
+| `FamilyIndex` | `uint` | Queue family this queue belongs to |
+| `QueueIndex` | `uint` | Index within the family |
+| `Capabilities` | `QueueFlags` | Capability flags of the queue's family |
+
+Queues are owned by the device; `VkQueue.Destroy()` is a no-op. `Submit` overloads submit a command buffer with or without wait/signal semaphores and a fence:
 
 ```csharp
-// Get a graphics queue
 var queue = VulkanContext.GetQueue(graphicsQueueFamily, 0);
 if (queue is null) throw new InvalidOperationException("Queue not found");
 
-// Use the native handle for Vulkan API calls
-var presentQueue = queue.Handle;
+queue.Submit(commandBuffer);  // no semaphores, no fence
 ```
 
-## VkResult&lt;T&gt; Discriminated Union
+## Result&lt;T, VkApiResult&gt; Handling
 
-Vulkan operations return [`VkResult<T>`](xref:Sparkitect.Graphics.Vulkan.VkResult`1), a discriminated union that forces explicit error handling:
+Vulkan operations return [`Result<TOk, TError>`](xref:Sparkitect.Utils.DU.Result`2) from `Sparkitect.Utils.DU`, the engine's two-arm result type. `Create*` methods specialize it as `Result<T, VkApiResult>`, forcing explicit error handling:
 
 ```csharp
 [DiscriminatedUnion]
-public abstract partial record VkResult<TResultObject>
+public abstract partial record Result<TOk, TError>
 {
-    public sealed record Success(TResultObject value) : VkResult<TResultObject>;
-    public sealed record Error(Result errorResult) : VkResult<TResultObject>;
+    public static implicit operator Result<TOk, TError>(TOk value) => new Ok(value);
+    public static implicit operator Result<TOk, TError>(TError value) => new Error(value);
+
+    public sealed partial record Ok(TOk Value) : Result<TOk, TError>;
+    public sealed partial record Error(TError Value) : Result<TOk, TError>;
 }
 ```
 
-> **Note**: The `[DiscriminatedUnion]` attribute comes from the `Sundew.DiscriminatedUnions` package, which generates exhaustiveness enforcement for pattern matching.
+The `[DiscriminatedUnion]` attribute comes from the `Sundew.DiscriminatedUnions` package, which enforces exhaustive pattern matching.
 
 ### Pattern Matching Usage
 
-Use pattern matching to handle success and error cases:
+Check for the error arm first, then take the success payload:
 
 ```csharp
 var poolResult = VulkanContext.CreateCommandPool(
     CommandPoolCreateFlags.ResetCommandBufferBit,
     queueFamilyIndex);
 
-// Check for error first
-if (poolResult is VkResult<VkCommandPool>.Error poolError)
-    throw new InvalidOperationException($"Failed to create command pool: {poolError.errorResult}");
+if (poolResult is Result<VkCommandPool, VkApiResult>.Error poolError)
+    throw new InvalidOperationException($"Failed to create command pool: {poolError.Value}");
 
-// Extract success value
-var pool = ((VkResult<VkCommandPool>.Success)poolResult).value;
+var pool = ((Result<VkCommandPool, VkApiResult>.Ok)poolResult).Value;
 ```
 
-This pattern appears throughout the Pong sample:
-
-```csharp
-// Create sync objects
-var semaphoreResult = VulkanContext.CreateSemaphore();
-if (semaphoreResult is VkResult<VkSemaphore>.Error semaphoreError)
-    throw new InvalidOperationException($"Failed to create semaphore: {semaphoreError.errorResult}");
-var imageAvailableSemaphore = ((VkResult<VkSemaphore>.Success)semaphoreResult).value;
-
-var fenceResult = VulkanContext.CreateFence(FenceCreateFlags.SignaledBit);
-if (fenceResult is VkResult<VkFence>.Error fenceError)
-    throw new InvalidOperationException($"Failed to create fence: {fenceError.errorResult}");
-var inFlightFence = ((VkResult<VkFence>.Success)fenceResult).value;
-```
-
-Alternatively, you can use a switch expression:
+A switch expression handles both arms at once:
 
 ```csharp
 var pool = poolResult switch
 {
-    VkResult<VkCommandPool>.Success s => s.value,
-    VkResult<VkCommandPool>.Error e => throw new InvalidOperationException($"Failed: {e.errorResult}"),
-    _ => throw new InvalidOperationException("Unexpected result type")
+    Result<VkCommandPool, VkApiResult>.Ok ok => ok.Value,
+    Result<VkCommandPool, VkApiResult>.Error e =>
+        throw new InvalidOperationException($"Failed: {e.Value}"),
 };
 ```
 
+The implicit conversions let a `Create*` implementation return a bare handle or a bare `VkApiResult` and have it lifted into the correct arm.
+
+## Images and Buffers
+
+[`VkImage`](xref:Sparkitect.Graphics.Vulkan.VulkanObjects.VkImage) and [`VkBuffer`](xref:Sparkitect.Graphics.Vulkan.VulkanObjects.VkBuffer) wrap VMA-allocated GPU memory. Create them from an options record plus a `VmaAllocationCreateInfo`:
+
+```csharp
+var imageResult = VulkanContext.CreateImage(
+    new VkImageCreateOptions(
+        Extent: new Extent3D(width, height, 1),
+        Format: Format.R8G8B8A8Unorm,
+        Usage: ImageUsageFlags.StorageBit | ImageUsageFlags.TransferSrcBit),
+    new VmaAllocationCreateInfo { usage = VmaMemoryUsage.GpuOnly });
+```
+
+`VkImage.Backing` is an [`ImageBacking`](xref:Sparkitect.Graphics.Vulkan.VulkanObjects.ImageBacking) discriminated union: a `Swapchain` image is owned by its swapchain and not destroyed with the wrapper, while a `VmaAllocated` image frees its allocation on disposal. `VkImage.CreateView()` builds a matching `VkImageView`, inferring the aspect mask and view type from the image's format and layers.
+
+`VkBuffer` records its `Size`, `Usage`, and a `MappedData` pointer that is non-zero when the allocation was created mapped.
+
+For the common compute cases, skip the options records and use the convenience overloads:
+
+| Overload | Produces |
+|----------|----------|
+| `CreateStorageImage2D(extent, format, memoryUsage, extraUsage)` | GPU-only 2D storage image, transfer-src by default |
+| `CreateMappedStorageBuffer(size)` | Persistently-mapped CPU-to-GPU upload buffer |
+| `CreateDeviceStorageBuffer(size)` | Device-local buffer usable as a transfer-copy destination |
+
 ## CallerContext Pattern
 
-Sparkitect tracks where Vulkan objects are created using compile-time location injection, showing exactly where each object originated.
+Sparkitect records where each Vulkan object is created using compile-time location injection.
 
 ### CallerContext Struct
 
 [`CallerContext`](xref:Sparkitect.Utils.CallerContext) is defined in the `Sparkitect.Utils` namespace:
 
 ```csharp
-// Sparkitect.Utils namespace
 public readonly record struct CallerContext(string FilePath, int LineNumber)
 {
     public string FileName => Path.GetFileName(FilePath);
@@ -162,16 +183,16 @@ public readonly record struct CallerContext(string FilePath, int LineNumber)
 
 ### InjectCallerContext Attribute
 
-Methods that accept `CallerContext` parameters use the [`[InjectCallerContext]`](xref:Sparkitect.Utils.InjectCallerContextAttribute) attribute:
+Every `Create*` method takes a trailing `CallerContext` parameter marked with [`[InjectCallerContext]`](xref:Sparkitect.Utils.InjectCallerContextAttribute):
 
 ```csharp
-VkResult<VkCommandPool> CreateCommandPool(
+Result<VkCommandPool, VkApiResult> CreateCommandPool(
     CommandPoolCreateFlags flags,
     uint queueFamilyIndex,
     [InjectCallerContext] CallerContext callerContext = default);
 ```
 
-The source generator intercepts calls to these methods and automatically injects the actual file path and line number at compile time. You never need to pass this parameter manually - it's injected automatically:
+The source generator intercepts calls and injects the file path and line number at compile time. You never pass this parameter:
 
 ```csharp
 // You write this:
@@ -184,49 +205,55 @@ var pool = VulkanContext.CreateCommandPool(flags, queueFamily,
 
 ### Debugging Benefits
 
-When debugging resource leaks, the object tracker can report exactly where each object was created:
+When chasing a resource leak, the object tracker reports exactly where each live object was created:
 
 ```csharp
-// Dump all tracked objects with their creation locations
 VulkanContext.ObjectTracker.DumpToLog("Checking for leaks");
 
-// Output example (exact format depends on configured Serilog sink):
+// Output example (exact format depends on the configured Serilog sink):
 // ObjectTracker[Checking for leaks]: 3 objects tracked
 // ObjectTracker[Checking for leaks]:   VkCommandPool from PongRuntimeService.cs:72
 // ObjectTracker[Checking for leaks]:   VkSemaphore from PongRuntimeService.cs:85
 // ObjectTracker[Checking for leaks]:   VkFence from PongRuntimeService.cs:95
 ```
 
-> **Note**: `DumpToLog` uses Serilog structured logging internally. The exact output format depends on your configured Serilog sink. The example above is illustrative.
-
 ## Wrapper Type Naming Convention
 
-Sparkitect uses a `Vk` prefix for all managed Vulkan wrapper types to distinguish them from raw Silk.NET types:
+Managed wrappers use a `Vk` prefix to distinguish them from raw Silk.NET types:
 
 | Wrapper Type | Silk.NET Type | Purpose |
 |--------------|---------------|---------|
-| `VkInstance` | `Instance` | Wrapped Vulkan instance |
-| `VkDevice` | `Device` | Wrapped logical device |
-| `VkPhysicalDevice` | `PhysicalDevice` | Wrapped physical device |
-| `VkCommandPool` | `CommandPool` | Managed command pool |
-| `VkCommandBuffer` | `CommandBuffer` | Managed command buffer |
-| `VkSemaphore` | `Semaphore` | Managed semaphore |
-| `VkFence` | `Fence` | Managed fence |
-| `VkSwapchain` | `SwapchainKHR` | Managed swapchain |
-| `VkSurface` | `SurfaceKHR` | Managed window surface |
-| `VkPipeline` | `Pipeline` | Managed pipeline |
-| `VkDescriptorPool` | `DescriptorPool` | Managed descriptor pool |
-| `VkDescriptorSet` | `DescriptorSet` | Managed descriptor set |
+| `VkInstance` | `Instance` | Vulkan instance |
+| `VkDevice` | `Device` | Logical device |
+| `VkPhysicalDevice` | `PhysicalDevice` | Physical device |
+| `VkCommandPool` | `CommandPool` | Command pool |
+| `VkCommandBuffer` | `CommandBuffer` | Command buffer |
+| `VkSemaphore` | `Semaphore` | Semaphore |
+| `VkFence` | `Fence` | Fence |
+| `VkQueue` | `Queue` | Device queue |
+| `VkSwapchain` | `SwapchainKHR` | Swapchain |
+| `VkSurface` | `SurfaceKHR` | Window surface |
+| `VkPipeline` | `Pipeline` | Pipeline |
+| `VkPipelineLayout` | `PipelineLayout` | Pipeline layout |
+| `VkDescriptorPool` | `DescriptorPool` | Descriptor pool |
+| `VkDescriptorSet` | `DescriptorSet` | Descriptor set |
+| `VkDescriptorSetLayout` | `DescriptorSetLayout` | Descriptor set layout |
+| `VkImage` | `Image` | VMA-backed image |
+| `VkImageView` | `ImageView` | Image view |
+| `VkBuffer` | `Buffer` | VMA-backed buffer |
+| `VkSampler` | `Sampler` | Sampler |
+| `VkShaderModule` | `ShaderModule` | Shader module |
 
-Wrapper types provide:
-- Automatic resource tracking via `IObjectTracker`
-- Proper `IDisposable` implementation
-- CallerContext for debugging
-- Access to the underlying handle via `.Handle` property
+Wrapper types share a common base, [`VulkanObject`](xref:Sparkitect.Graphics.Vulkan.VulkanObject), which gives them:
+
+- Automatic tracking via `IObjectTracker`
+- `IDisposable` with a type-specific `Destroy()`
+- A recorded `CallerContext` for debugging
+- Access to the underlying handle via `.Handle`
 
 ## ObjectTracker
 
-The [`IObjectTracker<T>`](xref:Sparkitect.Utils.IObjectTracker`1) interface tracks resource lifetimes to detect leaks and monitor allocations. On `IVulkanContext`, the concrete type is `IObjectTracker<VulkanObject>`:
+The [`IObjectTracker<T>`](xref:Sparkitect.Utils.IObjectTracker`1) interface tracks resource lifetimes to detect leaks. On `IVulkanContext`, the concrete type is `IObjectTracker<VulkanObject>`:
 
 ```csharp
 public interface IObjectTracker<T>
@@ -241,44 +268,30 @@ public interface IObjectTracker<T>
 }
 ```
 
-### Automatic Tracking
-
-Vulkan wrapper objects are automatically tracked when created through `IVulkanContext`:
+Wrapper objects are tracked automatically when created through `IVulkanContext` and untracked on disposal:
 
 ```csharp
-// Object is automatically tracked with caller location
 var pool = VulkanContext.CreateCommandPool(flags, queueFamily);
-
-// When disposed, object is automatically untracked
-pool.Dispose();
+// ... use it ...
+pool.Dispose();  // untracked here
 ```
 
-### Manual Inspection
-
-Check for resource leaks by inspecting tracked objects:
+Inspect the tracker to find leaks:
 
 ```csharp
-// Get count of tracked objects
 var count = VulkanContext.ObjectTracker.Count;
 
-// Get all tracked objects with their creation locations
 foreach (var (obj, callsite) in VulkanContext.ObjectTracker.GetTrackingEntries())
-{
     Log.Debug("Tracked: {Type} from {Location}", obj.GetType().Name, callsite);
-}
-
-// Dump to log for debugging
-VulkanContext.ObjectTracker.DumpToLog("Before cleanup");
 ```
 
 ## Resource Cleanup
 
-Wrapper objects implement `IDisposable`. Always dispose Vulkan resources when done:
+Wrapper objects implement `IDisposable`. Dispose Vulkan resources when done:
 
 ```csharp
 public void Cleanup()
 {
-    // Wait for GPU to finish all operations
     VulkanContext.VkApi.DeviceWaitIdle(VulkanContext.VkDevice.Handle);
 
     // Dispose in reverse creation order (dependencies first)
@@ -296,11 +309,10 @@ public void Cleanup()
 }
 ```
 
-**Best practices:**
-- Always call `DeviceWaitIdle()` before cleanup to ensure GPU operations complete
-- Dispose resources in reverse creation order
-- Null-check with `?.Dispose()` pattern for optional resources
-- Command pools automatically free their allocated command buffers on disposal
+- Call `DeviceWaitIdle()` before cleanup so GPU operations complete first
+- Dispose in reverse creation order
+- Null-check with `?.Dispose()` for optional resources
+- Command pools free their command buffers on disposal; VMA-backed images and buffers free their allocation on disposal
 
 ## See Also
 

@@ -6,7 +6,7 @@ description: Fundamental source generation patterns and infrastructure used acro
 
 # Source Generation
 
-Sparkitect uses [Roslyn source generators](https://learn.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/source-generators-overview) to shift boilerplate from runtime to compile time. If you are familiar with C++ `constexpr` evaluation or Rust procedural macros, the concept is the same: the compiler runs additional code during the build that emits new C# source files into your project. Nearly every engine subsystem (DI, registries, stateless functions, game state) relies on source generation to wire things up automatically.
+Sparkitect uses [Roslyn source generators](https://learn.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/source-generators-overview) to shift boilerplate from runtime to compile time. If you are familiar with C++ `constexpr` evaluation or Rust procedural macros, the concept is the same: the compiler runs additional code during the build that emits new C# source files into your project. Nearly every engine subsystem (DI, registries, stateless functions, game state, ECS queries, metadata ordering, graph-local services) relies on source generation to wire things up automatically.
 
 This article covers the **fundamental structures and patterns** that Sparkitect's generators share. For how source generation applies to a specific subsystem, see the relevant module article:
 
@@ -106,10 +106,14 @@ The templates are organized by domain alongside their generator code:
 
 | Domain | Templates |
 |--------|-----------|
-| DI | `ServiceFactory.liquid`, `KeyedFactory.liquid`, `Configurator.liquid` |
+| DI | `ServiceFactory.liquid`, `KeyedFactory.liquid`, `Configurator.liquid`, `MetadataEntrypoint.liquid` |
 | Stateless | `StatelessFunctionWrapper.liquid`, `StatelessFunctionScheduling.liquid` |
 | Registry | `RegistryAttributes.liquid`, `RegistryRegistrations.Unit.liquid`, `RegistryIdContainer.Framework.liquid`, and others |
+| ECS | `ComponentQuery.liquid`, `ResourceAccessEntrypoint.liquid` |
+| Metadata | `MetadataEntrypoint.liquid` |
 | Infrastructure | `CallerContextInjector.liquid`, `LogEnricher.liquid` |
+
+`EcsQueryGenerator` renders the ECS templates, `MetadataGenerator` renders the metadata ordering entrypoint, and `GraphLocalServiceGenerator` emits no template of its own — it reuses the shared DI factory and configurator templates through `DiPipeline`.
 
 ### Render Pattern
 
@@ -147,11 +151,11 @@ For code emission (in templates and rendering methods), the `global::` prefix is
 
 ## The DiPipeline Toolbox
 
-Multiple generators need to produce DI-related code: factories, configurators, registrations. Rather than each generator implementing this independently, the engine provides [`DiPipeline`](xref:Sparkitect.DI.Pipeline.DiPipeline), a public static toolbox in `Sparkitect.Generator.DI.Pipeline`.
+Multiple generators need to produce DI-related code: factories, configurators, registrations. Rather than each generator implementing this independently, the engine provides `DiPipeline`, a public static toolbox in `Sparkitect.Generator.DI.Pipeline`.
 
 ### Design
 
-[`DiPipeline`](xref:Sparkitect.DI.Pipeline.DiPipeline) is a **static toolbox**: no instance state, no fields, all public static methods. Call any method independently without setup. This makes it composable. Generators pick the methods they need and combine them freely.
+`DiPipeline` is a **static toolbox**: no instance state, no fields, all public static methods. Call any method independently without setup. This makes it composable. Generators pick the methods they need and combine them freely.
 
 ### Core Operations
 
@@ -258,7 +262,7 @@ context.RegisterSourceOutput(provider.Collect(), (ctx, all) =>
 });
 ```
 
-This same composition is used by the registry generator (with `FactoryIntent.Keyed`), the stateless function generator, and the facade mapping generator. The [`DiPipeline`](xref:Sparkitect.DI.Pipeline.DiPipeline) is explicitly designed as a **public, endorsed tool**. Advanced mod developers and engine contributors can use it to build new generator pipelines.
+This same composition is used by the registry generator (with `FactoryIntent.Keyed`), the stateless function generator, the facade mapping generator, and `GraphLocalServiceGenerator`. The `DiPipeline` is explicitly designed as a **public, endorsed tool**. Advanced mod developers and engine contributors can use it to build new generator pipelines.
 
 ## Design Decisions
 

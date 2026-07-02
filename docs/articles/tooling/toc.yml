@@ -6,3 +6,5 @@
   href: mod-specification.md
 - name: Source Generation
   href: source-generation.md
+- name: Rider Plugin
+  href: rider-plugin.md
