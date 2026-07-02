@@ -9,7 +9,7 @@ namespace Sparkitect.Graphics.Vulkan;
 
 [ModuleRegistry.RegisterModule("vulkan")]
 [PublicAPI]
-public partial class VulkanModule : IStateModule
+public partial class VulkanModule : IStateModule, IHasIdentification
 {
     
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];

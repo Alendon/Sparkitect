@@ -4,4 +4,13 @@
     <PropertyGroup>
         <ModSdkPath>$(MSBuildThisFileDirectory)/src/Sparkitect.Sdk/</ModSdkPath>
     </PropertyGroup>
+
+    <!-- Central version alignment for the generator test project. Its transitive
+         graph pulls v9 of the Microsoft.Extensions.* assemblies while the net10
+         runtime carries v10; pinning the higher version here unifies both and
+         clears the assembly-conflict warnings without editing that project file. -->
+    <ItemGroup Condition="'$(MSBuildProjectName)' == 'Sparkitect.Generator.Tests'">
+        <PackageReference Include="Microsoft.Extensions.Primitives" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions" Version="10.0.0" />
+    </ItemGroup>
 </Project>

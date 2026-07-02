@@ -8,7 +8,7 @@ namespace Sparkitect.Windowing;
 
 [ModuleRegistry.RegisterModule("windowing")]
 [PublicAPI]
-public partial class WindowingModule : IStateModule
+public partial class WindowingModule : IStateModule, IHasIdentification
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
 }

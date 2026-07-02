@@ -203,7 +203,7 @@ public class WorldTests
             new TestCapabilityRequirement("Position")
         });
 
-        await Assert.That(results).HasCount().EqualTo(1);
+        await Assert.That(results).Count().IsEqualTo(1);
         await Assert.That(results[0]).IsEqualTo(handle);
     }
 
@@ -223,7 +223,7 @@ public class WorldTests
             new TestCapabilityRequirement("Velocity")
         });
 
-        await Assert.That(results).HasCount().EqualTo(0);
+        await Assert.That(results).Count().IsEqualTo(0);
     }
 
     [Test]
@@ -244,7 +244,7 @@ public class WorldTests
             new TestCapabilityRequirement("Velocity")
         });
 
-        await Assert.That(results).HasCount().EqualTo(0);
+        await Assert.That(results).Count().IsEqualTo(0);
     }
 
     [Test]
@@ -272,8 +272,8 @@ public class WorldTests
             new TestCapabilityRequirement("Velocity")
         });
 
-        await Assert.That(posResults).HasCount().EqualTo(1);
-        await Assert.That(velResults).HasCount().EqualTo(1);
+        await Assert.That(posResults).Count().IsEqualTo(1);
+        await Assert.That(velResults).Count().IsEqualTo(1);
     }
 
     [Test]
@@ -292,7 +292,7 @@ public class WorldTests
             handles => received = handles);
 
         await Assert.That(received).IsNotNull();
-        await Assert.That(received!).HasCount().EqualTo(1);
+        await Assert.That(received!).Count().IsEqualTo(1);
     }
 
     [Test]
@@ -312,7 +312,7 @@ public class WorldTests
 
         // First callback fires immediately with empty set
         await Assert.That(callbackCount).IsEqualTo(1);
-        await Assert.That(lastReceived!).HasCount().EqualTo(0);
+        await Assert.That(lastReceived!).Count().IsEqualTo(0);
 
         // Add matching storage
         var storage = new TestCapabilityStorage();
@@ -322,7 +322,7 @@ public class WorldTests
         });
 
         await Assert.That(callbackCount).IsEqualTo(2);
-        await Assert.That(lastReceived!).HasCount().EqualTo(1);
+        await Assert.That(lastReceived!).Count().IsEqualTo(1);
     }
 
     [Test]
@@ -348,13 +348,13 @@ public class WorldTests
 
         // Initial callback with 1 match
         await Assert.That(callbackCount).IsEqualTo(1);
-        await Assert.That(lastReceived!).HasCount().EqualTo(1);
+        await Assert.That(lastReceived!).Count().IsEqualTo(1);
 
         // Remove matching storage
         world.RemoveStorage(handle);
 
         await Assert.That(callbackCount).IsEqualTo(2);
-        await Assert.That(lastReceived!).HasCount().EqualTo(0);
+        await Assert.That(lastReceived!).Count().IsEqualTo(0);
     }
 
     [Test]
@@ -504,7 +504,7 @@ public class WorldTests
         await Assert.That(tree).IsNotNull();
         await Assert.That(tree!.Id).IsEqualTo(TestGroup1);
         await Assert.That(tree.IsGroup).IsTrue();
-        await Assert.That(tree.Children).HasCount().EqualTo(1);
+        await Assert.That(tree.Children).Count().IsEqualTo(1);
         await Assert.That(tree.Children[0].Id).IsEqualTo(TestSystem1);
     }
 

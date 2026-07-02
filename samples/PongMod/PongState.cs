@@ -11,7 +11,7 @@ using Sparkitect.Stateless;
 namespace PongMod;
 
 [StateRegistry.RegisterState("pong")]
-public partial class PongState : IStateDescriptor
+public partial class PongState : IStateDescriptor, IHasIdentification
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
 

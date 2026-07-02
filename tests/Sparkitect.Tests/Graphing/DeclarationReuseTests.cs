@@ -45,6 +45,6 @@ public class DeclarationReuseTests
         tx.Declare(new LeafBufferDescription(16));
 
         // Two distinct instances → two distinct resource chains, no rejection.
-        await Assert.That(ledger.Chains).HasCount().EqualTo(2);
+        await Assert.That(ledger.Chains).Count().IsEqualTo(2);
     }
 }

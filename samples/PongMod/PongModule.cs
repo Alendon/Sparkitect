@@ -7,7 +7,7 @@ using Sparkitect.Modding.IDs;
 namespace PongMod;
 
 [ModuleRegistry.RegisterModule("pong")]
-public partial class PongModule : IStateModule
+public partial class PongModule : IStateModule, IHasIdentification
 {
     public static IReadOnlyList<Identification> RequiredModules =>
     [

@@ -9,6 +9,13 @@
 
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+        <!-- Analyzer-only package: all dependencies are packed manually into
+             analyzers/dotnet/cs, so the nuspec carries no dependency group. This
+             removes the framework-mismatch pack warning (dependencies declare
+             netstandard2.0 but there is no lib/ folder). -->
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     </PropertyGroup>
 
     <Import Project="$(SolutionDir)build\LocalNuGetPublish.targets" Condition="Exists('$(SolutionDir)build\LocalNuGetPublish.targets')" />
@@ -59,7 +66,10 @@
             <TargetPathWithTargetPlatformMoniker Include="$(PKGTimeZoneConverter)\lib\netstandard2.0\*.dll" IncludeRuntimeDependency="false" />
             <TargetPathWithTargetPlatformMoniker Include="$(PKGParlot)\lib\netstandard2.0\*.dll" IncludeRuntimeDependency="false" />
             <TargetPathWithTargetPlatformMoniker Include="$(PKGMicrosoft_Extensions_FileProviders_Abstractions)\lib\netstandard2.0\*.dll" IncludeRuntimeDependency="false" />
-            <TargetPathWithTargetPlatformMoniker Include="$(PKGSystem_Reflection_Emit_Lightweight)\lib\netstandard2.0\*.dll" IncludeRuntimeDependency="false" />
+            <!-- Emit.Lightweight is only surfaced into the .nupkg (see None include
+                 above) for package consumers. net10 project-ref consumers already
+                 carry it in the shared framework (v10), so surfacing the legacy
+                 netstandard2.0 shim here only produces an assembly-version conflict. -->
             <TargetPathWithTargetPlatformMoniker Include="$(PKGSystem_Text_Json)\lib\netstandard2.0\*.dll" IncludeRuntimeDependency="false" />
             <TargetPathWithTargetPlatformMoniker Include="$(PKGMicrosoft_Bcl_HashCode)\lib\netstandard2.0\*.dll" IncludeRuntimeDependency="false" />
             <TargetPathWithTargetPlatformMoniker Include="$(PKGYamlDotNet)\lib\netstandard2.0\*.dll" IncludeRuntimeDependency="false" />

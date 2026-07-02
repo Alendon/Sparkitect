@@ -113,8 +113,8 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(model!.TypeName).IsEqualTo("TestRegistry");
         await Assert.That(model.Key).IsEqualTo("test");
         await Assert.That(model.ContainingNamespace).IsEqualTo("DiTest");
-        await Assert.That(model.RegisterMethods).HasCount().EqualTo(2);
-        await Assert.That(model.ResourceFiles).HasCount().EqualTo(2);
+        await Assert.That(model.RegisterMethods).Count().IsEqualTo(2);
+        await Assert.That(model.ResourceFiles).Count().IsEqualTo(2);
 
         var registerItem = model.RegisterMethods.First(m => m.FunctionName == "RegisterItem");
         await Assert.That(registerItem.PrimaryParameterKind).IsEqualTo(PrimaryParameterKind.Value);
@@ -308,7 +308,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
 
         var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, "test.sparkres.yaml", CancellationToken.None);
 
-        await Assert.That(result).HasCount().EqualTo(0);
+        await Assert.That(result).Count().IsEqualTo(0);
     }
 
     [Test]
@@ -325,7 +325,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
 
         var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, "test.sparkres.yaml", CancellationToken.None);
 
-        await Assert.That(result).HasCount().EqualTo(1);
+        await Assert.That(result).Count().IsEqualTo(1);
         var entry = result.First();
         await Assert.That(entry.RegistryClass).IsEqualTo("MinimalSampleMod.DummyRegistry");
         await Assert.That(entry.MethodName).IsEqualTo("Register");
@@ -376,7 +376,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
 
         var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, "test.sparkres.yaml", CancellationToken.None);
 
-        await Assert.That(result).HasCount().EqualTo(3);
+        await Assert.That(result).Count().IsEqualTo(3);
 
         var entry1 = result.First(e => e.Id == "entry1");
         await Assert.That(entry1.RegistryClass).IsEqualTo("TestMod.Registry1");
@@ -403,12 +403,12 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
 
         var result = RegistryGenerator.ParseResourceYaml(mockAdditionalText.Object, "test.sparkres.yaml", CancellationToken.None);
 
-        await Assert.That(result).HasCount().EqualTo(1);
+        await Assert.That(result).Count().IsEqualTo(1);
         var entry = result.First();
         await Assert.That(entry.RegistryClass).IsEqualTo("MinimalSampleMod.DummyRegistry");
         await Assert.That(entry.MethodName).IsEqualTo("RegisterResourceFile");
         await Assert.That(entry.Id).IsEqualTo("entry1");
-        await Assert.That(entry.Files).HasCount().EqualTo(0);
+        await Assert.That(entry.Files).Count().IsEqualTo(0);
     }
 
     // ── Task 2b: Full-run integration tests ──

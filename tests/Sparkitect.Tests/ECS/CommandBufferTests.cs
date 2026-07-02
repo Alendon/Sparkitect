@@ -21,7 +21,7 @@ public class CommandBufferTests
 
         buffer.SetComponent(new TestPosition { X = 1f, Y = 2f });
 
-        await Assert.That(buffer.Commands).HasCount().EqualTo(1);
+        await Assert.That(buffer.Commands).Count().IsEqualTo(1);
         await Assert.That(buffer.Commands[0]).IsAssignableTo<SetComponentCommand<TestPosition>>();
     }
 
@@ -32,7 +32,7 @@ public class CommandBufferTests
 
         buffer.DestroyEntity();
 
-        await Assert.That(buffer.Commands).HasCount().EqualTo(1);
+        await Assert.That(buffer.Commands).Count().IsEqualTo(1);
         await Assert.That(buffer.Commands[0]).IsAssignableTo<DestroyEntityCommand>();
     }
 
@@ -346,7 +346,7 @@ public class CommandBufferTests
             positions.Add(entity.Get<TestPosition>());
         }
 
-        await Assert.That(positions).HasCount().EqualTo(3);
+        await Assert.That(positions).Count().IsEqualTo(3);
         await Assert.That(positions[0].X).IsEqualTo(0f);
         await Assert.That(positions[1].X).IsEqualTo(10f);
         await Assert.That(positions[2].X).IsEqualTo(20f);

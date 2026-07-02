@@ -4,6 +4,7 @@ using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Graphing;
+using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 
@@ -16,7 +17,7 @@ namespace SpaceInvadersMod.Passes;
 /// transitions as lifecycle hooks, and the swapchain write view is the engine finishline publisher.
 /// </summary>
 [RenderPassRegistry.RegisterPass("space_invaders_copy")]
-internal sealed partial class SpaceInvadersCopyPass : ComputePass
+internal sealed partial class SpaceInvadersCopyPass : ComputePass, IHasIdentification
 {
     private IGraphResource<TransferSrcReadView> _source = null!;
     private IGraphResource<SwapchainWriteView> _swapchain = null!;

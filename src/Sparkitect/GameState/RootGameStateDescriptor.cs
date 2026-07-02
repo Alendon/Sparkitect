@@ -12,7 +12,7 @@ namespace Sparkitect.GameState;
 /// </summary>
 [StateRegistry.RegisterState("root")]
 [PublicAPI]
-public partial class RootGameStateDescriptor : IStateDescriptor
+public partial class RootGameStateDescriptor : IStateDescriptor, IHasIdentification
 {
     /// <inheritdoc />
     public static Identification ParentId => Identification.Empty;

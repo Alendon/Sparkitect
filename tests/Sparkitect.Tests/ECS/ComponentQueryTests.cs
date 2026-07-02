@@ -310,7 +310,7 @@ public class ComponentQueryTests
         ];
         var matches = world.Resolve(filter);
 
-        await Assert.That(matches).HasCount().EqualTo(1);
+        await Assert.That(matches).Count().IsEqualTo(1);
     }
 
     [Test]
@@ -332,7 +332,7 @@ public class ComponentQueryTests
         ];
         var matches = world.Resolve(filter);
 
-        await Assert.That(matches).HasCount().EqualTo(1);
+        await Assert.That(matches).Count().IsEqualTo(1);
     }
 
     // --- Helpers ---

@@ -6,7 +6,7 @@ namespace {{ entry.ContainingNamespace }}
 {
     using {{ ExtensionsNamespace }};
 
-    partial {{ entry.TypeKindKeyword }} {{ entry.TypeSimpleName }} : global::Sparkitect.Modding.IHasIdentification
+    partial {{ entry.TypeKindKeyword }} {{ entry.TypeSimpleName }}
     {
         public static global::Sparkitect.Modding.Identification Identification
             => global::Sparkitect.Modding.IDs.{{ CategoryPascal }}ID.{{ ModIdPascal }}.{{ entry.PropertyName }};

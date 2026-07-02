@@ -2,23 +2,29 @@
 
 A modular game engine for .NET with deep modding support.
 
+**[Documentation](https://alendon.github.io/Sparkitect/articles/index.html)** — start here for guides, API reference, and articles.
+
 ## Overview
 
 Sparkitect is a game engine where everything is a mod. There is no separate "engine API" vs "mod API". The engine and mods register services through the same attributes, define logic through the same function types, and populate registries through the same generated infrastructure. Anything the engine does, a mod can extend or replace.
 
 The engine uses Roslyn source generators to create all DI wiring at compile time. The frame loop executes with zero reflection: generated wrapper classes hold pre-resolved dependencies and call your methods directly. Containers are immutable during simulation, so reads require no locks. Invalid configurations are caught at build time through analyzers rather than at runtime.
 
+v1.5 adds a general-purpose Entity Component System and a render-graph resource model over the Vulkan backend.
+
 Sparkitect is a framework, not an editor. It targets PC platforms (Windows, Linux, macOS).
 
 ## Key Features
 
-- **Source-generated dependency injection.** Zero-reflection resolution, compile-time validation, immutable containers during simulation.
-- **Game state machine.** Hierarchical states composed from modules with dependency ordering and two-phase lifecycle (mutable transitions, frozen simulation).
-- **Registry system.** Dual identifiers (human-readable and numeric) with per-state activation and generated attributes.
-- **Attribute-driven discovery.** Mark code with attributes, source generators handle the wiring.
-- **Mod SDK.** MSBuild SDK for manifest generation, archive packaging, and dependency resolution.
-- **Simple Vulkan rendering** via Silk.NET with managed object lifetimes and resource tracking.
-- **Diagnostic analyzers.** 41 SPARKXXYY codes with actionable messages and IDE highlighting.
+- **Source-generated dependency injection** — zero-reflection resolution, validated at build time.
+- **Game state machine** — hierarchical states composed from modules with dependency ordering.
+- **Registry system** — dual human-readable and numeric identifiers with per-state activation.
+- **Attribute-driven discovery** — mark code with attributes; source generators handle the wiring.
+- **Entity Component System** — SoA archetype storage with chunk-based queries and command buffers.
+- **Render graph** — declarative resource model over a Vulkan backend (Silk.NET).
+- **Mod SDK** — MSBuild SDK for manifest generation, archive packaging, and dependency resolution.
+- **Rider modding plugin** — Go to Registration, Find Usages, and YAML navigation for mod projects.
+- **Diagnostic analyzers** — SPARKXXYY codes with actionable messages and IDE highlighting.
 
 ## Project Structure
 
@@ -31,9 +37,12 @@ gen/
   Sparkitect.Generator/                Roslyn source generators
 samples/
   PongMod/                             Full game with rendering and input
+  SpaceInvadersMod/                    ECS-driven game
   MinimalSampleMod/                    Bare minimum mod structure
   ColorProviderMod/                    Optional dependency and registry patterns
   BackgroundColorMod/                  Inter-mod integration example
+tools/
+  RiderPlugin/                         Rider modding plugin (outside the solution)
 tests/                                 TUnit test projects
 docs/                                  DocFX documentation site
 benchmark/                             Performance benchmarks
@@ -104,8 +113,4 @@ See the [Getting Started guide](https://alendon.github.io/Sparkitect/articles/in
 
 ## Samples
 
-The `samples/` directory contains working mods. `PongMod` is a complete game with rendering and input handling. `MinimalSampleMod` is the simplest starting point for a new mod. `ColorProviderMod` and `BackgroundColorMod` demonstrate optional dependency patterns and inter-mod integration.
-
-## Documentation
-
-Full documentation: https://alendon.github.io/Sparkitect/articles/index.html
+The `samples/` directory contains working mods. `PongMod` is a complete game with rendering and input handling. `SpaceInvadersMod` is the ECS validation target, exercising archetype storage, queries, and command buffers. `MinimalSampleMod` is the simplest starting point for a new mod. `ColorProviderMod` and `BackgroundColorMod` demonstrate optional dependency patterns and inter-mod integration.

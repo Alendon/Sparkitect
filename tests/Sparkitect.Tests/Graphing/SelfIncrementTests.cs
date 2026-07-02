@@ -21,11 +21,11 @@ public class SelfIncrementTests
 
         // The self-incrementing description declared exactly one resource chain (the leaf it resolves
         // to) and advanced it one epoch via the same Increment mechanic.
-        await Assert.That(ledger.Chains).HasCount().EqualTo(1);
-        await Assert.That(ledger.Increments).HasCount().EqualTo(1);
+        await Assert.That(ledger.Chains).Count().IsEqualTo(1);
+        await Assert.That(ledger.Increments).Count().IsEqualTo(1);
 
         var chain = ledger.ChainFor(ledger.Increments[0].Resource);
-        await Assert.That(chain).HasCount().EqualTo(2);
+        await Assert.That(chain).Count().IsEqualTo(2);
         await Assert.That(chain[0].IsBaseEpoch).IsTrue();
         await Assert.That(chain[1].IsBaseEpoch).IsFalse();
         await Assert.That(chain[1].Epoch).IsEqualTo(chain[0].Epoch.Next());

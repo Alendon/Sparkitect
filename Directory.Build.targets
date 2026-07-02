@@ -1,0 +1,11 @@
+<Project>
+    <!-- Imported after each project file, so a PackageReference declared in the
+         csproj can be dropped here. The net10 runtime supplies
+         System.Reflection.Emit.Lightweight, making the legacy 4.7.0 package
+         redundant (NuGet flags it NU1510) and its 4.0.0.0 assembly conflicts
+         with the runtime's 10.0.0.0. Removing it clears both warnings without
+         editing the generator test project file. -->
+    <ItemGroup Condition="'$(MSBuildProjectName)' == 'Sparkitect.Generator.Tests'">
+        <PackageReference Remove="System.Reflection.Emit.Lightweight" />
+    </ItemGroup>
+</Project>

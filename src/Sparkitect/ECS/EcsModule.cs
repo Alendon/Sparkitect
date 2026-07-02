@@ -11,7 +11,7 @@ namespace Sparkitect.ECS;
 
 [ModuleRegistry.RegisterModule("ecs")]
 [PublicAPI]
-public partial class EcsModule : IStateModule
+public partial class EcsModule : IStateModule, IHasIdentification
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
 

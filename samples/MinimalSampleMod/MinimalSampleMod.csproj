@@ -28,10 +28,6 @@
         <ModProjectDependency Include="..\..\src\Sparkitect\Sparkitect.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Humanizer.Core" Version="3.0.1" />
-    </ItemGroup>
-
     <!-- Import Sparkitect SDK targets directly -->
     <Import Project="$(MSBuildThisFileDirectory)..\..\src\Sparkitect.Sdk\Sdk\Sdk.targets"/>
 </Project>

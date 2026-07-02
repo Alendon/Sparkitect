@@ -8,7 +8,7 @@ using Sparkitect.Stateless;
 namespace SpaceInvadersMod;
 
 [StateRegistry.RegisterState("space_invaders")]
-public partial class SpaceInvadersState : IStateDescriptor
+public partial class SpaceInvadersState : IStateDescriptor, IHasIdentification
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
 

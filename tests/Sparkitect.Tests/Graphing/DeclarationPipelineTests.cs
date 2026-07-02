@@ -23,8 +23,8 @@ public class DeclarationPipelineTests
 
         // Sub-declaration minted three resource chains (composite + host leaf + device leaf), and the
         // device leaf was advanced one epoch by the increment.
-        await Assert.That(ledger.Chains).HasCount().EqualTo(3);
-        await Assert.That(ledger.Increments).HasCount().EqualTo(1);
+        await Assert.That(ledger.Chains).Count().IsEqualTo(3);
+        await Assert.That(ledger.Increments).Count().IsEqualTo(1);
 
         // Exactly one chain grew past its base epoch (the staged device leaf).
         var grownChains = ledger.Chains.Values.Count(chain => chain.Count > 1);

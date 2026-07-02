@@ -15,7 +15,7 @@ namespace Sparkitect.Graphics.RenderGraph;
 /// </summary>
 [ModuleRegistry.RegisterModule("render_graph")]
 [PublicAPI]
-public partial class RenderGraphModule : IStateModule
+public partial class RenderGraphModule : IStateModule, IHasIdentification
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Vulkan];
 

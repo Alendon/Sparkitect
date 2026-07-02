@@ -7,6 +7,7 @@ using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Graphing;
+using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Utils.DU;
 using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
@@ -27,7 +28,7 @@ internal sealed partial class SpaceInvadersComputePass(
     ISpaceInvadersRuntimeService si,
     IVulkanContext vulkanContext,
     IShaderManager shaderManager)
-    : ComputePass
+    : ComputePass, IHasIdentification
 {
     private IGraphResource<EntityListReadView> _input = null!;
     private IGraphResource<StorageWriteView> _write = null!;

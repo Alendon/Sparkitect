@@ -5,6 +5,7 @@ using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Graphing;
+using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 
@@ -18,7 +19,7 @@ namespace SpaceInvadersMod.Passes;
 /// transfer-&gt;compute barrier lives in the consuming read view's pre-execute hook, so this pass records none.
 /// </summary>
 [RenderPassRegistry.RegisterPass("space_invaders_staging")]
-internal sealed partial class SpaceInvadersStagingPass : ComputePass
+internal sealed partial class SpaceInvadersStagingPass : ComputePass, IHasIdentification
 {
     private IGraphResource<EntitiesRawReadView> _snapshot = null!;
     private IGraphResource<StagingBuffer> _staging = null!;

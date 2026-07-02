@@ -94,7 +94,7 @@ public class ComponentSetMetadataTests
 
         var metadata = new ComponentSetMetadata(components);
 
-        await Assert.That(metadata.Components).HasCount().EqualTo(2);
+        await Assert.That(metadata.Components).Count().IsEqualTo(2);
         await Assert.That(metadata.Components.Contains(TestPosition.Identification)).IsTrue();
         await Assert.That(metadata.Components.Contains(TestVelocity.Identification)).IsTrue();
     }

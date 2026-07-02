@@ -14,7 +14,7 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 namespace MinimalSampleMod;
 
 [StateRegistry.RegisterState("sample")]
-public partial class SampleEntryState : IStateDescriptor
+public partial class SampleEntryState : IStateDescriptor, IHasIdentification
 {
     public static Identification ParentId => StateID.Sparkitect.Root;
 
@@ -72,7 +72,7 @@ public partial class SampleEntryState : IStateDescriptor
 }
 
 [DummyRegistry.RegisterProvider("dummy_provider")]
-internal partial class DummyValueProvider : IDummyValueProvider
+internal partial class DummyValueProvider : IDummyValueProvider, IHasIdentification
 {
     public string Provide() => "Hello from Provider";
 }

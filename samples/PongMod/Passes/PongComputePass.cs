@@ -5,6 +5,7 @@ using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
 using Sparkitect.Graphing;
+using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Utils.DU;
 using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
@@ -15,7 +16,7 @@ namespace PongMod.Passes;
 /// <summary>Compute pass: dispatches one workgroup per 8x8 pixel tile over the shared storage-write target via a push descriptor. The write view contributes the General-layout transition as a pre-execute hook, so the pass performs no layout transition itself.</summary>
 [RenderPassRegistry.RegisterPass("pong_compute")]
 internal sealed partial class PongComputePass(IPongRuntimeService pong, IVulkanContext vulkanContext, IShaderManager shaderManager)
-    : ComputePass
+    : ComputePass, IHasIdentification
 {
     private IGraphResource<StorageWriteView> _write = null!;
     private IGraphResource<DescriptorResource> _descriptor = null!;

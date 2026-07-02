@@ -39,8 +39,8 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         var result = DiPipeline.ExtractFactory(type!, new FactoryIntent.Service(), "IMyService");
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.ConstructorArguments).HasCount().EqualTo(0);
-        await Assert.That(result.RequiredProperties).HasCount().EqualTo(0);
+        await Assert.That(result!.ConstructorArguments).Count().IsEqualTo(0);
+        await Assert.That(result.RequiredProperties).Count().IsEqualTo(0);
         await Assert.That(result.ImplementationTypeName).IsEqualTo("MyService");
         await Assert.That(result.ImplementationNamespace).IsEqualTo("DiPipelineTest");
         await Assert.That(result.Intent).IsTypeOf<FactoryIntent.Service>();
@@ -70,7 +70,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         var result = DiPipeline.ExtractFactory(type!, new FactoryIntent.Service(), "IMyServiceWithArgs");
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.ConstructorArguments).HasCount().EqualTo(2);
+        await Assert.That(result!.ConstructorArguments).Count().IsEqualTo(2);
         await Assert.That(result.ConstructorArguments[0].Type).IsEqualTo("DiPipelineTest.ILogger");
         await Assert.That(result.ConstructorArguments[1].Type).IsEqualTo("DiPipelineTest.IConfig");
         await Assert.That(result.ConstructorArguments[0].IsOptional).IsFalse();
@@ -99,7 +99,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         var result = DiPipeline.ExtractFactory(type!, new FactoryIntent.Service(), "INullableService");
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.ConstructorArguments).HasCount().EqualTo(1);
+        await Assert.That(result!.ConstructorArguments).Count().IsEqualTo(1);
         await Assert.That(result.ConstructorArguments[0].IsOptional).IsTrue();
     }
 
@@ -125,7 +125,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         var result = DiPipeline.ExtractFactory(type!, new FactoryIntent.Service(), "IPropertyService");
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.RequiredProperties).HasCount().EqualTo(1);
+        await Assert.That(result!.RequiredProperties).Count().IsEqualTo(1);
         await Assert.That(result.RequiredProperties[0].Type).IsEqualTo("DiPipelineTest.IRenderer");
         await Assert.That(result.RequiredProperties[0].SetterName).IsEqualTo("set_Renderer");
         await Assert.That(result.RequiredProperties[0].IsOptional).IsFalse();
@@ -154,7 +154,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         var result = DiPipeline.ExtractFactory(type!, new FactoryIntent.Service(), "IInheritedService");
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.RequiredProperties).HasCount().EqualTo(1);
+        await Assert.That(result!.RequiredProperties).Count().IsEqualTo(1);
         await Assert.That(result.RequiredProperties[0].Type).IsEqualTo("DiPipelineTest.IBaseDep");
     }
 
@@ -203,7 +203,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         var result = DiPipeline.ExtractFactory(type!, new FactoryIntent.Service(), "IModService");
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.OptionalModIds).HasCount().EqualTo(1);
+        await Assert.That(result!.OptionalModIds).Count().IsEqualTo(1);
         await Assert.That(result.OptionalModIds[0]).IsEqualTo("color_mod");
     }
 
@@ -230,7 +230,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         var result = DiPipeline.ExtractFactory(type!, new FactoryIntent.Service(), "IMultiModService");
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.OptionalModIds).HasCount().EqualTo(2);
+        await Assert.That(result!.OptionalModIds).Count().IsEqualTo(2);
     }
 
     // ── ExtractConditionalModIds Tests ──────────────────────────────────
@@ -251,7 +251,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
 
         var result = DiPipeline.ExtractConditionalModIds(type!);
 
-        await Assert.That(result).HasCount().EqualTo(0);
+        await Assert.That(result).Count().IsEqualTo(0);
     }
 
     [Test]
@@ -273,7 +273,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
 
         var result = DiPipeline.ExtractConditionalModIds(type!);
 
-        await Assert.That(result).HasCount().EqualTo(1);
+        await Assert.That(result).Count().IsEqualTo(1);
         await Assert.That(result[0]).IsEqualTo("color_mod");
     }
 
@@ -297,7 +297,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
 
         var result = DiPipeline.ExtractConditionalModIds(type!);
 
-        await Assert.That(result).HasCount().EqualTo(2);
+        await Assert.That(result).Count().IsEqualTo(2);
     }
 
     // ── RenderFactory Tests (snapshot-verified) ─────────────────────────
@@ -471,7 +471,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
 
         var result = DiPipeline.ToRegistration(factory, type!);
 
-        await Assert.That(result.ConditionalModIds).HasCount().EqualTo(1);
+        await Assert.That(result.ConditionalModIds).Count().IsEqualTo(1);
         await Assert.That(result.ConditionalModIds[0]).IsEqualTo("test_mod");
     }
 
@@ -501,7 +501,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
 
         var result = DiPipeline.ToRegistration(factory, type!);
 
-        await Assert.That(result.ConditionalModIds).HasCount().EqualTo(0);
+        await Assert.That(result.ConditionalModIds).Count().IsEqualTo(0);
     }
 
     // ── ExtractFacadeMetadata Tests ─────────────────────────────────────
@@ -536,7 +536,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
 
         var result = DiPipeline.ExtractFacadeMetadata(type!, "Sparkitect.GameState.StateFacadeAttribute");
 
-        await Assert.That(result).HasCount().EqualTo(1);
+        await Assert.That(result).Count().IsEqualTo(1);
         // CORRECT direction: facade type (what consumer asks for) -> service type (what container resolves)
         await Assert.That(result[0].DependencyType).IsEqualTo("global::DiPipelineTest.IFooFacade");
         await Assert.That(result[0].FacadedType).IsEqualTo("global::DiPipelineTest.IFooService");
@@ -565,7 +565,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
 
         var result = DiPipeline.ExtractFacadeMetadata(type!, "Sparkitect.GameState.StateFacadeAttribute");
 
-        await Assert.That(result).HasCount().EqualTo(0);
+        await Assert.That(result).Count().IsEqualTo(0);
     }
 
     [Test]
@@ -599,7 +599,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         // Ask for StateFacade category, but the service has RegistryFacade
         var result = DiPipeline.ExtractFacadeMetadata(type!, "Sparkitect.GameState.StateFacadeAttribute");
 
-        await Assert.That(result).HasCount().EqualTo(0);
+        await Assert.That(result).Count().IsEqualTo(0);
     }
 
     [Test]
@@ -631,7 +631,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
 
         var result = DiPipeline.ExtractFacadeMetadata(type!, "Sparkitect.GameState.StateFacadeAttribute");
 
-        await Assert.That(result).HasCount().EqualTo(0);
+        await Assert.That(result).Count().IsEqualTo(0);
     }
 
     [Test]
@@ -664,7 +664,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
 
         var result = DiPipeline.ExtractFacadeMetadata(type!, "Sparkitect.GameState.StateFacadeAttribute");
 
-        await Assert.That(result).HasCount().EqualTo(1);
+        await Assert.That(result).Count().IsEqualTo(1);
         await Assert.That(result[0].DependencyType).IsEqualTo("global::DiPipelineTest.IPropFacade");
         await Assert.That(result[0].FacadedType).IsEqualTo("global::DiPipelineTest.IPropService");
     }
@@ -678,7 +678,7 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         var model = new FacadeMetadataModel("global::Test.IFooFacade", "global::Test.IFooService");
         var lines = model.RenderCodeLines();
 
-        await Assert.That(lines).HasCount().EqualTo(2);
+        await Assert.That(lines).Count().IsEqualTo(2);
         await Assert.That(lines[0]).IsEqualTo("dependencies.TryAdd(typeof(global::Test.IFooFacade), new());");
         await Assert.That(lines[1]).IsEqualTo("dependencies[typeof(global::Test.IFooFacade)].Add(new global::Sparkitect.DI.Resolution.FacadeMapping(typeof(global::Test.IFooService)));");
     }

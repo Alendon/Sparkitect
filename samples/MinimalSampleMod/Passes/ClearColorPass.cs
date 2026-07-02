@@ -5,12 +5,13 @@ using Sparkitect.Graphing;
 using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.RenderGraph.Resources;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Modding;
 using RenderPassRegistry = Sparkitect.Graphics.RenderGraph.RenderPassRegistry;
 
 namespace MinimalSampleMod.Passes;
 
 [RenderPassRegistry.RegisterPass("clear_color")]
-internal sealed partial class ClearColorPass : ComputePass
+internal sealed partial class ClearColorPass : ComputePass, IHasIdentification
 {
     private IGraphResource<ImageResource> _target = null!;
     private uint _frameCounter;

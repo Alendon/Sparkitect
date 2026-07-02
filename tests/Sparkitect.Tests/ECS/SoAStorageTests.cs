@@ -194,7 +194,7 @@ public class SoAStorageTests
         var requirement = new ChunkedIterationRequirement(componentIds);
         var results = world.Resolve(new ICapabilityRequirement[] { requirement });
 
-        await Assert.That(results).HasCount().EqualTo(1);
+        await Assert.That(results).Count().IsEqualTo(1);
         await Assert.That(results[0]).IsEqualTo(handle);
 
         // Access storage through StorageAccessor -- ref struct, must not cross await

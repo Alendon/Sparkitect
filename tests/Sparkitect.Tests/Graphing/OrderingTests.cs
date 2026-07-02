@@ -51,7 +51,7 @@ public class OrderingTests
         var order = plan.OrderedNodes.ToList();
 
         // Every ledger node is placed exactly once.
-        await Assert.That(order).HasCount().EqualTo(ledger.Nodes.Count);
+        await Assert.That(order).Count().IsEqualTo(ledger.Nodes.Count);
         await Assert.That(order.Distinct().Count()).IsEqualTo(ledger.Nodes.Count);
 
         // Every increment's produced node comes after its source epoch.

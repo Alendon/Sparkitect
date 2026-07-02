@@ -7,7 +7,7 @@ using Sparkitect.Modding.IDs;
 namespace SpaceInvadersMod;
 
 [ModuleRegistry.RegisterModule("space_invaders")]
-public partial class SpaceInvadersModule : IStateModule
+public partial class SpaceInvadersModule : IStateModule, IHasIdentification
 {
     public static IReadOnlyList<Identification> RequiredModules =>
     [

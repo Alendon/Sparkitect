@@ -7,7 +7,7 @@ using Sparkitect.Stateless;
 namespace MinimalSampleMod;
 
 [ModuleRegistry.RegisterModule("sample")]
-public partial class SampleModule : IStateModule
+public partial class SampleModule : IStateModule, IHasIdentification
 {
     public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
 

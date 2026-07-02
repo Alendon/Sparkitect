@@ -26,7 +26,7 @@ namespace Sparkitect.Graphics.RenderGraph.Runtime;
 [PublicAPI]
 [RenderGraphRegistry.RegisterRenderGraph("stock")]
 public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler, ISwapchainHandler,
-    IExternalPushHandler, IDisposable
+    IExternalPushHandler, IDisposable, IHasIdentification
 {
     private readonly IVulkanContext _vulkanContext;
     private readonly IDIService _diService;

@@ -146,7 +146,7 @@ public class SystemManagerTests
 
         manager.ExecuteSystems(world, default);
 
-        await Assert.That(executionOrder).HasCount().EqualTo(3);
+        await Assert.That(executionOrder).Count().IsEqualTo(3);
         await Assert.That(executionOrder[0]).IsEqualTo(System3);
         await Assert.That(executionOrder[1]).IsEqualTo(System1);
         await Assert.That(executionOrder[2]).IsEqualTo(System2);
@@ -281,7 +281,7 @@ public class SystemManagerTests
 
         manager.ExecuteSystems(world, default);
 
-        await Assert.That(executionOrder).HasCount().EqualTo(2);
+        await Assert.That(executionOrder).Count().IsEqualTo(2);
         await Assert.That(executionOrder[0]).IsEqualTo(System1);
         await Assert.That(executionOrder[1]).IsEqualTo(System2);
     }
@@ -313,7 +313,7 @@ public class SystemManagerTests
 
         manager.ExecuteSystems(world, default);
 
-        await Assert.That(executionOrder).HasCount().EqualTo(2);
+        await Assert.That(executionOrder).Count().IsEqualTo(2);
         // GroupC before GroupB, so System2 before System1
         await Assert.That(executionOrder[0]).IsEqualTo(System2);
         await Assert.That(executionOrder[1]).IsEqualTo(System1);
@@ -472,7 +472,7 @@ public class SystemManagerTests
         manager.ExecuteSystems(world, default);
 
         // All three systems should execute
-        await Assert.That(executionOrder).HasCount().EqualTo(3);
+        await Assert.That(executionOrder).Count().IsEqualTo(3);
         // System2 before System3 (ordering edge)
         var idx2 = executionOrder.IndexOf(System2);
         var idx3 = executionOrder.IndexOf(System3);
@@ -687,7 +687,7 @@ public class SystemManagerTests
         var tree = manager.BuildTree(GroupA);
         await Assert.That(tree.Id).IsEqualTo(GroupA);
         await Assert.That(tree.IsGroup).IsTrue();
-        await Assert.That(tree.Children).HasCount().EqualTo(1);
+        await Assert.That(tree.Children).Count().IsEqualTo(1);
         await Assert.That(tree.Children[0].Id).IsEqualTo(System1);
     }
 
@@ -742,14 +742,14 @@ public class SystemManagerTests
 
         await Assert.That(tree.Id).IsEqualTo(GroupA);
         await Assert.That(tree.IsGroup).IsTrue();
-        await Assert.That(tree.Children).HasCount().EqualTo(2);
+        await Assert.That(tree.Children).Count().IsEqualTo(2);
 
         // Find child group and system
         var childGroup = tree.Children.First(c => c.Id == GroupB);
         var childSystem = tree.Children.First(c => c.Id == System1);
 
         await Assert.That(childGroup.IsGroup).IsTrue();
-        await Assert.That(childGroup.Children).HasCount().EqualTo(1);
+        await Assert.That(childGroup.Children).Count().IsEqualTo(1);
         await Assert.That(childGroup.Children[0].Id).IsEqualTo(System2);
         await Assert.That(childSystem.IsGroup).IsFalse();
     }
@@ -781,7 +781,7 @@ public class SystemManagerTests
         var tree = manager.BuildTree(GroupA);
 
         // Only System1 and System2 should be in tree; System3 is unreachable
-        await Assert.That(tree.Children).HasCount().EqualTo(2);
+        await Assert.That(tree.Children).Count().IsEqualTo(2);
         var childIds = tree.Children.Select(c => c.Id).ToList();
         await Assert.That(childIds).Contains(System1);
         await Assert.That(childIds).Contains(System2);

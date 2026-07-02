@@ -7,7 +7,7 @@ namespace DiTest
 {
     using SampleTest.Generated.IdExtensions;
 
-    partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification
+    partial class ClearColorPass
     {
         public static global::Sparkitect.Modding.Identification Identification
             => global::Sparkitect.Modding.IDs.RenderPassID.SampleTest.ClearColorPass;

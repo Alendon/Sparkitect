@@ -26,7 +26,7 @@ public class LedgerTests
         var leaf = ledger.Declare<SyntheticBuffer>(LeafProvenance);
 
         await Assert.That(leaf.IsBaseEpoch).IsTrue();
-        await Assert.That(ledger.Nodes).HasCount().EqualTo(1);
+        await Assert.That(ledger.Nodes).Count().IsEqualTo(1);
 
         var node = ledger.Nodes[0];
         await Assert.That(node.IsBaseEpoch).IsTrue();
@@ -50,12 +50,12 @@ public class LedgerTests
         await Assert.That(produced.IsBaseEpoch).IsFalse();
 
         var chain = ledger.ChainFor(leaf.Resource);
-        await Assert.That(chain).HasCount().EqualTo(2);
+        await Assert.That(chain).Count().IsEqualTo(2);
         await Assert.That(chain[0].IsBaseEpoch).IsTrue();
         await Assert.That(chain[1].IsBaseEpoch).IsFalse();
 
         // The increment edge records source -> produced provenance.
-        await Assert.That(ledger.Increments).HasCount().EqualTo(1);
+        await Assert.That(ledger.Increments).Count().IsEqualTo(1);
         var edge = ledger.Increments[0];
         await Assert.That(edge.SourceNode).IsEqualTo(chain[0].Id);
         await Assert.That(edge.ProducedNode).IsEqualTo(chain[1].Id);
@@ -73,7 +73,7 @@ public class LedgerTests
 
         ledger.RecordRead(produced, reader.Resource);
 
-        await Assert.That(ledger.Reads).HasCount().EqualTo(1);
+        await Assert.That(ledger.Reads).Count().IsEqualTo(1);
         var read = ledger.Reads[0];
         await Assert.That(read.Reader).IsEqualTo(reader.Resource);
         await Assert.That(read.Epoch).IsEqualTo(produced.Epoch);
@@ -94,8 +94,8 @@ public class LedgerTests
         ledger.RecordIncrement(firstOnce, IncrementProvenance);
 
         await Assert.That(first.Resource).IsNotEqualTo(second.Resource);
-        await Assert.That(ledger.ChainFor(first.Resource)).HasCount().EqualTo(3);
-        await Assert.That(ledger.ChainFor(second.Resource)).HasCount().EqualTo(1);
+        await Assert.That(ledger.ChainFor(first.Resource)).Count().IsEqualTo(3);
+        await Assert.That(ledger.ChainFor(second.Resource)).Count().IsEqualTo(1);
     }
 
     [Test]
@@ -114,9 +114,9 @@ public class LedgerTests
         await Assert.That(stagedSub.IsBaseEpoch).IsFalse();
         await Assert.That(advancedSelf.IsBaseEpoch).IsFalse();
         // Both increments used the same ref-pointed mechanic — two independent chains, each grown.
-        await Assert.That(ledger.ChainFor(sub.Resource)).HasCount().EqualTo(2);
-        await Assert.That(ledger.ChainFor(selfResolved.Resource)).HasCount().EqualTo(2);
-        await Assert.That(ledger.Increments).HasCount().EqualTo(2);
+        await Assert.That(ledger.ChainFor(sub.Resource)).Count().IsEqualTo(2);
+        await Assert.That(ledger.ChainFor(selfResolved.Resource)).Count().IsEqualTo(2);
+        await Assert.That(ledger.Increments).Count().IsEqualTo(2);
     }
 
     [Test]

@@ -23,7 +23,7 @@ public class EcsGraphBuilderTests
 
         var graph = builder.Resolve();
 
-        await Assert.That(graph.SortedSystems).HasCount().EqualTo(1);
+        await Assert.That(graph.SortedSystems).Count().IsEqualTo(1);
         await Assert.That(graph.SortedSystems[0]).IsEqualTo(System1);
     }
 
@@ -61,7 +61,7 @@ public class EcsGraphBuilderTests
 
         var graph = builder.Resolve();
 
-        await Assert.That(graph.SortedSystems).HasCount().EqualTo(3);
+        await Assert.That(graph.SortedSystems).Count().IsEqualTo(3);
         var idx1 = graph.SortedSystems.ToList().IndexOf(System1);
         var idx2 = graph.SortedSystems.ToList().IndexOf(System2);
         var idx3 = graph.SortedSystems.ToList().IndexOf(System3);
@@ -106,7 +106,7 @@ public class EcsGraphBuilderTests
 
         var graph = builder.Resolve();
 
-        await Assert.That(graph.GroupIds).HasCount().EqualTo(2);
+        await Assert.That(graph.GroupIds).Count().IsEqualTo(2);
         await Assert.That(graph.GroupIds.Contains(GroupA)).IsTrue();
         await Assert.That(graph.GroupIds.Contains(GroupB)).IsTrue();
     }

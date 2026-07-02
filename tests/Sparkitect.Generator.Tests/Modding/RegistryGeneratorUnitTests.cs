@@ -943,7 +943,10 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         // may live in distinct namespaces in a single emission file, and C# allows only one
         // file-scoped namespace per .cs file.
         await Assert.That(code).Contains("namespace DiTest");
-        await Assert.That(code).Contains("partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification");
+        // D-12: auto-emit no longer emits the ': IHasIdentification' base-list; the interface
+        // must be declared in user source. The static Identification member is still emitted.
+        await Assert.That(code).Contains("partial class ClearColorPass");
+        await Assert.That(code).DoesNotContain(": global::Sparkitect.Modding.IHasIdentification");
         await Assert.That(code).Contains("public static global::Sparkitect.Modding.Identification Identification");
         // The auto-emitted IHasIdentification reads through the C# 14 extension chain
         // (IDs.{Cat}ID.{Mod}.{PropertyName}) instead of the entrypoint's static field — the
@@ -980,7 +983,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
     [Test]
     public async Task RenderAutoEmitIdentification_MarkerFlaggedConcrete_BothArtifactsEmit()
     {
-        // Two orthogonal emission paths (auto-emit `: IHasIdentification` and keyed-factory
+        // Two orthogonal emission paths (auto-emit Identification member and keyed-factory
         // per-consumer registrations) coexist on the same marker-flagged concrete.
         var unit = BuildMarkerFlaggedUnit(
             entries: [("clear_color_pass", "global::DiTest.ClearColorPass")]);
@@ -989,10 +992,12 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         var kfGroups = RegistryGenerator.RenderKeyedFactoryRegistrations(unit, BuildSettings);
         await Assert.That(kfGroups.Length).IsGreaterThanOrEqualTo(1);
 
-        // Auto-emit `: IHasIdentification` artifact:
+        // Auto-emit Identification-member artifact:
         var autoOk = RegistryGenerator.RenderAutoEmitIdentificationUnit(unit, BuildSettings, out var autoCode, out _);
         await Assert.That(autoOk).IsTrue();
-        await Assert.That(autoCode).Contains("partial class ClearColorPass : global::Sparkitect.Modding.IHasIdentification");
+        // D-12: base-list dropped from auto-emit; the Identification member is still emitted.
+        await Assert.That(autoCode).Contains("partial class ClearColorPass");
+        await Assert.That(autoCode).DoesNotContain(": global::Sparkitect.Modding.IHasIdentification");
 
         await Verifier.Verify(new { autoCode, kfFirstRegistrations = kfGroups[0].Code }, verifySettings);
     }

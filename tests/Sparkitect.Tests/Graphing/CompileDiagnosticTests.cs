@@ -34,7 +34,7 @@ public class CompileDiagnosticTests
 
         var cycle = await AssertError<CompileError.Cycle>(result);
         // Every node in this fixture participates in the single loop.
-        await Assert.That(cycle.Participants).HasCount().EqualTo(ledger.Nodes.Count);
+        await Assert.That(cycle.Participants).Count().IsEqualTo(ledger.Nodes.Count);
     }
 
     [Test]

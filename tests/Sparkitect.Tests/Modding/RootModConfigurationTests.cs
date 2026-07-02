@@ -56,7 +56,7 @@ public class RootModConfigurationTests
 
         // Assert
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.RootMods).HasCount().EqualTo(2);
+        await Assert.That(result!.RootMods).Count().IsEqualTo(2);
 
         await Assert.That(result.RootMods[0].Id).IsEqualTo("my_game_mod");
         await Assert.That(result.RootMods[0].Version).IsNotNull();
@@ -87,7 +87,7 @@ public class RootModConfigurationTests
 
         // Assert
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.RootMods).HasCount().EqualTo(2);
+        await Assert.That(result!.RootMods).Count().IsEqualTo(2);
 
         await Assert.That(result.RootMods[0].Id).IsEqualTo("my_game_mod");
         await Assert.That(result.RootMods[0].Version).IsNull();
@@ -137,7 +137,7 @@ public class RootModConfigurationTests
 
         // Assert
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.RootMods).HasCount().EqualTo(0);
+        await Assert.That(result!.RootMods).Count().IsEqualTo(0);
     }
 
     [Test]
