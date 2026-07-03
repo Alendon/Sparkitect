@@ -60,7 +60,7 @@ public sealed class KeyedFactoryGenerationMarkerAnalyzer : DiagnosticAnalyzer
         var markerLocation = markerAttr.ApplicationSyntaxReference?.GetSyntax(ctx.CancellationToken).GetLocation()
                              ?? method.Locations.FirstOrDefault();
 
-        // --- D-10 (SPARK0260): check [RegistryMethod] AND type-registration shape ---
+        // --- SPARK0260: check [RegistryMethod] AND type-registration shape ---
         var hasRegistryMethod = method.GetAttributes()
             .Any(a => a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType)
                       is RegistryMethodAttributeDisplayName);
@@ -80,7 +80,7 @@ public sealed class KeyedFactoryGenerationMarkerAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // --- D-12 (SPARK0261): literal class, TBase, IHasIdentification constraints ---
+        // --- SPARK0261: literal class, TBase, IHasIdentification constraints ---
         var typeParam = method.TypeParameters[0];
 
         var hasClassConstraint = typeParam.HasReferenceTypeConstraint;

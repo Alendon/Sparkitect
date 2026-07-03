@@ -23,9 +23,9 @@ public class RandomMaskComp
     [Params(0.1, 0.5, 0.9)]
     public double HitRate { get; set; }
 
-    private ulong[] input;
-    private ulong[] mask;
-    private ulong[] paddedInput;
+    private ulong[] input = null!;
+    private ulong[] mask = null!;
+    private ulong[] paddedInput = null!;
 
     [GlobalSetup]
     public void Setup()

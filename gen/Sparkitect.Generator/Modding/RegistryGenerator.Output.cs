@@ -30,7 +30,7 @@ public partial class RegistryGenerator
 
         // Top-level model gains ExtensionsNamespace + ModStructName so the UnsafeAccessor
         // decl can name the IDs-struct value-type as the first parameter (required for
-        // static-method binding to a value-type target per CONTEXT.md specifics line 181).
+        // static-method binding to a value-type target).
         var categoryPascal = StringCase.ToPascalCase(unit.Model.Key);
         var extensionsNs = settings.ComputeOutputNamespace("IdExtensions");
         var modStructName = StringCase.ToPascalCase(settings.ModId) + categoryPascal + "IDs";
@@ -88,7 +88,7 @@ public partial class RegistryGenerator
     /// static field already populated at boot via <c>IdentificationManager.RegisterObject(...)</c>.
     /// </summary>
     /// <remarks>
-    /// Per D-04: filter is <see cref="System.Linq.Enumerable.OfType{TResult}(System.Collections.IEnumerable)"/>
+    /// Filter is <see cref="System.Linq.Enumerable.OfType{TResult}(System.Collections.IEnumerable)"/>
     /// of <see cref="TypeRegistrationEntry"/> only — no <c>KeyedFactoryGeneration</c> filter. Auto-emit applies
     /// to ALL type-registered concretes, not only marker-flagged ones.
     /// </remarks>
@@ -195,11 +195,11 @@ public partial class RegistryGenerator
                 var lowerId = ToCamelCase(propName);
                 // Backward-coordinate annotation: the template prepends `global::`, so strip any
                 // leading `global::` here. Null target = no [RegisteredFrom] emitted (e.g. resource
-                // entries, whose YAML coordinate branch is added in a later plan — Pitfall 1 guard).
+                // entries, whose YAML coordinate branch is emitted separately — guard against a null target).
                 var registeredType = e.RegisteredTypeFullName is { Length: > 0 } rt
                     ? (rt.StartsWith("global::") ? rt.Substring("global::".Length) : rt)
                     : null;
-                // YAML-backed leaves carry a PLAIN path + line/column coordinate (D-50) instead of a
+                // YAML-backed leaves carry a PLAIN path + line/column coordinate instead of a
                 // C# typeof target. Surface it for the template's mutually-exclusive YAML branch.
                 // SourcePath present (non-empty) selects the plain-coordinate form; otherwise the
                 // typeof branch (or no attribute) applies. The two are never emitted together.
@@ -220,7 +220,7 @@ public partial class RegistryGenerator
                     // typeof target FQN (no global:: prefix; template adds it) + optional member name.
                     RegisteredTypeFullName = registeredType,
                     RegisteredMember = e.RegisteredMember,
-                    // YAML plain-coordinate fields (D-50). SourcePath is the project-relative path;
+                    // YAML plain-coordinate fields. SourcePath is the project-relative path;
                     // SourceLine/SourceColumn are the entry-id scalar's 1-based position.
                     SourcePath = sourcePath,
                     SourceLine = sourceLine,
@@ -583,7 +583,7 @@ partial class {model.TypeName}
                 : tBaseFullName;
             var tBaseWithGlobal = tBaseFullName.StartsWith("global::") ? tBaseFullName : $"global::{tBaseFullName}";
 
-            // Registrations-class name — intra-assembly-unique per the CONTEXT.md naming convention.
+            // Registrations-class name — intra-assembly-unique per the naming convention.
             var className = $"{modIdPascal}_{configuratorClassName}_Registrations";
             var fileName = $"{className}.g.cs";
 

@@ -13,7 +13,7 @@ public sealed record StatelessRegistrationEntry(
     string? UserMethodName = null)
     : RegistrationEntry(Id, Files)
 {
-    // Pitfall 2: the backward coordinate must point at the USER method and its containing type,
+    // The backward coordinate must point at the USER method and its containing type,
     // NOT the generated *Func wrapper (which navigates to a useless generated stub).
     public override string? RegisteredTypeFullName => ParentTypeFullName;
     public override string? RegisteredMember => UserMethodName;

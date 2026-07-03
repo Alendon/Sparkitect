@@ -160,7 +160,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             }
 
             // SPARK0217: Duplicate keys
-            if (!seenKeys.Add(key))
+            if (!seenKeys.Add(key!))
             {
                 ctx.ReportDiagnostic(Diagnostic.Create(
                     RegistryDiagnostics.DuplicateResourceFileKey,

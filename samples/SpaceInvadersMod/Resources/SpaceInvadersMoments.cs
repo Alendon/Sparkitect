@@ -43,6 +43,9 @@ public static class SpaceInvadersMoments
 /// <c>entities_raw</c> moment id — so the render graph's setup-time synthesis discovers it among the
 /// registered moments and mints its birth increment with no pass authoring the mark.
 /// </summary>
+// Identified by hand, not through a registry: the [ExternalPush] metadata attribute keys its
+// config by this Identification, so IHasIdentification is required but no registry attribute applies.
+#pragma warning disable SPARK0262
 [ExternalPush]
 [PublicAPI]
 public sealed class EntitiesRawPushMarker : IHasIdentification
@@ -50,3 +53,4 @@ public sealed class EntitiesRawPushMarker : IHasIdentification
     /// <inheritdoc/>
     public static Identification Identification => GraphMomentID.SpaceInvadersMod.EntitiesRaw;
 }
+#pragma warning restore SPARK0262

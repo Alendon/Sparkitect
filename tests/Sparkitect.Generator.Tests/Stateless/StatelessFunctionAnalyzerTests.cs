@@ -16,7 +16,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         TestSources.Add(TestData.StatelessTestTypes);
     }
 
-    #region SPARK0401 - Method must be static
+    // SPARK0401 - Method must be static
 
     [Test]
     public async Task NonStaticMethod_WithStatelessAttribute_ReportsError()
@@ -70,9 +70,8 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         await AssertNoDiagnostics(diagnostics);
     }
 
-    #endregion
 
-    #region SPARK0402 - Multiple scheduling attributes
+    // SPARK0402 - Multiple scheduling attributes
 
     [Test]
     public async Task MultipleSchedulingAttributes_ReportsError()
@@ -127,9 +126,8 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         await AssertNoDiagnostics(diagnostics);
     }
 
-    #endregion
 
-    #region SPARK0403 - Parameter not DI-resolvable
+    // SPARK0403 - Parameter not DI-resolvable
 
     [Test]
     public async Task ConcreteParameter_ReportsWarning()
@@ -273,9 +271,8 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         await AssertNoDiagnostics(diagnostics);
     }
 
-    #endregion
 
-    #region SPARK0404 - Missing IHasIdentification
+    // SPARK0404 - Missing IHasIdentification
 
     [Test]
     public async Task TypeWithoutIHasIdentification_ReportsError()
@@ -356,9 +353,8 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         await AssertNoDiagnostics(diagnostics);
     }
 
-    #endregion
 
-    #region SPARK0405 - Orphan ordering attributes
+    // SPARK0405 - Orphan ordering attributes
 
     [Test]
     public async Task OrderBeforeWithoutScheduling_ReportsWarning()
@@ -467,9 +463,8 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         await AssertNoDiagnostics(diagnostics);
     }
 
-    #endregion
 
-    #region SPARK0406 - Non-public static access
+    // SPARK0406 - Non-public static access
 
     [Test]
     public async Task PrivateStaticField_Read_FromStateless_ReportsError()
@@ -827,9 +822,8 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         await AssertDiagnosticCount(diagnostics, "SPARK0406", 1);
     }
 
-    #endregion
 
-    #region Edge cases
+    // Edge cases
 
     [Test]
     public async Task MethodWithoutStatelessAttribute_NoDiagnostic()
@@ -945,5 +939,4 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
         await AssertDiagnosticCount(diagnostics, "SPARK0404", 1);
     }
 
-    #endregion
 }

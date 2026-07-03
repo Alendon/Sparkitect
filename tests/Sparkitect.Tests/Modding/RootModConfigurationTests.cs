@@ -21,7 +21,7 @@ public class RootModConfigurationTests
             Directory.Delete(_tempDir, recursive: true);
     }
 
-    #region LoadConfig Tests
+    // LoadConfig Tests
 
     [Test]
     public async Task LoadConfig_FileDoesNotExist_ReturnsNull()
@@ -184,9 +184,8 @@ public class RootModConfigurationTests
         await Assert.That(result!.RootMods[0].Version!.ToString()).IsEqualTo("2.0.0-alpha.1");
     }
 
-    #endregion
 
-    #region RootModEntry Tests
+    // RootModEntry Tests
 
     [Test]
     public async Task RootModEntry_DefaultVersion_IsNull()
@@ -213,5 +212,4 @@ public class RootModConfigurationTests
         await Assert.That(entry.Version).IsEqualTo(version);
     }
 
-    #endregion
 }

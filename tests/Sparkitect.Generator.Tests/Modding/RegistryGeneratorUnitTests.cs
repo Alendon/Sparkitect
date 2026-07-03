@@ -643,7 +643,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
                     public const int PrimaryParameterKind = 4; // Type
                     public const int Constraint = 1; // ReferenceType
                     public const string TypeConstraint = "DiTest.ISomeBase";
-                    // KeyedFactoryMarkerTBase intentionally OMITTED (pre-49.2 metadata)
+                    // KeyedFactoryMarkerTBase intentionally OMITTED (metadata without this field)
                 }
             }
             """));
@@ -899,11 +899,11 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Verifier.Verify(code, verifySettings);
     }
 
-    // ── Phase 49.3 (D-19) — auto-emit IHasIdentification snapshot tests ──
+    // ── Auto-emit IHasIdentification snapshot tests ──
 
     /// <summary>
     /// Builds an unmarked TypeRegistrationEntry-only unit (no <see cref="KeyedFactoryGenerationInfo"/>).
-    /// Used for the 49.3 auto-emit snapshot tests where keyed-factory generation does not apply.
+    /// Used for the auto-emit snapshot tests where keyed-factory generation does not apply.
     /// </summary>
     private static RegistrationUnit BuildTypeRegistrationUnit(
         string registryName = "RenderPassRegistry",
@@ -943,7 +943,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         // may live in distinct namespaces in a single emission file, and C# allows only one
         // file-scoped namespace per .cs file.
         await Assert.That(code).Contains("namespace DiTest");
-        // D-12: auto-emit no longer emits the ': IHasIdentification' base-list; the interface
+        // Auto-emit no longer emits the ': IHasIdentification' base-list; the interface
         // must be declared in user source. The static Identification member is still emitted.
         await Assert.That(code).Contains("partial class ClearColorPass");
         await Assert.That(code).DoesNotContain(": global::Sparkitect.Modding.IHasIdentification");
@@ -959,7 +959,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
     [Test]
     public async Task RenderAutoEmitIdentification_NoTypeEntries_ProducesNoOutput()
     {
-        // Pitfall 5 (RESEARCH): only TypeRegistrationEntry triggers auto-emit; value/method/property
+        // Only TypeRegistrationEntry triggers auto-emit; value/method/property
         // providers are different RegistrationEntry subtypes and never carry IHasIdentification.
         var model = new RegistryModel(
             "DummyRegistry", "dummy", "MinimalSampleMod", false,
@@ -995,7 +995,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         // Auto-emit Identification-member artifact:
         var autoOk = RegistryGenerator.RenderAutoEmitIdentificationUnit(unit, BuildSettings, out var autoCode, out _);
         await Assert.That(autoOk).IsTrue();
-        // D-12: base-list dropped from auto-emit; the Identification member is still emitted.
+        // Base-list dropped from auto-emit; the Identification member is still emitted.
         await Assert.That(autoCode).Contains("partial class ClearColorPass");
         await Assert.That(autoCode).DoesNotContain(": global::Sparkitect.Modding.IHasIdentification");
 

@@ -111,7 +111,7 @@ public static class EcsQueryExtraction
             }
         }
 
-        // Validate: no component in multiple families (D-12 silent drop)
+        // Validate: no component in multiple families (silent drop)
         if (HasCrossFamilyOverlap(readBuilder, writeBuilder) ||
             HasCrossFamilyOverlap(readBuilder, excludeBuilder) ||
             HasCrossFamilyOverlap(writeBuilder, excludeBuilder))

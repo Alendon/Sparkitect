@@ -9,7 +9,7 @@ namespace BackgroundColorMod;
 /// All references to ColorProviderMod types are contained here.
 /// </summary>
 /// <remarks>
-/// This class demonstrates the "drawbridge pattern" from Phase 16:
+/// This class demonstrates the "drawbridge pattern":
 /// - Only instantiated after IsModLoaded("color_provider_mod") check passes
 /// - All ColorProviderMod type references isolated to this file
 /// - Prevents TypeLoadException when ColorProviderMod is not present

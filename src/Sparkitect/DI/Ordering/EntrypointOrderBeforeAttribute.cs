@@ -10,6 +10,8 @@ namespace Sparkitect.DI.Ordering;
 [PublicAPI]
 public sealed class EntrypointOrderBeforeAttribute<T> : Attribute, IEntrypointOrdering
 {
+    /// <summary>Adds the ordering edge that places the annotated class before <typeparamref name="T"/>.</summary>
+    /// <param name="builder">The ordering graph builder for the current entrypoint.</param>
     public void ApplyOrdering(IEntrypointOrderingBuilder builder)
     {
         builder.AddEdge(builder.CurrentTypeName, typeof(T).FullName!);
@@ -32,6 +34,8 @@ public sealed class EntrypointOrderBeforeAttribute : Attribute, IEntrypointOrder
         _targetTypeName = targetFullTypeName;
     }
 
+    /// <summary>Adds the ordering edge that places the annotated class before the named type.</summary>
+    /// <param name="builder">The ordering graph builder for the current entrypoint.</param>
     public void ApplyOrdering(IEntrypointOrderingBuilder builder)
     {
         builder.AddEdge(builder.CurrentTypeName, _targetTypeName);

@@ -12,7 +12,7 @@ Sparkitect is a modular 3D game engine built on .NET 10. The engine itself is a 
 
 - **Everything is a mod.** There is no separate "engine API" vs "mod API". The engine's built-in functionality ships as mods that use the same attributes, registries, and DI system available to your code.
 - **Integration over duplication.** New functionality builds on existing systems rather than creating parallel implementations. If an ECS is in place, an inventory system should be built on top of it.
-- **Modularity.** Components are separated to facilitate independent development and maintenance.
+- **Modularity.** Components are separated to enable independent development and maintenance.
 - **Registry-based resources.** All game objects (component types, textures, key bindings) are managed through a central [Registry System](xref:sparkitect.core.registry-system), providing consistent ID-based access throughout the engine and mods.
 
 ## Technical Foundation

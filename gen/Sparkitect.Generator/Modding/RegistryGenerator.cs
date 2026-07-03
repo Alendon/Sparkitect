@@ -17,18 +17,6 @@ public partial class RegistryGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        #if false
-        if (!Debugger.IsAttached)
-        {
-            // Wait for Rider to attach
-            while (!Debugger.IsAttached)
-            {
-                Thread.Sleep(500);
-            }
-            Debugger.Break();
-        }
-        #endif
-        
         var buildSettings = context.GetModBuildSettings();
 
         var symbolRegistryWithFactoryProvider = context.SyntaxProvider.ForAttributeWithMetadataName(RegistryMarkerAttribute,
@@ -100,7 +88,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         // Resource files: keep parse as a separate result carrying path + entries.
         // Combine with the per-file analyzer-config options so the absolute AdditionalText.Path
-        // can be relativized against build_property.ProjectDir (D-50: emit a project-relative,
+        // can be relativized against build_property.ProjectDir (emit a project-relative,
         // machine-move-surviving coordinate — never an interceptor-location token).
         var resourceFileRegistrationProvider = context.AdditionalTextsProvider
             .Where(x =>
@@ -180,8 +168,9 @@ public partial class RegistryGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(resourceUnitsProvider.Combine(buildSettings),
             static (spc, pair) => OutputIdPropertiesUnit(spc, (pair.Left, pair.Right)));
 
-        // Phase 49.3 (D-03/D-04/D-05): auto-emit `: IHasIdentification` + static `Identification` partial
-        // for every TypeRegistrationEntry. Independent of the 49.2 keyed-factory marker (D-04).
+        // Auto-emit the static `Identification` member as a partial for every TypeRegistrationEntry.
+        // The type must declare `: IHasIdentification` in user source; this member binds to it.
+        // Independent of the keyed-factory marker.
         context.RegisterSourceOutput(providerUnitsProvider.Combine(buildSettings),
             static (spc, pair) => OutputAutoEmitIdentificationUnit(spc, (pair.Left, pair.Right)));
         context.RegisterSourceOutput(resourceUnitsProvider.Combine(buildSettings),
@@ -229,11 +218,11 @@ public partial class RegistryGenerator : IIncrementalGenerator
         var raw = sourceText.ToString();
         if (string.IsNullOrWhiteSpace(raw)) return result.ToImmutableValueArray();
 
-        // Fixed shape (D-44/D-50): a top-level mapping of `FQN.Method:` keys, each to a sequence
+        // Fixed shape: a top-level mapping of `FQN.Method:` keys, each to a sequence
         // of single-key mappings `- entry_id: file(s)`. The entry-id scalar IS the navigation target,
         // so we walk the low-level YamlDotNet Parser to capture its Mark (Start.Line / Start.Column).
-        // High-level Deserialize discards position entirely (Pitfall 3); we deliberately avoid it for
-        // the entry-id key. No SemanticModel, no InterceptsLocation/GetInterceptableLocation (D-50).
+        // High-level Deserialize discards position entirely; we deliberately avoid it for
+        // the entry-id key. No SemanticModel, no InterceptsLocation/GetInterceptableLocation.
         try
         {
             using var reader = new global::System.IO.StringReader(raw);
@@ -302,7 +291,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
         var idScalar = parser.Consume<YamlDotNet.Core.Events.Scalar>();
         var id = idScalar.Value;
         // Mark is 1-based for line/column in YamlDotNet; capture before validating so a real
-        // entry always carries a non-zero line (Pitfall 3).
+        // entry always carries a non-zero line.
         var line = (int)idScalar.Start.Line;
         var column = (int)idScalar.Start.Column;
 
@@ -358,7 +347,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
     /// <summary>
     /// Relativizes an absolute resource-file path against the project directory so the emitted
-    /// coordinate survives machine moves (D-50: "regenerated locally"). Falls back to the original
+    /// coordinate survives machine moves (regenerated locally). Falls back to the original
     /// path when no project dir is available or the path is already relative. Uses forward slashes
     /// for a stable, platform-neutral form in the generated attribute.
     /// </summary>
@@ -423,7 +412,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
             var files = resolvedFiles.OrderBy(f => f.fileId).ToImmutableValueArray();
             // Thread the plain YAML backward coordinate (path + line/column captured at parse time)
-            // onto the resource entry so the IdProperties projection can surface it (D-50).
+            // onto the resource entry so the IdProperties projection can surface it.
             var entry = new ResourceRegistrationEntry(e.Id, files, e.MethodName,
                 e.SourcePath, e.SourceLine, e.SourceColumn);
             bucket.builder.Add(entry);
@@ -658,9 +647,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
     internal static ImmutableValueArray<RegistryModel> ExtractModels(Compilation compilation)
     {
-        //WARNING This function is currently not tested because of the complexity.
-        //Be careful with changes
-        //TODO Validate manually with the MinimalTestMod that this is functional
+        // Not covered by tests due to complexity; be careful with changes.
 
         var models = new ImmutableValueArray<RegistryModel>.Builder();
         foreach (var reference in compilation.References)
@@ -792,7 +779,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         // W1 LOCKED: read optional KeyedFactoryMarkerTBase directly off the symbol,
         // bypassing reader.Of() so AllValid is never affected by an absent optional field.
-        // Pre-49.2 metadata that omits this field continues to parse cleanly.
+        // Metadata that omits this field continues to parse cleanly.
         string? markerTBase = null;
         var markerField = methodMetadata.GetMembers("KeyedFactoryMarkerTBase")
             .OfType<IFieldSymbol>()

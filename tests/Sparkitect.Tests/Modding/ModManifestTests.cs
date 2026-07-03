@@ -17,7 +17,7 @@ public class ModManifestTests
         }
     };
 
-    #region IsRootMod Tests
+    // IsRootMod Tests
 
     [Test]
     public async Task ModManifest_DefaultIsRootMod_IsFalse()
@@ -132,5 +132,4 @@ public class ModManifestTests
         await Assert.That(json).Contains("\"IsRootMod\":true");
     }
 
-    #endregion
 }

@@ -852,7 +852,7 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             }
             else
             {
-                // No version specified: pick newest using Semver comparison (stable > prerelease per research decision)
+                // No version specified: pick newest using Semver comparison (stable > prerelease)
                 selectedManifest = ModManager.DiscoveredArchives
                     .Where(m => m.Id == entry.Id)
                     .OrderByDescending(m => m.Version)
@@ -865,7 +865,7 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
                 continue;
             }
 
-            // Validate IsRootMod flag (per RESEARCH.md Pitfall 4)
+            // Validate IsRootMod flag
             if (!selectedManifest.IsRootMod)
             {
                 errors.Add(new ValidationError.NotRootMod(entry.Id));

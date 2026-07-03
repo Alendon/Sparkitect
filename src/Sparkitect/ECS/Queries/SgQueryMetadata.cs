@@ -5,9 +5,8 @@ namespace Sparkitect.ECS.Queries;
 
 /// <summary>
 /// Bridge metadata for SG-generated query classes. Takes a factory function and
-/// component ID lists from the generated query's static members. Used by hand-written
-/// <c>IResolutionMetadataEntrypoint</c> implementations until Phase 43 auto-generates
-/// resolution metadata.
+/// component ID lists from the generated query's static members. Used by
+/// <c>IResolutionMetadataEntrypoint</c> implementations.
 /// </summary>
 [PublicAPI]
 public class SgQueryMetadata<TQuery> : QueryParameterMetadata

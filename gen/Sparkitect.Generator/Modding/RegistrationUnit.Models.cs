@@ -36,7 +36,7 @@ public sealed record MethodRegistrationEntry(
     string? RegisteredMemberName = null)
     : RegistrationEntry(Id, Files)
 {
-    // typeof target is the provider's CONTAINING type (Pitfall 1: cannot typeof a member);
+    // typeof target is the provider's CONTAINING type (cannot typeof a member);
     // the member name is carried separately so the annotation reads typeof(Container), Member = "X".
     public override string? RegisteredTypeFullName => RegisteredContainerFullName;
     public override string? RegisteredMember => RegisteredMemberName;
@@ -94,17 +94,17 @@ public sealed record TypeRegistrationEntry(
     RegistrationTypeKind TypeKind = RegistrationTypeKind.Class)
     : RegistrationEntry(Id, Files)
 {
-    // The registered type IS the navigation target — no member (Pitfall 1: emits a TYPE).
+    // The registered type IS the navigation target — no member (emits a TYPE).
     public override string? RegisteredTypeFullName => TypeFullName;
     public override string? RegisteredMember => null;
 
     public override string EmitRegistrationEntryCode(string registry, string id)
-        => $"{registry}.{MethodName}<{TypeFullName}>({id});";   // PRESERVED — D-01
+        => $"{registry}.{MethodName}<{TypeFullName}>({id});";
 }
 
 /// <summary>
 /// Concrete-type kind carried on <see cref="TypeRegistrationEntry"/> so that
-/// auto-emit (49.3) can produce a matching <c>partial class</c>, <c>partial struct</c>,
+/// auto-emit can produce a matching <c>partial class</c>, <c>partial struct</c>,
 /// <c>partial record</c>, or <c>partial record struct</c> extension. The emitted partial's
 /// kind keyword must match the registered type's source declaration, or the partials will not
 /// merge and the auto-emitted <c>IHasIdentification</c> member is dropped. Defaults to
@@ -133,7 +133,7 @@ public sealed record ResourceRegistrationEntry(
     : RegistrationEntry(Id, Files)
 {
     // YAML-backed leaves have no C# typeof target — the backward coordinate is a PLAIN
-    // path + line/column (D-50), carried below and emitted by the template's YAML branch.
+    // path + line/column, carried below and emitted by the template's YAML branch.
     // These two stay null so the C# typeof branch of the conditional never fires for YAML.
     public override string? RegisteredTypeFullName => null;
     public override string? RegisteredMember => null;

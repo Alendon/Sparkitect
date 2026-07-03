@@ -22,9 +22,9 @@ public class EntityRefMaskBenchmark
     [Params(0, 10, 100)]
     public int Padding { get; set; }
 
-    private int[] input;
-    private int[] mask;
-    private int[] paddedInput;
+    private int[] input = null!;
+    private int[] mask = null!;
+    private int[] paddedInput = null!;
 
     [GlobalSetup]
     public void Setup()

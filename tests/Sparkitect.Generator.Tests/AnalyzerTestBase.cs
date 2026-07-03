@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -276,7 +277,7 @@ public abstract class AnalyzerTestBase<TAnalyzer>
             _options = options;
         }
 
-        public override bool TryGetValue(string key, out string? value) =>
+        public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value) =>
             _options.TryGetValue(key, out value);
     }
 }

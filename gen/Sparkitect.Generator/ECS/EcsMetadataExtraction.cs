@@ -40,7 +40,7 @@ public static class EcsMetadataExtraction
         {
             if (MetadataExtractionPipeline.InheritsFrom(attr.AttributeClass, StatelessFunctionAttributeBase))
             {
-                // D-04: Check for ECS system category marker on the SF attribute class
+                // Check for ECS system category marker on the SF attribute class
                 bool hasEcsMarker = attr.AttributeClass!.GetAttributes().Any(a =>
                     a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType)
                     == EcsSystemCategoryAttributeFqn);

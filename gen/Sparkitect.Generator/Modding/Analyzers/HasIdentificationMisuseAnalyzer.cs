@@ -19,7 +19,7 @@ public sealed class HasIdentificationMisuseAnalyzer : DiagnosticAnalyzer
     public override void Initialize(AnalysisContext context)
     {
         context.EnableConcurrentExecution();
-        // Skip SG-emitted source: the auto-emit pipeline (Phase 49.3-01) emits
+        // Skip SG-emitted source: the auto-emit pipeline emits
         // 'partial T : IHasIdentification' declarations on every type-registered concrete.
         // We must not flag those — they are exactly the canonical shape we want to encourage.
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
@@ -41,7 +41,13 @@ public sealed class HasIdentificationMisuseAnalyzer : DiagnosticAnalyzer
             if (syntax is not TypeDeclarationSyntax typeDecl) continue;
             if (typeDecl.BaseList is null) continue;
 
+            // Resolving each base-type symbol from its declaration syntax is required to
+            // tell a hand-written ': IHasIdentification' apart from the auto-emitted partial;
+            // a symbol action has no cached model, so binding the declaring tree is the only
+            // option and the per-type cost is bounded to identified concretes.
+#pragma warning disable RS1030 // Compilation.GetSemanticModel is unavoidable in this symbol action
             var semantic = ctx.Compilation.GetSemanticModel(typeDecl.SyntaxTree);
+#pragma warning restore RS1030
             foreach (var baseTypeSyntax in typeDecl.BaseList.Types)
             {
                 var baseSymbol = semantic.GetSymbolInfo(baseTypeSyntax.Type, ctx.CancellationToken).Symbol;

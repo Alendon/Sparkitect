@@ -29,7 +29,7 @@ public class EcsQueryGeneratorTests : SourceGeneratorTestBase<EcsQueryGenerator>
             """));
     }
 
-    // --- Pipeline 1: Query Class Generation Tests (Phase 42) ---
+    // --- Pipeline 1: Query Class Generation Tests ---
 
     [Test]
     public async Task SingleReadComponents_GeneratesQueryClass(CancellationToken token)
@@ -288,7 +288,7 @@ public class EcsQueryGeneratorTests : SourceGeneratorTestBase<EcsQueryGenerator>
         await Assert.That(queryFiles).IsEmpty();
     }
 
-    // --- Pipeline 2: Resolution Metadata Generation Tests (Phase 43) ---
+    // --- Pipeline 2: Resolution Metadata Generation Tests ---
 
     [Test]
     public async Task SingleQueryParameter_GeneratesMetadataEntrypoint(CancellationToken token)

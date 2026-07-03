@@ -176,7 +176,7 @@ public partial class RegistryGenerator
 
         RegistrationEntry entry;
         // Backward-coordinate identity kept SEPARATE from the concatenated ProviderFullName
-        // (Pitfall 1): the typeof target is the CONTAINING type, the member is named on the side.
+        // The typeof target is the CONTAINING type, the member is named on the side.
         var registeredContainer = $"global::{cand.ProviderContainingTypeFullName}";
         if (cand.IsPropertyProvider)
         {

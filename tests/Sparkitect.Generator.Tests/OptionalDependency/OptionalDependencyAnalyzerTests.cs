@@ -103,7 +103,7 @@ public class OptionalDependencyAnalyzerTests : AnalyzerTestBase<OptionalDependen
         SetupWithOptionalMods(assemblies.Select(a => (a, a)).ToArray());
     }
 
-    #region Configuration Tests (no optional assemblies)
+    // Configuration Tests (no optional assemblies)
 
     [Test]
     public async Task NoOptionalAssemblies_NoDiagnostics()
@@ -154,9 +154,8 @@ public class OptionalDependencyAnalyzerTests : AnalyzerTestBase<OptionalDependen
         await AssertNoDiagnostics(diagnostics);
     }
 
-    #endregion
 
-    #region System Types Tests (no diagnostics expected)
+    // System Types Tests (no diagnostics expected)
 
     [Test]
     public async Task FieldTypeFromOptionalMod_NoDiagnosticForSystemTypes()
@@ -346,9 +345,8 @@ public class OptionalDependencyAnalyzerTests : AnalyzerTestBase<OptionalDependen
         await AssertNoDiagnostics(diagnostics);
     }
 
-    #endregion
 
-    #region Type Leakage Detection Tests (SPARK0601 MUST be reported)
+    // Type Leakage Detection Tests (SPARK0601 MUST be reported)
 
     [Test]
     public async Task FieldTypeFromOptionalMod_ReportsDiagnostic()
@@ -515,9 +513,8 @@ public class OptionalDependencyAnalyzerTests : AnalyzerTestBase<OptionalDependen
         await AssertDiagnosticCount(diagnostics, "SPARK0601", 1);
     }
 
-    #endregion
 
-    #region Guard Attribute Tests (no diagnostics when guarded)
+    // Guard Attribute Tests (no diagnostics when guarded)
 
     [Test]
     public async Task FieldInOptionalModDependentClass_NoDiagnostic()
@@ -680,9 +677,8 @@ public class OptionalDependencyAnalyzerTests : AnalyzerTestBase<OptionalDependen
         await AssertDiagnosticCount(diagnostics, "SPARK0601", 1);
     }
 
-    #endregion
 
-    #region Multiple Optional Mods Tests
+    // Multiple Optional Mods Tests
 
     [Test]
     public async Task MultipleOptionalModAttributes_AllRespected()
@@ -766,9 +762,8 @@ public class OptionalDependencyAnalyzerTests : AnalyzerTestBase<OptionalDependen
         await AssertDiagnosticCount(diagnostics, "SPARK0601", 1);
     }
 
-    #endregion
 
-    #region Edge Cases
+    // Edge Cases
 
     [Test]
     public async Task UnguardedMethodInGuardedClass_StillAllowed()
@@ -835,9 +830,8 @@ public class OptionalDependencyAnalyzerTests : AnalyzerTestBase<OptionalDependen
         await AssertNoDiagnostics(diagnostics);
     }
 
-    #endregion
 
-    #region Mod ID to Assembly Name Mapping Tests
+    // Mod ID to Assembly Name Mapping Tests
 
     [Test]
     public async Task ModIdInAttribute_MapsToAssemblyName_NoDiagnostic()
@@ -944,9 +938,8 @@ public class OptionalDependencyAnalyzerTests : AnalyzerTestBase<OptionalDependen
         await AssertDiagnosticCount(diagnostics, "SPARK0601", 1);
     }
 
-    #endregion
 
-    #region Gap Closure Tests (Field Initializers and Transitive Types)
+    // Gap Closure Tests (Field Initializers and Transitive Types)
 
     [Test]
     public async Task FieldInitializerWithOptionalModType_ReportsDiagnostic()
@@ -1170,5 +1163,4 @@ public class OptionalDependencyAnalyzerTests : AnalyzerTestBase<OptionalDependen
         await AssertNoDiagnostics(diagnostics);
     }
 
-    #endregion
 }

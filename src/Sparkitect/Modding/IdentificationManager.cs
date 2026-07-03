@@ -129,7 +129,7 @@ internal class IdentificationManager : IIdentificationManager
         Variant<string, ushort> categoryId,
         Variant<string, ushort> objectId)
     {
-        // Fail-fast order (Lock E): mod → category → object.
+        // Fail-fast order: mod → category → object.
         // Pre-reshape TryGetObjectId did not assert main thread; preserved here.
         var resolvedModId = ResolveModId(modId);
         if (resolvedModId == 0)
@@ -343,7 +343,7 @@ internal class IdentificationManager : IIdentificationManager
         return _objectIds.TryGetValue(key, out var idDict) ? idDict.Count : 0;
     }
 
-    // Internal helpers stay sentinel-shaped (Lock C): 0 on miss.
+    // Internal helpers stay sentinel-shaped: 0 on miss.
     private ushort ResolveModId(Variant<string, ushort> modId) => modId switch
     {
         Variant<string, ushort>.Of1 strId => _modIds.TryGetValue(strId.Value, out var resolved) ? resolved : (ushort)0,

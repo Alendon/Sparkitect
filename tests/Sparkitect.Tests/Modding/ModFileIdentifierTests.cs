@@ -5,7 +5,7 @@ namespace Sparkitect.Tests.Modding;
 
 public class ModFileIdentifierTests
 {
-    #region Constructor Tests
+    // Constructor Tests
 
     [Test]
     public async Task Constructor_ValidArguments_SetsProperties()
@@ -39,9 +39,8 @@ public class ModFileIdentifierTests
         Assert.Throws<ArgumentNullException>(() => _ = new ModFileIdentifier("test_mod", null!));
     }
 
-    #endregion
 
-    #region Parse Tests
+    // Parse Tests
 
     [Test]
     public async Task Parse_ValidFormat_ReturnsCorrectIdentifier()
@@ -107,9 +106,8 @@ public class ModFileIdentifierTests
         Assert.Throws<FormatException>(() => ModFileIdentifier.Parse("test_mod@invalid"));
     }
 
-    #endregion
 
-    #region TryParse Tests
+    // TryParse Tests
 
     [Test]
     public async Task TryParse_ValidFormat_ReturnsTrueAndSetsResult()
@@ -166,9 +164,8 @@ public class ModFileIdentifierTests
         await Assert.That(success).IsFalse();
     }
 
-    #endregion
 
-    #region Equality Tests
+    // Equality Tests
 
     [Test]
     public async Task Equals_SameIdAndVersion_ReturnsTrue()
@@ -243,9 +240,8 @@ public class ModFileIdentifierTests
         await Assert.That(id1.GetHashCode()).IsNotEqualTo(id2.GetHashCode());
     }
 
-    #endregion
 
-    #region ToString Tests
+    // ToString Tests
 
     [Test]
     public async Task ToString_ReturnsCorrectFormat()
@@ -273,9 +269,8 @@ public class ModFileIdentifierTests
         await Assert.That(result).IsEqualTo("test_mod@1.0.0-beta.2");
     }
 
-    #endregion
 
-    #region Round Trip Tests
+    // Round Trip Tests
 
     [Test]
     public async Task ParseAndToString_RoundTrips()
@@ -291,5 +286,4 @@ public class ModFileIdentifierTests
         await Assert.That(roundTripped).IsEqualTo(original);
     }
 
-    #endregion
 }

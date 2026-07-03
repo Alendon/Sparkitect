@@ -170,7 +170,7 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
 
         var field = op.Field;
         if (!field.IsStatic) return;
-        if (field.IsConst) return; // Decision 5: only const is exempt
+        if (field.IsConst) return; // only const is exempt
         if (!IsInScopeAccessibility(field)) return;
         if (!IsInStatelessFunctionBody(context.ContainingSymbol, out var method)) return;
 
@@ -202,7 +202,7 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
 
     private static bool IsInScopeAccessibility(ISymbol symbol)
     {
-        // Decision 3: in-scope = private, internal, private protected, file-scoped containing type.
+        // In-scope = private, internal, private protected, file-scoped containing type.
         // Out-of-scope = public, protected, protected internal.
         if (symbol.ContainingType?.IsFileLocal == true) return true;
         return symbol.DeclaredAccessibility switch

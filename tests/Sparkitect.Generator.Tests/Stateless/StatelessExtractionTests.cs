@@ -30,7 +30,7 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
             """));
     }
 
-    #region GetNonGenericBaseTypeName Tests
+    // GetNonGenericBaseTypeName Tests
 
     [Test]
     public async Task GetNonGenericBaseTypeName_SimpleType_ReturnsFullName(CancellationToken token)
@@ -127,9 +127,8 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
         await Assert.That(result).IsEqualTo(string.Empty);
     }
 
-    #endregion
 
-    #region FormatTypedConstant Tests
+    // FormatTypedConstant Tests
 
     [Test]
     public async Task FormatTypedConstant_StringValue_ReturnsQuotedString(CancellationToken token)
@@ -276,9 +275,8 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
         await Assert.That(result).IsEqualTo("null");
     }
 
-    #endregion
 
-    #region ExtractSchedulingParams Tests
+    // ExtractSchedulingParams Tests
 
     [Test]
     public async Task ExtractSchedulingParams_NoOrderingAttributes_ReturnsEmptyInstances(CancellationToken token)
@@ -509,5 +507,4 @@ public class StatelessExtractionTests : SourceGeneratorTestBase<StatelessFunctio
         await Assert.That(genericArg).Contains("TestModule.InitFunc");
     }
 
-    #endregion
 }

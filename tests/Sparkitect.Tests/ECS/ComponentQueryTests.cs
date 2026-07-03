@@ -223,8 +223,8 @@ public class ComponentQueryTests
         var handle = world.AddStorage(storage, storage.CreateCapabilityRegistrations());
         storage.SetHandle(handle);
 
-        // If we got here without exception, the filter was properly unregistered
-        await Assert.That(true).IsTrue();
+        // Reaching here without an exception means the filter was properly unregistered
+        await Assert.That(storage).IsNotNull();
     }
 
     // --- ComponentSetRequirement Tests ---

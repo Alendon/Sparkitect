@@ -43,14 +43,14 @@ public abstract class CommandBuffer : ICommandBuffer
 
     /// <summary>
     /// Executes the create preamble (if applicable) and all recorded commands.
-    /// Buffer-level entity validation per D-17: resolve once, pass to all commands.
+    /// Buffer-level entity validation: resolve once, pass to all commands.
     /// </summary>
     internal abstract void PlaybackCommands(IWorld world);
 }
 
 /// <summary>
 /// Sealed generic command buffer that handles TKey-specific playback.
-/// Created by CommandBufferAccessor via MakeGenericType (D-15).
+/// Created by CommandBufferAccessor via MakeGenericType.
 /// </summary>
 internal sealed class CommandBuffer<TKey> : CommandBuffer where TKey : unmanaged
 {
@@ -73,7 +73,7 @@ internal sealed class CommandBuffer<TKey> : CommandBuffer where TKey : unmanaged
         }
         else
         {
-            // Buffer-level validation per D-17: resolve once
+            // Buffer-level validation: resolve once
             var identity = accessor.As<IEntityIdentity<TKey>>()!;
             if (!identity.TryResolve(EntityId, out var slot))
             {

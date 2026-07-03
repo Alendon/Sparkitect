@@ -4,8 +4,6 @@ namespace Sparkitect.ECS.Capabilities;
 
 /// <summary>
 /// Capability interface for entity removal, generic on key type.
-/// Phase 28 uses <see cref="IEntityMutation{TKey}"/> with <c>int</c> for internal slot keys.
-/// Phase 29 will extend with generational EntityId key.
 /// </summary>
 /// <typeparam name="TKey">The unmanaged entity key type.</typeparam>
 [PublicAPI]

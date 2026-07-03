@@ -293,7 +293,7 @@ public sealed class OptionalDependencyAnalyzer : DiagnosticAnalyzer
         {
             // Check 1: Type from optional mod assembly
             var assemblyName = referencedType.ContainingAssembly?.Name;
-            if (!string.IsNullOrEmpty(assemblyName) &&
+            if (assemblyName is { Length: > 0 } &&
                 optionalAssemblyNames.Contains(assemblyName) &&
                 !allowedAssemblies.Contains(assemblyName))
             {
@@ -334,7 +334,7 @@ public sealed class OptionalDependencyAnalyzer : DiagnosticAnalyzer
         {
             // Check 1: Type from optional mod assembly
             var assemblyName = referencedType.ContainingAssembly?.Name;
-            if (!string.IsNullOrEmpty(assemblyName) &&
+            if (assemblyName is { Length: > 0 } &&
                 optionalAssemblyNames.Contains(assemblyName) &&
                 !allowedAssemblies.Contains(assemblyName))
             {

@@ -73,13 +73,13 @@ public class CommandBufferAccessor : ICommandBufferAccessor
 
     private CommandBuffer CreateBuffer(StorageHandle storageHandle, EntityId entityId, bool isCreate)
     {
-        // Resolve TKey at runtime via IStorage.KeyType (D-16)
+        // Resolve TKey at runtime via IStorage.KeyType
         var storageAccessor = _world.GetStorage(storageHandle);
         var keyType = storageAccessor.KeyType;
 
         var ctor = ConstructorCache.GetOrAdd(keyType, static kt =>
         {
-            // MakeGenericType -- used once per distinct TKey (D-15)
+            // MakeGenericType -- used once per distinct TKey
             var bufferType = typeof(CommandBuffer<>).MakeGenericType(kt);
             return bufferType.GetConstructor(
                 BindingFlags.Instance | BindingFlags.NonPublic,

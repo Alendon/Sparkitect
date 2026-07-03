@@ -14,11 +14,11 @@ public static class SpaceInvadersConstants
     public const float EnemyRefireCooldownMin = 8.0f;
     public const float EnemyRefireCooldownMax = 15.0f;
 
-    // Enemy oscillation (per D-05/D-07: deterministic sine wave)
+    // Enemy oscillation: deterministic sine wave
     public const float EnemyOscillationSpeed = 0.75f;
     public const float EnemyOscillationAmplitude = 0.15f;
 
-    // AABB half-extents (per D-12: fixed-size per entity type in 0-1 coords)
+    // AABB half-extents: fixed-size per entity type in 0-1 coords
     public const float PlayerHalfW = 0.03f;
     public const float PlayerHalfH = 0.015f;
     public const float EnemyHalfW = 0.025f;
@@ -29,7 +29,7 @@ public static class SpaceInvadersConstants
     // Render buffer
     public const int MaxRenderEntities = 256;
 
-    // Entity type codes (per D-01)
+    // Entity type codes
     public const uint TypePlayer = 0;
     public const uint TypeEnemy = 1;
     public const uint TypeBullet = 2;

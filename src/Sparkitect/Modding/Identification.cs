@@ -76,10 +76,9 @@ public readonly struct Identification : IEquatable<Identification>
     /// Returns true if this is the zero-value identification (0:0:0).
     /// </summary>
     /// <remarks>
-    /// As of phase 49.3, <see cref="IIdentificationManager"/> Resolve-path methods no longer return
-    /// <see cref="Empty"/> as a missing-result sentinel — they return
-    /// <see cref="Sparkitect.Utils.DU.Result{TOk, TError}"/> with
-    /// <see cref="ResolveError"/> as the error case. This helper exists for the remaining
+    /// <see cref="IIdentificationManager"/> Resolve-path methods return
+    /// <see cref="Sparkitect.Utils.DU.Result{TOk, TError}"/> with <see cref="ResolveError"/> as the
+    /// error case rather than <see cref="Empty"/> as a missing-result sentinel. This helper exists for the remaining
     /// "is this the zero-value?" call sites (e.g., parent-id chain traversal terminating at
     /// the Root state, whose <c>ParentId</c> is <see cref="Empty"/>).
     /// </remarks>

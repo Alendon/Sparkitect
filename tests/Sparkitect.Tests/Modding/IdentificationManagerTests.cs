@@ -5,7 +5,7 @@ namespace Sparkitect.Tests.Modding;
 
 public class IdentificationManagerTests
 {
-    #region Registration Tests
+    // Registration Tests
 
     [Test]
     public async Task RegisterMod_NewMod_ReturnsUniqueId()
@@ -126,9 +126,8 @@ public class IdentificationManagerTests
         await Assert.That(secondId).IsEqualTo(firstId);
     }
 
-    #endregion
 
-    #region Lookup Tests
+    // Lookup Tests
 
     [Test]
     public async Task GetModId_RegisteredMod_ReturnsOk()
@@ -227,9 +226,8 @@ public class IdentificationManagerTests
             await Assert.That(key).IsEqualTo((Variant<string, ushort>)"stone");
     }
 
-    #endregion
 
-    #region Reverse Lookup Tests
+    // Reverse Lookup Tests
 
     [Test]
     public async Task GetModId_ByNumericId_ReturnsOk()
@@ -293,9 +291,8 @@ public class IdentificationManagerTests
             await Assert.That(key).IsEqualTo((Variant<string, ushort>)(ushort)999);
     }
 
-    #endregion
 
-    #region Resolution-Order Tests (Lock E: mod -> category -> object)
+    // Resolution-order tests: mod -> category -> object
 
     [Test]
     public async Task GetObjectId_BothModAndCategoryUnknown_FailsFastWithUnknownMod()
@@ -351,9 +348,8 @@ public class IdentificationManagerTests
             await Assert.That(key).IsEqualTo((Variant<string, ushort>)"nonexistent");
     }
 
-    #endregion
 
-    #region TryResolveIdentification Tests
+    // TryResolveIdentification Tests
 
     [Test]
     public async Task TryResolveIdentification_ValidId_ReturnsAllComponents()
@@ -389,9 +385,8 @@ public class IdentificationManagerTests
         await Assert.That(mod).IsNull();
     }
 
-    #endregion
 
-    #region Enumeration Tests
+    // Enumeration Tests
 
     [Test]
     public async Task GetAllObjectIds_MultipleRegistered_ReturnsAll()
@@ -454,9 +449,8 @@ public class IdentificationManagerTests
         await Assert.That(cat1Ids).DoesNotContain(id2);
     }
 
-    #endregion
 
-    #region Unregistration Tests
+    // Unregistration Tests
 
     [Test]
     public async Task UnregisterMod_NoDependents_ReturnsTrue()
@@ -579,9 +573,8 @@ public class IdentificationManagerTests
         await Assert.That(result).IsFalse();
     }
 
-    #endregion
 
-    #region Count Verification Tests
+    // Count Verification Tests
 
     [Test]
     public async Task GetModCount_AfterRegistrations_ReturnsCorrectCount()
@@ -633,9 +626,8 @@ public class IdentificationManagerTests
         await Assert.That(count).IsEqualTo(4);
     }
 
-    #endregion
 
-    #region IsEmpty Tests (49.3-05; Lock F: instance method on Identification)
+    // IsEmpty tests
 
     [Test]
     public async Task IsEmpty_ZeroValue_ReturnsTrue()
@@ -667,9 +659,8 @@ public class IdentificationManagerTests
         await Assert.That(partialZero.IsEmpty()).IsFalse();
     }
 
-    #endregion
 
-    #region IsRegistered Tests
+    // IsRegistered Tests
 
     [Test]
     public async Task IsModRegistered_RegisteredMod_ReturnsTrue()
@@ -728,5 +719,4 @@ public class IdentificationManagerTests
         await Assert.That(result).IsTrue();
     }
 
-    #endregion
 }

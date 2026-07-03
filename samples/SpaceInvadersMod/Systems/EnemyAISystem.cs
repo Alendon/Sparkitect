@@ -22,7 +22,7 @@ public partial class GameplayGroup
         var dt = frameTiming.DeltaTime;
         var totalTime = frameTiming.TotalTime;
 
-        // Per D-05/D-07: deterministic periodic horizontal velocity from sine wave
+        // Deterministic periodic horizontal velocity from sine wave
         var oscillationVelocity = MathF.Cos(totalTime * SpaceInvadersConstants.EnemyOscillationSpeed)
             * SpaceInvadersConstants.EnemyOscillationAmplitude
             * SpaceInvadersConstants.EnemyOscillationSpeed;
@@ -52,7 +52,7 @@ public partial class GameplayGroup
             }
         }
 
-        // Fire one random enemy bullet per frame (per D-08)
+        // Fire one random enemy bullet per frame
         if (shooterCandidate != EntityId.None)
         {
             // Reset shooter cooldown
@@ -63,7 +63,7 @@ public partial class GameplayGroup
                     Random.Shared.NextSingle() * (SpaceInvadersConstants.EnemyRefireCooldownMax - SpaceInvadersConstants.EnemyRefireCooldownMin)
             });
 
-            // Spawn enemy bullet (per D-08: BulletData.Direction = -1)
+            // Spawn enemy bullet (BulletData.Direction = -1)
             ICapabilityRequirement[] bulletFilter =
                 [new ComponentSetRequirement([UnmanagedComponentID.SpaceInvadersMod.Position, UnmanagedComponentID.SpaceInvadersMod.Velocity, UnmanagedComponentID.SpaceInvadersMod.BulletData])];
             var bulletBuffer = commandBufferAccessor.Create(bulletFilter);

@@ -228,7 +228,7 @@ public class StatelessFunctionGeneratorTests : SourceGeneratorTestBase<Stateless
 
     // ===== Error Scenario Tests =====
     // These tests verify the generator handles edge cases gracefully (returns null/empty) rather than crashing.
-    // Per CONTEXT.md: "StatelessFunctionGenerator tests assume valid input - analyzers catch errors."
+    // StatelessFunctionGenerator tests assume valid input - analyzers catch errors.
 
     [Test]
     public async Task TryExtractStatelessFunction_MissingStatelessFunctionAttribute_GeneratesNothing(CancellationToken token)

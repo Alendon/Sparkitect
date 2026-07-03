@@ -36,7 +36,7 @@ public class OrderingTests
         var producerIncrement = ledger.Nodes.Single(node => node.IsMarked).Id;
         var consumeReader = consume.Resource;
 
-        // A cross-pass moment reference must derive produce-before-consume ordering (SC#3 / D-15).
+        // A cross-pass moment reference must derive produce-before-consume ordering.
         await Assert.That(order.IndexOf(consumeReader))
             .IsGreaterThan(order.IndexOf(producerIncrement));
     }

@@ -44,7 +44,7 @@ internal class EcsResolutionProvider : IResolutionProvider
     /// <inheritdoc/>
     public bool TryResolve(Type serviceType, ICoreContainer container, List<object> metadataEntries, out object? service)
     {
-        // Direct type checks -- no metadata entries needed (D-08, D-09, D-10)
+        // Direct type checks -- no metadata entries needed
         if (serviceType == typeof(FrameTimingHolder))
         {
             service = _frameTimingHolder

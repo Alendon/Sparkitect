@@ -41,7 +41,7 @@ internal class DIService : IDIService
     public IEntrypointContainer<T> CreateEntrypointContainer<T>(IEnumerable<string> modIds, Type entrypointAttribute)
         where T : class
     {
-        // Phase 1: Collect ALL candidate types across ALL mods
+        // Step 1: collect all candidate types across all mods
         var allCandidateTypes = new List<Type>();
 
         foreach (var modId in modIds)
@@ -59,10 +59,10 @@ internal class DIService : IDIService
             allCandidateTypes.AddRange(candidateTypes);
         }
 
-        // Phase 2: Order all candidates deterministically
+        // Step 2: order all candidates deterministically
         var orderedTypes = OrderEntrypoints<T>(allCandidateTypes);
 
-        // Phase 3: Instantiate in sorted order
+        // Step 3: instantiate in sorted order
         var instances = new List<T>();
 
         foreach (var type in orderedTypes)
@@ -172,7 +172,7 @@ internal class DIService : IDIService
         var modIdSet = modIdList.ToHashSet() as IReadOnlySet<string>;
 
         // Step 1: Accumulate every configurator's registrations into a single aggregate map
-        //         (later-wins across the whole execution set — D-14).
+        //         (later-wins across the whole execution set).
         var registrations = new Dictionary<TKey, IKeyedFactory<TBase>>();
 
         using var configuratorContainer =

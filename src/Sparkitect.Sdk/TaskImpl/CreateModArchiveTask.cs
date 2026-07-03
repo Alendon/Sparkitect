@@ -45,31 +45,24 @@ public class CreateModArchive : Microsoft.Build.Utilities.Task
         {
             Log.LogMessage(MessageImportance.Normal, "Creating mod archive...");
 
-            // Create output directory if needed
             var outputDir = Path.GetDirectoryName(OutputArchivePath);
             if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
             {
                 Directory.CreateDirectory(outputDir);
             }
 
-            // Delete existing archive if it exists
             if (File.Exists(OutputArchivePath))
             {
                 File.Delete(OutputArchivePath);
             }
 
-            // Create archive
             using var archive = ZipFile.Open(OutputArchivePath, ZipArchiveMode.Create);
 
-
-            // Add manifest
             AddFileToArchive(archive, ManifestPath, "manifest.json");
 
-            // Add main assembly
             var assemblyFileName = Path.GetFileName(AssemblyPath);
             AddFileToArchive(archive, AssemblyPath, assemblyFileName);
 
-            // Add PDB if it exists
             var pdbPath = Path.ChangeExtension(AssemblyPath, ".pdb");
             if (File.Exists(pdbPath))
             {
@@ -77,13 +70,11 @@ public class CreateModArchive : Microsoft.Build.Utilities.Task
                 AddFileToArchive(archive, pdbPath, pdbFileName);
             }
 
-            // Add required assemblies
             if (!string.IsNullOrEmpty(RequiredAssemblies))
             {
                 PackDependencies(archive);
             }
 
-            // Add resource files
             if (!string.IsNullOrWhiteSpace(ResourceDirectory) && Directory.Exists(ResourceDirectory))
             {
                 PackResourceDirectory(archive);
@@ -124,10 +115,8 @@ public class CreateModArchive : Microsoft.Build.Utilities.Task
 
             if (File.Exists(assemblyPath))
             {
-                // Create the lib directory in the archive
                 AddFileToArchive(archive, assemblyPath, $"lib/{assemblyFileName}");
 
-                // Add PDB if it exists
                 var reqPdbPath = Path.ChangeExtension(assemblyPath, ".pdb");
                 if (!File.Exists(reqPdbPath)) continue;
 

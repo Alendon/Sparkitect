@@ -265,7 +265,7 @@ public class RegistryGeneratorYamlParsingTests
         var relative = RegistryGenerator.MakeProjectRelative(
             "/home/user/proj/resources/shaders.sparkres.yaml", "/home/user/proj/");
 
-        // Assert - forward-slash, project-relative, machine-move-surviving (D-50).
+        // Assert - forward-slash, project-relative, machine-move-surviving.
         await Assert.That(relative).IsEqualTo("resources/shaders.sparkres.yaml");
     }
 
@@ -303,7 +303,7 @@ public class RegistryGeneratorYamlParsingTests
         var ok = RegistryGenerator.RenderRegistryIdPropertiesUnit(units[0], BuildSettings, out var code, out _);
         await Assert.That(ok).IsTrue();
 
-        // Snapshot - must show the plain coordinate (non-zero SourceLine) and NO typeof (SC-4 / Pitfall 4).
+        // Snapshot - must show the plain coordinate (non-zero SourceLine) and NO typeof.
         await Verifier.Verify(code, VerifySettings);
     }
 

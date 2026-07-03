@@ -9,7 +9,7 @@ namespace Sparkitect.DI;
 /// are annotated with [Registry] attribute. Manual implementations are possible but rare.
 /// </summary>
 /// <remarks>
-/// The <see cref="IFactoryConfigurator{TKey,TBase,TDiscoveryAttribute}.Configure"/> method inherited from
+/// The <see cref="IFactoryConfiguratorBase{TKey,TBase}.Configure"/> method inherited from
 /// <see cref="IFactoryConfigurator{TKey,TBase,TDiscoveryAttribute}"/> writes registry factory entries
 /// directly into the aggregate registration map owned by <see cref="IDIService.BuildFactoryContainer{TKey,TBase}"/>.
 /// </remarks>

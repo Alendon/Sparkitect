@@ -214,7 +214,7 @@ public class CommandBufferTests
         await Assert.That(world.IsValid(entityId)).IsFalse();
     }
 
-    // --- Buffer-Level Entity Resolution Failure (D-17) ---
+    // --- Buffer-Level Entity Resolution Failure ---
 
     [Test]
     public async Task Playback_ModifyBuffer_EntityDestroyed_BufferDropped()
@@ -242,7 +242,7 @@ public class CommandBufferTests
         storage.RemoveEntity(slot);
         world.ReclaimEntityId(entityId);
 
-        // Playback should drop the buffer silently (D-17)
+        // Playback should drop the buffer silently
         accessor.Playback(); // Should not throw
 
         // Entity remains reclaimed -- no ghost writes occurred

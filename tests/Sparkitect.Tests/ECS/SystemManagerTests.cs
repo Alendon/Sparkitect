@@ -590,9 +590,10 @@ public class SystemManagerTests
         using var storage = new SoAStorage(
             [(TestPosition.Identification, sizeof(float) * 2)],
             tracker, world);
-        var handle = world.AddStorage(storage, storage.CreateCapabilityRegistrations());
+        world.AddStorage(storage, storage.CreateCapabilityRegistrations());
 
-        await Assert.That(true).IsTrue();
+        // Reaching here without an exception means the query was cleaned up correctly
+        await Assert.That(storage).IsNotNull();
     }
 
     [Test]
@@ -619,7 +620,7 @@ public class SystemManagerTests
         // Verify no exception from double cleanup
         provider.CleanupQueries();
 
-        await Assert.That(true).IsTrue();
+        await Assert.That(provider).IsNotNull();
     }
 
     [Test]

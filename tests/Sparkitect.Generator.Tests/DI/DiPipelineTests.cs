@@ -17,7 +17,8 @@ public class DiPipelineTests : SourceGeneratorTestBase<StateModuleServiceGenerat
         TestSources.Add(TestData.DiContainerInterfaces);
     }
 
-    public override ModBuildSettings BuildSettings { get; }
+    public override ModBuildSettings BuildSettings => new("Test Mod", "test_mod",
+        "DiPipelineTest", false, "DiPipelineTest.Generated");
 
     // ── ExtractFactory Tests ────────────────────────────────────────────
 

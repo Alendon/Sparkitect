@@ -20,11 +20,11 @@ public static class Diagnostics
 
     public static readonly DiagnosticDescriptor FacadeMissingFacadeForAttribute =
         new("SPARK0304", "Facade interface missing [FacadeFor] attribute",
-            "Interface '{0}' is referenced by [{1}<{0}>] on '{2}' but does not have a [FacadeFor<{2}>] attribute.",
+            "Interface '{0}' is referenced by [{1}<{0}>] on '{2}' but does not have a [FacadeFor<{2}>] attribute",
             "Sparkitect", DiagnosticSeverity.Error, true);
 
     public static readonly DiagnosticDescriptor FacadeForInconsistentWithService =
         new("SPARK0305", "FacadeFor attribute inconsistent with service facade declaration",
-            "Interface '{0}' has [FacadeFor<{1}>] but '{1}' does not have a facade marker attribute referencing '{0}'.",
+            "Interface '{0}' has [FacadeFor<{1}>] but '{1}' does not have a facade marker attribute referencing '{0}'",
             "Sparkitect", DiagnosticSeverity.Error, true);
 }

@@ -52,6 +52,8 @@ internal class PongRuntimeService : IPongRuntimeService
     public void CreateGraph()
     {
         if (_renderGraph is not null) return;
+        if (_window is null)
+            throw new InvalidOperationException("Initialize must run before CreateGraph so the window exists.");
 
         _renderGraph = RenderGraphManager.CreateGraph<RenderGraph>(
             new List<Identification>

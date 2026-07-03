@@ -1,5 +1,4 @@
 ﻿using JetBrains.Annotations;
-using JetBrains.Annotations;
 using Sparkitect.Modding;
 
 namespace Sparkitect.DI;

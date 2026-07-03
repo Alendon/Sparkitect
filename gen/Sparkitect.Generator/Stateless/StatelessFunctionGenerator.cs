@@ -82,7 +82,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
             }
         }
 
-        if (statelessFuncAttr is null || registryType is null || contextType is null || string.IsNullOrEmpty(identifier))
+        if (statelessFuncAttr is null || registryType is null || contextType is null || identifier is not { Length: > 0 })
             return null;
 
         // Extract registry key
@@ -151,7 +151,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         var parentFullName = containingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var wrapperFullTypeName = $"{parentFullName}.{wrapperClassName}";
 
-        // Resolve facade category from SF attribute's marker (null = skip facade extraction per D-03)
+        // Resolve facade category from SF attribute's marker (null = skip facade extraction)
         var facadeCategoryTypeName = ResolveFacadeCategoryTypeName(statelessFuncAttr.AttributeClass!);
 
         var facadeResults = new List<FacadeMetadataModel>();
@@ -405,7 +405,7 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
                         func.Identifier,
                         new ImmutableValueArray<(string fileId, string fileName)>(),
                         func.WrapperFullTypeName,
-                        // Pitfall 2: point the backward coordinate at the USER method + its parent type,
+                        // Point the backward coordinate at the USER method + its parent type,
                         // never the *Func wrapper. Both are already on the StatelessFunctionModel.
                         func.ParentTypeName,
                         func.MethodName));

@@ -188,7 +188,7 @@ internal class ModManager : IModManager
 
             foreach (var relationship in modManifest.Relationships)
             {
-                // Check for self-reference (Pitfall 5)
+                // Check for self-reference
                 if (relationship.Id == modId)
                 {
                     errors.Add(new ValidationError.SelfReference(modId));

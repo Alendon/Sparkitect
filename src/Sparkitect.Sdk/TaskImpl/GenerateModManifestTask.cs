@@ -108,7 +108,6 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
                 .Select(a => a.Trim())
                 .ToArray();
 
-            // Get assembly name
             string assemblyFileName = Path.GetFileName(AssemblyPath);
 
             // Parse required assemblies
@@ -202,7 +201,6 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
                 Log.LogMessage(MessageImportance.Normal, $"Resolved ModProjectDependency '{projectPath}' to mod '{referencedModId}'");
             }
 
-            // Create the manifest model
             var manifest = new ModManifestModel(
                 ModId,
                 ModName,
@@ -215,10 +213,8 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
                 IsRootMod
             );
 
-            // Serialize to JSON
             string manifestContent = JsonSerializer.Serialize(manifest);
 
-            // Create output directory if needed
             var outputDir = Path.GetDirectoryName(OutputPath);
             if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
             {

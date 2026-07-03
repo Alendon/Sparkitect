@@ -16,7 +16,7 @@ public class EcsQueryGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Pipeline 1: Query class generation (Phase 42)
+        // Pipeline 1: query class generation
         // Scans ClassDeclarationSyntax for [ComponentQuery] partial classes.
         var queriesProvider = context.SyntaxProvider.CreateSyntaxProvider(
             predicate: (node, _) => node is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
@@ -26,9 +26,9 @@ public class EcsQueryGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(queriesProvider,
             static (ctx, model) => GenerateQueryClass(ctx, model!));
 
-        // Pipeline 2: Resolution metadata generation (Phase 43)
+        // Pipeline 2: resolution metadata generation
         // Scans MethodDeclarationSyntax for SF-attributed methods with ComponentQuery parameters.
-        // Standalone pipeline per D-04 -- no Combine with Pipeline 1.
+        // Standalone pipeline -- no Combine with Pipeline 1.
         var buildSettings = context.GetModBuildSettings();
 
         var metadataProvider = context.SyntaxProvider.CreateSyntaxProvider(
@@ -56,7 +56,7 @@ public class EcsQueryGenerator : IIncrementalGenerator
             ctx.AddSource(fileName, code);
         }
 
-        // Resource access entrypoint (per D-06, D-07)
+        // Resource access entrypoint
         var outputNamespace = settings.ComputeOutputNamespace();
         var wrapperSimpleName = model.WrapperFullTypeName;
         var lastDot = wrapperSimpleName.LastIndexOf('.');

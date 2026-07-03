@@ -167,7 +167,7 @@ public abstract class SourceGeneratorTestBase<TSourceGenerator>
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation,
             out _, cancellationToken) as CSharpGeneratorDriver;
 
-        var runResult = driver.GetRunResult();
+        var runResult = driver!.GetRunResult();
 
         return (outputCompilation, runResult);
     }
