@@ -15,10 +15,10 @@ namespace Sparkitect.Graphics.RenderGraph;
 /// </summary>
 [ModuleRegistry.RegisterModule("render_graph")]
 [PublicAPI]
-public partial class RenderGraphModule : IStateModule, IHasIdentification
+public partial class RenderGraphModule : TransitiveStateModule, IHasIdentification
 {
-    /// <summary>Modules this module depends on; the render graph requires the Vulkan module.</summary>
-    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Vulkan];
+    /// <summary>Modules this module directly depends on; the render graph requires the Vulkan module.</summary>
+    public override IReadOnlyList<Identification> Requires => [StateModuleID.Sparkitect.Vulkan];
 
     /// <summary>Processes the render-graph registries on state entry, moments first so reserved moment ids exist before pass declarations reference them.</summary>
     [TransitionFunction("process_render_graph_registries_enter")]

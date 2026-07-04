@@ -90,7 +90,7 @@ This module:
 - Uses the static `Serilog.Log` logger for output
 
 > [!NOTE]
-> A complete working mod also requires an [`IEntryStateSelector`](xref:Sparkitect.GameState.IEntryStateSelector) (so the engine knows which state to start) and an [`IStateDescriptor`](xref:Sparkitect.GameState.IStateDescriptor) (to define the state and its modules). See `samples/MinimalSampleMod/` for a full implementation with all required pieces.
+> A complete working mod also requires an [`IEntryStateSelector`](xref:Sparkitect.GameState.IEntryStateSelector) (so the engine knows which state to start) and an [`IGameState`](xref:Sparkitect.GameState.IGameState) (to define the state and its modules). See `samples/MinimalSampleMod/` for a full implementation with all required pieces.
 
 > [!TIP]
 > The generated ID extensions namespace (`HelloWorld.CompilerGenerated.IdExtensions`) is derived from your project's `RootNamespace`. If your project uses a different root namespace, the generated namespace changes accordingly.

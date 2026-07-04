@@ -10,10 +10,10 @@ namespace Sparkitect.Graphics.Vulkan;
 /// <summary>State module that drives Vulkan lifecycle: instance, physical device, logical device, and shader-module processing.</summary>
 [ModuleRegistry.RegisterModule("vulkan")]
 [PublicAPI]
-public partial class VulkanModule : IStateModule, IHasIdentification
+public partial class VulkanModule : TransitiveStateModule, IHasIdentification
 {
     /// <inheritdoc/>
-    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
+    public override IReadOnlyList<Identification> Requires => [];
 
     /// <summary>Initializes the Vulkan context (loads the API and allocation callbacks).</summary>
     [TransitionFunction("vulkan_init")]

@@ -8,8 +8,8 @@ namespace Sparkitect.GameState;
 /// </summary>
 [PublicAPI]
 [ModuleRegistry.RegisterModule("core")]
-public sealed partial class CoreModule : IStateModule, IHasIdentification
+public sealed partial class CoreModule : TransitiveStateModule, IHasIdentification
 {
     /// <inheritdoc />
-    public static IReadOnlyList<Identification> RequiredModules => [];
+    public override IReadOnlyList<Identification> Requires => [];
 }

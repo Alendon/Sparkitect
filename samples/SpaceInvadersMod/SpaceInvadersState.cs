@@ -8,11 +8,11 @@ using Sparkitect.Stateless;
 namespace SpaceInvadersMod;
 
 [StateRegistry.RegisterState("space_invaders")]
-public partial class SpaceInvadersState : IStateDescriptor, IHasIdentification
+public partial class SpaceInvadersState : TransitiveGameState, IHasIdentification
 {
-    public static Identification ParentId => StateID.Sparkitect.Root;
+    public override Identification ParentId => StateID.Sparkitect.Root;
 
-    public static IReadOnlyList<Identification> Modules =>
+    public override IReadOnlyList<Identification> DirectModules =>
     [
         StateModuleID.SpaceInvadersMod.SpaceInvaders,
         StateModuleID.Sparkitect.Vulkan,

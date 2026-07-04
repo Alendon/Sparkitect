@@ -77,7 +77,7 @@ public class CallbackTeardownTests
     [Test]
     public async Task RootDescriptor_RootLoadsSettingsModules()
     {
-        var rootModules = RootGameStateDescriptor.Modules;
+        var rootModules = new RootGameStateDescriptor().DirectModules;
 
         // Reverting the root-load drops these entries, so the ambient gate above would never see the
         // settings module and the teardown would never schedule on a child-frame exit.

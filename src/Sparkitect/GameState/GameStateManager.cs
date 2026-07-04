@@ -32,7 +32,11 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     public IReadOnlyList<StateStackEntry> StateStack =>
         _stateStack
             .Reverse()
-            .Select(f => new StateStackEntry(f.StateId, f.AddedModuleIds, f.AddedMods))
+            .Select(f => new StateStackEntry(
+                f.StateId,
+                _registeredStates[f.StateId].ComposedSet.ToList(),
+                f.AddedModuleIds,
+                f.AddedMods))
             .ToList();
 
     /// <inheritdoc />
@@ -256,13 +260,16 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         _shutdownRequested = true;
     }
 
-    public void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule, IHasIdentification
+    public void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule, IHasIdentification, new()
     {
         _pendingModules.Add(() =>
         {
             var identification = TStateModule.Identification;
-            var requiredModules = TStateModule.RequiredModules.ToArray();
-            return new ModuleMetadata(identification, requiredModules, typeof(TStateModule));
+            // Read direct declarations off an ephemeral instance, then discard it (zero reflection).
+            var instance = new TStateModule();
+            var requiredModules = instance.Requires.ToArray();
+            var activatesWith = instance.ActivatesWith.ToArray();
+            return new ModuleMetadata(identification, requiredModules, activatesWith, typeof(TStateModule));
         });
     }
 
@@ -274,14 +281,18 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
     }
 
-    public void AddStateDescriptor<TStateDescriptor>(Identification id) where TStateDescriptor : class, IStateDescriptor, IHasIdentification
+    public void AddStateDescriptor<TGameState>(Identification id) where TGameState : class, IGameState, IHasIdentification, new()
     {
         _pendingStates.Add(() =>
         {
-            var identification = TStateDescriptor.Identification;
-            var parentId = TStateDescriptor.ParentId;
-            var modules = TStateDescriptor.Modules;
-            return new StateMetadata(identification, parentId, modules, typeof(TStateDescriptor));
+            var identification = TGameState.Identification;
+            // Read direct declarations off an ephemeral instance, then discard it (zero reflection).
+            var instance = new TGameState();
+            var parentId = instance.ParentId;
+            var modules = instance.DirectModules;
+            // Pre-composition record: ModuleIds carries the direct declarations; ComposedSet is populated
+            // by FinalizeRegistrations once the parent chain is composed.
+            return new StateMetadata(identification, parentId, modules, new HashSet<Identification>(), typeof(TGameState));
         });
     }
 
@@ -304,7 +315,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
         _pendingModules.Clear();
 
-        // Register states (initial pass)
+        // Collect state declarations (ModuleIds carries the direct declarations until composition).
         var tempStates = new Dictionary<Identification, StateMetadata>();
         foreach (var stateFactory in _pendingStates)
         {
@@ -313,49 +324,67 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
         _pendingStates.Clear();
 
-        // Process each state: validate hierarchy, compute delta modules, validate dependencies
+        // Adapt registered modules into the composer's plain-data inputs.
+        var moduleCompositions = _registeredModules.Values.ToDictionary(
+            m => m.Id,
+            m => new ModuleComposition(m.Id, m.RequiredModules, m.ActivatesWith));
+
+        // Compose every state. The composer owns transitive-Requires closure, ActivatesWith
+        // auto-activation, and fail-loud presence validation (naming the resolution chain); parent
+        // chains resolve on demand and memoize into composedStates.
+        var composedStates = new Dictionary<Identification, ComposedState>();
+        foreach (var stateId in tempStates.Keys)
+        {
+            ComposeState(stateId, tempStates, moduleCompositions, composedStates);
+        }
+
+        // Snapshot: the complete composed set is the source of truth; the delta is retained for
+        // container layering and registry-lifecycle bookkeeping.
         foreach (var (stateId, tempMetadata) in tempStates)
         {
-            // Validate path to root
-            ValidateStateHierarchy(stateId, tempMetadata, tempStates);
-
-            // Get accumulated modules from parent chain
-            var parentModules = GetParentModules(tempMetadata.ParentId, tempStates);
-
-            // Compute delta (new modules this state adds)
-            var deltaModules = new List<Identification>();
-            foreach (var moduleId in tempMetadata.ModuleIds)
-            {
-                if (parentModules.Contains(moduleId))
-                {
-                    Log.Warning("State {StateId} declares module {ModuleId} which is already provided by parent",
-                        stateId, moduleId);
-                }
-                else
-                {
-                    deltaModules.Add(moduleId);
-                }
-            }
-
-            // Validate module dependencies
-            var allModules = new HashSet<Identification>(parentModules);
-            allModules.UnionWith(deltaModules);
-            ValidateModuleDependencies(stateId, deltaModules, allModules);
-
-            // Create final metadata with delta modules
-            var finalMetadata = new StateMetadata(
+            var composed = composedStates[stateId];
+            _registeredStates[stateId] = new StateMetadata(
                 tempMetadata.Id,
                 tempMetadata.ParentId,
-                deltaModules,
+                composed.Delta,
+                composed.ComposedSet,
                 tempMetadata.DescriptorType);
-
-            _registeredStates[stateId] = finalMetadata;
-            Log.Debug("Finalized state registration: {StateId} (parent: {ParentId}, new modules: {ModuleCount})",
-                stateId, tempMetadata.ParentId, deltaModules.Count);
+            Log.Debug("Finalized state registration: {StateId} (parent: {ParentId}, delta: {DeltaCount}, composed: {ComposedCount})",
+                stateId, tempMetadata.ParentId, composed.Delta.Count, composed.ComposedSet.Count);
         }
 
         Log.Information("Finalized {ModuleCount} modules and {StateCount} states",
             _registeredModules.Count, _registeredStates.Count);
+    }
+
+    // Composes a state's complete module set via StateComposer, resolving (and memoizing) the parent
+    // chain first so the parent's composed set seeds the child. Parent-chain-to-Root validation stays
+    // here (GSM concern); the composer owns module presence and closure.
+    private ComposedState ComposeState(
+        Identification stateId,
+        Dictionary<Identification, StateMetadata> tempStates,
+        Dictionary<Identification, ModuleComposition> moduleCompositions,
+        Dictionary<Identification, ComposedState> composedStates)
+    {
+        if (composedStates.TryGetValue(stateId, out var already))
+        {
+            return already;
+        }
+
+        var tempMetadata = tempStates[stateId];
+
+        ValidateStateHierarchy(stateId, tempMetadata, tempStates);
+
+        // The parent's complete composed set is the ambient seed. Root (Empty parent) seeds empty;
+        // Core arrives via Root's own DirectModules ([core]) and inherits down through the seed.
+        IReadOnlySet<Identification> parentChainComposedSet = tempMetadata.ParentId.IsEmpty()
+            ? new HashSet<Identification>()
+            : ComposeState(tempMetadata.ParentId, tempStates, moduleCompositions, composedStates).ComposedSet;
+
+        var declaration = new StateComposition(tempMetadata.Id, tempMetadata.ParentId, tempMetadata.ModuleIds);
+        var composed = StateComposer.Compose(declaration, parentChainComposedSet, moduleCompositions);
+        composedStates[stateId] = composed;
+        return composed;
     }
 
     private void ValidateStateHierarchy(Identification stateId, StateMetadata metadata,
@@ -390,50 +419,6 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             throw new InvalidOperationException(
                 $"State {stateId} hierarchy does not terminate at Root state. " +
                 $"Found {current.Id} with Empty parent, but only Root state may have Empty parent.");
-        }
-    }
-
-    private HashSet<Identification> GetParentModules(Identification parentId,
-        Dictionary<Identification, StateMetadata> allStates)
-    {
-        var modules = new HashSet<Identification>();
-        var current = parentId;
-
-        while (!current.IsEmpty())
-        {
-            if (!allStates.TryGetValue(current, out var state))
-                break;
-
-            foreach (var moduleId in state.ModuleIds)
-            {
-                modules.Add(moduleId);
-            }
-
-            current = state.ParentId;
-        }
-
-        return modules;
-    }
-
-    private void ValidateModuleDependencies(Identification stateId,
-        List<Identification> newModules, HashSet<Identification> allModules)
-    {
-        foreach (var moduleId in newModules)
-        {
-            if (!_registeredModules.TryGetValue(moduleId, out var moduleMeta))
-            {
-                throw new InvalidOperationException(
-                    $"State {stateId} references unregistered module {moduleId}");
-            }
-
-            foreach (var requiredId in moduleMeta.RequiredModules)
-            {
-                if (!allModules.Contains(requiredId))
-                {
-                    throw new InvalidOperationException(
-                        $"Module {moduleId} in state {stateId} requires {requiredId} which is not available");
-                }
-            }
         }
     }
 
@@ -472,14 +457,15 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             moduleTypes.Add(moduleMeta.ModuleType);
         }
 
-        // Register services for new modules (skip CoreModule — its services are in the root container)
+        // Register services for the state's delta modules only. Inherited modules (including the
+        // ambient root seed) fall out of the delta via the generic parent-chain rule, so no module
+        // needs a type-identity special-case here.
         return DIService.BuildConfiguredContainer<IStateModuleServiceConfigurator>(
             parentContainer,
             LoadedMods.Concat(additionalMods),
             typeof(StateModuleServiceConfiguratorEntrypointAttribute),
             (configurator, builder, loadedMods) =>
             {
-                if (configurator.ModuleType == typeof(CoreModule)) return;
                 if (!moduleTypes.Contains(configurator.ModuleType)) return;
 
                 configurator.Configure(builder, loadedMods);
@@ -552,10 +538,10 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             .ToList();
 
         // Modules declared by the never-framed Root anchor are ambiently loaded for frame gates: Root is
-        // registered but never pushed as a frame, so its modules appear in no stack entry. Root's finalized
-        // ModuleIds are the full root-declared set (its parent is Empty, so nothing is delta-subtracted).
+        // registered but never pushed as a frame, so its modules appear in no stack entry. Root's composed
+        // set is the ambient universe the frame gates treat as always-present (agrees with the composer).
         var ambientModules = _registeredStates.TryGetValue(StateID.Sparkitect.Root, out var rootMeta)
-            ? rootMeta.ModuleIds
+            ? (IReadOnlyList<Identification>)rootMeta.ComposedSet.ToList()
             : (IReadOnlyList<Identification>)[];
 
         var transitionEnterCtx = new TransitionContext

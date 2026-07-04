@@ -14,10 +14,10 @@ namespace Sparkitect.Settings;
 /// </summary>
 [ModuleRegistry.RegisterModule("settings")]
 [PublicAPI]
-public partial class SettingsModule : IStateModule, IHasIdentification
+public partial class SettingsModule : TransitiveStateModule, IHasIdentification
 {
     /// <inheritdoc/>
-    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
+    public override IReadOnlyList<Identification> Requires => [];
 
     [OnFrameEnterScheduling]
     [TransitionFunction("process_settings_registries_up")]

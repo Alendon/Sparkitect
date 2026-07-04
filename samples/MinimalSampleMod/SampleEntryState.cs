@@ -14,11 +14,11 @@ using VkApiResult = Silk.NET.Vulkan.Result;
 namespace MinimalSampleMod;
 
 [StateRegistry.RegisterState("sample")]
-public partial class SampleEntryState : IStateDescriptor, IHasIdentification
+public partial class SampleEntryState : TransitiveGameState, IHasIdentification
 {
-    public static Identification ParentId => StateID.Sparkitect.Root;
+    public override Identification ParentId => StateID.Sparkitect.Root;
 
-    public static IReadOnlyList<Identification> Modules =>
+    public override IReadOnlyList<Identification> DirectModules =>
     [
         StateModuleID.MinimalSampleMod.Sample,
         StateModuleID.Sparkitect.Vulkan,

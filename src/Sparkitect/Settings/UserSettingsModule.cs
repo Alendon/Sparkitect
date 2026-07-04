@@ -18,10 +18,10 @@ namespace Sparkitect.Settings;
 /// </summary>
 [ModuleRegistry.RegisterModule("user_settings")]
 [PublicAPI]
-public partial class UserSettingsModule : IStateModule, IHasIdentification
+public partial class UserSettingsModule : TransitiveStateModule, IHasIdentification
 {
     /// <inheritdoc/>
-    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
+    public override IReadOnlyList<Identification> Requires => [];
 
     /// <summary>
     /// Registers the writable user override source at mid-precedence (below CLI, above engine-config). The

@@ -15,14 +15,14 @@ public partial class StateRegistry(IGameStateManagerRegistryFacade gameStateMana
     public static string Identifier => "state";
 
     /// <summary>
-    /// Registers a state descriptor with the game state system.
+    /// Registers a game state with the game state system.
     /// </summary>
-    /// <typeparam name="TStateDescriptor">The state descriptor type to register.</typeparam>
+    /// <typeparam name="TGameState">The game state type to register.</typeparam>
     /// <param name="id">The state identification.</param>
     [RegistryMethod]
-    public void RegisterState<TStateDescriptor>(Identification id) where TStateDescriptor : class, IStateDescriptor, IHasIdentification
+    public void RegisterState<TGameState>(Identification id) where TGameState : class, IGameState, IHasIdentification, new()
     {
-        gameStateManager.AddStateDescriptor<TStateDescriptor>(id);
+        gameStateManager.AddStateDescriptor<TGameState>(id);
     }
 
     /// <inheritdoc/>

@@ -15,10 +15,10 @@ namespace Sparkitect.ECS;
 /// </summary>
 [ModuleRegistry.RegisterModule("ecs")]
 [PublicAPI]
-public partial class EcsModule : IStateModule, IHasIdentification
+public partial class EcsModule : TransitiveStateModule, IHasIdentification
 {
     /// <inheritdoc/>
-    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
+    public override IReadOnlyList<Identification> Requires => [];
 
     [OnFrameEnterScheduling]
     [TransitionFunction("process_ecs_registries_up")]

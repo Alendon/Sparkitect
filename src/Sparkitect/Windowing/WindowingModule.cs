@@ -9,8 +9,8 @@ namespace Sparkitect.Windowing;
 /// <summary>State module that provides windowing and input. Depends on the core module.</summary>
 [ModuleRegistry.RegisterModule("windowing")]
 [PublicAPI]
-public partial class WindowingModule : IStateModule, IHasIdentification
+public partial class WindowingModule : TransitiveStateModule, IHasIdentification
 {
     /// <inheritdoc/>
-    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
+    public override IReadOnlyList<Identification> Requires => [];
 }

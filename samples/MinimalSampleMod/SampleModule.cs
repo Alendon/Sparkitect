@@ -7,9 +7,9 @@ using Sparkitect.Stateless;
 namespace MinimalSampleMod;
 
 [ModuleRegistry.RegisterModule("sample")]
-public partial class SampleModule : IStateModule, IHasIdentification
+public partial class SampleModule : TransitiveStateModule, IHasIdentification
 {
-    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
+    public override IReadOnlyList<Identification> Requires => [];
 
     [TransitionFunction("process_registry_enter")]
     [OnFrameEnterScheduling]

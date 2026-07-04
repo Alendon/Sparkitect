@@ -11,11 +11,11 @@ using Sparkitect.Stateless;
 namespace PongMod;
 
 [StateRegistry.RegisterState("pong")]
-public partial class PongState : IStateDescriptor, IHasIdentification
+public partial class PongState : TransitiveGameState, IHasIdentification
 {
-    public static Identification ParentId => StateID.Sparkitect.Root;
+    public override Identification ParentId => StateID.Sparkitect.Root;
 
-    public static IReadOnlyList<Identification> Modules =>
+    public override IReadOnlyList<Identification> DirectModules =>
     [
         StateModuleID.PongMod.Pong,
         StateModuleID.Sparkitect.Vulkan,

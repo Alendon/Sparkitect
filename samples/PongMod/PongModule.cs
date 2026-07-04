@@ -7,11 +7,10 @@ using Sparkitect.Modding.IDs;
 namespace PongMod;
 
 [ModuleRegistry.RegisterModule("pong")]
-public partial class PongModule : IStateModule, IHasIdentification
+public partial class PongModule : TransitiveStateModule, IHasIdentification
 {
-    public static IReadOnlyList<Identification> RequiredModules =>
+    public override IReadOnlyList<Identification> Requires =>
     [
-        StateModuleID.Sparkitect.Core,
         StateModuleID.Sparkitect.Vulkan,
         StateModuleID.Sparkitect.Windowing
     ];

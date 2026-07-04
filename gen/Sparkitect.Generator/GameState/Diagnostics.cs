@@ -27,4 +27,9 @@ public static class Diagnostics
         new("SPARK0305", "FacadeFor attribute inconsistent with service facade declaration",
             "Interface '{0}' has [FacadeFor<{1}>] but '{1}' does not have a facade marker attribute referencing '{0}'",
             "Sparkitect", DiagnosticSeverity.Error, true);
+
+    public static readonly DiagnosticDescriptor StateModuleMisshaped =
+        new("SPARK0306", "Registered state/module type is mis-shaped for the composition contract",
+            "Registered type '{0}' does not satisfy the state composition contract. Declare it 'partial' and either derive '{1}' or implement '{2}'.",
+            "Sparkitect", DiagnosticSeverity.Error, true);
 }

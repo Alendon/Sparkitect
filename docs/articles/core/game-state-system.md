@@ -10,16 +10,16 @@ The Game State System manages the engine's runtime configuration through a hiera
 
 ## Defining Modules
 
-Modules are reusable units of functionality. A module declares its dependencies, defines services, and contains the stateless functions that implement behavior. Modules implement [`IStateModule`](xref:Sparkitect.GameState.IStateModule) and are registered through [`ModuleRegistry`](xref:Sparkitect.GameState.ModuleRegistry):
+Modules are reusable units of functionality. A module declares its dependencies, defines services, and contains the stateless functions that implement behavior. Modules author on [`TransitiveStateModule`](xref:Sparkitect.GameState.TransitiveStateModule) — the default base that implements [`IStateModule`](xref:Sparkitect.GameState.IStateModule) — and are registered through [`ModuleRegistry`](xref:Sparkitect.GameState.ModuleRegistry):
 
 ```csharp
 [ModuleRegistry.RegisterModule("my_module")]
-public sealed partial class MyGameModule : IStateModule
+public partial class MyGameModule : TransitiveStateModule, IHasIdentification
 {
-    public static Identification Identification => StateModuleID.MyMod.MyModule;
-
-    public static IReadOnlyList<Identification> RequiredModules => [
-        StateModuleID.Sparkitect.Core
+    // Direct dependencies only — the engine resolves the transitive closure.
+    // Core is ambient; never list it.
+    public override IReadOnlyList<Identification> Requires => [
+        StateModuleID.MyMod.OtherModule
     ];
 
     [TransitionFunction("initialize")]
@@ -45,23 +45,25 @@ public sealed partial class MyGameModule : IStateModule
 }
 ```
 
-The `[ModuleRegistry.RegisterModule("key")]` attribute marks the module for registration. The string key generates the module's [`Identification`](xref:Sparkitect.Modding.Identification). The class must be `partial` when defining stateless functions, since source generators extend it with method wrappers.
+The `[ModuleRegistry.RegisterModule("key")]` attribute marks the module for registration. The string key generates the module's [`Identification`](xref:Sparkitect.Modding.Identification). The class must be `partial` (source generators extend it with method wrappers) and declares `: IHasIdentification` so the generator can emit the identity member — do not hand-author `Identification`.
 
-`RequiredModules` lists other modules this module depends on. The system validates that all dependencies are present at finalization time, after module registration.
+`Requires` lists only the modules this module directly depends on. The engine resolves the transitive closure over all requirements at finalization and validates that every required module is present. `Core` is ambient — always available, and never listed.
+
+A module may override `ActivatesWith` to become an integration module: it auto-activates in any state whose composed set already contains all of its `ActivatesWith` targets. The default is empty (never auto-activates). See [Composition](#composition).
 
 ## Defining States
 
-A state represents a specific runtime configuration. States form a parent-child hierarchy where each state inherits modules from its parent chain. States implement [`IStateDescriptor`](xref:Sparkitect.GameState.IStateDescriptor) and are registered through [`StateRegistry`](xref:Sparkitect.GameState.StateRegistry):
+A state represents a specific runtime configuration. States form a parent-child hierarchy where each state inherits its parent chain's modules. States author on [`TransitiveGameState`](xref:Sparkitect.GameState.TransitiveGameState) — the default base implementing [`IGameState`](xref:Sparkitect.GameState.IGameState) — and are registered through [`StateRegistry`](xref:Sparkitect.GameState.StateRegistry):
 
 ```csharp
 [StateRegistry.RegisterState("game_menu")]
-public partial class GameMenuState : IStateDescriptor
+public partial class GameMenuState : TransitiveGameState, IHasIdentification
 {
-    public static Identification Identification => StateID.MyMod.GameMenu;
-    public static Identification ParentId => StateID.Sparkitect.Root;
+    public override Identification ParentId => StateID.Sparkitect.Root;
 
-    // Only list modules this state adds (not inherited ones)
-    public static IReadOnlyList<Identification> Modules => [
+    // Only the modules this state adds directly — inherited and transitively
+    // required modules are resolved by the engine.
+    public override IReadOnlyList<Identification> DirectModules => [
         StateModuleID.MyMod.MenuModule,
         StateModuleID.MyMod.UiModule
     ];
@@ -76,11 +78,21 @@ public partial class GameMenuState : IStateDescriptor
 }
 ```
 
-Every state has exactly one parent (except Root). `Modules` lists only the modules this state introduces as a delta from its parent; inherited modules are included automatically.
+Every state has exactly one parent (except Root), named by `ParentId`. `DirectModules` lists only the modules this state introduces directly; the engine composes them with the parent chain and the transitive closure into the state's complete module set.
 
-The Root state (`StateID.Sparkitect.Root`) sits at the top of the hierarchy but is never an active frame. It provides the `CoreModule`, which all states inherit. Transitions to Root are forbidden.
+The Root state (`StateID.Sparkitect.Root`) sits at the top of the hierarchy but is never an active frame. It seeds the ambient `CoreModule` (and the engine's settings modules), which therefore compose into every state. Transitions to Root are forbidden.
 
 States can define their own stateless functions, typically for transition-specific logic. Most behavior should live in modules for reusability.
+
+## Composition
+
+A state's active modules are computed, not enumerated. At finalization the engine composes each state's complete module set from three sources: the parent chain (every module composed into the parent state), the state's own `DirectModules`, and the transitive closure over every included module's `Requires`.
+
+Integration modules are then folded in: a module that declares `ActivatesWith` auto-activates in a state once all of its targets are present, repeating to a fixpoint so a newly activated module can satisfy another's targets. The resulting complete composed set is the authoritative record of what a state loads; the per-frame snapshot carries it as [`StateStackEntry.ComposedModuleIds`](xref:Sparkitect.GameState.StateStackEntry).
+
+`Core` is ambient — Root seeds it, so it composes into every state and must never appear in a module's `Requires` or a state's `DirectModules`. A missing requirement fails loud at finalization, reporting the resolution chain that demanded the absent module.
+
+Authoring directly against [`IStateModule`](xref:Sparkitect.GameState.IStateModule) / [`IGameState`](xref:Sparkitect.GameState.IGameState) instead of the transitive bases is the manual, deep-modding escape hatch — you then supply the module set yourself.
 
 ## Module Services
 

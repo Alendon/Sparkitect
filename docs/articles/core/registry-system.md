@@ -38,10 +38,10 @@ Registries like [`StateRegistry`](xref:Sparkitect.GameState.StateRegistry) and [
 
 ```csharp
 [StateRegistry.RegisterState("sample")]
-public partial class SampleEntryState : IStateDescriptor, IHasIdentification
+public partial class SampleEntryState : TransitiveGameState, IHasIdentification
 {
-    public static Identification ParentId => StateID.Sparkitect.Root;
-    public static IReadOnlyList<Identification> Modules => [StateModuleID.MyMod.Sample];
+    public override Identification ParentId => StateID.Sparkitect.Root;
+    public override IReadOnlyList<Identification> DirectModules => [StateModuleID.MyMod.Sample];
 }
 ```
 
@@ -57,6 +57,8 @@ public partial class SampleEntryState : IStateDescriptor, IHasIdentification
 > [IHasIdentification: Consumption-Side Only](#ihasidentification-consumption-side-only).
 
 The generator embeds the type reference directly in the registration call (`registry.RegisterState<SampleEntryState>(id)`), so the registered class must satisfy whatever generic constraints the registry method declares.
+
+A registered state or module type that is mis-shaped for these contracts (not deriving the base or implementing the capability interface, not `partial`, or lacking an accessible parameterless constructor) is flagged at compile by the `SPARK0306` analyzer (error) instead of being silently dropped by the generator.
 
 ### Resource File Registration
 
@@ -145,7 +147,8 @@ public void RegisterItem(Identification id, ItemData data) { }
 
 // Type registration: providers are classes matching the generic constraint
 [RegistryMethod]
-public void RegisterState<T>(Identification id) where T : class, IStateDescriptor { }
+public void RegisterState<TGameState>(Identification id)
+    where TGameState : class, IGameState, IHasIdentification, new() { }
 
 // ID-only registration: no value or type parameter, entries typically come from .sparkres.yaml files
 [RegistryMethod]
@@ -301,9 +304,10 @@ concrete types** registered through the Registry Generator. Do not:
 - Extend `IHasIdentification` on an interface or abstract class. Static-abstract members cannot be
   forwarded through a base; every concrete must implement them. The `HasIdentificationMisuse`
   analyzer (`SPARK0262`, warning) catches this. Engine-side state contracts such as
-  [`IStateDescriptor`](xref:Sparkitect.GameState.IStateDescriptor) and
+  [`IGameState`](xref:Sparkitect.GameState.IGameState) and
   [`IStateModule`](xref:Sparkitect.GameState.IStateModule) deliberately do **not** carry an
-  `: IHasIdentification` constraint — the constraint belongs at consumption sites instead.
+  `: IHasIdentification` constraint — nor do their transitive bases absorb it — so the constraint
+  belongs at consumption sites instead.
 - Hand-author `static Identification Identification` on a registered concrete. The Registry
   Generator auto-emits the implementation; a hand-authored declaration produces a duplicate-member
   compile error.

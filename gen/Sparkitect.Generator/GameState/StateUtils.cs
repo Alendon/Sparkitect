@@ -13,7 +13,6 @@ public static class StateUtils
 {
     // Attribute metadata names
     internal const string StateModuleInterface = "Sparkitect.GameState.IStateModule";
-    internal const string StateDescriptorInterface = "Sparkitect.GameState.IStateDescriptor";
 
     internal const string StateFunctionAttribute = "Sparkitect.GameState.StateFunctionAttribute";
 
@@ -46,15 +45,6 @@ public static class StateUtils
     {
         return type.AllInterfaces.Any(i =>
             i.ToDisplayString(DisplayFormats.NamespaceAndType) == StateModuleInterface);
-    }
-
-    /// <summary>
-    /// Determines if a type implements IStateDescriptor
-    /// </summary>
-    internal static bool IsStateDescriptor(INamedTypeSymbol type)
-    {
-        return type.AllInterfaces.Any(i =>
-            i.ToDisplayString(DisplayFormats.NamespaceAndType) == StateDescriptorInterface);
     }
 
     /// <summary>

@@ -4,15 +4,22 @@ using Sparkitect.Stateless;
 
 namespace Sparkitect.GameState;
 
+/// <summary>
+/// Finalized registration for a state. <see cref="ModuleIds"/> is the container-layering delta
+/// (modules this state adds over its parent chain); <see cref="ComposedSet"/> is the complete
+/// authoritative module set (source of truth) resolved by <see cref="StateComposer"/>.
+/// </summary>
 internal sealed record StateMetadata(
     Identification Id,
     Identification ParentId,
     IReadOnlyList<Identification> ModuleIds,
+    IReadOnlySet<Identification> ComposedSet,
     Type DescriptorType);
 
 internal sealed record ModuleMetadata(
     Identification Id,
     IReadOnlyList<Identification> RequiredModules,
+    IReadOnlyList<Identification> ActivatesWith,
     Type ModuleType);
 
 /// <summary>

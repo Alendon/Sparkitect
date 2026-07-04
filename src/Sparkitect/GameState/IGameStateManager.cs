@@ -69,7 +69,7 @@ public interface IGameStateManagerRegistryFacade
     /// </summary>
     /// <typeparam name="TStateModule">The module type.</typeparam>
     /// <param name="id">The module identification.</param>
-    void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule, IHasIdentification;
+    void AddStateModule<TStateModule>(Identification id) where TStateModule : class, IStateModule, IHasIdentification, new();
 
     /// <summary>
     /// Removes a state module from the registry system.
@@ -78,11 +78,11 @@ public interface IGameStateManagerRegistryFacade
     void RemoveStateModule(Identification id);
 
     /// <summary>
-    /// Adds a state descriptor to the registry system.
+    /// Adds a game state to the registry system.
     /// </summary>
-    /// <typeparam name="TStateDescriptor">The state descriptor type.</typeparam>
+    /// <typeparam name="TGameState">The game state type.</typeparam>
     /// <param name="id">The state identification.</param>
-    void AddStateDescriptor<TStateDescriptor>(Identification id) where TStateDescriptor : class, IStateDescriptor, IHasIdentification;
+    void AddStateDescriptor<TGameState>(Identification id) where TGameState : class, IGameState, IHasIdentification, new();
 
     /// <summary>
     /// Removes a state descriptor from the registry system.

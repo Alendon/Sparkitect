@@ -12,13 +12,13 @@ namespace Sparkitect.GameState;
 /// </summary>
 [StateRegistry.RegisterState("root")]
 [PublicAPI]
-public partial class RootGameStateDescriptor : IStateDescriptor, IHasIdentification
+public partial class RootGameStateDescriptor : TransitiveGameState, IHasIdentification
 {
     /// <inheritdoc />
-    public static Identification ParentId => Identification.Empty;
+    public override Identification ParentId => Identification.Empty;
 
     /// <inheritdoc />
-    public static IReadOnlyList<Identification> Modules =>
+    public override IReadOnlyList<Identification> DirectModules =>
     [
         StateModuleID.Sparkitect.Core,
         StateModuleID.Sparkitect.Settings,

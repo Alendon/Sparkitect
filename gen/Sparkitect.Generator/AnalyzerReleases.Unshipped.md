@@ -43,6 +43,7 @@ SPARK0301 | Sparkitect | Error | StateService does not implement declared interf
 SPARK0302 | Sparkitect | Error | StateService does not implement required facade
 SPARK0304 | Sparkitect | Error | Facade interface missing [FacadeFor] attribute
 SPARK0305 | Sparkitect | Error | FacadeFor attribute inconsistent with service facade declaration
+SPARK0306 | Sparkitect | Error | Registered state/module type mis-shaped for composition contract
 SPARK0401 | Sparkitect | Error | Stateless function must be static
 SPARK0402 | Sparkitect | Error | Multiple scheduling attributes not allowed
 SPARK0403 | Sparkitect | Warning | Parameter may not be DI-resolvable

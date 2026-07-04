@@ -7,11 +7,10 @@ using Sparkitect.Modding.IDs;
 namespace SpaceInvadersMod;
 
 [ModuleRegistry.RegisterModule("space_invaders")]
-public partial class SpaceInvadersModule : IStateModule, IHasIdentification
+public partial class SpaceInvadersModule : TransitiveStateModule, IHasIdentification
 {
-    public static IReadOnlyList<Identification> RequiredModules =>
+    public override IReadOnlyList<Identification> Requires =>
     [
-        StateModuleID.Sparkitect.Core,
         StateModuleID.Sparkitect.Vulkan,
         StateModuleID.Sparkitect.Windowing
     ];
