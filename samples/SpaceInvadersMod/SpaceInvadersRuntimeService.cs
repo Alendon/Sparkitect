@@ -77,7 +77,7 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     /// <summary>Creates the mod-owned window before the render-graph registries are processed.</summary>
     public void Initialize()
     {
-        _window = WindowManager.CreateWindow("Space Invaders", 800, 600);
+        _window = WindowManager.CreateGameWindow("Space Invaders");
         Log.Debug("Space Invaders runtime initialized");
     }
 
@@ -94,7 +94,6 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
                 RenderPassID.SpaceInvadersMod.SpaceInvadersCopy,
             },
             _window!);
-        _renderGraph.MaxFrameRate = 120;
     }
 
     public void PollWindow() => _window?.PollEvents();

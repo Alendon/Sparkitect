@@ -18,5 +18,10 @@ public partial class RootGameStateDescriptor : IStateDescriptor, IHasIdentificat
     public static Identification ParentId => Identification.Empty;
 
     /// <inheritdoc />
-    public static IReadOnlyList<Identification> Modules => [StateModuleID.Sparkitect.Core];
+    public static IReadOnlyList<Identification> Modules =>
+    [
+        StateModuleID.Sparkitect.Core,
+        StateModuleID.Sparkitect.Settings,
+        StateModuleID.Sparkitect.UserSettings
+    ];
 }

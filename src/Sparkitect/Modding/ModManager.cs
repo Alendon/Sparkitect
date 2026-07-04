@@ -3,10 +3,11 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Sparkitect.DI;
-using Sparkitect.Utils;
 using Semver;
 using Serilog;
 using Sparkitect.GameState;
+using Sparkitect.Settings.Sources;
+using Sparkitect.Utils;
 using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Modding;
@@ -23,12 +24,26 @@ internal class ModManager : IModManager
     private readonly Dictionary<string, Assembly> _preLoadedAssemblies = [];
 
     private readonly Stack<LoadedModGroup> _loadedModGroups = new();
-    public required ICliArgumentHandler CliArgumentHandler { private get; init; }
     public required IIdentificationManager IdentificationManager { private get; init; }
     public required IDIService ModDiService { private get; init; }
     public required IResourceManager ResourceManager { private get; init; }
 
     private const string AddModDirsArgument = "addModDirs";
+
+    // Reads a multi-valued CLI argument from the engine entry args via the shared CLI parser. Returns the
+    // value list (a single value yields a one-element list; a flag or absent key yields empty).
+    private static IReadOnlyList<string> ReadCliValues(string key)
+    {
+        var parsed = CliSettingsSource.ParseArguments(EngineEntryArguments.Args);
+        return parsed.TryGetValue(key, out var value)
+            ? value switch
+            {
+                CliArgValue.Flag => [],
+                CliArgValue.Single single => [single.Value],
+                CliArgValue.Multi multi => multi.Values,
+            }
+            : [];
+    }
 
     public ModManager()
     {
@@ -72,9 +87,13 @@ internal class ModManager : IModManager
         _seenModIdentifiers.Clear();
         _modIdentifierPaths.Clear();
 
-        // Check for additional mod directories specified in command line arguments
+        // Check for additional mod directories specified in command line arguments. CLI acquisition flows
+        // through the shared CLI parser (the ICliArgumentHandler surface is retired); addModDirs is a
+        // multi-value directory list, not a primitive setting, so it is read directly here rather than as a
+        // declared setting.
         var additionalModFiles = new List<string>();
-        if (CliArgumentHandler.TryGetArgumentValues(AddModDirsArgument, out var additionalModDirs))
+        var additionalModDirs = ReadCliValues(AddModDirsArgument);
+        if (additionalModDirs.Count > 0)
         {
             ProcessAdditionalModDirs(additionalModDirs, additionalModFiles);
         }

@@ -44,7 +44,7 @@ internal class PongRuntimeService : IPongRuntimeService
         _frameTimer.Start();
         _lastFrameTime = 0;
 
-        _window = WindowManager.CreateWindow("Pong", 800, 600);
+        _window = WindowManager.CreateGameWindow("Pong");
 
         Log.Debug("Pong runtime initialized");
     }
@@ -62,7 +62,6 @@ internal class PongRuntimeService : IPongRuntimeService
                 RenderPassID.PongMod.PongCopy,
             },
             _window);
-        _renderGraph.MaxFrameRate = 120;
     }
 
     public void PollWindow() => _window?.PollEvents();

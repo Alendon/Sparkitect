@@ -8,10 +8,12 @@ using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan.Extensions.KHR;
 using Silk.NET.Windowing;
+using Sparkitect.CompilerGenerated;
 using Sparkitect.DI;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan.Vma;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Settings;
 using Sparkitect.Utils;
 using Sparkitect.Utils.DU;
 using Sparkitect.Windowing;
@@ -69,13 +71,13 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     /// <summary>The game state manager providing the loaded mod set.</summary>
     public required IGameStateManager GameStateManager { private get; init; }
 
-    /// <summary>The CLI argument handler.</summary>
-    public required ICliArgumentHandler CliArgumentHandler { private get; init; }
+    /// <summary>The settings manager; the validation toggle is read inline from it at device creation (D-17).</summary>
+    public required ISettingsManager SettingsManager { private get; init; }
 
     /// <summary>The window manager, present only when the windowing module is active.</summary>
     public required IWindowManager? WindowManager { private get; init; }
 
-    private bool ValidationEnabled() => true;
+    private bool ValidationEnabled() => SettingsManager.Graphics.VulkanValidation.Value;
 
     /// <inheritdoc/>
     public void Initialize()

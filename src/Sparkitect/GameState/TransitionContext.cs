@@ -32,8 +32,15 @@ public sealed record TransitionContext
     public IReadOnlyList<Identification> DeltaModules => StateStack[^1].Modules;
 
     /// <summary>
-    /// Checks if a module is loaded anywhere in the state stack.
+    /// Modules declared by never-framed ancestor states (the Root anchor). Counted as loaded for
+    /// frame-enter/exit/per-frame gates, but NOT part of <see cref="DeltaModules"/> — so their once-only
+    /// create/destroy scheduling stays owned by the anchor and child transitions never re-run it.
+    /// </summary>
+    public IReadOnlyList<Identification> AmbientModules { get; init; } = [];
+
+    /// <summary>
+    /// Checks if a module is loaded anywhere in the state stack or ambiently via a never-framed ancestor.
     /// </summary>
     public bool IsModuleLoaded(Identification moduleId) =>
-        StateStack.Any(s => s.Modules.Contains(moduleId));
+        StateStack.Any(s => s.Modules.Contains(moduleId)) || AmbientModules.Contains(moduleId);
 }

@@ -1,0 +1,35 @@
+#nullable enable
+#pragma warning disable CS1591
+#pragma warning disable CS9113
+
+using {{ IdExtensionsNamespace }};
+
+namespace {{ AccessorNamespace }}
+{
+    /// <summary>Group-first typed setting accessors emitted over ISettingsManager. Sugar over GetSetting&lt;T&gt;.</summary>
+    public static partial class SettingsManagerAccessors
+    {
+        extension(global::Sparkitect.Settings.ISettingsManager manager)
+        {
+{%- for group in Groups %}
+            public global::{{ group.StructFullName }} {{ group.GroupPascal }} => new global::{{ group.StructFullName }}(manager);
+{%- endfor %}
+        }
+    }
+}
+{% for group in Groups %}
+namespace {{ group.StructNamespace }}
+{
+    public readonly partial struct {{ group.StructName }}
+    {
+        private readonly global::Sparkitect.Settings.ISettingsManager _manager;
+
+        public {{ group.StructName }}(global::Sparkitect.Settings.ISettingsManager manager) => _manager = manager;
+{%- for a in group.Accessors %}
+
+        public global::Sparkitect.Settings.Setting<{{ a.ValueType }}> {{ a.Name }}
+            => _manager.GetSetting<{{ a.ValueType }}>(global::Sparkitect.Modding.IDs.{{ IdContainerPascal }}ID.{{ ModIdPascal }}.{{ a.IdProperty }});
+{%- endfor %}
+    }
+}
+{% endfor %}

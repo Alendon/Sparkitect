@@ -1,14 +1,17 @@
-using InterpolatedParsing;
 using JetBrains.Annotations;
 using Serilog;
 using Serilog.Configuration;
+using Serilog.Events;
 using Serilog.Exceptions;
 using Serilog.Formatting.Compact;
 using Sparkitect.DI.Container;
 using Sparkitect.DI.Exceptions;
 using Sparkitect.GameState;
 using Sparkitect.Modding;
+using Sparkitect.Settings;
+using Sparkitect.Settings.Sources;
 using Sparkitect.Utils;
+using Sparkitect.Utils.DU;
 
 namespace Sparkitect;
 
@@ -20,7 +23,6 @@ public class EngineBootstrapper
 {
     private ICoreContainer? _coreContainer;
     private IModManager? _modManager;
-    private ICliArgumentHandler? _cliArgumentHandler;
     private IGameStateManager? _gameStateManager;
 
     /// <summary>
@@ -28,25 +30,26 @@ public class EngineBootstrapper
     /// </summary>
     public static void Main(string[] args)
     {
+        // Record the entry args once so the early logger read and the CLI settings source read one
+        // authoritative arg set (the retired ICliArgumentHandler no longer mediates CLI acquisition).
+        EngineEntryArguments.Set(args);
+
         InitializeLogger(args);
-        
-        
+
+
         // Static reference to Log initializes the logger
         Log.Information("Sparkitect engine starting up");
-        
+
         var bootstrapper = new EngineBootstrapper();
 
         try
         {
             Log.Information("Building core container");
             bootstrapper.BuildCoreContainer();
-            
-            Log.Information("Initializing CLI arguments");
-            bootstrapper.InitializeCliArguments(args);
 
             Log.Information("Discovering mods");
             bootstrapper.DiscoverMods();
-            
+
             Log.Information("Enter Root State");
             bootstrapper.EnterRootState();
         }
@@ -63,23 +66,26 @@ public class EngineBootstrapper
         gsm!.EnterRootState();
     }
 
-    private const string LogDirectoryPath = "logs";
-    private const string LogDirArgName = "logDir";
-    
     private static void InitializeLogger(string[] args)
     {
-        var logDir = LogDirectoryPath;
-        
-        var logDirArg = args.FirstOrDefault(x => x.StartsWith($"-{LogDirArgName}="));
-        if (logDirArg is not null)
-        {
-            string logDirArgNameStub = String.Empty;
-            InterpolatedParser.Parse(logDirArg, $"-{logDirArgNameStub}={logDir}");
-        }
+        // D-16: read the log level and directory DIRECTLY from CLI args + Sparkitect.yaml, reusing the same
+        // parsers the CLI/engine-config sources use and the engine's own setting declarations (their CLI
+        // option, default, and scalar parser) — no two-stage logger, no bootstrap reorder. Formal source
+        // registration still happens later for completeness. Resolution order: CLI > engine-config > default.
+        var cliArgs = CliSettingsSource.ParseArguments(args);
+        var engineConfig = EngineSettingsSource.ReadWorkingDirectoryScalars();
+
+        var levelDeclaration = EngineSettingDeclarations.LogLevel;
+        var dirDeclaration = EngineSettingDeclarations.LogDirectory;
+
+        var logLevel = ReadEarlySetting(cliArgs, engineConfig, levelDeclaration.CliOption, "log_level", levelDeclaration)
+            is LogEventLevel level ? level : levelDeclaration.Default;
+        var logDir = ReadEarlySetting(cliArgs, engineConfig, dirDeclaration.CliOption, "log_dir", dirDeclaration)
+            is string dir ? dir : dirDeclaration.Default;
 
         logDir = Path.GetFullPath(logDir);
-        
-        
+
+
         // Create logs directory if it doesn't exist
         if (!Directory.Exists(logDir))
         {
@@ -100,7 +106,7 @@ public class EngineBootstrapper
                 rollOnFileSizeLimit: true, flushToDiskInterval: TimeSpan.FromMinutes(1)));
 
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            .MinimumLevel.Is(logLevel)
             .Destructure.AsScalar<Identification>()
             .Enrich.FromLogContext()
             .Enrich.WithExceptionDetails()
@@ -108,6 +114,38 @@ public class EngineBootstrapper
             .WriteTo.Sink(wrappedFileSink)
             .CreateLogger();
 
+    }
+
+    // Resolves a setting's raw value early (pre-container) from CLI then engine-config, parsed against the
+    // declaration's own scalar parser; returns null when neither source supplies a parseable value.
+    private static object? ReadEarlySetting(
+        IReadOnlyDictionary<string, CliArgValue> cliArgs,
+        IReadOnlyDictionary<string, string> engineConfig,
+        string? cliOption,
+        string engineConfigKey,
+        ISettingDeclaration declaration)
+    {
+        if (cliOption is not null && cliArgs.TryGetValue(cliOption, out var argument))
+        {
+            var raw = argument switch
+            {
+                CliArgValue.Flag => "true",
+                CliArgValue.Single single => single.Value,
+                CliArgValue.Multi multi => multi.Values.Count > 0 ? multi.Values[0] : null,
+            };
+            if (raw is not null && declaration.TryParseScalar(raw, out var cliValue))
+            {
+                return cliValue;
+            }
+        }
+
+        if (engineConfig.TryGetValue(engineConfigKey, out var configRaw) &&
+            declaration.TryParseScalar(configRaw, out var configValue))
+        {
+            return configValue;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -127,7 +165,6 @@ public class EngineBootstrapper
             _coreContainer = container;
 
             // Resolve essential services
-            _cliArgumentHandler = container.Resolve<ICliArgumentHandler>();
             _modManager = container.Resolve<IModManager>();
             _gameStateManager = container.Resolve<IGameStateManager>();
 
@@ -151,21 +188,6 @@ public class EngineBootstrapper
             Log.Fatal(ex, "Failed to resolve dependency in core container");
             throw;
         }
-    }
-
-    /// <summary>
-    /// Initializes the CLI argument handler with command-line arguments
-    /// </summary>
-    public void InitializeCliArguments(string[] args)
-    {
-        if (_cliArgumentHandler is null)
-        {
-            Log.Error("CLI argument handler is null");
-            throw new InvalidOperationException("CLI argument handler has not been initialized");
-        }
-
-        _cliArgumentHandler.Initialize(args);
-        Log.Debug("CLI arguments initialized with {ArgCount} arguments", args.Length);
     }
 
     /// <summary>

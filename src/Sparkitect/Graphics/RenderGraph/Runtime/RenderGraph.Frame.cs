@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Silk.NET.Vulkan;
+using Sparkitect.CompilerGenerated;
 using Sparkitect.Graphics.RenderGraph.Hooks;
 using Sparkitect.Graphics.RenderGraph.Push;
 using Sparkitect.Graphing.Descriptions;
@@ -23,9 +24,11 @@ public sealed partial class RenderGraph
                 "RenderGraph.RunFrame: Setup has not been invoked. Construct render graphs via " +
                 "IRenderGraphManager.CreateGraph<TRenderGraph>(passIds, window).");
 
-        if (MaxFrameRate != 0)
+        // FPS cap read inline from settings each frame (D-17); 0 = uncapped (preserved semantics).
+        var fpsCap = _settingsManager.Graphics.FpsCap.Value;
+        if (fpsCap != 0)
         {
-            var minFrameTimeS = 1d / MaxFrameRate;
+            var minFrameTimeS = 1d / fpsCap;
             SpinWait.SpinUntil(() =>
                 Stopwatch.GetElapsedTime(_lastFrameTimestamp, Stopwatch.GetTimestamp()).TotalSeconds > minFrameTimeS);
             _lastFrameTimestamp = Stopwatch.GetTimestamp();

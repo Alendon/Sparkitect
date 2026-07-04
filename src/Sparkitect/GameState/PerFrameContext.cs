@@ -16,8 +16,14 @@ public sealed class PerFrameContext
     public required IReadOnlyList<(IReadOnlyList<Identification> Modules, Identification StateId)> StateStack { get; init; }
 
     /// <summary>
-    /// Checks if a module is loaded anywhere in the state stack.
+    /// Modules declared by never-framed ancestor states (the Root anchor). Counted as loaded for the
+    /// per-frame gate even though they appear in no pushed frame.
+    /// </summary>
+    public IReadOnlyList<Identification> AmbientModules { get; init; } = [];
+
+    /// <summary>
+    /// Checks if a module is loaded anywhere in the state stack or ambiently via a never-framed ancestor.
     /// </summary>
     public bool IsModuleLoaded(Identification moduleId) =>
-        StateStack.Any(s => s.Modules.Contains(moduleId));
+        StateStack.Any(s => s.Modules.Contains(moduleId)) || AmbientModules.Contains(moduleId);
 }

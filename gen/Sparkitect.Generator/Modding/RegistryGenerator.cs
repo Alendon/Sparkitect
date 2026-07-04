@@ -574,8 +574,12 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
                 if (method.TypeParameters.Length == 1)
                 {
-                    //If it is a generic method, the argument must be the generic type
-                    if (!SymbolEqualityComparer.Default.Equals(parameter.Type, method.TypeParameters.First())) continue;
+                    // The value parameter must reference the method's type parameter: either the bare
+                    // type parameter `T` (RegisterComponent<T>(Identification, T)) or a constructed generic
+                    // that mentions `T` among its type arguments (RegisterSetting<T>(Identification,
+                    // SettingDefinition<T>)). The wrapper case keeps the closed generic value type intact
+                    // through the Registrations<> machinery — C# infers T from the provider return type.
+                    if (!MentionsTypeParameter(parameter.Type, method.TypeParameters.First())) continue;
 
                     ParseTypeParameterConstraints(method.TypeParameters.First(), out var constraintFlag,
                         out var typeConstraints);
@@ -610,6 +614,21 @@ public partial class RegistryGenerator : IIncrementalGenerator
         }
 
         return result.ToImmutableValueArray();
+    }
+
+    /// <summary>
+    /// True when <paramref name="parameterType"/> either IS the register method's type parameter
+    /// (bare-T value shape, e.g. <c>RegisterComponent&lt;T&gt;(Identification, T)</c>) or is a
+    /// constructed generic that mentions it among its type arguments (wrapper-over-T shape, e.g.
+    /// <c>RegisterSetting&lt;T&gt;(Identification, SettingDefinition&lt;T&gt;)</c>). The wrapper case
+    /// carries the closed generic value type through registration — C# infers T from the provider
+    /// return type at the emitted, type-argument-free call site.
+    /// </summary>
+    internal static bool MentionsTypeParameter(ITypeSymbol parameterType, ITypeParameterSymbol typeParameter)
+    {
+        if (SymbolEqualityComparer.Default.Equals(parameterType, typeParameter)) return true;
+        return parameterType is INamedTypeSymbol { IsGenericType: true } named &&
+               named.TypeArguments.Any(arg => SymbolEqualityComparer.Default.Equals(arg, typeParameter));
     }
 
     private static string? ExtractKeyedFactoryMarkerTBase(IMethodSymbol m)

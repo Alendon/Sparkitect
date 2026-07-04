@@ -287,10 +287,16 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
             }
             else if (methodKind == PrimaryKind.GenericValue)
             {
-                if (targetSymbol is IMethodSymbol pms)
-                    candidate = pms.ReturnType;
-                else if (targetSymbol is IPropertySymbol pps)
-                    candidate = pps.Type;
+                ITypeSymbol? providerReturn = targetSymbol switch
+                {
+                    IMethodSymbol pms => pms.ReturnType,
+                    IPropertySymbol pps => pps.Type,
+                    _ => null
+                };
+                // For the wrapper-over-T shape (value param SettingDefinition<T>), recover the effective
+                // inner T from the provider return type (bool from SettingDefinition<bool>) before the
+                // constraint check; the bare-T shape uses the provider return type directly.
+                candidate = RecoverEffectiveTypeArgument(registryMethod, tp, providerReturn);
             }
 
             if (candidate != null && !SatisfiesConstraints(ctx.SemanticModel.Compilation, candidate, tp))
@@ -346,11 +352,50 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
         if (m.Parameters.Length == 2 && m.TypeParameters.Length == 0)
             return PrimaryKind.Value;
         if (m.Parameters.Length == 2 && m.TypeParameters.Length == 1 &&
-            SymbolEqualityComparer.Default.Equals(m.Parameters[1].Type, m.TypeParameters[0]))
+            ValueParameterReferencesTypeParameter(m.Parameters[1].Type, m.TypeParameters[0]))
             return PrimaryKind.GenericValue;
         if (m.Parameters.Length == 1 && m.TypeParameters.Length == 1)
             return PrimaryKind.Type;
         return PrimaryKind.Value; // fallback
+    }
+
+    /// <summary>
+    /// True when the register method's value parameter references its type parameter — either the bare
+    /// `T` or a constructed generic mentioning it among its type arguments (e.g. SettingDefinition&lt;T&gt;).
+    /// </summary>
+    private static bool ValueParameterReferencesTypeParameter(ITypeSymbol valueParameterType, ITypeParameterSymbol tp)
+    {
+        if (SymbolEqualityComparer.Default.Equals(valueParameterType, tp)) return true;
+        return valueParameterType is INamedTypeSymbol { IsGenericType: true } wrapper &&
+               wrapper.TypeArguments.Any(arg => SymbolEqualityComparer.Default.Equals(arg, tp));
+    }
+
+    /// <summary>
+    /// Recovers the effective type argument the provider substitutes for the register method's type
+    /// parameter. For the bare-T value shape the provider return type IS T. For the wrapper-over-T
+    /// shape (value param SettingDefinition&lt;T&gt;), locate T's position in the wrapper's type arguments
+    /// and pull the matching type argument from the constructed provider return type (bool from
+    /// SettingDefinition&lt;bool&gt;), so the constraint check reads the inner value type, not the wrapper.
+    /// </summary>
+    private static ITypeSymbol? RecoverEffectiveTypeArgument(IMethodSymbol registryMethod,
+        ITypeParameterSymbol tp, ITypeSymbol? providerReturnType)
+    {
+        if (providerReturnType is null) return null;
+        var valueParam = registryMethod.Parameters.Length == 2 ? registryMethod.Parameters[1].Type : null;
+        // Bare-T value parameter: the provider return type IS the effective T.
+        if (valueParam is null || SymbolEqualityComparer.Default.Equals(valueParam, tp))
+            return providerReturnType;
+        if (valueParam is INamedTypeSymbol { IsGenericType: true } wrapper &&
+            providerReturnType is INamedTypeSymbol { IsGenericType: true } returned &&
+            wrapper.TypeArguments.Length == returned.TypeArguments.Length)
+        {
+            for (var i = 0; i < wrapper.TypeArguments.Length; i++)
+            {
+                if (SymbolEqualityComparer.Default.Equals(wrapper.TypeArguments[i], tp))
+                    return returned.TypeArguments[i];
+            }
+        }
+        return providerReturnType;
     }
 
     private static bool SatisfiesConstraints(Compilation compilation, ITypeSymbol candidate, ITypeParameterSymbol tp)

@@ -1,0 +1,22 @@
+# Sparkitect engine configuration.
+# Human-editable engine-behaviour settings, read by the readonly EngineSettings source.
+# Each value is a scalar parsed against its declared setting type; unknown or absent keys
+# fall through to lower-priority sources (user settings, CLI) or the declared default.
+#
+# NOTE: window size is NOT an engine-config setting. It is a normally-declared setting fed by
+# the user source (and CLI when explicitly bound) and is intentionally absent here.
+
+# Enable Vulkan validation layers (bool).
+vulkan_validation: false
+
+# Minimum log level: verbose | debug | information | warning | error | fatal.
+log_level: information
+
+# Directory that log files are written to.
+log_dir: logs
+
+# Enable vertical sync at swapchain present (bool).
+vsync: true
+
+# Cap the presentation frame rate; 0 disables the cap (int).
+fps_cap: 0

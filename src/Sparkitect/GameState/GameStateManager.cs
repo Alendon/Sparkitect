@@ -551,14 +551,22 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             .Append(((IReadOnlyList<Identification>)stateMetadata.ModuleIds.ToList(), stateId))
             .ToList();
 
+        // Modules declared by the never-framed Root anchor are ambiently loaded for frame gates: Root is
+        // registered but never pushed as a frame, so its modules appear in no stack entry. Root's finalized
+        // ModuleIds are the full root-declared set (its parent is Empty, so nothing is delta-subtracted).
+        var ambientModules = _registeredStates.TryGetValue(StateID.Sparkitect.Root, out var rootMeta)
+            ? rootMeta.ModuleIds
+            : (IReadOnlyList<Identification>)[];
+
         var transitionEnterCtx = new TransitionContext
         {
             StateStack = stateStack,
-            IsEnterTransition = true
+            IsEnterTransition = true,
+            AmbientModules = ambientModules
         };
         var transitionExitCtx = transitionEnterCtx with { IsEnterTransition = false };
 
-        var perFrameCtx = new PerFrameContext { StateStack = stateStack };
+        var perFrameCtx = new PerFrameContext { StateStack = stateStack, AmbientModules = ambientModules };
 
         // Collect ALL scheduling metadata
         var metadata = new Dictionary<Identification, IScheduling>();

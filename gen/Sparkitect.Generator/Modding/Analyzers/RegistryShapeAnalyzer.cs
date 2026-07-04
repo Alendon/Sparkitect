@@ -246,14 +246,20 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // If two params and one type param, the second param must be the generic type
+        // If two params and one type param, the second param must reference the type parameter:
+        // either the bare `T` or a constructed generic mentioning it among its type arguments
+        // (e.g. SettingDefinition<T>). The wrapper-over-T shape carries a closed generic value type
+        // through registration and is a valid register-method shape — do not flag it as a mismatch.
         if (paramCount == 2)
         {
             var p1 = method.Parameters[1];
             if (typeParamCount == 1)
             {
                 var tp = method.TypeParameters[0];
-                if (!SymbolEqualityComparer.Default.Equals(p1.Type, tp))
+                var referencesTypeParameter = SymbolEqualityComparer.Default.Equals(p1.Type, tp) ||
+                    (p1.Type is INamedTypeSymbol { IsGenericType: true } wrapper &&
+                     wrapper.TypeArguments.Any(arg => SymbolEqualityComparer.Default.Equals(arg, tp)));
+                if (!referencesTypeParameter)
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         RegistryDiagnostics.GenericValueMismatch,

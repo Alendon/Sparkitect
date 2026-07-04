@@ -20,6 +20,13 @@ public interface IWindowManager
     /// <param name="config">Optional swapchain configuration; defaults are used when null.</param>
     ISparkitWindow CreateWindow(string title, int width, int height, SwapchainConfig? config = null);
 
+    /// <summary>
+    /// Creates a game window sized from the window-size settings and configured with the vsync setting's
+    /// present mode. The engine reads the size/vsync values inline, so callers pass only a title.
+    /// </summary>
+    /// <param name="title">Initial window title.</param>
+    ISparkitWindow CreateGameWindow(string title);
+
     /// <summary>The Vulkan instance extensions the windowing backend requires.</summary>
     IReadOnlyList<string> GetRequiredVulkanExtensions();
 }

@@ -23,12 +23,11 @@ internal sealed class MinimalSampleHost : IMinimalSampleHost
     {
         if (_renderGraph is not null) return;
 
-        _window = WindowManager.CreateWindow("MinimalSampleMod", 800, 600);
+        _window = WindowManager.CreateGameWindow("MinimalSampleMod");
 
         _renderGraph = RenderGraphManager.CreateGraph<RenderGraph>(
             new List<Identification> { RenderPassID.MinimalSampleMod.ClearColor },
             _window);
-        _renderGraph.MaxFrameRate = 120;
     }
 
     public void PollEvents() => _window?.PollEvents();

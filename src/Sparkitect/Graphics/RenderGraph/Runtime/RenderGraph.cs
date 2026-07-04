@@ -17,6 +17,7 @@ using Sparkitect.Graphing.Ledger;
 using Sparkitect.Metadata;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
+using Sparkitect.Settings;
 using Sparkitect.Utils.DU;
 using Sparkitect.Windowing;
 using VkApiResult = Silk.NET.Vulkan.Result;
@@ -33,6 +34,10 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     private readonly IDIService _diService;
     private readonly IGameStateManager _gameStateManager;
     private readonly IRenderGraphManager _renderGraphManager;
+
+    // The FPS cap is read inline from this at frame pacing (D-17). Resolved from the per-graph container
+    // (which falls back to the CoreModule host) at Setup, before any frame runs.
+    private ISettingsManager _settingsManager = null!;
 
     private ISparkitWindow _window = null!;
 
@@ -82,9 +87,6 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     /// <summary>Graph-local storage-buffer backing provider, injected from the per-graph container alongside <see cref="ImageManager"/>.</summary>
     public required IBufferManager BufferManager { private get; init; }
 
-    /// <summary>Max frames per second; 0 = uncapped.</summary>
-    public uint MaxFrameRate { get; set; }
-
     internal RenderGraph(
         IVulkanContext vulkanContext,
         IDIService diService,
@@ -123,6 +125,9 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
 
         _window = window;
         _graphContainer = graphContainer;
+        // The per-graph container falls back to the CoreModule host, so the CoreModule settings manager
+        // resolves here; the pacing check reads the live fps_cap through it each frame.
+        _settingsManager = graphContainer.Resolve<ISettingsManager>();
         var modIdList = _gameStateManager.LoadedMods.ToList();
 
         var (queueFamily, queue) = ResolveGraphicsQueue(_vulkanContext);
