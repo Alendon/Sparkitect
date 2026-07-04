@@ -29,8 +29,8 @@ public class EntrypointOrderingBuilderTests
         // Assert
         await Assert.That(builder.Edges.Count).IsEqualTo(1);
         var edge = builder.Edges.First();
-        await Assert.That(edge.Source).IsEqualTo("A");
-        await Assert.That(edge.Target).IsEqualTo("B");
+        await Assert.That(edge.From).IsEqualTo("A");
+        await Assert.That(edge.To).IsEqualTo("B");
     }
 
     [Test]
@@ -64,10 +64,10 @@ public class EntrypointOrderingBuilderTests
         await Assert.That(builder.CurrentTypeName).IsEqualTo("B");
         await Assert.That(builder.Edges.Count).IsEqualTo(2);
         var edgeList = builder.Edges.ToList();
-        await Assert.That(edgeList[0].Source).IsEqualTo("A");
-        await Assert.That(edgeList[0].Target).IsEqualTo("B");
-        await Assert.That(edgeList[1].Source).IsEqualTo("B");
-        await Assert.That(edgeList[1].Target).IsEqualTo("C");
+        await Assert.That(edgeList[0].From).IsEqualTo("A");
+        await Assert.That(edgeList[0].To).IsEqualTo("B");
+        await Assert.That(edgeList[1].From).IsEqualTo("B");
+        await Assert.That(edgeList[1].To).IsEqualTo("C");
     }
 
     [Test]
@@ -77,6 +77,6 @@ public class EntrypointOrderingBuilderTests
         var builder = new EntrypointOrderingBuilder();
 
         // Act & Assert
-        await Assert.That(builder.Edges).IsTypeOf<IReadOnlyCollection<QuikGraph.Edge<string>>>();
+        await Assert.That(builder.Edges).IsTypeOf<IReadOnlyCollection<(string From, string To)>>();
     }
 }

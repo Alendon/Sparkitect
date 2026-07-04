@@ -1,9 +1,8 @@
 using JetBrains.Annotations;
-using QuikGraph;
-using QuikGraph.Algorithms.TopologicalSort;
 using Sparkitect.Graphing.Ledger;
 using Sparkitect.Modding;
 using Sparkitect.Utils.DU;
+using Sparkitect.Utils.Ordering;
 
 namespace Sparkitect.Graphing.Compile;
 
@@ -38,21 +37,29 @@ public sealed class GraphCompiler
 
         var graph = BuildOrderingGraph(resolvedMoments);
 
-        // TopologicalSortAlgorithm throws NonAcyclicGraphException on a cycle; translate it into a
-        // provenance-carrying DU case rather than letting it escape.
-        var topo = new TopologicalSortAlgorithm<GraphNodeId, Edge<GraphNodeId>>(graph);
-        try
+        // The shared ordering core returns diagnostics rather than throwing: a cycle surfaces as an
+        // OrderingError.Cycle that maps straight onto CompileError.Cycle — no exception translation, so
+        // the "diagnostics returned, never thrown" contract holds end to end.
+        return graph.Sort(OrderingTiebreak<GraphNodeId>.InsertionOrder) switch
         {
-            topo.Compute();
-        }
-        catch (NonAcyclicGraphException)
-        {
-            return new CompileError.Cycle(FindCycleParticipants(graph));
-        }
-
-        var ordered = DeriveOrdering(graph);
-        return BuildPlan(ordered, resolvedMoments);
+            Result<IReadOnlyList<GraphNodeId>, OrderingError<GraphNodeId>>.Ok ordered =>
+                BuildPlan(ordered.Value, resolvedMoments),
+            Result<IReadOnlyList<GraphNodeId>, OrderingError<GraphNodeId>>.Error failure =>
+                MapOrderingError(failure.Value),
+        };
     }
+
+    private static CompileError MapOrderingError(OrderingError<GraphNodeId> error) => error switch
+    {
+        OrderingError<GraphNodeId>.Cycle cycle => new CompileError.Cycle(cycle.Participants),
+
+        // Unreachable: every edge endpoint is a ledger node registered via AddNode, so no required edge
+        // can dangle. Fail loud rather than silently mint an incomplete plan if that invariant breaks.
+        OrderingError<GraphNodeId>.MissingRequiredDependency missing =>
+            throw new InvalidOperationException(
+                $"Ordering graph referenced an unregistered dependency {missing.From} -> {missing.To}; "
+                + "GraphCompiler wires edges only between registered ledger nodes."),
+    };
 
     private CompileError? BindMoments(out Dictionary<Identification, ResolvedMoment> resolvedMoments)
     {
@@ -141,25 +148,28 @@ public sealed class GraphCompiler
         return null;
     }
 
-    private BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> BuildOrderingGraph(
+    private OrderingGraphBuilder<GraphNodeId> BuildOrderingGraph(
         IReadOnlyDictionary<Identification, ResolvedMoment> resolvedMoments)
     {
-        var graph = new BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>>(allowParallelEdges: false);
+        var graph = new OrderingGraphBuilder<GraphNodeId>();
 
+        // Register in mint order: the ledger's node order is the stable insertion-order tiebreak the
+        // core drains by, so the plan order is deterministic regardless of edge-insertion order.
         foreach (var node in _ledger.Nodes)
         {
-            graph.AddVertex(node.Id);
+            graph.AddNode(node.Id);
         }
 
+        // Every endpoint below is a ledger node (readers are resource ids, themselves ledger nodes), so
+        // all edges are required — the core's self-edge skip and parallel dedup subsume the old helpers.
         foreach (var increment in _ledger.Increments)
         {
-            AddEdge(graph, increment.SourceNode, increment.ProducedNode);
+            graph.AddEdge(increment.SourceNode, increment.ProducedNode, optional: false);
         }
 
         foreach (var read in _ledger.Reads)
         {
-            EnsureVertex(graph, read.Reader);
-            AddEdge(graph, read.EpochNode, read.Reader);
+            graph.AddEdge(read.EpochNode, read.Reader, optional: false);
         }
 
         // Anti-dependency: the produced node also orders after every reader declared against its source
@@ -174,8 +184,7 @@ public sealed class GraphCompiler
 
             foreach (var reader in source.Readers)
             {
-                EnsureVertex(graph, reader);
-                AddEdge(graph, reader, increment.ProducedNode);
+                graph.AddEdge(reader, increment.ProducedNode, optional: false);
             }
         }
 
@@ -188,66 +197,10 @@ public sealed class GraphCompiler
                 continue;
             }
 
-            EnsureVertex(graph, momentRead.Reader);
-            AddEdge(graph, resolved.IncrementNode, momentRead.Reader);
+            graph.AddEdge(resolved.IncrementNode, momentRead.Reader, optional: false);
         }
 
         return graph;
-    }
-
-    private List<GraphNodeId> DeriveOrdering(BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> graph)
-    {
-        // Mint order (the ledger's node order) is the stable tiebreak among ready nodes, so the output
-        // is deterministic regardless of edge-insertion order.
-        var mintOrder = new List<GraphNodeId>();
-        var seen = new HashSet<GraphNodeId>();
-        foreach (var node in _ledger.Nodes)
-        {
-            if (seen.Add(node.Id))
-            {
-                mintOrder.Add(node.Id);
-            }
-        }
-
-        var inDegree = new Dictionary<GraphNodeId, int>();
-        foreach (var vertex in mintOrder)
-        {
-            inDegree[vertex] = graph.ContainsVertex(vertex) ? graph.InDegree(vertex) : 0;
-        }
-
-        var ordered = new List<GraphNodeId>(mintOrder.Count);
-        var emitted = new HashSet<GraphNodeId>();
-        while (ordered.Count < mintOrder.Count)
-        {
-            var progressed = false;
-            foreach (var vertex in mintOrder)
-            {
-                if (emitted.Contains(vertex) || inDegree[vertex] != 0)
-                {
-                    continue;
-                }
-
-                ordered.Add(vertex);
-                emitted.Add(vertex);
-                progressed = true;
-
-                if (graph.ContainsVertex(vertex))
-                {
-                    foreach (var outEdge in graph.OutEdges(vertex))
-                    {
-                        inDegree[outEdge.Target]--;
-                    }
-                }
-            }
-
-            if (!progressed)
-            {
-                // Unreachable: the topological-sort cycle check already proved acyclicity.
-                break;
-            }
-        }
-
-        return ordered;
     }
 
     private CompiledPlan BuildPlan(
@@ -270,48 +223,6 @@ public sealed class GraphCompiler
         return new CompiledPlan(ordered, resolvedChains, resolvedMoments);
     }
 
-    private List<GraphNodeId> FindCycleParticipants(BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> graph)
-    {
-        // Repeatedly strip zero-in-degree vertices; whatever cannot be stripped participates in a cycle.
-        var inDegree = new Dictionary<GraphNodeId, int>();
-        foreach (var vertex in graph.Vertices)
-        {
-            inDegree[vertex] = graph.InDegree(vertex);
-        }
-
-        bool progressed;
-        do
-        {
-            progressed = false;
-            foreach (var vertex in graph.Vertices)
-            {
-                if (inDegree[vertex] != 0)
-                {
-                    continue;
-                }
-
-                inDegree[vertex] = -1;
-                progressed = true;
-                foreach (var outEdge in graph.OutEdges(vertex))
-                {
-                    inDegree[outEdge.Target]--;
-                }
-            }
-        }
-        while (progressed);
-
-        var participants = new List<GraphNodeId>();
-        foreach (var node in _ledger.Nodes)
-        {
-            if (inDegree.TryGetValue(node.Id, out var degree) && degree > 0)
-            {
-                participants.Add(node.Id);
-            }
-        }
-
-        return participants;
-    }
-
     private LedgerNode? NodeById(GraphNodeId id)
     {
         foreach (var node in _ledger.Nodes)
@@ -323,29 +234,5 @@ public sealed class GraphCompiler
         }
 
         return null;
-    }
-
-    private static void EnsureVertex(BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> graph, GraphNodeId vertex)
-    {
-        if (!graph.ContainsVertex(vertex))
-        {
-            graph.AddVertex(vertex);
-        }
-    }
-
-    private static void AddEdge(
-        BidirectionalGraph<GraphNodeId, Edge<GraphNodeId>> graph,
-        GraphNodeId from,
-        GraphNodeId to)
-    {
-        if (from == to)
-        {
-            return;
-        }
-
-        if (!graph.ContainsEdge(from, to))
-        {
-            graph.AddEdge(new Edge<GraphNodeId>(from, to));
-        }
     }
 }

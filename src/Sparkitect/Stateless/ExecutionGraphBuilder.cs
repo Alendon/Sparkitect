@@ -1,60 +1,43 @@
-using QuikGraph;
-using QuikGraph.Algorithms.TopologicalSort;
 using Sparkitect.Modding;
+using Sparkitect.Utils.DU;
+using Sparkitect.Utils.Ordering;
 
 namespace Sparkitect.Stateless;
 
 internal sealed class ExecutionGraphBuilder : IExecutionGraphBuilder
 {
-    private readonly Dictionary<Edge<Identification>, bool> _edgesAndOptional = [];
-    private readonly HashSet<Identification> _added = [];
+    private readonly OrderingGraphBuilder<Identification> _graph = new();
+    private readonly HashSet<Identification> _known = [];
 
     public void AddNode(Identification node)
     {
-        _added.Add(node);
+        _known.Add(node);
+        _graph.AddNode(node);
     }
 
     public void AddEdge(Identification from, Identification to, bool optional)
     {
-        var edge = new Edge<Identification>(from, to);
-        _edgesAndOptional[edge] = optional;
+        _graph.AddEdge(from, to, optional);
     }
 
     public IReadOnlyList<Identification> Resolve()
     {
-        var graph = new AdjacencyGraph<Identification, Edge<Identification>>(true, _added.Count, _edgesAndOptional.Count);
-        graph.AddVertexRange(_added);
+        var result = _graph.Sort(OrderingTiebreak<Identification>.InsertionOrder);
 
-        foreach (var (edge, optional) in _edgesAndOptional)
+        if (result is Result<IReadOnlyList<Identification>, OrderingError<Identification>>.Ok ok)
         {
-            var sourceExists = graph.ContainsVertex(edge.Source);
-            var targetExists = graph.ContainsVertex(edge.Target);
-
-            if (sourceExists && targetExists)
-            {
-                graph.AddEdge(edge);
-            }
-            else if (!optional)
-            {
-                var missing = !sourceExists ? edge.Source : edge.Target;
-                throw new InvalidOperationException(
-                    $"Required ordering dependency not found: {missing}");
-            }
+            return ok.Value;
         }
 
-        var sorted = new List<Identification>();
-        var algorithm = new TopologicalSortAlgorithm<Identification, Edge<Identification>>(graph);
-
-        try
+        var error = ((Result<IReadOnlyList<Identification>, OrderingError<Identification>>.Error)result).Value;
+        throw error switch
         {
-            algorithm.Compute();
-            sorted.AddRange(algorithm.SortedVertices);
-        }
-        catch (NonAcyclicGraphException)
-        {
-            throw new InvalidOperationException("Cycle detected in function ordering graph");
-        }
-
-        return sorted;
+            OrderingError<Identification>.MissingRequiredDependency missing =>
+                new InvalidOperationException(
+                    $"Required ordering dependency not found: {(_known.Contains(missing.From) ? missing.To : missing.From)}"),
+            OrderingError<Identification>.Cycle cycle =>
+                new InvalidOperationException(
+                    $"Cycle detected in function ordering graph: {string.Join(", ", cycle.Participants)}"),
+        };
     }
 }

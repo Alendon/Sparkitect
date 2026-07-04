@@ -24,8 +24,8 @@ public class EntrypointOrderingAttributeTests
         // Assert
         await Assert.That(builder.Edges.Count).IsEqualTo(1);
         var edge = builder.Edges.First();
-        await Assert.That(edge.Source).IsEqualTo("Sparkitect.Tests.DI.Ordering.TypeA");
-        await Assert.That(edge.Target).IsEqualTo(typeof(TypeB).FullName);
+        await Assert.That(edge.From).IsEqualTo("Sparkitect.Tests.DI.Ordering.TypeA");
+        await Assert.That(edge.To).IsEqualTo(typeof(TypeB).FullName);
     }
 
     [Test]
@@ -42,8 +42,8 @@ public class EntrypointOrderingAttributeTests
         // Assert
         await Assert.That(builder.Edges.Count).IsEqualTo(1);
         var edge = builder.Edges.First();
-        await Assert.That(edge.Source).IsEqualTo(typeof(TypeA).FullName);
-        await Assert.That(edge.Target).IsEqualTo("Sparkitect.Tests.DI.Ordering.TypeB");
+        await Assert.That(edge.From).IsEqualTo(typeof(TypeA).FullName);
+        await Assert.That(edge.To).IsEqualTo("Sparkitect.Tests.DI.Ordering.TypeB");
     }
 
     [Test]
@@ -60,8 +60,8 @@ public class EntrypointOrderingAttributeTests
         // Assert
         await Assert.That(builder.Edges.Count).IsEqualTo(1);
         var edge = builder.Edges.First();
-        await Assert.That(edge.Source).IsEqualTo("MyType");
-        await Assert.That(edge.Target).IsEqualTo("Some.Other.Type");
+        await Assert.That(edge.From).IsEqualTo("MyType");
+        await Assert.That(edge.To).IsEqualTo("Some.Other.Type");
     }
 
     [Test]
@@ -78,8 +78,8 @@ public class EntrypointOrderingAttributeTests
         // Assert
         await Assert.That(builder.Edges.Count).IsEqualTo(1);
         var edge = builder.Edges.First();
-        await Assert.That(edge.Source).IsEqualTo("Some.Other.Type");
-        await Assert.That(edge.Target).IsEqualTo("MyType");
+        await Assert.That(edge.From).IsEqualTo("Some.Other.Type");
+        await Assert.That(edge.To).IsEqualTo("MyType");
     }
 
     [Test]

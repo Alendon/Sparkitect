@@ -3,3 +3,4 @@ global using System.Threading.Tasks;
 global using System.Collections.Generic;
 global using TUnit.Core;
 global using TUnit.Assertions;
+global using TUnit.Assertions.Enums;

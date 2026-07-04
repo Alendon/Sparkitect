@@ -34,12 +34,12 @@ public class CompileDeterminismTests
         // Ordering equality over the stable (provenance, epoch-step) projection.
         var projectedOne = Project(planOne.OrderedNodes, first.Ledger);
         var projectedTwo = Project(planTwo.OrderedNodes, second.Ledger);
-        await Assert.That(projectedOne).IsEquivalentTo(projectedTwo);
+        await Assert.That(projectedOne).IsEquivalentTo(projectedTwo, CollectionOrdering.Matching);
 
         // Resolved epochs equality: same chains, same positions, same epoch steps.
         var chainsOne = ProjectChains(planOne, first.Ledger);
         var chainsTwo = ProjectChains(planTwo, second.Ledger);
-        await Assert.That(chainsOne).IsEquivalentTo(chainsTwo);
+        await Assert.That(chainsOne).IsEquivalentTo(chainsTwo, CollectionOrdering.Matching);
     }
 
     private static (DeclarationLedger Ledger, GraphNodeId A, GraphNodeId B) BuildOrderOne()

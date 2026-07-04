@@ -12,6 +12,7 @@ public class EcsGraphBuilderTests
     private static readonly Identification System1 = Identification.Create(1, 2, 1);
     private static readonly Identification System2 = Identification.Create(1, 2, 2);
     private static readonly Identification System3 = Identification.Create(1, 2, 3);
+    private static readonly Identification System4 = Identification.Create(1, 2, 4);
 
     [Test]
     public async Task SingleNode_ProducesSortedListWithOneSystem()
@@ -41,32 +42,33 @@ public class EcsGraphBuilderTests
         await Assert.That(graph.ParentMap[System1]).IsEqualTo(GroupA);
     }
 
+    // Fan-out golden: four sibling systems in one group with partial constraints exercising BOTH
+    // ECS translation directions — System1 OrderBefore System2, and System4 OrderAfter System3 —
+    // leaving the tie order otherwise free. Pins the exact sequence the ordering machinery emits
+    // (the SC-2 regression guard across the QuikGraph -> core swap) and covers the OrderBefore /
+    // OrderAfter metadata->edge translation that is ECS's own novel logic.
     [Test]
-    public async Task ThreeNodes_WithEdges_ProducesCorrectTopologicalOrder()
+    public async Task FanOut_PartialConstraint_ProducesGoldenSystemOrder()
     {
         var builder = new EcsGraphBuilder();
         var root = new SystemTreeNode(GroupA, isGroup: true);
         root.Children.Add(new SystemTreeNode(System1, isGroup: false));
         root.Children.Add(new SystemTreeNode(System2, isGroup: false));
         root.Children.Add(new SystemTreeNode(System3, isGroup: false));
+        root.Children.Add(new SystemTreeNode(System4, isGroup: false));
 
-        // System1 -> System2 -> System3 via OrderAfter edges in metadata
         var systemMeta = new Dictionary<Identification, IScheduling>
         {
             [System1] = MakeScheduling(System1, GroupA, [], [new TestOrderBeforeAttribute(System2)]),
-            [System2] = MakeScheduling(System2, GroupA, [new TestOrderAfterAttribute(System1)], [new TestOrderBeforeAttribute(System3)]),
-            [System3] = MakeScheduling(System3, GroupA, [new TestOrderAfterAttribute(System2)], [])
+            [System2] = MakeScheduling(System2, GroupA, [], []),
+            [System3] = MakeScheduling(System3, GroupA, [], []),
+            [System4] = MakeScheduling(System4, GroupA, [new TestOrderAfterAttribute(System3)], [])
         };
         builder.BuildFromTree(root, systemMeta, CreateGroupMeta([(GroupA, null)]));
 
         var graph = builder.Resolve();
 
-        await Assert.That(graph.SortedSystems).Count().IsEqualTo(3);
-        var idx1 = graph.SortedSystems.ToList().IndexOf(System1);
-        var idx2 = graph.SortedSystems.ToList().IndexOf(System2);
-        var idx3 = graph.SortedSystems.ToList().IndexOf(System3);
-        await Assert.That(idx1).IsLessThan(idx2);
-        await Assert.That(idx2).IsLessThan(idx3);
+        await Assert.That(graph.SortedSystems).IsEquivalentTo(new[] { System1, System2, System3, System4 }, CollectionOrdering.Matching);
     }
 
     [Test]
