@@ -31,7 +31,7 @@ public class EngineBootstrapper
     public static void Main(string[] args)
     {
         // Record the entry args once so the early logger read and the CLI settings source read one
-        // authoritative arg set (the retired ICliArgumentHandler no longer mediates CLI acquisition).
+        // authoritative arg set.
         EngineEntryArguments.Set(args);
 
         InitializeLogger(args);
@@ -68,7 +68,7 @@ public class EngineBootstrapper
 
     private static void InitializeLogger(string[] args)
     {
-        // D-16: read the log level and directory DIRECTLY from CLI args + Sparkitect.yaml, reusing the same
+        // Read the log level and directory directly from CLI args + Sparkitect.yaml, reusing the same
         // parsers the CLI/engine-config sources use and the engine's own setting declarations (their CLI
         // option, default, and scalar parser) — no two-stage logger, no bootstrap reorder. Formal source
         // registration still happens later for completeness. Resolution order: CLI > engine-config > default.

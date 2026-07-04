@@ -9,7 +9,7 @@ namespace Sparkitect.Settings;
 /// <summary>
 /// CoreModule's two readonly setting sources: the CLI source and the engine-config
 /// (<c>Sparkitect.yaml</c>) source. Both register into <see cref="SettingSourceRegistry"/> with
-/// ordering metadata placing CLI ahead of engine-config. The user source (a later plan) inserts itself
+/// ordering metadata placing CLI ahead of engine-config. The user source inserts itself
 /// between them via its own <see cref="ISettingSource.OrderAfter"/>/<see cref="ISettingSource.OrderBefore"/>
 /// edges against these two ids, yielding the full <c>CLI &gt; user &gt; engine-config &gt; defaults</c> order.
 /// </summary>
@@ -36,7 +36,6 @@ public static class CoreSettingSources
             keyProvider: id => identifications.TryResolveIdentification(id, out _, out _, out var objectId) ? objectId : null,
             declarationProvider: manager.GetDeclaration);
 
-    // The engine entry arguments, threaded explicitly from EngineBootstrapper.Main via EngineEntryArguments
-    // (the retired ICliArgumentHandler no longer mediates CLI acquisition).
+    // The engine entry arguments, threaded explicitly from EngineBootstrapper.Main via EngineEntryArguments.
     private static IReadOnlyList<string> EntryArgs() => EngineEntryArguments.Args;
 }

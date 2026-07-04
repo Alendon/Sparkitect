@@ -114,7 +114,7 @@ Create `Properties/launchSettings.json` to run the engine with your mod from the
     "Run My Mod": {
       "commandName": "Executable",
       "executablePath": "$(SolutionDir)/src/Sparkitect/bin/$(Configuration)/net10.0/Sparkitect",
-      "commandLineArgs": "-addModDirs=$(ProjectDir)/bin/$(Configuration)/net10.0",
+      "commandLineArgs": "--add-mod-dirs=$(ProjectDir)/bin/$(Configuration)/net10.0",
       "workingDirectory": "$(ProjectDir)/.run"
     }
   }
@@ -129,15 +129,15 @@ In Rider or Visual Studio, select the profile and run. The `$(Configuration)` va
 ### From Command Line
 
 ```bash
-dotnet run --project path/to/Sparkitect.csproj -- -addModDirs=path/to/your/mod/bin/Debug/net10.0
+dotnet run --project path/to/Sparkitect.csproj -- --add-mod-dirs=path/to/your/mod/bin/Debug/net10.0
 ```
 
 ### General Deployment
 
-Place `.sparkmod` archives in the engine's `mods/` directory. The engine discovers and loads mods from this directory at startup. Additional directories can be added with `-addModDirs`:
+Place `.sparkmod` archives in the engine's `mods/` directory. The engine discovers and loads mods from this directory at startup. Additional directories can be added with `--add-mod-dirs`, repeated once per directory:
 
 ```bash
--addModDirs=path/to/mod1;path/to/mod2
+--add-mod-dirs=path/to/mod1 --add-mod-dirs=path/to/mod2
 ```
 
 ## Troubleshooting

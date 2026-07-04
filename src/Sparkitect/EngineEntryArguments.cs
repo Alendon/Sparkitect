@@ -2,8 +2,8 @@ namespace Sparkitect;
 
 /// <summary>
 /// Holds the engine's process entry arguments (as passed to <see cref="EngineBootstrapper.Main"/>) so both
-/// the pre-container logger read (D-16) and the CLI settings source read one authoritative arg set. Set once
-/// at startup; the CLI acquisition flows solely through this after the <c>ICliArgumentHandler</c> retirement.
+/// the pre-container logger read and the CLI settings source read one authoritative arg set. Set once at
+/// startup; all CLI acquisition flows through this.
 /// </summary>
 internal static class EngineEntryArguments
 {

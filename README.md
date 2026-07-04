@@ -106,7 +106,7 @@ public partial class HelloModule : IStateModule
 Build your project to produce a `.sparkmod` archive, then run the engine with your mod directory:
 
 ```bash
-Sparkitect -addModDirs=path/to/your/mod/bin/Debug/net10.0
+Sparkitect --add-mod-dirs=path/to/your/mod/bin/Debug/net10.0
 ```
 
 See the [Getting Started guide](https://alendon.github.io/Sparkitect/articles/intro.html) for a complete walkthrough including state descriptors and entry state selectors.

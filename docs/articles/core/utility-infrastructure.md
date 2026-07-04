@@ -162,24 +162,25 @@ The SG walks the marker's base to find `TMetadata`, inspects its constructor, ma
 
 ## CLI Argument Handling
 
-Sparkitect exposes process-level CLI arguments through a single DI-registered service so mods don't have to re-parse `args[]` themselves. Engine bootstrap initializes it once at startup with the combined engine + mod argument list.
+Sparkitect parses process-level CLI arguments once at startup and feeds them to settings through the settings system. There is no argument-handler service to inject: a setting opts into CLI feeding by declaring a CLI option on its `SettingDefinition` (`CliOption: "my-option"`), and the CLI settings source supplies the parsed value during resolution. `CliArgValue` in `Sparkitect.Utils.DU` is the underlying value shape — a discriminated union with `Flag`, `Single(string)`, and `Multi(IReadOnlyList<string>)` arms.
 
-Two pieces compose the API: `ICliArgumentHandler` is the query surface (`HasArgument`, `TryGetArgumentValue`, `TryGetArgumentValues`), and `CliArgValue` in `Sparkitect.Utils.DU` is the underlying value shape — a discriminated union with `Flag`, `Single(string)`, and `Multi(IReadOnlyList<string>)` arms. Direct use of the union is uncommon; most consumers go through the `TryGet*` helpers which unwrap it for you.
+Argument syntax follows strict unix-style long options:
 
-Argument syntax: `-flag` parses to `Flag`; `-key=value` parses to `Single(value)`; `-key=value1;value2` parses to `Multi([value1, value2])`. Keys are case-insensitive.
+- Every token must start with `--`. Single-dash tokens and bare positionals are parse errors — the engine aborts naming the offending token.
+- `--key=value` supplies a value. Values are always `=`-attached; `--key value` is not supported.
+- Bare `--flag` supplies boolean true; `--no-flag` supplies boolean false. The `no-` prefix is reserved for negation: a declared CLI option may not itself start with `no-`, and a negated form may not carry a value.
+- Multi-values come from repetition: `--x=a --x=b` accumulates both values. A `;` inside a value is literal content, not a separator.
+- Keys are case-sensitive and kebab-case by convention (`--vk-validation`, `--log-level`).
 
-Inject `ICliArgumentHandler` like any other service:
+Malformed input fails loud. Passing both `--foo` and `--no-foo` is an error, as is a CLI value that does not fit the setting it feeds — a repeated option on a single-value setting, a bare flag on a non-boolean setting, or an unparseable value aborts resolution instead of silently falling back to a lower-precedence source.
+
+Unknown option names are not errors: settings are declared by mods that load after arguments are parsed, so the parser retains every well-formed token for later consumers.
+
+A mod binds a setting to the CLI like any other declaration:
 
 ```csharp
-public class MyManager(ICliArgumentHandler cliArgs) : IMyManager
-{
-    public void Initialize()
-    {
-        if (cliArgs.HasArgument("my-mod-debug"))
-            // enable debug behavior
-
-        if (cliArgs.TryGetArgumentValue("my-mod-config", out var config))
-            // use the config value
-    }
-}
+[SettingRegistry.RegisterSetting("my_mod_debug")]
+public static SettingDefinition<bool> MyModDebug => new(false, CliOption: "my-mod-debug");
 ```
+
+`--my-mod-debug` turns it on, `--no-my-mod-debug` turns it off, and `--my-mod-debug=false` works as an explicit value.

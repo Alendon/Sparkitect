@@ -38,7 +38,7 @@ The engine discovers mods automatically on startup:
 
 1. Scans the `mods/` directory (relative to the engine executable) for `.sparkmod` archives
 2. Reads each archive's manifest to populate the list of available mods
-3. Additional directories can be specified via the `addModDirs` CLI argument
+3. Additional directories can be specified via repeated `--add-mod-dirs` arguments
 
 Discovery only reads manifests. No assemblies are loaded and no code runs during this step.
 

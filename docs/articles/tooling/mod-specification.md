@@ -136,7 +136,7 @@ The manifest format is considered stable. No version field is included in the ma
 
 ## Runtime Loading
 
-The Sparkitect runtime discovers mods from a default `mods/` directory and any additional directories specified via the `-addModDirs` CLI argument. Each directory is scanned for `.sparkmod` files.
+The Sparkitect runtime discovers mods from a default `mods/` directory and any additional directories specified via the `--add-mod-dirs` CLI argument (repeated once per directory). Each directory is scanned for `.sparkmod` files.
 
 Loading process:
 1. Discover and parse all manifests

@@ -28,7 +28,7 @@ internal class ModManager : IModManager
     public required IDIService ModDiService { private get; init; }
     public required IResourceManager ResourceManager { private get; init; }
 
-    private const string AddModDirsArgument = "addModDirs";
+    private const string AddModDirsArgument = "add-mod-dirs";
 
     // Reads a multi-valued CLI argument from the engine entry args via the shared CLI parser. Returns the
     // value list (a single value yields a one-element list; a flag or absent key yields empty).
@@ -68,7 +68,8 @@ internal class ModManager : IModManager
     public IReadOnlyList<ModManifest> DiscoveredArchives => _discoveredArchives;
 
     /// <summary>
-    /// Discovers all available mods from the mods folder and from any additional directories specified by the addModDirs argument
+    /// Discovers all available mods from the mods folder and from any additional directories specified
+    /// via repeated --add-mod-dirs arguments
     /// </summary>
     public void DiscoverMods()
     {
@@ -87,10 +88,9 @@ internal class ModManager : IModManager
         _seenModIdentifiers.Clear();
         _modIdentifierPaths.Clear();
 
-        // Check for additional mod directories specified in command line arguments. CLI acquisition flows
-        // through the shared CLI parser (the ICliArgumentHandler surface is retired); addModDirs is a
-        // multi-value directory list, not a primitive setting, so it is read directly here rather than as a
-        // declared setting.
+        // Check for additional mod directories specified in command line arguments. add-mod-dirs is a
+        // multi-value directory list (repeated --add-mod-dirs=...), not a primitive setting, so it is read
+        // directly through the shared CLI parser rather than as a declared setting.
         var additionalModFiles = new List<string>();
         var additionalModDirs = ReadCliValues(AddModDirsArgument);
         if (additionalModDirs.Count > 0)

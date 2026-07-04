@@ -109,7 +109,7 @@ Add a `Properties/launchSettings.json` to your mod project:
     "Sparkitect": {
       "commandName": "Executable",
       "executablePath": "path/to/Sparkitect",
-      "commandLineArgs": "-addModDirs=$(ProjectDir)bin/$(Configuration)/net10.0",
+      "commandLineArgs": "--add-mod-dirs=$(ProjectDir)bin/$(Configuration)/net10.0",
       "workingDirectory": "$(ProjectDir).run"
     }
   }
@@ -121,7 +121,7 @@ This lets you press F5 in your IDE to build and run with the engine. The `workin
 **From the command line:**
 
 ```bash
-Sparkitect -addModDirs=path/to/your/mod/bin/Debug/net10.0
+Sparkitect --add-mod-dirs=path/to/your/mod/bin/Debug/net10.0
 ```
 
 You can also place `.sparkmod` archives directly in the engine's `mods/` directory.

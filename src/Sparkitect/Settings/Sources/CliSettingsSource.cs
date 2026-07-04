@@ -5,14 +5,17 @@ using Sparkitect.Utils.DU;
 namespace Sparkitect.Settings.Sources;
 
 /// <summary>
-/// The readonly CLI setting source. Parses the process arguments with the same
-/// <c>-key=value</c> / <c>;</c>-multi / flag semantics the retired <c>CliArgumentHandler</c> produced,
-/// and feeds a setting only when it explicitly declares the matching CLI option (no name-derived
-/// binding, D-11). Writes are refused.
+/// The readonly CLI setting source. Parses the process arguments as strict unix-style long options
+/// (<c>--key=value</c>, bare <c>--flag</c>, <c>--no-flag</c> negation, multi-values by repetition) and
+/// feeds a setting only when it explicitly declares the matching CLI option (no name-derived binding).
+/// Malformed tokens fail loud at parse time; values malformed for their declared setting fail loud at
+/// pull time. Writes are refused.
 /// </summary>
 [PublicAPI]
 public sealed class CliSettingsSource : ISettingSource
 {
+    private const string NegationPrefix = "no-";
+
     private readonly Dictionary<string, CliArgValue> _arguments;
     private readonly Func<Identification, ISettingDeclaration?> _declarationProvider;
     private readonly Func<IReadOnlyList<SettingSourceOrder>>? _orderBefore;
@@ -49,83 +52,134 @@ public sealed class CliSettingsSource : ISettingSource
     public IReadOnlyList<SettingSourceOrder> OrderAfter => _orderAfter?.Invoke() ?? [];
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Negation is resolved here, with the declaration in hand: both <c>option</c> and
+    /// <c>no-{option}</c> are looked up. An option present but malformed for its declared setting
+    /// (repetition pulled by a scalar setting, a bare flag on a non-bool, an unparseable value) throws
+    /// rather than falling through to a lower-precedence source.
+    /// </remarks>
     public bool TryGet(Identification id, out object? value)
     {
         value = null;
 
-        // A setting is fed only through its explicitly declared CLI option (D-11).
+        // A setting is fed only through its explicitly declared CLI option.
         if (_declarationProvider(id)?.CliOption is not { } option)
         {
             return false;
         }
 
-        if (!_arguments.TryGetValue(option, out var argument))
+        var declaration = _declarationProvider(id)!;
+
+        if (_arguments.TryGetValue(option, out var argument))
         {
-            return false;
+            var raw = argument switch
+            {
+                CliArgValue.Flag => "true",
+                CliArgValue.Single single => single.Value,
+                CliArgValue.Multi => throw new InvalidOperationException(
+                    $"CLI option '--{option}' was given multiple times but feeds a single-value setting."),
+            };
+            if (!declaration.TryParseScalar(raw, out value))
+            {
+                throw new InvalidOperationException(argument is CliArgValue.Flag
+                    ? $"CLI option '--{option}' is a bare flag but does not feed a boolean setting."
+                    : $"CLI option '--{option}={raw}' does not parse to the setting's declared type.");
+            }
+
+            return true;
         }
 
-        var declaration = _declarationProvider(id)!;
-        return argument switch
+        if (_arguments.ContainsKey(NegationPrefix + option))
         {
-            CliArgValue.Flag => declaration.TryParseScalar("true", out value),
-            CliArgValue.Single single => declaration.TryParseScalar(single.Value, out value),
-            CliArgValue.Multi multi => multi.Values.Count > 0 && declaration.TryParseScalar(multi.Values[0], out value),
-        };
+            if (!declaration.TryParseScalar("false", out value))
+            {
+                throw new InvalidOperationException(
+                    $"CLI option '--{NegationPrefix}{option}' negates a non-boolean setting.");
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     /// <inheritdoc/>
     public Result<SetError> Write(Identification id, object? value) => new SetError.SourceReadonly(Identification.Empty);
 
     /// <summary>
-    /// Parses raw process arguments into keyed values with the <c>-key=value</c> / <c>;</c>-multi / flag
-    /// semantics the retired <c>CliArgumentHandler</c> produced. Shared with the pre-container logger read
-    /// (D-16) so CLI parsing has a single source of truth.
+    /// Parses raw process arguments as strict unix-style long options. Every token must start with
+    /// <c>--</c>; <c>--key=value</c> stores a value (a <c>;</c> is literal content), bare <c>--flag</c>
+    /// stores a flag (including <c>no-</c>-prefixed keys — negation is resolved at pull time), and
+    /// repetition accumulates values. Non-<c>--</c> tokens, empty keys, a value on a negated form, and a
+    /// <c>--foo</c>/<c>--no-foo</c> conflict throw. Unknown option names are retained for later
+    /// consumers. Shared with the pre-container logger read so CLI parsing has a single source of truth.
     /// </summary>
     /// <param name="args">The raw process arguments (excluding the executable path).</param>
     internal static Dictionary<string, CliArgValue> ParseArguments(IReadOnlyList<string> args)
     {
-        var arguments = new Dictionary<string, CliArgValue>(StringComparer.OrdinalIgnoreCase);
+        var arguments = new Dictionary<string, CliArgValue>(StringComparer.Ordinal);
         foreach (var arg in args)
         {
-            if (!arg.StartsWith('-'))
+            if (!arg.StartsWith("--", StringComparison.Ordinal))
+            {
+                throw new ArgumentException($"CLI argument '{arg}' is not a '--' long option.");
+            }
+
+            var token = arg[2..];
+            if (token.Length == 0)
+            {
+                throw new ArgumentException("CLI argument '--' carries no option name.");
+            }
+
+            var equalsIndex = token.IndexOf('=');
+            if (equalsIndex < 0)
+            {
+                arguments.TryAdd(token, new CliArgValue.Flag());
+                continue;
+            }
+
+            var key = token[..equalsIndex];
+            if (key.Length == 0)
+            {
+                throw new ArgumentException($"CLI argument '{arg}' carries no option name.");
+            }
+
+            if (key.StartsWith(NegationPrefix, StringComparison.Ordinal))
+            {
+                throw new ArgumentException($"CLI argument '{arg}' is a negated form and takes no value.");
+            }
+
+            var value = token[(equalsIndex + 1)..];
+            arguments[key] = arguments.TryGetValue(key, out var existing)
+                ? existing switch
+                {
+                    CliArgValue.Flag => new CliArgValue.Single(value),
+                    CliArgValue.Single single => new CliArgValue.Multi(new List<string> { single.Value, value }),
+                    CliArgValue.Multi multi => AppendValue(multi, value),
+                }
+                : new CliArgValue.Single(value);
+        }
+
+        foreach (var key in arguments.Keys)
+        {
+            if (!key.StartsWith(NegationPrefix, StringComparison.Ordinal))
             {
                 continue;
             }
 
-            var trimmed = arg.TrimStart('-');
-            var equalsIndex = trimmed.IndexOf('=');
-            if (equalsIndex <= 0)
+            var option = key[NegationPrefix.Length..];
+            if (arguments.ContainsKey(option))
             {
-                arguments[trimmed] = new CliArgValue.Flag();
-                continue;
-            }
-
-            var key = trimmed[..equalsIndex].Trim();
-            var value = trimmed[(equalsIndex + 1)..].Trim();
-            var values = value.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
-
-            if (!arguments.TryGetValue(key, out var existing))
-            {
-                arguments[key] = values.Count == 1 ? new CliArgValue.Single(values[0]) : new CliArgValue.Multi(values);
-                continue;
-            }
-
-            switch (existing)
-            {
-                case CliArgValue.Flag:
-                    arguments[key] = values.Count == 1 ? new CliArgValue.Single(values[0]) : new CliArgValue.Multi(values);
-                    break;
-                case CliArgValue.Single single:
-                    var merged = new List<string> { single.Value };
-                    merged.AddRange(values);
-                    arguments[key] = new CliArgValue.Multi(merged);
-                    break;
-                case CliArgValue.Multi multi:
-                    ((List<string>)multi.Values).AddRange(values);
-                    break;
+                throw new ArgumentException($"CLI arguments '--{option}' and '--{key}' conflict.");
             }
         }
 
         return arguments;
+    }
+
+    private static CliArgValue.Multi AppendValue(CliArgValue.Multi multi, string value)
+    {
+        ((List<string>)multi.Values).Add(value);
+        return multi;
     }
 }

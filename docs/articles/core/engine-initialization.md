@@ -34,7 +34,7 @@ The bootstrapper creates the Root container with the eight [`CoreModule`](xref:S
 
 | Service | Role |
 |---------|------|
-| [`ICliArgumentHandler`](xref:Sparkitect.Utils.ICliArgumentHandler) | Processes command-line arguments |
+| [`ISettingsManager`](xref:Sparkitect.Settings.ISettingsManager) | Settings resolution over CLI, config, and user sources |
 | [`IIdentificationManager`](xref:Sparkitect.Modding.IIdentificationManager) | String-to-numeric ID mappings |
 | [`IResourceManager`](xref:Sparkitect.Modding.IResourceManager) | Resource loading |
 | [`IModManager`](xref:Sparkitect.Modding.IModManager) | Mod discovery and loading |

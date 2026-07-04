@@ -23,10 +23,17 @@ public sealed record SettingDefinition<T> : ISettingDeclaration
     /// <param name="Default">The value resolved when no source supplies an explicit value.</param>
     /// <param name="CliOption">
     /// The CLI option key that feeds this setting, or null when no CLI binding is declared. A setting
-    /// must explicitly declare its CLI option — there is no name-derived auto-binding.
+    /// must explicitly declare its CLI option — there is no name-derived auto-binding. The <c>no-</c>
+    /// prefix is reserved for CLI negation and rejected here.
     /// </param>
     public SettingDefinition(T Default, string? CliOption = null)
     {
+        if (CliOption?.StartsWith("no-", StringComparison.Ordinal) == true)
+        {
+            throw new ArgumentException(
+                $"CLI option '{CliOption}' starts with the reserved negation prefix 'no-'.", nameof(CliOption));
+        }
+
         this.Default = Default;
         this.CliOption = CliOption;
     }
