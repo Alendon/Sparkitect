@@ -14,8 +14,6 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
     private const string SchedulingAttributeBase = "Sparkitect.Stateless.SchedulingAttribute";
     private const string IHasIdentificationInterface = "Sparkitect.Modding.IHasIdentification";
     private const string ParentIdAttributeBase = "Sparkitect.Stateless.ParentIdAttribute";
-    private const string OrderBeforeAttributeBase = "Sparkitect.Stateless.OrderBeforeAttribute";
-    private const string OrderAfterAttributeBase = "Sparkitect.Stateless.OrderAfterAttribute";
     private const string AllowConcreteResolutionAttributeFqn = "Sparkitect.DI.GeneratorAttributes.AllowConcreteResolutionAttribute";
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
@@ -24,7 +22,6 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
         MultipleSchedulingAttributes,
         ParameterNotDiResolvable,
         MissingIHasIdentification,
-        OrphanOrderingAttribute,
         NonPublicStaticAccess
     ];
 
@@ -106,29 +103,6 @@ public class StatelessFunctionAnalyzer : DiagnosticAnalyzer
                 MultipleSchedulingAttributes,
                 attrLocation,
                 methodSymbol.Name));
-        }
-
-        // SPARK0405: If count == 0 AND method has OrderBefore/OrderAfter, report orphan ordering
-        if (schedulingAttributes.Count == 0)
-        {
-            var orderingAttributes = methodSymbol.GetAttributes()
-                .Where(attr =>
-                    InheritsFrom(attr.AttributeClass, OrderBeforeAttributeBase) ||
-                    InheritsFrom(attr.AttributeClass, OrderAfterAttributeBase))
-                .ToList();
-
-            if (orderingAttributes.Count > 0)
-            {
-                var orderingNames = string.Join(", ", orderingAttributes
-                    .Select(a => $"[{a.AttributeClass?.Name ?? "ordering attribute"}]")
-                    .Distinct());
-
-                context.ReportDiagnostic(Diagnostic.Create(
-                    OrphanOrderingAttribute,
-                    GetAttributeLocation(orderingAttributes[0]) ?? attrLocation,
-                    methodSymbol.Name,
-                    orderingNames));
-            }
         }
 
         // SPARK0403: Check each parameter for DI-resolvability

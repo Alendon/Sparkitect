@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using Sparkitect.DI.GeneratorAttributes;
 using Sparkitect.GameState;
+using Sparkitect.Metadata;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
@@ -65,7 +66,7 @@ public sealed class TransitionFunctionAttribute(string identifier)
 /// Abstract base for parent ID attributes. Carries the resolved Identification of the parent.
 /// </summary>
 [PublicAPI]
-public abstract class ParentIdAttribute : Attribute
+public abstract class ParentIdAttribute : MetadataParameterAttribute
 {
     /// <summary>The resolved identification of the declared parent (owner).</summary>
     public abstract Identification Other { get; }
@@ -85,11 +86,3 @@ public sealed class ParentIdAttribute<TOwner> : ParentIdAttribute
     /// <inheritdoc/>
     public override Identification Other => TOwner.Identification;
 }
-
-/// <summary>
-/// Marker base for scheduling parameter attributes. Used by analyzers to validate
-/// that these attributes are only applied to stateless function methods.
-/// </summary>
-[AttributeUsage(AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
-[PublicAPI]
-public abstract class SchedulingParameterAttribute : Attribute;

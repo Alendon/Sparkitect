@@ -48,10 +48,10 @@ SPARK0401 | Sparkitect | Error | Stateless function must be static
 SPARK0402 | Sparkitect | Error | Multiple scheduling attributes not allowed
 SPARK0403 | Sparkitect | Warning | Parameter may not be DI-resolvable
 SPARK0404 | Sparkitect | Error | Container must implement IHasIdentification
-SPARK0405 | Sparkitect | Warning | Ordering attribute without scheduling
 SPARK0406 | Sparkitect | Error | Stateless function must not access non-public static state
 SPARK0501 | Sparkitect | Error | ModId must be snake_case
 SPARK0502 | Sparkitect | Error | Identifier must be snake_case
 SPARK0601 | Sparkitect | Error | Optional mod type leakage
 SPARK0602 | Sparkitect | Error | Unguarded optional mod call
 SPARK0603 | Sparkitect | Error | Invalid optional mod ID
+SPARK0701 | Sparkitect | Warning | Metadata parameter attribute is not harvested here

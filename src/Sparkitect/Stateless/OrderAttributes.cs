@@ -1,11 +1,8 @@
 using JetBrains.Annotations;
+using Sparkitect.Metadata;
 using Sparkitect.Modding;
 
 namespace Sparkitect.Stateless;
-
-// TODO: SG Analyzer - Validate SchedulingParameterAttribute usage:
-//   - Must only be applied to methods with a StatelessFunctionAttribute
-//   - Must be combined with a matching scheduling attribute
 
 /// <summary>
 /// Non-generic base for "run before" ordering constraints. Use the generic
@@ -14,7 +11,7 @@ namespace Sparkitect.Stateless;
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
-public abstract class OrderBeforeAttribute() : Attribute
+public abstract class OrderBeforeAttribute() : MetadataParameterAttribute
 {
     /// <summary>The identification of the function this constraint orders against.</summary>
     public abstract Identification Other { get; }
@@ -39,7 +36,7 @@ public abstract class OrderBeforeAttribute() : Attribute
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
 [PublicAPI]
-public abstract class OrderAfterAttribute() : Attribute
+public abstract class OrderAfterAttribute() : MetadataParameterAttribute
 {
     /// <summary>The identification of the function this constraint orders against.</summary>
     public abstract Identification Other { get; }

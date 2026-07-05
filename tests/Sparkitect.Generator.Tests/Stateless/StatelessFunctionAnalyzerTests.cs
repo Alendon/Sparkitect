@@ -354,10 +354,11 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
     }
 
 
-    // SPARK0405 - Orphan ordering attributes
+    // SPARK0405 - Orphan ordering is no longer owned by this analyzer (subsumed by SPARK0701).
+    // These guard that the stateless analyzer no longer double-reports orphan ordering.
 
     [Test]
-    public async Task OrderBeforeWithoutScheduling_ReportsWarning()
+    public async Task OrderBeforeWithoutScheduling_NotReportedByStatelessAnalyzer()
     {
         var code = """
             #pragma warning disable SPARK0262
@@ -388,11 +389,11 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
 
         var diagnostics = await RunAnalyzerAsync();
 
-        await AssertDiagnosticCount(diagnostics, "SPARK0405", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0405", 0);
     }
 
     [Test]
-    public async Task OrderAfterWithoutScheduling_ReportsWarning()
+    public async Task OrderAfterWithoutScheduling_NotReportedByStatelessAnalyzer()
     {
         var code = """
             #pragma warning disable SPARK0262
@@ -423,7 +424,7 @@ public class StatelessFunctionAnalyzerTests : AnalyzerTestBase<StatelessFunction
 
         var diagnostics = await RunAnalyzerAsync();
 
-        await AssertDiagnosticCount(diagnostics, "SPARK0405", 1);
+        await AssertDiagnosticCount(diagnostics, "SPARK0405", 0);
     }
 
     [Test]
