@@ -40,6 +40,14 @@
     <lang.syntaxHighlighterFactory language="SparkresYaml"
               implementationClass="org.jetbrains.yaml.YAMLSyntaxHighlighterFactory" />
 
+    <!--
+      The GSM Debugger tool window (58.1). Always available (D-08) with no availability condition so its
+      explanatory empty states are reachable whether or not a Sparkitect game is running; the factory
+      binds the republished DebugToolWindowModel Ext (backend is the sole game-channel client, Pitfall 5).
+    -->
+    <toolWindow id="Sparkitect Game State" anchor="bottom"
+              factoryClass="sparkitect.riderplugin.debug.GameStateToolWindowFactory" />
+
     <rd.languageAssociation backendLanguage="YAML" frontendLanguage="SparkresYaml" />
     <backend.markup.adapterFactory language="SparkresYaml"
               implementationClass="com.jetbrains.rdclient.daemon.FrontendMarkupAdapterFactory" />

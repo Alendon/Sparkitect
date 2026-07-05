@@ -60,6 +60,10 @@
         <ProjectReference Include="..\..\gen\Sparkitect.Generator\Sparkitect.Generator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" SetTargetFramework="TargetFramework=netstandard2.0" />
 
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.2" />
+        <!-- rd runtime for the engine debug channel. Pinned to the plan-01 rd line (= Rider ProductVersion)
+             so the wire ABI matches the plugin end to end. Compiles the committed C#-reversed endpoint under
+             Debug/generated/ (auto-included by the SDK default compile glob); the socket host arrives in a later plan. -->
+        <PackageReference Include="JetBrains.RdFramework" Version="2026.1.2" />
         <PackageReference Include="Serilog" Version="4.3.0" />
         <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
         <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />

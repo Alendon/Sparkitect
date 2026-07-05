@@ -20,6 +20,16 @@
     <PackageReference Include="JetBrains.Rider.SDK" Version="$(SdkVersion)" />
   </ItemGroup>
 
+  <!--
+    The Solution-Ext republish stub binds against the Rider Solution model (JetBrains.Rider.Model),
+    which ships only with the Rider SDK — so it is compiled by the Rider build alone, alongside the
+    shared library + game-channel stubs pulled in by Directory.Build.props. This is the same split that
+    guards DebugToolWindowHost.cs behind #if RIDER: only this build sees the Rider Solution model.
+  -->
+  <ItemGroup Condition="Exists('$(SparkitectDebugGeneratedDir)')">
+    <Compile Include="$(SparkitectDebugGeneratedDir)\DebugToolWindowModel.Generated.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Remove="bin\**" />
     <EmbeddedResource Remove="bin\**" />

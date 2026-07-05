@@ -50,4 +50,23 @@
     </Reference>
   </ItemGroup>
 
+  <!--
+    Generated rd debug-channel stubs (58.1-04/08). rdgen (:protocol:rdgen) emits the C# backend stubs
+    into protocol/build/generated/csharp-backend/ (git-ignored build output, regenerated on model
+    change). The SHARED data library + the game channel bind against JetBrains.RdFramework alone (part
+    of both the ReSharper and Rider SDKs) — so both backend builds compile them and the plain backend
+    compile oracle covers the rd client. The Solution-Ext republish stub
+    (DebugToolWindowModel.Generated.cs) additionally needs the Rider Solution model and is compiled ONLY
+    by the Rider build (see Sparkitect.RiderPlugin.Rider.csproj). The gradle build makes compileDotNet
+    depend on :protocol:rdgen so these files exist before msbuild runs.
+  -->
+  <PropertyGroup>
+    <SparkitectDebugGeneratedDir>$(MSBuildThisFileDirectory)..\..\protocol\build\generated\csharp-backend</SparkitectDebugGeneratedDir>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(SparkitectDebugGeneratedDir)')">
+    <Compile Include="$(SparkitectDebugGeneratedDir)\DebugLibrary.Generated.cs" />
+    <Compile Include="$(SparkitectDebugGeneratedDir)\SparkitectDebugModel.Generated.cs" />
+  </ItemGroup>
+
 </Project>

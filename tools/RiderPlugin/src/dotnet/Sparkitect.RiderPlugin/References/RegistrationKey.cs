@@ -62,6 +62,17 @@ public readonly struct RegistrationKey
         FromReliableInputs(modId, category, entryId);
 
     /// <summary>
+    /// Derives the key from a runtime string identification triple carried on the debug-channel wire
+    /// (mod / category / item names). The wire never carries the numeric <c>Identification</c> — its
+    /// numbers are assigned at runtime in registration order and are meaningless to the plugin — so the
+    /// engine resolves numeric to string before publishing and the plugin rebuilds the very key a C#
+    /// registration attribute or resource entry for the same registration would. A thin wrapper over the
+    /// shared reliable-input reconstruction; no key-derivation logic is duplicated.
+    /// </summary>
+    public static RegistrationKey? FromRuntimeIds(string modId, string category, string item) =>
+        FromReliableInputs(modId, category, item);
+
+    /// <summary>
     /// Derives the key from a resolved generated leaf property: its declaring type is the IDs struct
     /// and its short name is the member.
     /// </summary>

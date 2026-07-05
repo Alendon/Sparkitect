@@ -1,5 +1,7 @@
+using System.Linq;
 using JetBrains.Metadata.Reader.Impl;
 using JetBrains.ReSharper.Psi;
+using JetBrains.ReSharper.Psi.CSharp.Tree;
 
 namespace Sparkitect.RiderPlugin.Registrations;
 
@@ -25,7 +27,7 @@ public static class RegisteredFromReader
             if (typeValue is { IsBadValue: false, IsType: true }
                 && (typeValue.TypeValue as IDeclaredType)?.GetTypeElement() is { } typeElement)
             {
-                var member = ReadString(instance, "Member");
+                var member = ReadString(instance, "Member") ?? ReadMemberSyntactically(leaf);
                 return RegistrationOwner.ForType(typeElement, member);
             }
 
@@ -40,20 +42,69 @@ public static class RegisteredFromReader
         return null;
     }
 
+    /// <summary>
+    /// Lexical fallback for the <c>Member</c> named argument: reads the string literal token straight
+    /// from the attribute syntax on the leaf's declaration, bypassing the constant evaluator entirely
+    /// (see the <see cref="ReadString" /> degrade note).
+    /// </summary>
+    private static string? ReadMemberSyntactically(IProperty leaf)
+    {
+        foreach (var declaration in leaf.GetDeclarations())
+        {
+            if (declaration is not IAttributesOwnerDeclaration attributesOwner)
+                continue;
+
+            foreach (var attribute in attributesOwner.AttributesEnumerable)
+            {
+                if (attribute.Name?.ShortName is not ("RegisteredFrom" or "RegisteredFromAttribute"))
+                    continue;
+
+                foreach (var assignment in attribute.PropertyAssignments)
+                {
+                    if (assignment.PropertyNameIdentifier?.Name != "Member")
+                        continue;
+
+                    var text = (assignment.Source as ICSharpLiteralExpression)?.Literal?.GetText();
+                    if (text is { Length: > 2 } && text[0] == '"' && text[text.Length - 1] == '"')
+                        return text.Substring(1, text.Length - 2);
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static string? ReadString(IAttributeInstance instance, string name)
     {
-        var value = instance.NamedParameter(name);
-        return value is { IsBadValue: false, IsConstant: true }
-               && value.ConstantValue.IsString()
-            ? value.ConstantValue.AsString()
-            : null;
+        try
+        {
+            var value = instance.NamedParameter(name);
+            return value is { IsBadValue: false, IsConstant: true }
+                   && value.ConstantValue.IsString()
+                ? value.ConstantValue.AsString()
+                : null;
+        }
+        catch (System.NullReferenceException)
+        {
+            // NamedParameter runs the C# constant evaluator, which can NRE inside ReSharper's
+            // conversion classification (GetRuntimeFeatures) for net10.0 modules. The named argument
+            // is auxiliary — degrade to absent rather than killing the caller.
+            return null;
+        }
     }
 
     private static int ReadInt(IAttributeInstance instance, string name)
     {
-        var value = instance.NamedParameter(name);
-        return value is { IsBadValue: false, IsConstant: true } && value.ConstantValue.IsInteger()
-            ? value.ConstantValue.IntValue
-            : 0;
+        try
+        {
+            var value = instance.NamedParameter(name);
+            return value is { IsBadValue: false, IsConstant: true } && value.ConstantValue.IsInteger()
+                ? value.ConstantValue.IntValue
+                : 0;
+        }
+        catch (System.NullReferenceException)
+        {
+            return 0; // same evaluator NRE as ReadString — treat as absent
+        }
     }
 }

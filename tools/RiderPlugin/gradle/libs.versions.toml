@@ -1,8 +1,20 @@
 [versions]
 kotlin = "2.2.0" # https://plugins.jetbrains.com/docs/intellij/using-kotlin.html#kotlin-standard-library
+# rd line for the rdgen cross-process channel. Pinned to the bundled Rider platform
+# (gradle.properties ProductVersion = 2026.1.2) so rd-gen, rd-framework, and the
+# engine-side JetBrains.RdFramework NuGet all share one wire ABI. NOT the mediator
+# reference's older 2025.1.1 — mixing rd lines is the classic handshake failure.
+rdGen = "2026.1.2" # https://github.com/JetBrains/rd/releases
 
 [libraries]
 kotlinStdLib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+# rd-gen: the rdgen model->stubs generator (Root/Ext DSL, RdGenTask). rd-framework:
+# the Kotlin rd runtime the round-trip harness binds two in-process protocols against.
+rdGen = { group = "com.jetbrains.rd", name = "rd-gen", version.ref = "rdGen" }
+rdFramework = { group = "com.jetbrains.rd", name = "rd-framework", version.ref = "rdGen" }
+# rider-model (SolutionModel / IdeRoot) is NOT a Maven artifact; it is resolved from the
+# Rider platform's lib/rd/ flatDir. It is only needed once a Solution-scoped Ext republish
+# model is added (later plan); the standalone Root() spike does not depend on it.
 
 [plugins]
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

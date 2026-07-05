@@ -21,6 +21,9 @@ namespace Sparkitect.RiderPlugin.Navigation;
 /// </summary>
 public static class NavigationSalvage
 {
+    private static readonly ILogger Logger =
+        JetBrains.Util.Logging.Logger.GetLogger(typeof(NavigationSalvage));
+
     /// <summary>
     /// Cheap candidate gate for action update. Confirms the selected node could be a registration-id leaf
     /// without any uncached tree walk: a syntactic reference-expression check, the cached reference resolve,
@@ -99,5 +102,26 @@ public static class NavigationSalvage
         var occurrence = new RangeOccurrence(sourceFile, range, false);
         var popupSource = NavigationOptions.FromDataContext(dataContext, "Navigate").PopupWindowContextSource;
         occurrence.Navigate(solution, popupSource, transferFocus: true);
+    }
+
+    /// <summary>
+    /// Navigates the editor to a document range with no originating data context — the tool-window path,
+    /// where the request comes from a tree row rather than an editor caret. Same transient-occurrence
+    /// jump as the context overload, minus the popup-window anchoring (there is no source popup).
+    /// </summary>
+    public static void NavigateTo(ISolution solution, DocumentRange range)
+    {
+        var sourceFile = range.Document.GetPsiSourceFile(solution);
+        if (sourceFile == null)
+        {
+            Logger.Warn($"Navigation: no PSI source file for document '{range.Document.Moniker}'; cannot navigate.");
+            return;
+        }
+
+        var occurrence = new RangeOccurrence(sourceFile, range, false);
+        if (occurrence.Navigate(solution, windowContext: null, transferFocus: true))
+            Logger.Info($"Navigation: jumped to '{sourceFile.DisplayName}' at {range.TextRange}.");
+        else
+            Logger.Warn($"Navigation: jump to '{sourceFile.DisplayName}' at {range.TextRange} failed.");
     }
 }

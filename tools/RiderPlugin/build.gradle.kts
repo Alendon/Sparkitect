@@ -1,4 +1,5 @@
 import org.apache.tools.ant.taskdefs.condition.Os
+import org.jetbrains.intellij.platform.gradle.Constants
 import java.io.ByteArrayOutputStream
 import java.util.Properties
 
@@ -7,6 +8,19 @@ plugins {
     alias(libs.plugins.kotlinJvm)
     id("org.jetbrains.intellij.platform") version "2.11.0" // https://github.com/JetBrains/intellij-platform-gradle-plugin/releases
 }
+
+// Consumable configuration exposing the Rider platform's rider-model.jar (SolutionModel / IdeRoot)
+// to the :protocol subproject, whose rdgen Ext(SolutionModel.Solution) republish model compiles
+// against it. rider-model is NOT a Maven artifact — it lives in the downloaded SDK's lib/rd/ — so
+// the protocol project cannot resolve it directly; it consumes this artifact instead (the pattern
+// resharper-unity uses). platformPath is only valid after the platform is initialized.
+val riderModel: Configuration by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+}
+
+// The riderModel artifact (which file backs this configuration) is wired below, after the run-mode
+// vals (useLocalRider / explicitRiderHome / ProductVersion) are in scope — see "rdgen model source".
 
 val isWindows = Os.isFamily(Os.FAMILY_WINDOWS)
 
@@ -31,6 +45,45 @@ val PluginVersion: String by project
 
 version = PluginVersion
 
+// --- rdgen model source: rider-model.jar (SolutionModel / IdeRoot definitions) ---
+// The :protocol rdgen Ext(SolutionModel.Solution) compiles against rider-model.jar, which ships in the
+// DOWNLOADED Rider SDK's lib/rd/ — NOT in a runtime IDE install. Resolution depends on run mode:
+//   * Default (download): platformPath IS the downloaded SDK, so the jar is right there.
+//   * Local run-IDE (rider-spark / useLocalRider): platformPath is the local runtime install, which
+//     ships rd-gen.jar but not rider-model.jar. Download just the Rider distribution zip on demand
+//     (same coordinate + repos the plugin uses for `rider(...)`, so a prior default build's cached zip
+//     is reused; otherwise it auto-downloads) and extract lib/rd/rider-model.jar from it.
+if (useLocalRider || explicitRiderHome != null) {
+    val riderSdkForModel = configurations.create("riderSdkForModel") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+    dependencies {
+        add("riderSdkForModel", "com.jetbrains.intellij.rider:riderRD:$ProductVersion@zip")
+    }
+    val extractRiderModel = tasks.register("extractRiderModel", Copy::class) {
+        // singleFile triggers resolution → reuses the cached riderRD zip, or auto-downloads it.
+        from(provider { zipTree(riderSdkForModel.singleFile) })
+        include("lib/rd/rider-model.jar")
+        into(layout.buildDirectory.dir("rider-model"))
+    }
+    artifacts {
+        add(riderModel.name, layout.buildDirectory.file("rider-model/lib/rd/rider-model.jar")) {
+            builtBy(extractRiderModel)
+        }
+    }
+} else {
+    artifacts {
+        add(riderModel.name, provider {
+            intellijPlatform.platformPath.resolve("lib/rd/rider-model.jar").toFile().also {
+                check(it.isFile) { "rider-model.jar not found at $it (download-mode platform path)" }
+            }
+        }) {
+            builtBy(Constants.Tasks.INITIALIZE_INTELLIJ_PLATFORM_PLUGIN)
+        }
+    }
+}
+
 allprojects {
     repositories {
         maven { setUrl("https://cache-redirector.jetbrains.com/maven-central") }
@@ -54,12 +107,23 @@ sourceSets {
     main {
         java.srcDir("src/rider/main/java")
         kotlin.srcDir("src/rider/main/kotlin")
+        // Generated rd debug-channel frontend stubs (58.1-08). :protocol:rdgen emits the shared data
+        // library Kotlin (sparkitect.debug.protocol.*) into protocol/build/generated/kotlin and the
+        // Solution-Ext republish Kotlin (com.jetbrains.rd.ide.model.DebugToolWindowModel) into
+        // protocol/build/generated/kotlin-ext. The Ext binds against the full Rider platform runtime,
+        // so — unlike the standalone :protocol subproject, which only compile-checks the rd-framework
+        // library Kotlin — the PLUGIN build is where the Ext Kotlin is compiled (plan 04 finding). Both
+        // dirs are git-ignored build output regenerated on model change.
+        kotlin.srcDir("protocol/build/generated/kotlin")
+        kotlin.srcDir("protocol/build/generated/kotlin-ext")
         resources.srcDir("src/rider/main/resources")
     }
 }
 
 tasks.compileKotlin {
     compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21) }
+    // The generated frontend/Ext stubs must exist before the plugin's Kotlin compiles.
+    dependsOn(":protocol:rdgen")
 }
 
 val setBuildTool by tasks.registering {
@@ -75,6 +139,9 @@ val setBuildTool by tasks.registering {
 
 val compileDotNet by tasks.registering {
     dependsOn(setBuildTool)
+    // The generated C# backend stubs (game channel + shared library + Solution-Ext republish) must
+    // exist before msbuild runs: Directory.Build.props / the Rider csproj compile them in.
+    dependsOn(":protocol:rdgen")
     doLast {
         val executable: String by setBuildTool.get().extra
         val arguments = (setBuildTool.get().extra["args"] as List<String>).toMutableList()

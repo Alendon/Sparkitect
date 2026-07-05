@@ -49,4 +49,13 @@ public static class EngineSettingDeclarations
     [SettingRegistry.RegisterSetting("log_dir")]
     [SettingAccessor("logging", "Directory", "log_dir")]
     public static SettingDefinition<string> LogDirectory => new("logs", CliOption: "log-dir");
+
+    /// <summary>
+    /// Debug channel toggle. Default off; opt in via CLI <c>--debug-channel</c> or the engine-config
+    /// source. Gates whether the debug composition module is included at all (off ⇒ absent from every
+    /// composed set, not merely inert).
+    /// </summary>
+    [SettingRegistry.RegisterSetting("debug_channel")]
+    [SettingAccessor("debug", "ChannelEnabled", "debug_channel")]
+    public static SettingDefinition<bool> DebugChannel => new(false, CliOption: "debug-channel");
 }
