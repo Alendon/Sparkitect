@@ -1,4 +1,5 @@
 ﻿using Sparkitect.GameState;
+using Sparkitect.Utils;
 using Sparkitect.Utils.DU;
 
 namespace Sparkitect.Modding;
@@ -39,9 +40,9 @@ internal class IdentificationManager : IIdentificationManager
     public ushort RegisterCategory(string categoryId)
     {
         AssertMainThread();
-        if (_categoryIds.TryGetValue(categoryId, out var category))
+        if (_categoryIds.ContainsKey(categoryId))
         {
-            return category;
+            new InvalidOperationException($"Category '{categoryId}' is already registered. Duplicate category registration is not allowed.").Throw();
         }
 
         if (_categoryIds.Count >= ushort.MaxValue)
@@ -49,7 +50,7 @@ internal class IdentificationManager : IIdentificationManager
             throw new InvalidOperationException($"Cannot register category '{categoryId}': Maximum number of categories ({ushort.MaxValue}) reached.");
         }
 
-        category = (ushort)(_categoryIds.Count + 1);
+        ushort category = (ushort)(_categoryIds.Count + 1);
         _categoryIds.Add(categoryId, category);
         return category;
     }

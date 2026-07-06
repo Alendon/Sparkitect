@@ -23,8 +23,22 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
         global::Sparkitect.Modding.IResourceManager? resourceManager,
         global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
+    [global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Unregister_Hello3_Providers")]
+    private static extern void __Unreg_Hello3_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
 public override void ProcessRegistrations(global::MinimalSampleMod.DummyRegistry registry)
     {
 __Reg_Hello3_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
+}
+
+    public override void ProcessUnregistrations(global::MinimalSampleMod.DummyRegistry registry)
+    {
+__Unreg_Hello3_Providers(default, registry, IdentificationManager, ResourceManager);
 }
 }

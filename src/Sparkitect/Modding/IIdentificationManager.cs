@@ -22,10 +22,11 @@ public interface IIdentificationManager
     ushort RegisterMod(string modId);
 
     /// <summary>
-    /// Registers a category and returns its numeric ID. If already registered, returns the existing ID.
+    /// Registers a category and returns its numeric ID.
     /// </summary>
     /// <param name="categoryId">The string identifier for the category (e.g., "blocks").</param>
     /// <returns>The numeric category ID (ushort).</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the category is already registered.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the maximum number of categories (65,535) is reached.</exception>
     ushort RegisterCategory(string categoryId);
 

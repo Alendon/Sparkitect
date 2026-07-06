@@ -24,11 +24,27 @@ public class {{ TypePrefix }}{{ RegistryName }}Registrations_{{ SourceTag }} : g
         global::Sparkitect.Modding.IResourceManager? resourceManager,
         global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
+    [global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Unregister_{{ entry.PropertyName }}_{{ SourceTag }}")]
+    private static extern void __Unreg_{{ entry.PropertyName }}_{{ SourceTag }}(
+        global::{{ ExtensionsNamespace }}.{{ ModStructName }} _,
+        global::{{ RegistryFullName }} registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
 {% endfor -%}
     public override void ProcessRegistrations(global::{{ RegistryFullName }} registry)
     {
 {% for entry in Entries -%}
         __Reg_{{ entry.PropertyName }}_{{ SourceTag }}(default, registry, IdentificationManager, ResourceManager, Scope);
+{% endfor -%}
+    }
+
+    public override void ProcessUnregistrations(global::{{ RegistryFullName }} registry)
+    {
+{% for entry in Entries -%}
+        __Unreg_{{ entry.PropertyName }}_{{ SourceTag }}(default, registry, IdentificationManager, ResourceManager);
 {% endfor -%}
     }
 }

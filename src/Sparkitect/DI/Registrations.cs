@@ -60,4 +60,13 @@ public abstract class Registrations<TRegistry> : IConfigurationEntrypoint<Regist
     /// </summary>
     /// <param name="registry">The registry instance to register objects into.</param>
     public abstract void ProcessRegistrations(TRegistry registry);
+
+    /// <summary>
+    /// Processes all teardown unregistrations for this registry type.
+    /// Generated implementations call per-entry Unregister methods that mirror the build-up
+    /// Register methods — RemoveResource, Unregister, UnregisterObject, and zero the backing field.
+    /// Default implementation is a no-op; source-generated classes override to dispatch teardown.
+    /// </summary>
+    /// <param name="registry">The registry instance to unregister objects from.</param>
+    public virtual void ProcessUnregistrations(TRegistry registry) { }
 }

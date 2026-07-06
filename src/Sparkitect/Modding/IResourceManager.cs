@@ -25,7 +25,14 @@ public interface IResourceManager
     /// <param name="key">The resource key.</param>
     /// <returns>A stream to the resource, or null if not found.</returns>
     Stream? GetResourceStream(Identification objectId, string key);
-    
+
+    /// <summary>
+    /// Removes a resource association for a registered object.
+    /// </summary>
+    /// <param name="objectId">The identification of the registered object.</param>
+    /// <param name="key">The resource key.</param>
+    void RemoveResource(Identification objectId, string key);
+
     internal void RegisterResourceFolder(string registryIdentifier, string folder);
     internal void OnModLoaded(string modId, ZipArchive? archive);
     internal void OnModUnloaded(string modId);

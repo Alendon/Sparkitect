@@ -2,12 +2,25 @@
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
+using Sparkitect.Utils;
+
 namespace SampleTest.Generated.IdExtensions;
 
 public readonly partial struct SampleTestDummyIDs
 {
 private static global::Sparkitect.Modding.Identification _hello_Resources;
-    public global::Sparkitect.Modding.Identification Hello => _hello_Resources;
+    public global::Sparkitect.Modding.Identification Hello
+    {
+        get
+        {
+            var value = _hello_Resources;
+            if (value == default)
+                new global::System.InvalidOperationException(
+                    "Identification 'Hello' accessed after teardown or before registration. " +
+                    "Category: dummy, Mod: sample_test, Entry: hello").Throw();
+            return value;
+        }
+    }
 
     private static void Register_Hello_Resources(
         global::MinimalSampleMod.DummyRegistry registry,
@@ -19,5 +32,19 @@ private static global::Sparkitect.Modding.Identification _hello_Resources;
 
         resourceManager?.SetResource(_hello_Resources, "default", "f.txt");
 registry.RegisterResourceFile(_hello_Resources);
+    }
+
+    private static void Unregister_Hello_Resources(
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager)
+    {
+        var id = _hello_Resources;
+        if (id == default) return;
+
+        resourceManager?.RemoveResource(id, "default");
+registry.Unregister(id);
+        identificationManager.UnregisterObject(id);
+        _hello_Resources = default;
     }
 }

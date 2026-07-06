@@ -17,16 +17,13 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
     internal required IGameStateManager GameStateManager { get; init; }
     internal required IDIService DIService { get; init; }
     internal required IResourceManager ResourceManager { get; init; }
+    private readonly RegistryState _registryState = new();
 
     // Registry identifier -> set of mod IDs processed for it. Presence of a key = the registry is added.
     private readonly Dictionary<string, HashSet<string>> _processedModsByRegistry = new();
 
     // Registry identifier -> owning module, recorded at add time so removal never re-resolves.
     private readonly Dictionary<string, Identification> _moduleByRegistry = new();
-
-    private bool _isMutationExpected;
-
-    public bool IsMutationExpected => _isMutationExpected;
 
     private HashSet<string>? _lastModSet;
     private IFactoryContainer<string, IRegistryBase>? _registryFactory;
@@ -119,15 +116,23 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
         UpdateCache(container);
         var registries = _registryFactory.ResolveAll();
 
-        foreach (var (identifier, instance) in registries)
-            if (!_processedModsByRegistry.ContainsKey(identifier))
-                AddRegistryTracking(identifier, instance.GetType());
+        _registryState.EnterPopulating();
+        try
+        {
+            foreach (var (identifier, instance) in registries)
+                if (!_processedModsByRegistry.ContainsKey(identifier))
+                    AddRegistryTracking(identifier, instance.GetType());
 
-        foreach (var (_, instance) in registries)
-            InvokeProcessForMods(instance.GetType(), modIds);
+            foreach (var (_, instance) in registries)
+                InvokeProcessForMods(instance.GetType(), modIds);
 
-        foreach (var (identifier, instance) in registries)
-            _moduleByRegistry[identifier] = ReadOwningModule(instance.GetType());
+            foreach (var (identifier, instance) in registries)
+                _moduleByRegistry[identifier] = ReadOwningModule(instance.GetType());
+        }
+        finally
+        {
+            _registryState.ReturnToIdle();
+        }
     }
 
     private void AddRegistryTracking(string identifier, Type registryType)
@@ -224,7 +229,7 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
             return;
         }
 
-        _isMutationExpected = true;
+        _registryState.EnterPopulating();
         try
         {
             Log.Debug("Processing registry {RegistryIdentifier} for mods: {ModIds}",
@@ -234,6 +239,7 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
 
             foreach (var modId in modIds)
             {
+                _registryState.MutationRequest(new RegistryOperation.Allocate(modId, registryIdentifier), default);
                 ProcessSingleModRegistration(registry, registryIdentifier, modId);
 
                 if (!_processedModsByRegistry.TryGetValue(registryIdentifier, out var processedMods))
@@ -249,7 +255,7 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
         }
         finally
         {
-            _isMutationExpected = false;
+            _registryState.ReturnToIdle();
         }
     }
 
@@ -285,36 +291,47 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
             return;
         }
 
-        if (IdentificationManager.GetCategoryId(registryIdentifier) is not Result<ushort, ResolveError>.Ok(var registryCategoryId))
-        {
-            throw new InvalidOperationException($"Registry identifier '{registryIdentifier}' not found in identification manager");
-        }
-
         Log.Information("Unregistering {Count} mods for registry {RegistryIdentifier}", processedMods.Count, registryIdentifier);
 
-        var registry = CreateRegistryInstance<TRegistry>();
-
-        var modsToUnregister = processedMods.ToArray();
-        foreach (var modId in modsToUnregister)
+        _registryState.EnterTearingDown();
+        try
         {
-            if (IdentificationManager.GetModId(modId) is not Result<ushort, ResolveError>.Ok(var numericModId))
+            var registry = CreateRegistryInstance<TRegistry>();
+
+            var modsToUnregister = processedMods.ToArray();
+            foreach (var modId in modsToUnregister)
             {
-                Log.Warning("Mod ID {ModId} not found in identification manager during unregister", modId);
-                continue;
+                ProcessSingleModUnregistration(registry, modId);
+                processedMods.Remove(modId);
             }
 
-            var objectIds = IdentificationManager.GetAllObjectIdsOfModAndCategory(numericModId, registryCategoryId).ToArray();
-
-            foreach (var objectId in objectIds)
-            {
-                registry.Unregister(objectId);
-                IdentificationManager.UnregisterObject(objectId);
-            }
-
-            processedMods.Remove(modId);
+            Log.Debug("Completed unregistering mods for registry {RegistryIdentifier}", registryIdentifier);
         }
+        finally
+        {
+            _registryState.ReturnToIdle();
+        }
+    }
 
-        Log.Debug("Completed unregistering mods for registry {RegistryIdentifier}", registryIdentifier);
+    private void ProcessSingleModUnregistration<TRegistry>(TRegistry registry, string modId)
+        where TRegistry : class, IRegistry
+    {
+        using var registrationsContainer = DIService.CreateEntrypointContainer<Registrations<TRegistry>>(
+            new[] { modId });
+
+        var registrations = registrationsContainer.ResolveMany();
+
+        var scope = DIService.BuildScope(
+            GameStateManager.CurrentCoreContainer,
+            new FacadeResolutionProvider(),
+            new[] { modId },
+            Array.Empty<Type>());
+
+        foreach (var registration in registrations)
+        {
+            registration.Initialize(scope);
+            registration.ProcessUnregistrations(registry);
+        }
     }
 
     private void ProcessSingleModRegistration<TRegistry>(TRegistry registry, string registryIdentifier, string modId)

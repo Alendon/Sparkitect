@@ -65,17 +65,30 @@ public class IdentificationManagerTests
     }
 
     [Test]
-    public async Task RegisterCategory_SameCategory_ReturnsSameId()
+    public async Task RegisterCategory_DuplicateCategory_ThrowsInvalidOperationException()
     {
         // Arrange
         var manager = new IdentificationManager();
-        var firstId = manager.RegisterCategory("blocks");
+        manager.RegisterCategory("blocks");
+
+        // Act + Assert — second registration of the same string must throw
+        await Assert.That(() => manager.RegisterCategory("blocks"))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task RegisterCategory_DifferentCategories_ReturnsSequentialIds()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
 
         // Act
-        var secondId = manager.RegisterCategory("blocks");
+        var id1 = manager.RegisterCategory("blocks");
+        var id2 = manager.RegisterCategory("items");
 
         // Assert
-        await Assert.That(secondId).IsEqualTo(firstId);
+        await Assert.That(id1).IsEqualTo((ushort)1);
+        await Assert.That(id2).IsEqualTo((ushort)2);
     }
 
     [Test]

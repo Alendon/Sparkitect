@@ -7,7 +7,9 @@ namespace MinimalSampleMod;
 public partial class SampleEntryState
 {
     [TransitionFunction("create_render_graph")]
-    [OnFrameEnterScheduling]
+    [OnCreateScheduling]
+    [OrderAfter<VulkanModule.ProcessShaderModuleRegistryEnterFunc>]
+    [OrderAfter<VulkanModule.CreateDeviceFunc>]
     [OrderAfter<Sparkitect.Graphics.RenderGraph.RenderGraphModule.ProcessRenderGraphRegistriesEnterFunc>]
     public static void CreateRenderGraph(IMinimalSampleHost host) => host.Initialize();
 

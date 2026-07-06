@@ -23,6 +23,15 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
         global::Sparkitect.Modding.IResourceManager? resourceManager,
         global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
+    [global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Unregister_Hello3_Providers")]
+    private static extern void __Unreg_Hello3_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
 [global::System.Runtime.CompilerServices.UnsafeAccessor(
         global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
         Name = "Register_Hello4_Providers")]
@@ -32,6 +41,15 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
         global::Sparkitect.Modding.IIdentificationManager identificationManager,
         global::Sparkitect.Modding.IResourceManager? resourceManager,
         global::Sparkitect.DI.Resolution.IResolutionScope scope);
+
+    [global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Unregister_Hello4_Providers")]
+    private static extern void __Unreg_Hello4_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
 
 [global::System.Runtime.CompilerServices.UnsafeAccessor(
         global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
@@ -43,6 +61,15 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
         global::Sparkitect.Modding.IResourceManager? resourceManager,
         global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
+    [global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Unregister_Hello5_Providers")]
+    private static extern void __Unreg_Hello5_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
 [global::System.Runtime.CompilerServices.UnsafeAccessor(
         global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
         Name = "Register_Hello6_Providers")]
@@ -53,11 +80,28 @@ public class DummyRegistryRegistrations_Providers : global::Sparkitect.DI.Regist
         global::Sparkitect.Modding.IResourceManager? resourceManager,
         global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
+    [global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Unregister_Hello6_Providers")]
+    private static extern void __Unreg_Hello6_Providers(
+        global::SampleTest.Generated.IdExtensions.SampleTestDummyIDs _,
+        global::MinimalSampleMod.DummyRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
 public override void ProcessRegistrations(global::MinimalSampleMod.DummyRegistry registry)
     {
 __Reg_Hello3_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
 __Reg_Hello4_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
 __Reg_Hello5_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
 __Reg_Hello6_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
+}
+
+    public override void ProcessUnregistrations(global::MinimalSampleMod.DummyRegistry registry)
+    {
+__Unreg_Hello3_Providers(default, registry, IdentificationManager, ResourceManager);
+__Unreg_Hello4_Providers(default, registry, IdentificationManager, ResourceManager);
+__Unreg_Hello5_Providers(default, registry, IdentificationManager, ResourceManager);
+__Unreg_Hello6_Providers(default, registry, IdentificationManager, ResourceManager);
 }
 }

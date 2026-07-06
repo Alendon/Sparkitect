@@ -24,8 +24,22 @@ public class TestModule_TestRegistryRegistrations_Providers : global::Sparkitect
         global::Sparkitect.Modding.IResourceManager? resourceManager,
         global::Sparkitect.DI.Resolution.IResolutionScope scope);
 
+    [global::System.Runtime.CompilerServices.UnsafeAccessor(
+        global::System.Runtime.CompilerServices.UnsafeAccessorKind.StaticMethod,
+        Name = "Unregister_Init_Providers")]
+    private static extern void __Unreg_Init_Providers(
+        global::TestMod.Generated.IdExtensions.TestModTestIDs _,
+        global::StatelessTest.TestRegistry registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager);
+
 public override void ProcessRegistrations(global::StatelessTest.TestRegistry registry)
     {
 __Reg_Init_Providers(default, registry, IdentificationManager, ResourceManager, Scope);
+}
+
+    public override void ProcessUnregistrations(global::StatelessTest.TestRegistry registry)
+    {
+__Unreg_Init_Providers(default, registry, IdentificationManager, ResourceManager);
 }
 }

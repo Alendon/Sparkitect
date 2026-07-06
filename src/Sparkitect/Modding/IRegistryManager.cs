@@ -38,12 +38,6 @@ public interface IRegistryManager
     /// </summary>
     /// <typeparam name="TRegistry">The registry type to check.</typeparam>
     bool IsRegistryActive<TRegistry>() where TRegistry : class, IRegistry;
-
-    /// <summary>
-    /// Gets whether registry mutations are currently expected.
-    /// True during registry processing, false otherwise.
-    /// </summary>
-    bool IsMutationExpected { get; }
 }
 
 /// <summary>

@@ -2,6 +2,8 @@
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
+using Sparkitect.Utils;
+
 namespace {{ ExtensionsNamespace }};
 
 public readonly partial struct {{ ModStructName }}
@@ -10,7 +12,18 @@ public readonly partial struct {{ ModStructName }}
     private static global::Sparkitect.Modding.Identification _{{ entry.LowerCaseId }}_{{ SourceTag }};
 {% if entry.SourcePath %}    [global::Sparkitect.Modding.RegisteredFrom(SourcePath = "{{ entry.SourcePath }}", SourceLine = {{ entry.SourceLine }}, SourceColumn = {{ entry.SourceColumn }})]
 {% elsif entry.RegisteredTypeFullName %}    [global::Sparkitect.Modding.RegisteredFrom(typeof(global::{{ entry.RegisteredTypeFullName }}){% if entry.RegisteredMember %}, Member = "{{ entry.RegisteredMember }}"{% endif %})]
-{% endif %}    public global::Sparkitect.Modding.Identification {{ entry.PropertyName }} => _{{ entry.LowerCaseId }}_{{ SourceTag }};
+{% endif %}    public global::Sparkitect.Modding.Identification {{ entry.PropertyName }}
+    {
+        get
+        {
+            var value = _{{ entry.LowerCaseId }}_{{ SourceTag }};
+            if (value == default)
+                new global::System.InvalidOperationException(
+                    "Identification '{{ entry.PropertyName }}' accessed after teardown or before registration. " +
+                    "Category: {{ CategoryKey }}, Mod: {{ ModId }}, Entry: {{ entry.Id }}").Throw();
+            return value;
+        }
+    }
 
     private static void Register_{{ entry.PropertyName }}_{{ SourceTag }}(
         global::{{ RegistryFullName }} registry,
@@ -25,6 +38,23 @@ public readonly partial struct {{ ModStructName }}
 {%- endfor %}
 {% endif -%}
         {{ entry.RegistrationCode }}
+    }
+
+    private static void Unregister_{{ entry.PropertyName }}_{{ SourceTag }}(
+        global::{{ RegistryFullName }} registry,
+        global::Sparkitect.Modding.IIdentificationManager identificationManager,
+        global::Sparkitect.Modding.IResourceManager? resourceManager)
+    {
+        var id = _{{ entry.LowerCaseId }}_{{ SourceTag }};
+        if (id == default) return;
+{% if entry.Files and entry.Files.size > 0 -%}
+{%- for f in entry.Files %}
+        resourceManager?.RemoveResource(id, "{{ f.fileId }}");
+{%- endfor %}
+{% endif -%}
+        registry.Unregister(id);
+        identificationManager.UnregisterObject(id);
+        _{{ entry.LowerCaseId }}_{{ SourceTag }} = default;
     }
 {% endfor -%}
 }

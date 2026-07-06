@@ -41,6 +41,11 @@ internal class ResourceManager : IResourceManager
         return entry?.Open();
     }
 
+    public void RemoveResource(Identification objectId, string key)
+    {
+        _resourceMappings.Remove((objectId, key));
+    }
+
     public void RegisterResourceFolder(string registryIdentifier, string folder)
     {
         _registryFolders[registryIdentifier] = folder;
