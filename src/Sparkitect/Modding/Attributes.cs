@@ -188,6 +188,16 @@ public sealed class RegistryFacadeAttribute : Attribute;
 public sealed class KeyedFactoryGenerationMarkerAttribute<TBase> : Attribute where TBase : class;
 
 /// <summary>
+/// Marks which type parameter of a registry method feeds the <see cref="Identification{T}"/>
+/// transform. Presence-only — the generator reads which type parameter carries it and emits
+/// <see cref="Identification{T}"/> instead of bare <see cref="Identification"/> for that entry's
+/// id properties.
+/// </summary>
+[AttributeUsage(AttributeTargets.GenericParameter)]
+[PublicAPI]
+public sealed class TypedIdentificationAttribute : Attribute;
+
+/// <summary>
 /// Marks a class as containing code that depends on an optional mod's types.
 /// Isolate optional mod type references to marked classes to prevent TypeLoadException.
 /// </summary>

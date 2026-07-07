@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using Sparkitect.Generator;
 using Sparkitect.Generator.Modding;
+using TUnit.Assertions.Enums;
 using VerifyTUnit;
 using static Sparkitect.Generator.Tests.TestData;
 
@@ -514,6 +515,254 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         var methods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
         await Assert.That(methods).HasSingleItem();
         await Assert.That(methods.First().KeyedFactoryMarkerTBase).IsNull();
+    }
+
+    // D-01: Value and the removed GenericValue merge into a single source-axis kind — a one-type-param
+    // value method must classify as Value, never fall through to a removed enum member.
+    [Test]
+    public async Task ExtractRegisterMethods_OneTypeParamValueMethod_ClassifiesAsValue(CancellationToken token)
+    {
+        TestSources.Add(("ValueRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            public class SettingDefinition<T> { }
+            [Registry(Identifier = "r")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void RegisterSetting<T>(Identification id, SettingDefinition<T> def) { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var methods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(methods).HasSingleItem();
+        await Assert.That(methods.First().PrimaryParameterKind).IsEqualTo(PrimaryParameterKind.Value);
+    }
+
+    // D-02: the inner type-registration gate lifted from == 1 to > 0 — a 2-type-parameter,
+    // single-Identification-parameter method classifies as Type (not None), and the constraint capture
+    // loop (no longer limited to TypeParameters.First()) records the T1 -> RelationShip<T2> resolution map.
+    [Test]
+    public async Task ExtractRegisterMethods_TwoTypeParamTypeMethod_ClassifiesAsType_CapturesConstraintRef(
+        CancellationToken token)
+    {
+        TestSources.Add(("RelationshipRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            public interface RelationShip<T> { }
+            [Registry(Identifier = "r")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void Reg<T1, T2>(Identification id) where T1 : RelationShip<T2> { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var methods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(methods).HasSingleItem();
+        var method = methods.First();
+
+        await Assert.That(method.PrimaryParameterKind).IsEqualTo(PrimaryParameterKind.Type);
+        await Assert.That(method.TypeParameterNames).IsEquivalentTo(new[] { "T1", "T2" }, CollectionOrdering.Matching);
+        await Assert.That(method.ConstraintRefs.Any(r => r.ArgTypeParameterNames.Contains("T2"))).IsTrue();
+    }
+
+    // D-04: the [TypedIdentification] type-parameter opt-in is extracted by name; an unannotated method's
+    // type parameter yields null (opt-in preserved).
+    [Test]
+    public async Task ExtractRegisterMethods_TypedIdentificationAnnotation_CapturesParameterName(
+        CancellationToken token)
+    {
+        TestSources.Add(("TypedIdentificationRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            [Registry(Identifier = "r")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void RegisterTyped<[TypedIdentification] TPayload>(Identification id)
+                    where TPayload : class, IHasIdentification { }
+
+                [RegistryMethod]
+                public void RegisterUntyped<TOther>(Identification id)
+                    where TOther : class, IHasIdentification { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var methods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(methods.Count).IsEqualTo(2);
+
+        var typed = methods.First(m => m.FunctionName == "RegisterTyped");
+        await Assert.That(typed.TypedIdentificationTypeParameterName).IsEqualTo("TPayload");
+
+        var untyped = methods.First(m => m.FunctionName == "RegisterUntyped");
+        await Assert.That(untyped.TypedIdentificationTypeParameterName).IsNull();
+    }
+
+    // VALUE-SOURCE SYMMETRY: the line-575 inner gate lift applies to the value branch too — a
+    // 2-type-parameter value method captures TypeParameterNames and ValueParameterGeneric instead of
+    // silently falling through to plain Value with empty capture fields.
+    [Test]
+    public async Task ExtractRegisterMethods_MultiTypeParamValueMethod_ClassifiesAsValue_CapturesGenerics(
+        CancellationToken token)
+    {
+        TestSources.Add(("WrapperValueRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            public class Wrapper<A, B> { }
+            [Registry(Identifier = "r")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void RegisterX<T1, T2>(Identification id, Wrapper<T1, T2> value) { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var methods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(methods).HasSingleItem();
+        var method = methods.First();
+
+        await Assert.That(method.PrimaryParameterKind).IsEqualTo(PrimaryParameterKind.Value);
+        await Assert.That(method.TypeParameterNames).IsEquivalentTo(new[] { "T1", "T2" }, CollectionOrdering.Matching);
+        await Assert.That(method.ValueParameterGeneric).IsNotNull();
+        await Assert.That(method.ValueParameterGeneric!.ArgTypeParameterNames)
+            .IsEquivalentTo(new[] { "T1", "T2" }, CollectionOrdering.Matching);
+    }
+
+    // METADATA-ROUNDTRIP-SYMMETRY: a RegisterMethodModel parsed from emitted metadata (the cross-assembly
+    // path) must be field-identical to the same-compilation ExtractRegisterMethods result — proving the
+    // write (RenderRegistryMetadata) / read (TryParseRegisterMethod) halves stay symmetric for the FULL
+    // per-type-parameter data, not just the flat anchor fields.
+    [Test]
+    public async Task RegistryMetadata_Roundtrip_TypeParameterResolutionInputs_FieldIdentical(
+        CancellationToken token)
+    {
+        TestSources.Add(("RelationshipRoundtripRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            public interface RelationShip<T> { }
+            [Registry(Identifier = "r")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void Reg<T1, T2>(Identification id) where T1 : RelationShip<T2> { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var sameCompilationMethods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(sameCompilationMethods).HasSingleItem();
+        var sameCompilationMethod = sameCompilationMethods.First();
+        // Sanity: the "T2" arg name is actually captured same-compilation before comparing roundtrip.
+        await Assert.That(sameCompilationMethod.ConstraintRefs.Any(r => r.ArgTypeParameterNames.Contains("T2")))
+            .IsTrue();
+
+        var model = new RegistryModel("R", "r", "N", false, sameCompilationMethods,
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var rendered = RegistryGenerator.RenderRegistryMetadata(model, BuildSettings, out var code, out _);
+        await Assert.That(rendered).IsTrue();
+
+        TestSources.Add(("RelationshipRoundtripMetadata.cs", code));
+        var (_, compilation2) = await GetInitialCompilationAsync(token);
+
+        var metadataType = compilation2.GetTypeByMetadataName("SampleTest.Generated.R_Metadata")
+            as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(metadataType).IsNotNull();
+
+        var success = RegistryGenerator.TryParseRegisterMethod(metadataType!, "Reg", out var parsed);
+        await Assert.That(success).IsTrue();
+
+        await Assert.That(parsed!.TypeParameterNames)
+            .IsEquivalentTo(sameCompilationMethod.TypeParameterNames, CollectionOrdering.Matching);
+        await Assert.That(parsed.ConstraintRefs.Count).IsEqualTo(sameCompilationMethod.ConstraintRefs.Count);
+        for (var i = 0; i < parsed.ConstraintRefs.Count; i++)
+        {
+            await Assert.That(parsed.ConstraintRefs[i].TypeParameterName)
+                .IsEqualTo(sameCompilationMethod.ConstraintRefs[i].TypeParameterName);
+            await Assert.That(parsed.ConstraintRefs[i].ConstraintOpenDefinitionFqn)
+                .IsEqualTo(sameCompilationMethod.ConstraintRefs[i].ConstraintOpenDefinitionFqn);
+            await Assert.That(parsed.ConstraintRefs[i].ArgTypeParameterNames)
+                .IsEquivalentTo(sameCompilationMethod.ConstraintRefs[i].ArgTypeParameterNames,
+                    CollectionOrdering.Matching);
+        }
+
+        await Assert.That(parsed.ValueParameterGeneric).IsEqualTo(sameCompilationMethod.ValueParameterGeneric);
+        await Assert.That(parsed.TypedIdentificationTypeParameterName)
+            .IsEqualTo(sameCompilationMethod.TypedIdentificationTypeParameterName);
+    }
+
+    // RESOLVER-LEVEL (walk math only — no symbols, no .Combine() driver): the load-bearing fixpoint case.
+    // B : RelationShip<A> serialized as the hierarchy Task 1 captures at TryBuildProviderCandidate; Reg<T1,T2>
+    // where T1 : RelationShip<T2> is the ConstraintRef Plan 02 captures. The walk seeds T1 with the anchor
+    // (B), matches RelationShip<T>'s open FQN against the hierarchy entry, and reads T2 from position 0 of
+    // that entry's TypeArgumentFqns (A) — proving the pure-string resolver at RegistryGenerator.Providers.cs.
+    [Test]
+    public async Task ResolveTypeSourceGenericArguments_RelationShipConstraint_ResolvesFixpoint()
+    {
+        var hierarchy = ImmutableValueArray.From(
+            new RegistryGenerator.SerializedHierarchyType(
+                "global::N.RelationShip<T>",
+                ImmutableValueArray.From("global::N.A")));
+
+        var method = new RegisterMethodModel(
+            "Reg", PrimaryParameterKind.Type, TypeConstraintFlag.None, [],
+            TypeParameterNames: ImmutableValueArray.From("T1", "T2"),
+            ConstraintRefs: ImmutableValueArray.From(
+                new RegisterConstraintRef("T1", "global::N.RelationShip<T>", ImmutableValueArray.From("T2"))));
+
+        var resolved = RegistryGenerator.ResolveTypeSourceGenericArguments(hierarchy, method, "global::N.B");
+
+        await Assert.That(resolved)
+            .IsEquivalentTo(new[] { "global::N.B", "global::N.A" }, CollectionOrdering.Matching);
+    }
+
+    // Genuinely unresolvable: the constraint's open FQN never appears in the serialized hierarchy (the
+    // referenced type's hierarchy is truly unavailable). No exception — the slot stays an empty string, the
+    // fail-loud contract the downstream emitted compile error carries (operator-approved, RESEARCH open-Q3).
+    [Test]
+    public async Task ResolveTypeSourceGenericArguments_UnresolvableConstraint_YieldsEmptyStringNoThrow()
+    {
+        var hierarchy = ImmutableValueArray.From(
+            new RegistryGenerator.SerializedHierarchyType(
+                "global::N.SomethingUnrelated<T>",
+                ImmutableValueArray.From("global::N.A")));
+
+        var method = new RegisterMethodModel(
+            "Reg", PrimaryParameterKind.Type, TypeConstraintFlag.None, [],
+            TypeParameterNames: ImmutableValueArray.From("T1", "T2"),
+            ConstraintRefs: ImmutableValueArray.From(
+                new RegisterConstraintRef("T1", "global::N.RelationShip<T>", ImmutableValueArray.From("T2"))));
+
+        var resolved = RegistryGenerator.ResolveTypeSourceGenericArguments(hierarchy, method, "global::N.B");
+
+        await Assert.That(resolved.Count).IsEqualTo(2);
+        await Assert.That(resolved[0]).IsEqualTo("global::N.B");
+        await Assert.That(resolved[1]).IsEqualTo(string.Empty);
     }
 
     [Test]

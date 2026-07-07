@@ -206,6 +206,16 @@ public partial class RegistryGenerator
                 var sourcePath = e is ResourceRegistrationEntry { SourcePath: { Length: > 0 } sp } ? sp : null;
                 var sourceLine = e is ResourceRegistrationEntry res ? res.SourceLine : 0;
                 var sourceColumn = e is ResourceRegistrationEntry res2 ? res2.SourceColumn : 0;
+                // D-05: the single emission point where bare Identification becomes Identification<T> for
+                // opted-in registrations. Decided SOLELY on the register method's annotation (fail-loud —
+                // see ComputeIdentificationType); applies uniformly to both value-source and type-source
+                // entries (D-06) since both carry a normalized ResolvedTypeArguments list (D-08).
+                var (entryMethodName, entryResolvedArgs) = GetEntryResolutionInputs(e);
+                var entryRegisterMethod = unit.Model.RegisterMethods
+                    .FirstOrDefault(m => m.FunctionName == entryMethodName);
+                var identificationType = ComputeIdentificationType(entryRegisterMethod, entryResolvedArgs);
+                var hasTypedIdentification = entryRegisterMethod?.TypedIdentificationTypeParameterName is
+                    { Length: > 0 };
                 return new
                 {
                     Id = e.Id,
@@ -224,7 +234,12 @@ public partial class RegistryGenerator
                     // SourceLine/SourceColumn are the entry-id scalar's 1-based position.
                     SourcePath = sourcePath,
                     SourceLine = sourceLine,
-                    SourceColumn = sourceColumn
+                    SourceColumn = sourceColumn,
+                    // D-05 id-property type: bare "global::Sparkitect.Modding.Identification" for
+                    // non-opted-in entries, "global::Sparkitect.Modding.Identification<Concrete>" for
+                    // opted-in ones. HasTypedIdentification gates the template's wrapping-constructor branch.
+                    IdentificationType = identificationType,
+                    HasTypedIdentification = hasTypedIdentification
                 };
             })
             .ToArray();
@@ -258,7 +273,82 @@ public partial class RegistryGenerator
         if (pascal.Length == 1) return pascal.ToLowerInvariant();
         return char.ToLowerInvariant(pascal[0]) + pascal.Substring(1);
     }
+
+    /// <summary>
+    /// Extracts a registration entry's register-method name and resolved type-argument list uniformly
+    /// across all four <see cref="RegistrationEntry"/> kinds. Used to look up the owning
+    /// <see cref="RegisterMethodModel"/> and feed <see cref="ComputeIdentificationType"/> (D-05/D-06/D-08).
+    /// <see cref="ResourceRegistrationEntry"/> (the None kind) carries no generics and yields a null
+    /// resolved-args list, which <see cref="ComputeIdentificationType"/> treats as empty.
+    /// </summary>
+    private static (string MethodName, ImmutableValueArray<string> ResolvedTypeArguments) GetEntryResolutionInputs(
+        RegistrationEntry e) => e switch
+    {
+        MethodRegistrationEntry m => (m.MethodName, m.ResolvedTypeArguments),
+        PropertyRegistrationEntry p => (p.MethodName, p.ResolvedTypeArguments),
+        TypeRegistrationEntry t => (t.MethodName, t.ResolvedTypeArguments),
+        ResourceRegistrationEntry r => (r.MethodName, null!),
+        _ => (string.Empty, null!)
+    };
+
+    /// <summary>
+    /// Computes the id-property type string for one registration entry (D-05): the single point where bare
+    /// <c>Identification</c> becomes <c>Identification&lt;T&gt;</c>. Decided SOLELY on the register method's
+    /// opt-in annotation — <see cref="RegisterMethodModel.TypedIdentificationTypeParameterName"/> null emits
+    /// bare <c>Identification</c>; non-null (opted-in) ALWAYS emits the typed
+    /// <c>Identification&lt;Concrete&gt;</c> form using the resolved slot's value, even when that value is an
+    /// empty string (yielding <c>Identification&lt;&gt;</c>, a loud compile error consistent with Plan 04's
+    /// empty-string call-site error). An opted-in method never silently falls back to bare — including when
+    /// the annotated parameter name is not found in <see cref="RegisterMethodModel.TypeParameterNames"/>
+    /// (should not occur post-roundtrip; treated as the genuinely-unresolvable fail-loud case).
+    /// </summary>
+    private static string ComputeIdentificationType(RegisterMethodModel? registerMethod,
+        ImmutableValueArray<string> resolvedTypeArguments)
+    {
+        const string bare = "global::Sparkitect.Modding.Identification";
+        if (registerMethod?.TypedIdentificationTypeParameterName is not { Length: > 0 } paramName)
+        {
+            return bare;
+        }
+
+        var names = registerMethod.TypeParameterNames;
+        var index = names is null ? -1 : IndexOfTypeParameter(names, paramName);
+        var concrete = index >= 0 && resolvedTypeArguments is not null && index < resolvedTypeArguments.Count
+            ? resolvedTypeArguments[index]
+            : string.Empty;
+
+        return $"{bare}<{concrete}>";
+    }
     
+    /// <summary>
+    /// Semicolon-joins a register method's ordered type-parameter names for metadata roundtrip. Null-safe
+    /// because <see cref="RegisterMethodModel.TypeParameterNames"/> defaults unset for register methods
+    /// with no type parameters (e.g. the None/resource-file kind).
+    /// </summary>
+    private static string EncodeTypeParameterNames(ImmutableValueArray<string> names)
+        => names is null ? string.Empty : string.Join(";", names);
+
+    /// <summary>
+    /// Semicolon-joins the encoded form (see <see cref="EncodeConstraintRef"/>) of every
+    /// <see cref="RegisterConstraintRef"/> for metadata roundtrip.
+    /// </summary>
+    private static string EncodeConstraintRefs(ImmutableValueArray<RegisterConstraintRef> constraintRefs)
+        => constraintRefs is null ? string.Empty : string.Join(";", constraintRefs.Select(EncodeConstraintRef));
+
+    /// <summary>
+    /// Encodes a single <see cref="RegisterConstraintRef"/> as
+    /// <c>{TypeParameterName}|{ConstraintOpenDefinitionFqn}|{arg0,arg1,...}</c>. Splitting on <c>|</c> first
+    /// (never <c>,</c>) always yields exactly 3 parts even though the FQN may itself contain commas (e.g.
+    /// a multi-parameter open generic) — no field ever contains <c>|</c>. Positional empties are preserved
+    /// in the comma-joined arg list for concrete (non-type-parameter) argument slots.
+    /// </summary>
+    private static string EncodeConstraintRef(RegisterConstraintRef? constraintRef)
+    {
+        if (constraintRef is null) return string.Empty;
+        return $"{constraintRef.TypeParameterName}|{constraintRef.ConstraintOpenDefinitionFqn}|" +
+               string.Join(",", constraintRef.ArgTypeParameterNames);
+    }
+
     internal static bool RenderRegistryMetadata(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
     {
         fileName = $"{model.TypeName}_Metadata.g.cs";
@@ -270,7 +360,16 @@ public partial class RegistryGenerator
             Constraint = (int)method.Constraint,
             TypeConstraint = string.Join(";", method.TypeConstraint),
             KeyedFactoryMarkerTBase = method.KeyedFactoryMarkerTBase ?? string.Empty,
-            KeyedFactoryMarkerTKey = method.KeyedFactoryMarkerTKey ?? string.Empty
+            KeyedFactoryMarkerTKey = method.KeyedFactoryMarkerTKey ?? string.Empty,
+            TypedIdentificationTypeParameterName = method.TypedIdentificationTypeParameterName ?? string.Empty,
+            // FULL per-type-parameter roundtrip (D-03/D-08 cross-assembly fix): a RegisterMethodModel
+            // parsed from an external engine registry's metadata must carry the SAME fields as one
+            // extracted same-compilation, so Plan 04's constraint walk resolves typed ids cross-assembly.
+            // Delimiters (';' between refs, '|' between a ref's 3 sub-fields, ',' between arg names)
+            // never appear in a FullyQualifiedFormat FQN.
+            TypeParameterNames = EncodeTypeParameterNames(method.TypeParameterNames),
+            ConstraintRefs = EncodeConstraintRefs(method.ConstraintRefs),
+            ValueParameterGeneric = EncodeConstraintRef(method.ValueParameterGeneric)
         }).ToArray();
         
         var registerMethodsString = string.Join(";", model.RegisterMethods.Select(m => m.FunctionName));

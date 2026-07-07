@@ -276,32 +276,44 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        // SPARK0226: generic constraints for Type and GenericValue
-        if (registryMethod.TypeParameters.Length == 1)
+        // SPARK0226: generic constraints, looped across every type parameter (D-02) instead of only
+        // index 0. For type source, only the anchor type parameter (index 0 — the registered type
+        // itself, per placement) is determinable at usage time without the generator's
+        // constraint-hierarchy walk (D-03); further type parameters require that walk and are skipped
+        // here rather than false-reported. For value source, each type parameter's effective concrete
+        // argument is recovered from the provider return type when the value parameter references it;
+        // type parameters the value parameter doesn't reference are skipped the same way. A genuinely
+        // constraint-violating determinable type still reports TypeDoesNotSatisfyConstraints.
+        if (registryMethod.TypeParameters.Length >= 1)
         {
-            var tp = registryMethod.TypeParameters[0];
-            ITypeSymbol? candidate = null;
-            if (methodKind == PrimaryKind.Type && targetSymbol is INamedTypeSymbol typeProvider)
+            for (var i = 0; i < registryMethod.TypeParameters.Length; i++)
             {
-                candidate = typeProvider;
-            }
-            else if (methodKind == PrimaryKind.GenericValue)
-            {
-                ITypeSymbol? providerReturn = targetSymbol switch
-                {
-                    IMethodSymbol pms => pms.ReturnType,
-                    IPropertySymbol pps => pps.Type,
-                    _ => null
-                };
-                // For the wrapper-over-T shape (value param SettingDefinition<T>), recover the effective
-                // inner T from the provider return type (bool from SettingDefinition<bool>) before the
-                // constraint check; the bare-T shape uses the provider return type directly.
-                candidate = RecoverEffectiveTypeArgument(registryMethod, tp, providerReturn);
-            }
+                var tp = registryMethod.TypeParameters[i];
+                ITypeSymbol? candidate = null;
 
-            if (candidate != null && !SatisfiesConstraints(ctx.SemanticModel.Compilation, candidate, tp))
-            {
-                Report(ctx, RegistryDiagnostics.TypeDoesNotSatisfyConstraints, attrSyntax.GetLocation(), candidate.ToDisplayString(DisplayFormats.NamespaceAndType), registryMethod.Name);
+                if (methodKind == PrimaryKind.Type && targetSymbol is INamedTypeSymbol typeProvider)
+                {
+                    if (i == 0)
+                        candidate = typeProvider;
+                }
+                else if (methodKind == PrimaryKind.Value)
+                {
+                    ITypeSymbol? providerReturn = targetSymbol switch
+                    {
+                        IMethodSymbol pms => pms.ReturnType,
+                        IPropertySymbol pps => pps.Type,
+                        _ => null
+                    };
+                    // For the wrapper-over-T shape (value param SettingDefinition<T>), recover the effective
+                    // inner T from the provider return type (bool from SettingDefinition<bool>) before the
+                    // constraint check; the bare-T shape uses the provider return type directly.
+                    candidate = RecoverEffectiveTypeArgument(registryMethod, tp, providerReturn);
+                }
+
+                if (candidate != null && !SatisfiesConstraints(ctx.SemanticModel.Compilation, candidate, tp))
+                {
+                    Report(ctx, RegistryDiagnostics.TypeDoesNotSatisfyConstraints, attrSyntax.GetLocation(), candidate.ToDisplayString(DisplayFormats.NamespaceAndType), registryMethod.Name);
+                }
             }
         }
 
@@ -343,47 +355,44 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
 
     private enum ProviderUsageKind { Value, Type }
 
-    private enum PrimaryKind { None, Value, GenericValue, Type }
+    private enum PrimaryKind { None, Value, Type }
 
+    /// <summary>
+    /// Classifies a register method by the value/type source axis (D-01), determined solely by the
+    /// presence of a value parameter — independent of type-parameter count (D-02). A two-parameter
+    /// method is value source regardless of how many type parameters it carries; a one-parameter
+    /// method with one or more type parameters is still type source. The removed `GenericValue` kind
+    /// is not reintroduced here — "has a generic" is data on the value-source case, not a fourth kind.
+    /// </summary>
     private static PrimaryKind GetRegistryMethodKind(IMethodSymbol m)
     {
         if (m.Parameters.Length == 1 && m.TypeParameters.Length == 0)
             return PrimaryKind.None;
-        if (m.Parameters.Length == 2 && m.TypeParameters.Length == 0)
-            return PrimaryKind.Value;
-        if (m.Parameters.Length == 2 && m.TypeParameters.Length == 1 &&
-            ValueParameterReferencesTypeParameter(m.Parameters[1].Type, m.TypeParameters[0]))
-            return PrimaryKind.GenericValue;
-        if (m.Parameters.Length == 1 && m.TypeParameters.Length == 1)
+        if (m.Parameters.Length == 1 && m.TypeParameters.Length >= 1)
             return PrimaryKind.Type;
+        if (m.Parameters.Length == 2)
+            return PrimaryKind.Value; // value source, regardless of type-parameter count (0..N)
         return PrimaryKind.Value; // fallback
     }
 
     /// <summary>
-    /// True when the register method's value parameter references its type parameter — either the bare
-    /// `T` or a constructed generic mentioning it among its type arguments (e.g. SettingDefinition&lt;T&gt;).
-    /// </summary>
-    private static bool ValueParameterReferencesTypeParameter(ITypeSymbol valueParameterType, ITypeParameterSymbol tp)
-    {
-        if (SymbolEqualityComparer.Default.Equals(valueParameterType, tp)) return true;
-        return valueParameterType is INamedTypeSymbol { IsGenericType: true } wrapper &&
-               wrapper.TypeArguments.Any(arg => SymbolEqualityComparer.Default.Equals(arg, tp));
-    }
-
-    /// <summary>
-    /// Recovers the effective type argument the provider substitutes for the register method's type
-    /// parameter. For the bare-T value shape the provider return type IS T. For the wrapper-over-T
-    /// shape (value param SettingDefinition&lt;T&gt;), locate T's position in the wrapper's type arguments
-    /// and pull the matching type argument from the constructed provider return type (bool from
-    /// SettingDefinition&lt;bool&gt;), so the constraint check reads the inner value type, not the wrapper.
+    /// Recovers the effective type argument the provider substitutes for one of the register method's
+    /// type parameters. For the bare-T value shape the provider return type IS T. For the
+    /// wrapper-over-T shape (value param SettingDefinition&lt;T&gt;), locate T's position in the
+    /// wrapper's type arguments and pull the matching type argument from the constructed provider
+    /// return type (bool from SettingDefinition&lt;bool&gt;), so the constraint check reads the inner
+    /// value type, not the wrapper. Returns null (skip, don't false-report) when the value parameter
+    /// doesn't reference this specific type parameter at all — relevant once a value-source method may
+    /// carry multiple, possibly orthogonal, type parameters (D-02).
     /// </summary>
     private static ITypeSymbol? RecoverEffectiveTypeArgument(IMethodSymbol registryMethod,
         ITypeParameterSymbol tp, ITypeSymbol? providerReturnType)
     {
         if (providerReturnType is null) return null;
         var valueParam = registryMethod.Parameters.Length == 2 ? registryMethod.Parameters[1].Type : null;
+        if (valueParam is null) return null;
         // Bare-T value parameter: the provider return type IS the effective T.
-        if (valueParam is null || SymbolEqualityComparer.Default.Equals(valueParam, tp))
+        if (SymbolEqualityComparer.Default.Equals(valueParam, tp))
             return providerReturnType;
         if (valueParam is INamedTypeSymbol { IsGenericType: true } wrapper &&
             providerReturnType is INamedTypeSymbol { IsGenericType: true } returned &&
@@ -395,7 +404,9 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
                     return returned.TypeArguments[i];
             }
         }
-        return providerReturnType;
+        // tp isn't referenced by the value parameter at all — not determinable at usage time; skip
+        // rather than false-report.
+        return null;
     }
 
     private static bool SatisfiesConstraints(Compilation compilation, ITypeSymbol candidate, ITypeParameterSymbol tp)

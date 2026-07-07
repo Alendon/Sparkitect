@@ -127,6 +127,87 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(resourceConfig.Required).IsFalse();
     }
 
+    // RESOLVER-LEVEL PROOF (metadata roundtrip parse + walk math) — the honest replacement for a
+    // cross-assembly full-driver test. External-registry discovery scans only compilation.References, so a
+    // single-compilation RunGeneratorAsync can never drive that path; the full-pipeline cross-assembly
+    // emission is proven by Plan 06's sample mod (a genuinely separate assembly referencing the engine).
+    // This test authors a Reg<T1,T2>(Identification) where T1 : RelationShip<T2> registry as HAND-WRITTEN
+    // external-registry metadata (ExtractFromMetadata_Valid style), encoded with Plan 02's exact writer
+    // format (RegistryGenerator.Output.cs: EncodeTypeParameterNames ';'-joins names, EncodeConstraintRef is
+    // '{TypeParameterName}|{ConstraintOpenDefinitionFqn}|{arg0,arg1,...}'), pulls the metadata symbol via
+    // GetTypeByMetadataName, calls TryParseRegisterMethod directly, and asserts the roundtripped fields parse
+    // back correctly AND that the parsed RegisterMethodModel resolves the closed [B, A] list through
+    // ResolveTypeSourceGenericArguments — proving the walk runs identically on a metadata-parsed model.
+    [Test]
+    public async Task RoundtripParse_ExternalRegistryMetadata_ResolvesTypeSourceGenericArguments(
+        CancellationToken token)
+    {
+        TestSources.Add(("EngineRegMeta.cs",
+            """
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.Modding;
+
+            namespace EngineNs;
+
+            [assembly: RegistryMetadataAttribute<EngineRegMeta>]
+
+            public class EngineRegMeta {
+                public const string TypeName = "EngineRegistry";
+                public const string Key = "engine";
+                public const string ContainingNamespace = "EngineNs";
+                public const bool IsExternal = true;
+                public const string RegisterMethods = "Reg";
+                public const string ResourceFiles = "";
+
+                public class Reg {
+                    public const string FunctionName = "Reg";
+                    public const int PrimaryParameterKind = 4; // Type
+                    public const int Constraint = 0; // None
+                    public const string TypeConstraint = "";
+                    public const string KeyedFactoryMarkerTBase = "";
+                    public const string KeyedFactoryMarkerTKey = "";
+                    public const string TypedIdentificationTypeParameterName = "";
+                    public const string TypeParameterNames = "T1;T2";
+                    public const string ConstraintRefs = "T1|global::EngineNs.RelationShip<T>|T2";
+                    public const string ValueParameterGeneric = "";
+                }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+
+        var metadataType = compilation.GetTypeByMetadataName("EngineNs.EngineRegMeta");
+        await Assert.That(metadataType).IsNotNull();
+
+        var success = RegistryGenerator.TryParseRegisterMethod(metadataType!, "Reg", out var parsed);
+        await Assert.That(success).IsTrue();
+        await Assert.That(parsed).IsNotNull();
+
+        // Metadata roundtrip half: the roundtripped fields parse back correctly off the hand-authored metadata.
+        await Assert.That(parsed!.TypeParameterNames)
+            .IsEquivalentTo(new[] { "T1", "T2" }, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(parsed.ConstraintRefs).HasSingleItem();
+        var constraintRef = parsed.ConstraintRefs.First();
+        await Assert.That(constraintRef.TypeParameterName).IsEqualTo("T1");
+        await Assert.That(constraintRef.ConstraintOpenDefinitionFqn).IsEqualTo("global::EngineNs.RelationShip<T>");
+        await Assert.That(constraintRef.ArgTypeParameterNames)
+            .IsEquivalentTo(new[] { "T2" }, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+        await Assert.That(parsed.ValueParameterGeneric).IsNull();
+
+        // Walk-math half: the PARSED (not same-compilation-extracted) RegisterMethodModel resolves the
+        // closed [B, A] list — proving cross-assembly typed-id resolution never silently degrades to bare.
+        var hierarchy = ImmutableValueArray.From(
+            new RegistryGenerator.SerializedHierarchyType(
+                "global::EngineNs.RelationShip<T>",
+                ImmutableValueArray.From("global::EngineNs.A")));
+
+        var resolved = RegistryGenerator.ResolveTypeSourceGenericArguments(hierarchy, parsed, "global::EngineNs.B");
+
+        await Assert.That(resolved)
+            .IsEquivalentTo(new[] { "global::EngineNs.B", "global::EngineNs.A" },
+                TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
     [Test]
     public async Task ExtractModel_NullNamespace_ReturnsNull(CancellationToken token)
     {
@@ -526,6 +607,122 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         // No marker-driven artifacts should be emitted
         await Assert.That(fileNames.Any(f => f.Contains("KeyedFactoryConfigurator"))).IsFalse();
         await Assert.That(fileNames.Any(f => f == "MyItem_KeyedFactory.g.cs")).IsFalse();
+    }
+
+    // D-05/D-06: the single emission point where bare Identification becomes Identification<T> for an
+    // opted-in registration (type-source, single-type-parameter anchor case). A sibling non-opted-in
+    // method on the same registry proves bare stays bare — the transform never leaks across entries.
+    [Test]
+    public async Task RegistryGenerator_FullRun_TypedIdentification_EmitsTypedIdPropertyOptInOnly(
+        CancellationToken token)
+    {
+        TestSources.Add(("TypedIdentificationRegistry.cs",
+            """
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.Modding;
+
+            namespace DiTest
+            {
+                [Registry(Identifier = "typed_registry")]
+                public partial class TypedRegistry : IRegistry<TestModule>
+                {
+                    [RegistryMethod]
+                    public partial void RegisterTyped<[TypedIdentification] TPayload>(Identification id)
+                        where TPayload : class, IHasIdentification;
+
+                    [RegistryMethod]
+                    public partial void RegisterUntyped<TOther>(Identification id)
+                        where TOther : class, IHasIdentification;
+                }
+
+                [TypedRegistry.RegisterTyped("typed_item")]
+                public class TypedItem : IHasIdentification { }
+
+                [TypedRegistry.RegisterUntyped("untyped_item")]
+                public class UntypedItem : IHasIdentification { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var idPropertiesTree = driverRunResult.GeneratedTrees.FirstOrDefault(t =>
+            System.IO.Path.GetFileName(t.FilePath).Contains("IdProperties_Providers"));
+        await Assert.That(idPropertiesTree).IsNotNull();
+        var idPropertiesCode = idPropertiesTree!.GetText().ToString();
+
+        // Opted-in entry: the public property AND OrDefault peek are Identification<Concrete>; the
+        // backing field stays bare (D-09 — no reverse conversion needed).
+        await Assert.That(idPropertiesCode)
+            .Contains("global::Sparkitect.Modding.Identification<global::DiTest.TypedItem> TypedItem");
+        await Assert.That(idPropertiesCode)
+            .Contains("new global::Sparkitect.Modding.Identification<global::DiTest.TypedItem>(value)");
+        await Assert.That(idPropertiesCode)
+            .Contains("private static global::Sparkitect.Modding.Identification _typedItem_Providers;");
+
+        // Non-opted-in entry: still bare Identification, untouched by the transform.
+        await Assert.That(idPropertiesCode)
+            .Contains("global::Sparkitect.Modding.Identification UntypedItem");
+        await Assert.That(idPropertiesCode)
+            .DoesNotContain("Identification<global::DiTest.UntypedItem>");
+
+        await Verifier.Verify(driverRunResult, verifySettings);
+    }
+
+    // Phase 61.2 Plan 06 (D-10): pins the same-compilation typed-provider shape mirroring
+    // MinimalSampleMod/DummyRegistry.RegisterTypedProvider — a DI-constructed registry (manager
+    // dependency) with a [TypedIdentification] type-source register method constrained to a provider
+    // interface + IHasIdentification, plus a placement registration. Complements Plan 06 Task 1's
+    // sample-mod compile: this test asserts the emitted id-property SHAPE only (RunGeneratorAsync
+    // builds one compilation and cannot drive external-registry discovery — that is proven by the
+    // cross-assembly sample-mod build).
+    [Test]
+    public async Task RegistryGenerator_FullRun_TypedProvider_MirrorsDummyRegistryShape(
+        CancellationToken token)
+    {
+        TestSources.Add(("TypedProviderRegistry.cs",
+            """
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.Modding;
+
+            namespace DiTest
+            {
+                public interface IValueProvider { }
+
+                public interface IValueManager
+                {
+                    void AddProvider<TProvider>(Identification id) where TProvider : class, IValueProvider, IHasIdentification;
+                }
+
+                [Registry(Identifier = "typed_provider_registry")]
+                public partial class TypedProviderRegistry(IValueManager valueManager) : IRegistry<TestModule>
+                {
+                    [RegistryMethod]
+                    public void RegisterTypedProvider<[TypedIdentification] TPayload>(Identification id)
+                        where TPayload : class, IValueProvider, IHasIdentification
+                    {
+                        valueManager.AddProvider<TPayload>(id);
+                    }
+                }
+
+                [TypedProviderRegistry.RegisterTypedProvider("typed_dummy_provider")]
+                public class TypedDummyProvider : IValueProvider, IHasIdentification { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var idPropertiesTree = driverRunResult.GeneratedTrees.FirstOrDefault(t =>
+            System.IO.Path.GetFileName(t.FilePath).Contains("IdProperties_Providers"));
+        await Assert.That(idPropertiesTree).IsNotNull();
+        var idPropertiesCode = idPropertiesTree!.GetText().ToString();
+
+        // The opted-in property is typed Identification<Concrete> for the registered concrete type.
+        await Assert.That(idPropertiesCode)
+            .Contains("global::Sparkitect.Modding.Identification<global::DiTest.TypedDummyProvider> TypedDummyProvider");
+        await Assert.That(idPropertiesCode)
+            .Contains("new global::Sparkitect.Modding.Identification<global::DiTest.TypedDummyProvider>(value)");
+
+        await Verifier.Verify(driverRunResult, verifySettings);
     }
 
     [Test]

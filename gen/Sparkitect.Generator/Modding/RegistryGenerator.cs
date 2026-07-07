@@ -553,9 +553,10 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         foreach (var (method, _) in candidates)
         {
-            //Methods with more than one parameter of either kind are not allowed
-            if (method.TypeParameters.Length > 1 || method.Parameters.Length == 0 ||
-                method.Parameters.Length > 2) continue;
+            // Parameter-count guard stays; the type-parameter-count cap is lifted (D-02) — a register
+            // method (value OR type source) may carry 0..N type parameters, resolved per-registration
+            // from its source.
+            if (method.Parameters.Length == 0 || method.Parameters.Length > 2) continue;
 
             if (method.Parameters.First().Type.ToDisplayString(DisplayFormats.NamespaceAndType) !=
                 IdentificationStruct) continue;
@@ -567,42 +568,61 @@ public partial class RegistryGenerator : IIncrementalGenerator
             var markerTKey = method.Parameters.First().Type
                 .ToDisplayString(DisplayFormats.NamespaceAndType);
 
+            // D-04: which type parameter (if any) opts into Identification<T> emission.
+            var typedIdentificationTypeParameterName = ExtractTypedIdentificationTypeParameterName(method);
+
             //Method registration
             if (method.Parameters.Length == 2)
             {
                 var parameter = method.Parameters.ElementAt(1);
 
-                if (method.TypeParameters.Length == 1)
+                if (method.TypeParameters.Length > 0)
                 {
-                    // The value parameter must reference the method's type parameter: either the bare
-                    // type parameter `T` (RegisterComponent<T>(Identification, T)) or a constructed generic
-                    // that mentions `T` among its type arguments (RegisterSetting<T>(Identification,
+                    // The value parameter must reference ANY of the method's type parameters: either a
+                    // bare type parameter `T` (RegisterComponent<T>(Identification, T)) or a constructed
+                    // generic that mentions one among its type arguments (RegisterSetting<T>(Identification,
                     // SettingDefinition<T>)). The wrapper case keeps the closed generic value type intact
-                    // through the Registrations<> machinery — C# infers T from the provider return type.
-                    if (!MentionsTypeParameter(parameter.Type, method.TypeParameters.First())) continue;
+                    // through the Registrations<> machinery — C# infers every T from the provider return
+                    // type. A 2+-type-parameter value method (RegisterX<T1,T2>(Identification,
+                    // Wrapper<T1,T2>)) captures its generics here instead of falling through to plain Value.
+                    if (!method.TypeParameters.Any(tp => MentionsTypeParameter(parameter.Type, tp))) continue;
 
+                    // Anchor constraints (flat Constraint/TypeConstraint) stay on TypeParameters.First()
+                    // for the KeyedFactory path; the full per-type-parameter capture below is additive.
                     ParseTypeParameterConstraints(method.TypeParameters.First(), out var constraintFlag,
                         out var typeConstraints);
-                    result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.GenericValue, constraintFlag,
-                        typeConstraints, markerTBase, markerTKey));
+                    CaptureTypeParameterResolutionInputs(method.TypeParameters, out var typeParameterNames,
+                        out var constraintRefs);
+                    var valueParameterGeneric = BuildValueParameterGeneric(parameter.Type, method.TypeParameters);
+
+                    result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Value, constraintFlag,
+                        typeConstraints, markerTBase, markerTKey, typedIdentificationTypeParameterName,
+                        TypeParameterNames: typeParameterNames, ConstraintRefs: constraintRefs,
+                        ValueParameterGeneric: valueParameterGeneric));
 
                     continue;
                 }
 
                 result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Value, TypeConstraintFlag.None,
                     ((string[])[parameter.ToDisplayString(DisplayFormats.NamespaceAndType)]).ToImmutableValueArray(),
-                    markerTBase, markerTKey));
+                    markerTBase, markerTKey, typedIdentificationTypeParameterName));
 
                 continue;
             }
 
             //Type registration
-            if (method.TypeParameters.Length == 1)
+            if (method.TypeParameters.Length > 0)
             {
+                // Lifted from == 1 → > 0 (D-02): a multi-type-parameter, single-Identification-parameter
+                // method (Reg<T1,T2>(Identification) where T1 : RelationShip<T2>) classifies as Type
+                // instead of silently falling through to the None/resource-file branch below.
                 ParseTypeParameterConstraints(method.TypeParameters.First(), out var constraintFlag,
                     out var typeConstraints);
+                CaptureTypeParameterResolutionInputs(method.TypeParameters, out var typeParameterNames,
+                    out var constraintRefs);
                 result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Type, constraintFlag,
-                    typeConstraints, markerTBase, markerTKey));
+                    typeConstraints, markerTBase, markerTKey, typedIdentificationTypeParameterName,
+                    TypeParameterNames: typeParameterNames, ConstraintRefs: constraintRefs));
 
                 continue;
             }
@@ -614,6 +634,104 @@ public partial class RegistryGenerator : IIncrementalGenerator
         }
 
         return result.ToImmutableValueArray();
+    }
+
+    /// <summary>
+    /// Scans a register method's type parameters for the <c>[TypedIdentification]</c> marker (D-04) and
+    /// returns the name of the annotated one, or null when none opt in.
+    /// </summary>
+    internal static string? ExtractTypedIdentificationTypeParameterName(IMethodSymbol method)
+    {
+        foreach (var typeParameter in method.TypeParameters)
+        {
+            var hasAttribute = typeParameter.GetAttributes().Any(a =>
+                a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) ==
+                TypedIdentificationAttribute);
+            if (hasAttribute) return typeParameter.Name;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Captures the register-method-side resolution inputs Plan 04's pure-string constraint-guided walk
+    /// consumes: the method's type parameters in declaration order, and — for every type parameter whose
+    /// constraints reference another type parameter — a <see cref="RegisterConstraintRef"/> resolution-map
+    /// entry. Loops ALL type parameters (not just the anchor), so 2+-type-parameter methods of either
+    /// source kind capture their full generic structure.
+    /// </summary>
+    internal static void CaptureTypeParameterResolutionInputs(
+        ImmutableArray<ITypeParameterSymbol> typeParameters,
+        out ImmutableValueArray<string> typeParameterNames,
+        out ImmutableValueArray<RegisterConstraintRef> constraintRefs)
+    {
+        var namesBuilder = new ImmutableValueArray<string>.Builder();
+        var refsBuilder = new ImmutableValueArray<RegisterConstraintRef>.Builder();
+
+        foreach (var typeParameter in typeParameters)
+        {
+            namesBuilder.Add(typeParameter.Name);
+
+            foreach (var constraintType in typeParameter.ConstraintTypes)
+            {
+                if (TryBuildConstraintRef(typeParameter.Name, constraintType, typeParameters,
+                        out var constraintRef))
+                {
+                    refsBuilder.Add(constraintRef);
+                }
+            }
+        }
+
+        typeParameterNames = namesBuilder.ToImmutableValueArray();
+        constraintRefs = refsBuilder.ToImmutableValueArray();
+    }
+
+    /// <summary>
+    /// Builds the value parameter's constructed-generic structure for value-source resolution (D-03), e.g.
+    /// <c>Wrapper&lt;T1, T2&gt;</c> in <c>RegisterX&lt;T1, T2&gt;(Identification, Wrapper&lt;T1, T2&gt;)</c>.
+    /// Null for a bare-<c>T</c> or non-generic value parameter — mirrors the symmetry the operator required
+    /// between the value-source and type-source capture paths.
+    /// </summary>
+    internal static RegisterConstraintRef? BuildValueParameterGeneric(ITypeSymbol parameterType,
+        ImmutableArray<ITypeParameterSymbol> typeParameters)
+    {
+        if (parameterType is not INamedTypeSymbol { IsGenericType: true }) return null;
+
+        return TryBuildConstraintRef(string.Empty, parameterType, typeParameters, out var constraintRef)
+            ? constraintRef
+            : null;
+    }
+
+    /// <summary>
+    /// Shared builder for both a type parameter's constructed-generic constraint
+    /// (<see cref="CaptureTypeParameterResolutionInputs"/>) and a value parameter's constructed-generic
+    /// structure (<see cref="BuildValueParameterGeneric"/>). Only produces a ref when at least one argument
+    /// position references another of the method's type parameters — a constraint/wrapper over purely
+    /// concrete types carries no resolution information for Plan 04's walk.
+    /// </summary>
+    private static bool TryBuildConstraintRef(string owningTypeParameterName, ITypeSymbol constructedType,
+        ImmutableArray<ITypeParameterSymbol> typeParameters, out RegisterConstraintRef constraintRef)
+    {
+        constraintRef = null!;
+        if (constructedType is not INamedTypeSymbol { IsGenericType: true } named) return false;
+
+        var argNamesBuilder = new ImmutableValueArray<string>.Builder();
+        var mentionsAny = false;
+        foreach (var typeArg in named.TypeArguments)
+        {
+            var referenced = typeArg is ITypeParameterSymbol argTp
+                ? typeParameters.FirstOrDefault(tp => SymbolEqualityComparer.Default.Equals(tp, argTp))
+                : null;
+            argNamesBuilder.Add(referenced?.Name ?? string.Empty);
+            if (referenced is not null) mentionsAny = true;
+        }
+
+        if (!mentionsAny) return false;
+
+        var openFqn = named.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        constraintRef = new RegisterConstraintRef(owningTypeParameterName, openFqn,
+            argNamesBuilder.ToImmutableValueArray());
+        return true;
     }
 
     /// <summary>
@@ -820,18 +938,96 @@ public partial class RegistryGenerator : IIncrementalGenerator
             markerTKey = markerTKeyData;
         }
 
+        // FULL per-type-parameter roundtrip (D-03/D-08 cross-assembly fix) — all four read directly off
+        // the symbol, bypassing reader.Of() so AllValid is never affected by absent/legacy metadata.
+
+        string? typedIdentificationTypeParameterName = null;
+        var typedIdentificationField = methodMetadata.GetMembers("TypedIdentificationTypeParameterName")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (typedIdentificationField is
+            { IsConst: true, HasConstantValue: true, ConstantValue: string typedIdentificationData }
+            && !string.IsNullOrEmpty(typedIdentificationData))
+        {
+            typedIdentificationTypeParameterName = typedIdentificationData;
+        }
+
+        var typeParameterNames = new ImmutableValueArray<string>.Builder();
+        var typeParameterNamesField = methodMetadata.GetMembers("TypeParameterNames")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (typeParameterNamesField is
+            { IsConst: true, HasConstantValue: true, ConstantValue: string typeParameterNamesData }
+            && !string.IsNullOrEmpty(typeParameterNamesData))
+        {
+            foreach (var name in typeParameterNamesData.Split([';'], StringSplitOptions.RemoveEmptyEntries))
+            {
+                typeParameterNames.Add(name);
+            }
+        }
+
+        var constraintRefs = new ImmutableValueArray<RegisterConstraintRef>.Builder();
+        var constraintRefsField = methodMetadata.GetMembers("ConstraintRefs")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (constraintRefsField is
+            { IsConst: true, HasConstantValue: true, ConstantValue: string constraintRefsData }
+            && !string.IsNullOrEmpty(constraintRefsData))
+        {
+            foreach (var encodedRef in constraintRefsData.Split([';'], StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (TryDecodeConstraintRef(encodedRef, out var decodedRef))
+                {
+                    constraintRefs.Add(decodedRef);
+                }
+            }
+        }
+
+        RegisterConstraintRef? valueParameterGeneric = null;
+        var valueParameterGenericField = methodMetadata.GetMembers("ValueParameterGeneric")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (valueParameterGenericField is
+            { IsConst: true, HasConstantValue: true, ConstantValue: string valueParameterGenericData }
+            && !string.IsNullOrEmpty(valueParameterGenericData)
+            && TryDecodeConstraintRef(valueParameterGenericData, out var decodedValueParameterGeneric))
+        {
+            valueParameterGeneric = decodedValueParameterGeneric;
+        }
+
         model = new RegisterMethodModel(
             Of("FunctionName"),
             parameterKind,
             constraint,
             typeConstraints.ToImmutableValueArray(),
             markerTBase,
-            markerTKey
+            markerTKey,
+            typedIdentificationTypeParameterName,
+            TypeParameterNames: typeParameterNames.ToImmutableValueArray(),
+            ConstraintRefs: constraintRefs.ToImmutableValueArray(),
+            ValueParameterGeneric: valueParameterGeneric
         );
 
         return reader.AllValid;
 
         string Of(string fieldName) => reader.Of(fieldName);
+    }
+
+    /// <summary>
+    /// Decodes a single <see cref="RegisterConstraintRef"/> from its metadata-roundtrip encoding
+    /// (<c>{TypeParameterName}|{ConstraintOpenDefinitionFqn}|{arg0,arg1,...}</c>). Splits on <c>|</c> first
+    /// (never <c>,</c>) to always get exactly 3 parts, then splits the arg segment on <c>,</c> WITHOUT
+    /// removing empty entries so positional empties (concrete, non-type-parameter argument slots) survive.
+    /// </summary>
+    private static bool TryDecodeConstraintRef(string encoded, out RegisterConstraintRef constraintRef)
+    {
+        constraintRef = null!;
+        var parts = encoded.Split('|');
+        if (parts.Length != 3) return false;
+
+        var argNames = parts[2].Split([','], StringSplitOptions.None).ToImmutableValueArray();
+        constraintRef = new RegisterConstraintRef(parts[0], parts[1], argNames);
+        return true;
     }
 
     struct SymbolMetadataReader(ITypeSymbol symbol)

@@ -22,4 +22,7 @@ public partial class RegistryGenerator
         "Sparkitect.Modding.KeyedFactoryGenerationMarkerAttribute";
 
     internal const string IHasIdentificationInterface = "Sparkitect.Modding.IHasIdentification";
+
+    // D-04: the type-parameter-level opt-in marking which generic feeds Identification<T> emission.
+    private const string TypedIdentificationAttribute = "Sparkitect.Modding.TypedIdentificationAttribute";
 }

@@ -1,0 +1,10 @@
+﻿//HintName: TypedProviderRegistryID.g.cs
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace Sparkitect.Modding.IDs;
+
+public static class TypedProviderRegistryID
+{
+}
+

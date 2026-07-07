@@ -34,7 +34,11 @@ public static partial class TestData
         public sealed class RegistryFacadeAttribute<TFacade> : Sparkitect.DI.GeneratorAttributes.FacadeMarkerAttribute<TFacade> where TFacade : class;
 
         public struct Identification { }
+        public readonly struct Identification<T> { }
         public interface IHasIdentification { }
+
+        [AttributeUsage(AttributeTargets.GenericParameter)]
+        public sealed class TypedIdentificationAttribute : Attribute { }
 
         public interface IRegistryBase { void Unregister(Identification id); }
         public interface IRegistry : IRegistryBase { }

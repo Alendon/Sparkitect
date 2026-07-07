@@ -24,6 +24,13 @@ public partial class DummyRegistry(IDummyValueManager dummyValueManager) : IRegi
         dummyValueManager.AddDummyProvider<TProvider>(id);
     }
 
+    // same-compilation typed register method — TPayload feeds Identification<T> emission
+    [RegistryMethod]
+    public void RegisterTypedProvider<[TypedIdentification] TPayload>(Identification id) where TPayload : class, IDummyValueProvider, IHasIdentification
+    {
+        dummyValueManager.AddDummyProvider<TPayload>(id);
+    }
+
     public static string Identifier => "dummy";
     
     public void Unregister(Identification id)

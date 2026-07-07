@@ -33,7 +33,10 @@ public sealed record MethodRegistrationEntry(
     string ProviderFullName,
     ImmutableValueArray<(string paramType, bool isNullable)> DiParameters,
     string? RegisteredContainerFullName = null,
-    string? RegisteredMemberName = null)
+    string? RegisteredMemberName = null,
+    // Carried for Plan 05's id-typing (value-source emission stays inference-based — the compiler infers
+    // T at the call site, so this list is NOT consumed by EmitRegistrationEntryCode below).
+    ImmutableValueArray<string> ResolvedTypeArguments = default!)
     : RegistrationEntry(Id, Files)
 {
     // typeof target is the provider's CONTAINING type (cannot typeof a member);
@@ -74,7 +77,10 @@ public sealed record PropertyRegistrationEntry(
     string MethodName,
     string ProviderFullName,
     string? RegisteredContainerFullName = null,
-    string? RegisteredMemberName = null)
+    string? RegisteredMemberName = null,
+    // Carried for Plan 05's id-typing (value-source emission stays inference-based — the compiler infers
+    // T at the call site, so this list is NOT consumed by EmitRegistrationEntryCode below).
+    ImmutableValueArray<string> ResolvedTypeArguments = default!)
     : RegistrationEntry(Id, Files)
 {
     // typeof target is the provider-property's CONTAINING type; member is the property name.
@@ -91,7 +97,11 @@ public sealed record TypeRegistrationEntry(
     string MethodName,
     string TypeFullName,
     KeyedFactoryGenerationInfo? KeyedFactoryGeneration = null,
-    RegistrationTypeKind TypeKind = RegistrationTypeKind.Class)
+    RegistrationTypeKind TypeKind = RegistrationTypeKind.Class,
+    // Fully-resolved, closed type-argument list from Plan 04's constraint-guided walk (D-03/D-08). Empty
+    // (or unset) falls back to the single TypeFullName below; non-empty emits ALL resolved args — C# has
+    // no partial generic inference, so a multi-type-parameter type-source call must be fully closed.
+    ImmutableValueArray<string> ResolvedTypeArguments = default!)
     : RegistrationEntry(Id, Files)
 {
     // The registered type IS the navigation target — no member (emits a TYPE).
@@ -99,7 +109,14 @@ public sealed record TypeRegistrationEntry(
     public override string? RegisteredMember => null;
 
     public override string EmitRegistrationEntryCode(string registry, string id)
-        => $"{registry}.{MethodName}<{TypeFullName}>({id});";
+    {
+        if (ResolvedTypeArguments is { Count: > 0 })
+        {
+            return $"{registry}.{MethodName}<{string.Join(", ", ResolvedTypeArguments)}>({id});";
+        }
+
+        return $"{registry}.{MethodName}<{TypeFullName}>({id});";
+    }
 }
 
 /// <summary>

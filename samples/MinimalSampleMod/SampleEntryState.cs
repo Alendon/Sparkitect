@@ -76,3 +76,12 @@ internal partial class DummyValueProvider : IDummyValueProvider, IHasIdentificat
 {
     public string Provide() => "Hello from Provider";
 }
+
+// typed register-method proof: DummyRegistry.RegisterTypedProvider opt-in feeds Identification<T> emission.
+// Public (not internal): the generated Identification<TypedDummyValueProvider> id property is public,
+// and a public property's type argument must be at least as accessible as the property (CS0053).
+[DummyRegistry.RegisterTypedProvider("dummy_typed_provider")]
+public partial class TypedDummyValueProvider : IDummyValueProvider, IHasIdentification
+{
+    public string Provide() => "Hello from Typed Provider";
+}

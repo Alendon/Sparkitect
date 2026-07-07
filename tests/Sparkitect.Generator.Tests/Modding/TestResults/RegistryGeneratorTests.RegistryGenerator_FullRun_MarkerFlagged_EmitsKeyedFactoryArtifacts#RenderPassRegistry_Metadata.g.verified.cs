@@ -28,6 +28,10 @@ public class RenderPassRegistry_Metadata
         public const string TypeConstraint = "DiTest.IRenderPass;Sparkitect.Modding.IHasIdentification";
         public const string KeyedFactoryMarkerTBase = "global::DiTest.IRenderPass";
         public const string KeyedFactoryMarkerTKey = "Sparkitect.Modding.Identification";
+        public const string TypedIdentificationTypeParameterName = "";
+        public const string TypeParameterNames = "TRenderPass";
+        public const string ConstraintRefs = "";
+        public const string ValueParameterGeneric = "";
     }
 
 

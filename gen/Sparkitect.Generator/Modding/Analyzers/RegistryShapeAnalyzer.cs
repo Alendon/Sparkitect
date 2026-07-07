@@ -215,15 +215,10 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         var paramCount = method.Parameters.Length;
         var typeParamCount = method.TypeParameters.Length;
 
-        // Too many type parameters
-        if (typeParamCount > 1)
-        {
-            ctx.ReportDiagnostic(Diagnostic.Create(
-                RegistryDiagnostics.TooManyTypeParameters,
-                attrLocation ?? method.Locations.FirstOrDefault(),
-                method.Name));
-            return; // don't flood with follow-up diagnostics
-        }
+        // 0..N type parameters are accepted (D-02): the arity cap is lifted here in tandem with the
+        // generator's collapsed taxonomy (Plan 02), so SPARK0212/TooManyTypeParameters is no longer
+        // reported for typeParamCount > 1. The descriptor stays declared/registered in
+        // SupportedDiagnostics (it may still be referenced) — only the early report path is removed.
 
         // Must have 1 or 2 parameters; first must be Identification
         if (paramCount == 0 || paramCount > 2)
@@ -246,20 +241,22 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // If two params and one type param, the second param must reference the type parameter:
-        // either the bare `T` or a constructed generic mentioning it among its type arguments
-        // (e.g. SettingDefinition<T>). The wrapper-over-T shape carries a closed generic value type
-        // through registration and is a valid register-method shape — do not flag it as a mismatch.
+        // If two params and one or more type params, the value parameter must reference at least
+        // one of the method's type parameters: either the bare `T_i` or a constructed generic
+        // mentioning it among its type arguments (e.g. SettingDefinition<T>). The wrapper-over-T
+        // shape carries a closed generic value type through registration and is a valid
+        // register-method shape — do not flag it as a mismatch. Loop all type parameters (not just
+        // index 0) so multi-type-parameter value-source methods are validated correctly (D-02).
         if (paramCount == 2)
         {
             var p1 = method.Parameters[1];
-            if (typeParamCount == 1)
+            if (typeParamCount >= 1)
             {
-                var tp = method.TypeParameters[0];
-                var referencesTypeParameter = SymbolEqualityComparer.Default.Equals(p1.Type, tp) ||
+                var referencesAnyTypeParameter = method.TypeParameters.Any(tp =>
+                    SymbolEqualityComparer.Default.Equals(p1.Type, tp) ||
                     (p1.Type is INamedTypeSymbol { IsGenericType: true } wrapper &&
-                     wrapper.TypeArguments.Any(arg => SymbolEqualityComparer.Default.Equals(arg, tp)));
-                if (!referencesTypeParameter)
+                     wrapper.TypeArguments.Any(arg => SymbolEqualityComparer.Default.Equals(arg, tp))));
+                if (!referencesAnyTypeParameter)
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         RegistryDiagnostics.GenericValueMismatch,

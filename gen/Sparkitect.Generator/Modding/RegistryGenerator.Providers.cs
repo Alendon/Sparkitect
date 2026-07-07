@@ -14,6 +14,17 @@ public partial class RegistryGenerator
 
     internal readonly record struct ProviderFileArg(string PropertyName, string FileName);
 
+    /// <summary>
+    /// A single constructed-generic entry in a walk's serialized inputs — either one link in a registered
+    /// type's base/interface hierarchy, or a provider's return type. Pure string data (no <see cref="ITypeSymbol"/>)
+    /// so it can cross the incremental generator's <c>.Combine()</c> boundary; captured where the symbol is
+    /// in scope (<see cref="TryBuildProviderCandidate"/>), matched by pure string comparison at the
+    /// <see cref="MapProviderCandidateToUnit"/> join stage (Plan 04's constraint-guided walk).
+    /// </summary>
+    internal sealed record SerializedHierarchyType(
+        string OpenDefinitionFqn,
+        ImmutableValueArray<string> TypeArgumentFqns);
+
     internal sealed record ProviderCandidate(
         string RegistryTypeName,
         string? RegistryNamespace,
@@ -26,7 +37,11 @@ public partial class RegistryGenerator
         ImmutableValueArray<ProviderFileArg> Files,
         ImmutableValueArray<(string paramType, bool isNullable)> DiParameters,
         bool IsValueTypeProvider = false,
-        bool IsRecordProvider = false);
+        bool IsRecordProvider = false,
+        // Walk inputs captured here (symbol scope) for the pure-string resolvers to consume at the join
+        // stage — never an INamedTypeSymbol/ITypeSymbol field; both are serialized strings only.
+        ImmutableValueArray<SerializedHierarchyType> RegisteredTypeHierarchy = default!,
+        SerializedHierarchyType? ProviderReturnType = null);
 
     internal static bool TryExtractProviderInfo(AttributeData attribute,
         out string registryTypeName, out string? registryNamespace, out string methodName, out bool isRegisterMarker)
@@ -107,6 +122,13 @@ public partial class RegistryGenerator
         string methodOrTypeName;
         var diParamsBuilder = new ImmutableValueArray<(string paramType, bool isNullable)>.Builder();
 
+        // Walk inputs (D-03/D-06): captured here, while the symbol is still in scope, as pure strings — no
+        // ITypeSymbol crosses the .Combine() boundary. Type providers capture the registered type's
+        // base/interface hierarchy; value providers (method/property) capture the provider's return type.
+        var registeredTypeHierarchy = new ImmutableValueArray<SerializedHierarchyType>.Builder()
+            .ToImmutableValueArray();
+        SerializedHierarchyType? providerReturnType = null;
+
         if (targetSymbol is IMethodSymbol ms)
         {
             containerFullName = ms.ContainingType.ToDisplayString(DisplayFormats.NamespaceAndType);
@@ -118,11 +140,21 @@ public partial class RegistryGenerator
                 var isNullable = p.NullableAnnotation == NullableAnnotation.Annotated;
                 diParamsBuilder.Add((typeName, isNullable));
             }
+
+            if (ms.ReturnType is INamedTypeSymbol msReturnNamed)
+            {
+                providerReturnType = SerializeConstructedGeneric(msReturnNamed);
+            }
         }
         else if (targetSymbol is IPropertySymbol ps)
         {
             containerFullName = ps.ContainingType.ToDisplayString(DisplayFormats.NamespaceAndType);
             methodOrTypeName = ps.Name;
+
+            if (ps.Type is INamedTypeSymbol psTypeNamed)
+            {
+                providerReturnType = SerializeConstructedGeneric(psTypeNamed);
+            }
         }
         else if (targetSymbol is INamedTypeSymbol nts)
         {
@@ -130,6 +162,8 @@ public partial class RegistryGenerator
                 ? ns
                 : string.Empty;
             methodOrTypeName = nts.ToDisplayString(DisplayFormats.NamespaceAndType);
+
+            registeredTypeHierarchy = SerializeTypeHierarchy(nts);
         }
         else
         {
@@ -148,7 +182,60 @@ public partial class RegistryGenerator
             files,
             diParamsBuilder.ToImmutableValueArray(),
             isValueTypeProvider,
-            isRecordProvider);
+            isRecordProvider,
+            registeredTypeHierarchy,
+            providerReturnType);
+    }
+
+    /// <summary>
+    /// Walks a registered type's <c>BaseType</c> chain (stopping at <c>object</c>) plus its full flattened
+    /// <c>AllInterfaces</c> set, serializing every constructed-generic hierarchy link as a
+    /// <see cref="SerializedHierarchyType"/>. Non-generic bases/interfaces are skipped — a constraint
+    /// reference (<see cref="RegisterConstraintRef"/>) is only ever built for a constructed-generic
+    /// constraint, so a non-generic hierarchy entry could never match one.
+    /// </summary>
+    private static ImmutableValueArray<SerializedHierarchyType> SerializeTypeHierarchy(INamedTypeSymbol nts)
+    {
+        var builder = new ImmutableValueArray<SerializedHierarchyType>.Builder();
+
+        var current = nts.BaseType;
+        while (current is not null && current.SpecialType != SpecialType.System_Object)
+        {
+            if (current.IsGenericType)
+            {
+                builder.Add(SerializeConstructedGeneric(current));
+            }
+
+            current = current.BaseType;
+        }
+
+        foreach (var iface in nts.AllInterfaces)
+        {
+            if (iface.IsGenericType)
+            {
+                builder.Add(SerializeConstructedGeneric(iface));
+            }
+        }
+
+        return builder.ToImmutableValueArray();
+    }
+
+    /// <summary>
+    /// Serializes a named type as a <see cref="SerializedHierarchyType"/>: its open generic definition FQN
+    /// (identical to itself for a non-generic type) plus each closed type argument's FQN. Shared by the
+    /// hierarchy walk (generic entries only) and the provider-return-type capture (any named type, including
+    /// non-generic — a bare-<c>T</c> value method resolves directly to this open FQN with zero arguments).
+    /// </summary>
+    private static SerializedHierarchyType SerializeConstructedGeneric(INamedTypeSymbol namedType)
+    {
+        var openFqn = namedType.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var argsBuilder = new ImmutableValueArray<string>.Builder();
+        foreach (var arg in namedType.TypeArguments)
+        {
+            argsBuilder.Add(arg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+        }
+
+        return new SerializedHierarchyType(openFqn, argsBuilder.ToImmutableValueArray());
     }
 
     internal static RegistrationUnit? MapProviderCandidateToUnit(ProviderCandidate cand, RegistryMap regMap)
@@ -174,6 +261,12 @@ public partial class RegistryGenerator
 
         var files = filesBuilder.OrderBy(f => f.fileId).ToImmutableValueArray();
 
+        // Resolution head (D-07/D-08 open-by-construction seam): looked up once here at the join stage.
+        // Runs IDENTICALLY whether extracted same-compilation or parsed from external registry metadata —
+        // both produce a field-identical RegisterMethodModel (Plan 02).
+        var registerMethod = model.RegisterMethods.FirstOrDefault(m => m.FunctionName == cand.MethodName);
+        var emptyResolvedArgs = new ImmutableValueArray<string>.Builder().ToImmutableValueArray();
+
         RegistrationEntry entry;
         // Backward-coordinate identity kept SEPARATE from the concatenated ProviderFullName
         // The typeof target is the CONTAINING type, the member is named on the side.
@@ -181,8 +274,11 @@ public partial class RegistryGenerator
         if (cand.IsPropertyProvider)
         {
             var providerFull = $"global::{cand.ProviderContainingTypeFullName}.{cand.ProviderMethodOrTypeName}";
+            var resolvedArgs = registerMethod is not null && cand.ProviderReturnType is not null
+                ? ResolveValueSourceGenericArguments(cand.ProviderReturnType, registerMethod)
+                : emptyResolvedArgs;
             entry = new PropertyRegistrationEntry(cand.Id, files, cand.MethodName, providerFull,
-                registeredContainer, cand.ProviderMethodOrTypeName);
+                registeredContainer, cand.ProviderMethodOrTypeName, resolvedArgs);
         }
         else if (cand.IsTypeProvider)
         {
@@ -191,7 +287,6 @@ public partial class RegistryGenerator
                 : $"global::{cand.ProviderMethodOrTypeName}";
 
             KeyedFactoryGenerationInfo? kfg = null;
-            var registerMethod = model.RegisterMethods.FirstOrDefault(m => m.FunctionName == cand.MethodName);
             if (registerMethod is not null
                 && registerMethod.PrimaryParameterKind == PrimaryParameterKind.Type
                 && registerMethod.KeyedFactoryMarkerTBase is { } tBase)
@@ -208,13 +303,22 @@ public partial class RegistryGenerator
                 (true, false) => RegistrationTypeKind.Struct,
                 (false, false) => RegistrationTypeKind.Class,
             };
-            entry = new TypeRegistrationEntry(cand.Id, files, cand.MethodName, typeFull, kfg, typeKind);
+
+            var resolvedTypeArgs = registerMethod is not null
+                ? ResolveTypeSourceGenericArguments(cand.RegisteredTypeHierarchy, registerMethod, typeFull)
+                : emptyResolvedArgs;
+
+            entry = new TypeRegistrationEntry(cand.Id, files, cand.MethodName, typeFull, kfg, typeKind,
+                resolvedTypeArgs);
         }
         else
         {
             var providerFull = $"global::{cand.ProviderContainingTypeFullName}.{cand.ProviderMethodOrTypeName}";
+            var resolvedArgs = registerMethod is not null && cand.ProviderReturnType is not null
+                ? ResolveValueSourceGenericArguments(cand.ProviderReturnType, registerMethod)
+                : emptyResolvedArgs;
             entry = new MethodRegistrationEntry(cand.Id, files, cand.MethodName, providerFull, cand.DiParameters,
-                registeredContainer, cand.ProviderMethodOrTypeName);
+                registeredContainer, cand.ProviderMethodOrTypeName, resolvedArgs);
         }
 
         var entries = new ImmutableValueArray<RegistrationEntry>.Builder();
@@ -225,6 +329,136 @@ public partial class RegistryGenerator
             SourceKind.Provider,
             "Providers",
             entries.ToImmutableValueArray());
+    }
+
+    /// <summary>
+    /// Pure-string constraint-guided walk (D-03 type-source): resolves the closed type-argument list for a
+    /// type-source register method by matching its constraint structure against the registered type's
+    /// serialized hierarchy. Seeds the anchor slot (<see cref="RegisterMethodModel.TypeParameterNames"/>
+    /// index 0) with <paramref name="anchorTypeFqn"/> (the registered type itself), then iterates to a
+    /// fixpoint: a constraint declared on an already-resolved type parameter that matches a hierarchy entry
+    /// resolves every type parameter that entry's constructed-generic arguments reference. No symbol
+    /// parameter — runs identically whether <paramref name="method"/> was extracted same-compilation or
+    /// parsed from external registry metadata. Genuinely unresolvable slots (no matching hierarchy entry
+    /// ever found) stay empty — fail-loud; the resulting compile error is the loud signal (operator-approved,
+    /// RESEARCH.md open-Q3).
+    /// </summary>
+    internal static ImmutableValueArray<string> ResolveTypeSourceGenericArguments(
+        ImmutableValueArray<SerializedHierarchyType> hierarchy, RegisterMethodModel method, string anchorTypeFqn)
+    {
+        var names = method.TypeParameterNames;
+        if (names is null || names.Count == 0)
+        {
+            return new ImmutableValueArray<string>.Builder().ToImmutableValueArray();
+        }
+
+        var resolved = new string?[names.Count];
+        resolved[0] = anchorTypeFqn;
+
+        var constraintRefs = method.ConstraintRefs ??
+                              new ImmutableValueArray<RegisterConstraintRef>.Builder().ToImmutableValueArray();
+
+        // Iterative fixpoint (bounded by type-parameter count — no unbounded loop, T-61.2-04b): each pass
+        // only resolves constraints whose owning type parameter is already resolved, so a multi-hop chain
+        // (T1 : Foo<T2>, T2 : Bar<T3>) resolves across successive passes as each link's owner becomes known.
+        var progress = true;
+        while (progress)
+        {
+            progress = false;
+            foreach (var constraintRef in constraintRefs)
+            {
+                var owningIndex = IndexOfTypeParameter(names, constraintRef.TypeParameterName);
+                if (owningIndex < 0 || resolved[owningIndex] is null) continue;
+
+                var hierarchyMatch = FindHierarchyMatch(hierarchy, constraintRef.ConstraintOpenDefinitionFqn);
+                if (hierarchyMatch is null) continue;
+
+                for (var pos = 0; pos < constraintRef.ArgTypeParameterNames.Count; pos++)
+                {
+                    var argName = constraintRef.ArgTypeParameterNames[pos];
+                    if (string.IsNullOrEmpty(argName)) continue;
+
+                    var argIndex = IndexOfTypeParameter(names, argName);
+                    if (argIndex < 0 || resolved[argIndex] is not null) continue;
+                    if (pos >= hierarchyMatch.TypeArgumentFqns.Count) continue;
+
+                    resolved[argIndex] = hierarchyMatch.TypeArgumentFqns[pos];
+                    progress = true;
+                }
+            }
+        }
+
+        var resultBuilder = new ImmutableValueArray<string>.Builder();
+        foreach (var r in resolved) resultBuilder.Add(r ?? string.Empty);
+        return resultBuilder.ToImmutableValueArray();
+    }
+
+    /// <summary>
+    /// Pure-string value-source resolution (D-03/D-06): reads the closed type-argument list from the
+    /// provider's already-compiler-inferred return type, mirroring <c>SettingsAccessorGenerator</c>'s walk
+    /// (:82-92). A wrapper-generic value parameter (<see cref="RegisterMethodModel.ValueParameterGeneric"/>
+    /// present) matches its open definition against <paramref name="returnType"/> and reads each referenced
+    /// slot; a bare-<c>T</c> value method (no wrapper — the method's single type parameter IS the value
+    /// parameter) resolves that one slot directly to the provider return type's own open FQN.
+    /// </summary>
+    internal static ImmutableValueArray<string> ResolveValueSourceGenericArguments(
+        SerializedHierarchyType? returnType, RegisterMethodModel method)
+    {
+        var names = method.TypeParameterNames;
+        if (names is null || names.Count == 0 || returnType is null)
+        {
+            return new ImmutableValueArray<string>.Builder().ToImmutableValueArray();
+        }
+
+        var resolved = new string?[names.Count];
+
+        if (method.ValueParameterGeneric is { } valueParameterGeneric)
+        {
+            if (valueParameterGeneric.ConstraintOpenDefinitionFqn == returnType.OpenDefinitionFqn)
+            {
+                for (var pos = 0; pos < valueParameterGeneric.ArgTypeParameterNames.Count; pos++)
+                {
+                    var argName = valueParameterGeneric.ArgTypeParameterNames[pos];
+                    if (string.IsNullOrEmpty(argName)) continue;
+
+                    var argIndex = IndexOfTypeParameter(names, argName);
+                    if (argIndex < 0 || pos >= returnType.TypeArgumentFqns.Count) continue;
+
+                    resolved[argIndex] = returnType.TypeArgumentFqns[pos];
+                }
+            }
+        }
+        else if (names.Count == 1)
+        {
+            resolved[0] = returnType.OpenDefinitionFqn;
+        }
+
+        var resultBuilder = new ImmutableValueArray<string>.Builder();
+        foreach (var r in resolved) resultBuilder.Add(r ?? string.Empty);
+        return resultBuilder.ToImmutableValueArray();
+    }
+
+    private static int IndexOfTypeParameter(ImmutableValueArray<string> names, string name)
+    {
+        if (string.IsNullOrEmpty(name)) return -1;
+        for (var i = 0; i < names.Count; i++)
+        {
+            if (names[i] == name) return i;
+        }
+
+        return -1;
+    }
+
+    private static SerializedHierarchyType? FindHierarchyMatch(
+        ImmutableValueArray<SerializedHierarchyType> hierarchy, string openDefinitionFqn)
+    {
+        if (hierarchy is null) return null;
+        foreach (var entry in hierarchy)
+        {
+            if (entry.OpenDefinitionFqn == openDefinitionFqn) return entry;
+        }
+
+        return null;
     }
 
     internal static bool TryParseProviderArguments(AttributeSyntax attrSyntax, out string id,

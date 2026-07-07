@@ -12,7 +12,7 @@ public readonly partial struct {{ ModStructName }}
     private static global::Sparkitect.Modding.Identification _{{ entry.LowerCaseId }}_{{ SourceTag }};
 {% if entry.SourcePath %}    [global::Sparkitect.Modding.RegisteredFrom(SourcePath = "{{ entry.SourcePath }}", SourceLine = {{ entry.SourceLine }}, SourceColumn = {{ entry.SourceColumn }})]
 {% elsif entry.RegisteredTypeFullName %}    [global::Sparkitect.Modding.RegisteredFrom(typeof(global::{{ entry.RegisteredTypeFullName }}){% if entry.RegisteredMember %}, Member = "{{ entry.RegisteredMember }}"{% endif %})]
-{% endif %}    public global::Sparkitect.Modding.Identification {{ entry.PropertyName }}
+{% endif %}    public {{ entry.IdentificationType }} {{ entry.PropertyName }}
     {
         get
         {
@@ -21,12 +21,12 @@ public readonly partial struct {{ ModStructName }}
                 new global::System.InvalidOperationException(
                     "Identification '{{ entry.PropertyName }}' accessed after teardown or before registration. " +
                     "Category: {{ CategoryKey }}, Mod: {{ ModId }}, Entry: {{ entry.Id }}").Throw();
-            return value;
+            return {% if entry.HasTypedIdentification %}new {{ entry.IdentificationType }}(value){% else %}value{% endif %};
         }
     }
 
     // Non-throwing peek: the raw id, or default when unregistered/torn down.
-    internal global::Sparkitect.Modding.Identification {{ entry.PropertyName }}OrDefault => _{{ entry.LowerCaseId }}_{{ SourceTag }};
+    internal {{ entry.IdentificationType }} {{ entry.PropertyName }}OrDefault => {% if entry.HasTypedIdentification %}new {{ entry.IdentificationType }}(_{{ entry.LowerCaseId }}_{{ SourceTag }}){% else %}_{{ entry.LowerCaseId }}_{{ SourceTag }}{% endif %};
 
     private static void Register_{{ entry.PropertyName }}_{{ SourceTag }}(
         global::{{ RegistryFullName }} registry,

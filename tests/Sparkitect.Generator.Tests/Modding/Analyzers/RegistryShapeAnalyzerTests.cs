@@ -174,25 +174,59 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     }
 
     [Test]
-    public async Task RegistryMethod_TooManyTypeParams_Reports_2012()
+    public async Task RegistryMethod_MultipleTypeParams_NoLongerReports_2012()
     {
+        // D-02: the arity cap is lifted — a type-source register method with two type parameters,
+        // where T1 is constrained by RelationShip<T2>, compiles clean at the gate level (no SPARK0212,
+        // no other registry-shape diagnostic). Mirrors the load-bearing constraint-walk shape from
+        // CONTEXT.md D-03 (Reg<T1,T2>() where T1 : RelationShip<T2>).
         var code = """
         namespace Sparkitect.Modding { public class RegistryMethodAttribute : System.Attribute; public interface IRegistry; }
-        
+
         namespace N
         {
-            [Sparkitect.Modding.Registry]
-            public class R : Sparkitect.Modding.IRegistry
+            public interface RelationShip<T> { }
+
+            public class A { }
+            public class B : RelationShip<A> { }
+
+            [Sparkitect.Modding.Registry(Identifier = "good_id")]
+            public class R : Sparkitect.Modding.IRegistry<Sparkitect.Modding.TestModule>
             {
                 [Sparkitect.Modding.RegistryMethod]
-                public void M<T1,T2>(Sparkitect.Modding.Identification id) { }
+                public void Reg<T1, T2>(Sparkitect.Modding.Identification id) where T1 : RelationShip<T2> { }
             }
         }
         """;
 
         TestSources.Add(("M2.cs", code));
         var diagnostics = await RunAnalyzerAsync();
-        await AssertDiagnosticCount(diagnostics, "SPARK0212", 1);
+        await AssertNoDiagnostics(diagnostics);
+    }
+
+    [Test]
+    public async Task RegistryMethod_MultiTypeParam_ValueReferencesNone_Reports_2013()
+    {
+        // The mismatch gate is preserved under the lifted cap: a two-parameter value-source method
+        // with two type parameters, where the value parameter references neither, still reports
+        // GenericValueMismatch — looping all type parameters must not accidentally suppress this.
+        var code = """
+        namespace Sparkitect.Modding { public class RegistryMethodAttribute : System.Attribute; public interface IRegistry; }
+
+        namespace N
+        {
+            [Sparkitect.Modding.Registry(Identifier = "good_id")]
+            public class R : Sparkitect.Modding.IRegistry
+            {
+                [Sparkitect.Modding.RegistryMethod]
+                public void M<T1, T2>(Sparkitect.Modding.Identification id, string value) { }
+            }
+        }
+        """;
+
+        TestSources.Add(("M2b.cs", code));
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK0213", 1);
     }
 
     [Test]
