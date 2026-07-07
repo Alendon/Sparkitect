@@ -2,6 +2,8 @@
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
+using TestMod.Generated.IdExtensions;
+
 namespace TestMod;
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -34,8 +36,8 @@ internal class TestModule_TestRegistryScheduling
                 param_1
 
             );
-            scheduling.OwnerId = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule>();
-            var id = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule.InitFunc>();
+            scheduling.OwnerId = global::Sparkitect.Modding.LazyIdentification.Of<global::TestMod.TestModule>();
+            var id = global::Sparkitect.Modding.IDs.TestID.TestMod.InitOrDefault;
             if (id != default)
                 metadata[id] = scheduling;
         }
@@ -63,8 +65,8 @@ internal class TestModule_TestRegistryScheduling
                 param_1
 
             );
-            scheduling.OwnerId = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule>();
-            var id = global::Sparkitect.Modding.IdentificationHelper.Read<global::TestMod.TestModule.UpdateFunc>();
+            scheduling.OwnerId = global::Sparkitect.Modding.LazyIdentification.Of<global::TestMod.TestModule>();
+            var id = global::Sparkitect.Modding.IDs.TestID.TestMod.UpdateOrDefault;
             if (id != default)
                 metadata[id] = scheduling;
         }

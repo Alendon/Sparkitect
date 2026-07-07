@@ -790,6 +790,38 @@ public class SystemManagerTests
     }
 
     [Test]
+    public async Task BuildTree_NeverResolvesOwnerIdForUnregisteredSystem()
+    {
+        // Regression guard for di-metadata-id-eval: OwnerId must stay unresolved for scheduling
+        // entries BuildTree skips (System2 is never registered), even when the underlying accessor
+        // would throw — the read must happen only at genuine point of use, not during collection.
+        var manager = CreateManagerForRegistration();
+        manager.RegisterSystem(System1);
+        manager.RegisterSystemGroup(GroupA);
+
+        var throwingScheduling = new EcsSystemScheduling([], [])
+        {
+            OwnerId = new ThrowingLazyIdentification()
+        };
+        var systemMetadata = new Dictionary<Identification, IScheduling>
+        {
+            [System1] = CreateScheduling(System1, GroupA),
+            [System2] = throwingScheduling // never registered -- BuildTree must skip before resolving OwnerId
+        };
+        var groupMetadata = new Dictionary<Identification, SystemGroupScheduling>
+        {
+            [GroupA] = new SystemGroupScheduling([], [], null)
+        };
+        manager.InjectMetadata(systemMetadata, groupMetadata);
+
+        var tree = manager.BuildTree(GroupA);
+
+        var childIds = tree.Children.Select(c => c.Id).ToList();
+        await Assert.That(childIds).Contains(System1);
+        await Assert.That(childIds).DoesNotContain(System2);
+    }
+
+    [Test]
     public async Task BuildTree_ThrowsWhenMetadataNotFetched()
     {
         var manager = CreateManagerForRegistration();
@@ -869,7 +901,7 @@ public class SystemManagerTests
                 edges?.Where(e => e.from == systemId)
                     .Select(e => (OrderBeforeAttribute)new TestOrderBeforeAttribute(e.to))
                     .ToArray() ?? []);
-            scheduling.OwnerId = groupId;
+            scheduling.OwnerId = new FixedLazyIdentification(groupId);
             systemMetadata[systemId] = scheduling;
         }
 
@@ -987,7 +1019,7 @@ public class SystemManagerTests
     private static EcsSystemScheduling CreateScheduling(Identification systemId, Identification groupId)
     {
         var scheduling = new EcsSystemScheduling([], []);
-        scheduling.OwnerId = groupId;
+        scheduling.OwnerId = new FixedLazyIdentification(groupId);
         return scheduling;
     }
 
@@ -1028,7 +1060,7 @@ public class SystemManagerTests
                     ? afterList.Cast<OrderAfterAttribute>().ToArray()
                     : [];
                 var scheduling = new EcsSystemScheduling(orderAfter, []);
-                scheduling.OwnerId = groupId;
+                scheduling.OwnerId = new FixedLazyIdentification(groupId);
                 metadata[systemId] = scheduling;
             }
         }
@@ -1097,5 +1129,19 @@ public class SystemManagerTests
         }
 
         public void Initialize(IResolutionScope scope) { }
+    }
+
+    // Test double for ILazyIdentification: resolves to a fixed value, never throws.
+    private readonly record struct FixedLazyIdentification(Identification Value) : ILazyIdentification
+    {
+        public Identification Resolve() => Value;
+    }
+
+    // Stands in for the fail-loud accessor on an unregistered/torn-down target -- resolving must
+    // never happen for scheduling entries a consumer skips before reaching the owner check.
+    private sealed class ThrowingLazyIdentification : ILazyIdentification
+    {
+        public Identification Resolve() => throw new InvalidOperationException(
+            "OwnerId resolved for a scheduling entry that should have been skipped before resolution.");
     }
 }

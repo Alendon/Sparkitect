@@ -1,6 +1,8 @@
 #pragma warning disable CS9113
 #pragma warning disable CS1591
 
+using {{ IdExtensionsNamespace }};
+
 namespace {{ Namespace }};
 
 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -34,8 +36,8 @@ internal class {{ ClassName }}
                 param_{{ forloop.index0 }}{% unless forloop.last %},{% endunless %}
 {% endfor %}
             );
-            scheduling.OwnerId = global::Sparkitect.Modding.IdentificationHelper.Read<{{ func.ParentIdentificationTypeName }}>();
-            var id = global::Sparkitect.Modding.IdentificationHelper.Read<{{ func.WrapperFullTypeName }}>();
+            scheduling.OwnerId = global::Sparkitect.Modding.LazyIdentification.Of<{{ func.ParentIdentificationTypeName }}>();
+            var id = {{ func.IdOrDefaultPropertyPath }};
             if (id != default)
                 metadata[id] = scheduling;
         }

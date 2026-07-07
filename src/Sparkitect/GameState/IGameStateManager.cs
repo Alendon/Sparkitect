@@ -47,9 +47,9 @@ public interface IGameStateManager
     /// Requests a state transition with additional mod loading. Target must be a child state.
     /// Loads specified mods, processes their registrations, then transitions.
     /// </summary>
-    /// <param name="stateIdFunc">Function returning the target state identification (called after mods are loaded).</param>
+    /// <param name="targetState">Lazy identification of the target state, resolved after mods are loaded.</param>
     /// <param name="additionalMods">Mod file identifiers (ID + Version) to load before transition.</param>
-    void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<ModFileIdentifier> additionalMods);
+    void RequestWithModChange(ILazyIdentification targetState, IReadOnlyList<ModFileIdentifier> additionalMods);
 
     /// <summary>
     /// Requests engine shutdown.

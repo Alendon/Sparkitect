@@ -22,6 +22,9 @@ private static global::Sparkitect.Modding.Identification _hello_Resources;
         }
     }
 
+    // Non-throwing peek: the raw id, or default when unregistered/torn down.
+    internal global::Sparkitect.Modding.Identification HelloOrDefault => _hello_Resources;
+
     private static void Register_Hello_Resources(
         global::MinimalSampleMod.DummyRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,

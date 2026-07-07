@@ -12,8 +12,10 @@ namespace Sparkitect.Stateless;
 public interface IScheduling
 {
     /// <summary>
-    /// The owning module/state identification. Set by generated entrypoints
-    /// during metadata collection.
+    /// Deferred reference to the owning module/state identification. Set by generated entrypoints
+    /// during metadata collection — kept lazy because collection runs across every scheduling
+    /// category sharing this base, including entries the collecting consumer never reads, before
+    /// the owner's own registry pass has necessarily run. Resolved only at genuine point of use.
     /// </summary>
-    Identification OwnerId { get; set; }
+    ILazyIdentification OwnerId { get; set; }
 }

@@ -44,7 +44,7 @@ public class CallbackTeardownTests
         };
 
         var builder = new ExecutionGraphBuilder();
-        var scheduling = new OnFrameExitScheduling([], []) { OwnerId = SettingsOwnerModule };
+        var scheduling = new OnFrameExitScheduling([], []) { OwnerId = new FixedLazyIdentification(SettingsOwnerModule) };
         scheduling.BuildGraph(builder, context, TeardownFunctionId);
 
         // The teardown function entered the exit-transition graph purely via the ambient gate.
@@ -64,7 +64,7 @@ public class CallbackTeardownTests
         };
 
         var builder = new ExecutionGraphBuilder();
-        var scheduling = new OnFrameExitScheduling([], []) { OwnerId = SettingsOwnerModule };
+        var scheduling = new OnFrameExitScheduling([], []) { OwnerId = new FixedLazyIdentification(SettingsOwnerModule) };
         scheduling.BuildGraph(builder, context, TeardownFunctionId);
 
         await Assert.That(builder.Resolve()).DoesNotContain(TeardownFunctionId);
@@ -132,5 +132,11 @@ public class CallbackTeardownTests
 
         await Assert.That(childFires).IsEqualTo(0);
         await Assert.That(parentFires).IsEqualTo(1);
+    }
+
+    // Test double for ILazyIdentification: resolves to a fixed value, never throws.
+    private readonly record struct FixedLazyIdentification(Identification Value) : ILazyIdentification
+    {
+        public Identification Resolve() => Value;
     }
 }

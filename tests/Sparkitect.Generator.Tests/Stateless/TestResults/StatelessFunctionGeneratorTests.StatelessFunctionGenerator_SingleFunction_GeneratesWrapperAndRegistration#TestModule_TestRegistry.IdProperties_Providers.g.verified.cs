@@ -24,6 +24,9 @@ private static global::Sparkitect.Modding.Identification _init_Providers;
         }
     }
 
+    // Non-throwing peek: the raw id, or default when unregistered/torn down.
+    internal global::Sparkitect.Modding.Identification InitOrDefault => _init_Providers;
+
     private static void Register_Init_Providers(
         global::StatelessTest.TestRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,

@@ -43,7 +43,7 @@ public sealed class OnCreateScheduling : IScheduling
     private readonly OrderBeforeAttribute[] _orderBefore;
 
     /// <inheritdoc/>
-    public Identification OwnerId { get; set; }
+    public ILazyIdentification OwnerId { get; set; } = null!;
 
     /// <summary>Creates the scheduling with its ordering constraints.</summary>
     /// <param name="orderAfter">Functions this one must run after.</param>
@@ -58,7 +58,8 @@ public sealed class OnCreateScheduling : IScheduling
     public void BuildGraph(IExecutionGraphBuilder builder, TransitionContext context, Identification functionId)
     {
         if (!context.IsEnterTransition) return;
-        if (!context.DeltaModules.Contains(OwnerId) && context.StateStack[^1].StateId != OwnerId) return;
+        var ownerId = OwnerId.Resolve();
+        if (!context.DeltaModules.Contains(ownerId) && context.StateStack[^1].StateId != ownerId) return;
 
         builder.AddNode(functionId);
 
@@ -81,7 +82,7 @@ public sealed class OnDestroyScheduling : IScheduling
     private readonly OrderBeforeAttribute[] _orderBefore;
 
     /// <inheritdoc/>
-    public Identification OwnerId { get; set; }
+    public ILazyIdentification OwnerId { get; set; } = null!;
 
     /// <summary>Creates the scheduling with its ordering constraints.</summary>
     /// <param name="orderAfter">Functions this one must run after.</param>
@@ -96,7 +97,8 @@ public sealed class OnDestroyScheduling : IScheduling
     public void BuildGraph(IExecutionGraphBuilder builder, TransitionContext context, Identification functionId)
     {
         if (context.IsEnterTransition) return;
-        if (!context.DeltaModules.Contains(OwnerId) && context.StateStack[^1].StateId != OwnerId) return;
+        var ownerId = OwnerId.Resolve();
+        if (!context.DeltaModules.Contains(ownerId) && context.StateStack[^1].StateId != ownerId) return;
 
         builder.AddNode(functionId);
 
@@ -119,7 +121,7 @@ public sealed class OnFrameEnterScheduling : IScheduling
     private readonly OrderBeforeAttribute[] _orderBefore;
 
     /// <inheritdoc/>
-    public Identification OwnerId { get; set; }
+    public ILazyIdentification OwnerId { get; set; } = null!;
 
     /// <summary>Creates the scheduling with its ordering constraints.</summary>
     /// <param name="orderAfter">Functions this one must run after.</param>
@@ -134,7 +136,8 @@ public sealed class OnFrameEnterScheduling : IScheduling
     public void BuildGraph(IExecutionGraphBuilder builder, TransitionContext context, Identification functionId)
     {
         if (!context.IsEnterTransition) return;
-        if (!context.IsModuleLoaded(OwnerId) && context.StateStack[^1].StateId != OwnerId) return;
+        var ownerId = OwnerId.Resolve();
+        if (!context.IsModuleLoaded(ownerId) && context.StateStack[^1].StateId != ownerId) return;
 
         builder.AddNode(functionId);
 
@@ -157,7 +160,7 @@ public sealed class OnFrameExitScheduling : IScheduling
     private readonly OrderBeforeAttribute[] _orderBefore;
 
     /// <inheritdoc/>
-    public Identification OwnerId { get; set; }
+    public ILazyIdentification OwnerId { get; set; } = null!;
 
     /// <summary>Creates the scheduling with its ordering constraints.</summary>
     /// <param name="orderAfter">Functions this one must run after.</param>
@@ -172,7 +175,8 @@ public sealed class OnFrameExitScheduling : IScheduling
     public void BuildGraph(IExecutionGraphBuilder builder, TransitionContext context, Identification functionId)
     {
         if (context.IsEnterTransition) return;
-        if (!context.IsModuleLoaded(OwnerId) && context.StateStack[^1].StateId != OwnerId) return;
+        var ownerId = OwnerId.Resolve();
+        if (!context.IsModuleLoaded(ownerId) && context.StateStack[^1].StateId != ownerId) return;
 
         builder.AddNode(functionId);
 

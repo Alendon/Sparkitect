@@ -24,6 +24,9 @@ private static global::Sparkitect.Modding.Identification _clearColorPass_Provide
         }
     }
 
+    // Non-throwing peek: the raw id, or default when unregistered/torn down.
+    internal global::Sparkitect.Modding.Identification ClearColorPassOrDefault => _clearColorPass_Providers;
+
     private static void Register_ClearColorPass_Providers(
         global::DiTest.RenderPassRegistry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,

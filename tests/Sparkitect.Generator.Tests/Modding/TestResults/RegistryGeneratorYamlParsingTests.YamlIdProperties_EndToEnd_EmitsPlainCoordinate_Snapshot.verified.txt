@@ -23,6 +23,9 @@ private static global::Sparkitect.Modding.Identification _myItem_Resources;
         }
     }
 
+    // Non-throwing peek: the raw id, or default when unregistered/torn down.
+    internal global::Sparkitect.Modding.Identification MyItemOrDefault => _myItem_Resources;
+
     private static void Register_MyItem_Resources(
         global::Sample.Registry registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,

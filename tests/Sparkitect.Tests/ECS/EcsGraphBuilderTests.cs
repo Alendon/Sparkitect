@@ -192,7 +192,7 @@ public class EcsGraphBuilderTests
         foreach (var (systemId, groupId) in entries)
         {
             var sched = new EcsSystemScheduling([], []);
-            sched.OwnerId = groupId;
+            sched.OwnerId = new FixedLazyIdentification(groupId);
             dict[systemId] = sched;
         }
         return dict;
@@ -203,8 +203,14 @@ public class EcsGraphBuilderTests
         OrderAfterAttribute[] orderAfter, OrderBeforeAttribute[] orderBefore)
     {
         var sched = new EcsSystemScheduling(orderAfter, orderBefore);
-        sched.OwnerId = groupId;
+        sched.OwnerId = new FixedLazyIdentification(groupId);
         return sched;
+    }
+
+    // Test double for ILazyIdentification: resolves to a fixed value, never throws.
+    private readonly record struct FixedLazyIdentification(Identification Value) : ILazyIdentification
+    {
+        public Identification Resolve() => Value;
     }
 
     private static Dictionary<Identification, SystemGroupScheduling> CreateGroupMeta(

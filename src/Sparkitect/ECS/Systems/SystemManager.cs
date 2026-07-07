@@ -88,7 +88,7 @@ internal class SystemManager(
             if (!_registeredSystems.Contains(systemId)) continue;
             if (scheduling is EcsSystemScheduling ess)
             {
-                var parentId = ess.OwnerId;
+                var parentId = ess.OwnerId.Resolve();
                 if (!groupChildren.TryGetValue(parentId, out var children))
                 {
                     children = new List<Identification>();

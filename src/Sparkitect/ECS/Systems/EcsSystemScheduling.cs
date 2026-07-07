@@ -14,8 +14,8 @@ public sealed class EcsSystemScheduling : IScheduling
     private readonly OrderAfterAttribute[] _orderAfter;
     private readonly OrderBeforeAttribute[] _orderBefore;
 
-    /// <summary>The identification of the group that owns this system.</summary>
-    public Identification OwnerId { get; set; }
+    /// <summary>Deferred reference to the identification of the group that owns this system.</summary>
+    public ILazyIdentification OwnerId { get; set; } = null!;
 
     /// <summary>Constraints ordering this system after other siblings.</summary>
     public IReadOnlyList<OrderAfterAttribute> OrderAfter => _orderAfter;

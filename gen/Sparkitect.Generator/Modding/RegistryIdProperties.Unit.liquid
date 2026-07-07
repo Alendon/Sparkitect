@@ -25,6 +25,9 @@ public readonly partial struct {{ ModStructName }}
         }
     }
 
+    // Non-throwing peek: the raw id, or default when unregistered/torn down.
+    internal global::Sparkitect.Modding.Identification {{ entry.PropertyName }}OrDefault => _{{ entry.LowerCaseId }}_{{ SourceTag }};
+
     private static void Register_{{ entry.PropertyName }}_{{ SourceTag }}(
         global::{{ RegistryFullName }} registry,
         global::Sparkitect.Modding.IIdentificationManager identificationManager,

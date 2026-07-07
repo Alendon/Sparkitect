@@ -503,6 +503,8 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
         var model = new
         {
             Namespace = parent.ParentNamespace,
+            // Brings the IDs.{Category}ID.{Mod} extension accessor into scope for the OrDefault key reads.
+            IdExtensionsNamespace = settings.ComputeOutputNamespace("IdExtensions"),
             ClassName = $"{parent.ParentTypeName}_{registryShort}Scheduling",
             Functions = functions.Select(f => new
             {
@@ -510,6 +512,11 @@ public class StatelessFunctionGenerator : IIncrementalGenerator
                 f.WrapperFullTypeName,
                 f.ParentTypeName,
                 f.ParentIdentificationTypeName,
+                // Non-throwing id read for the metadata key: default (skipped) when the func's
+                // registry slot isn't populated yet, so pre-registration collection passes don't throw.
+                IdOrDefaultPropertyPath =
+                    $"global::Sparkitect.Modding.IDs.{StringCase.ToPascalCase(f.RegistryKey)}ID."
+                    + $"{StringCase.ToPascalCase(settings.ModId)}.{f.IdentifierPascal}OrDefault",
                 SchedulingParams = f.SchedulingParams.Select(p => new
                 {
                     p.AttributeTypeName,

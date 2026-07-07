@@ -182,7 +182,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         Log.Debug("Queued state transition to {StateId}", stateId);
     }
 
-    public void RequestWithModChange(Func<Identification> stateIdFunc, IReadOnlyList<ModFileIdentifier> additionalMods)
+    public void RequestWithModChange(ILazyIdentification targetState, IReadOnlyList<ModFileIdentifier> additionalMods)
     {
         if (_stateStack.Count == 0)
         {
@@ -206,7 +206,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         FinalizeRegistrations();
 
         // Now compute the target state ID
-        var targetStateId = stateIdFunc();
+        var targetStateId = targetState.Resolve();
 
         // Prevent transitioning to Root state (it's never framed)
         var rootStateId = StateID.Sparkitect.Root;
@@ -217,12 +217,12 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
 
         // Validate target is child of current
-        if (!_registeredStates.TryGetValue(targetStateId, out var targetState))
+        if (!_registeredStates.TryGetValue(targetStateId, out var targetStateDescriptor))
         {
             throw new InvalidOperationException($"Target state {targetStateId} is not registered");
         }
 
-        if (!targetState.ParentId.Equals(currentStateId))
+        if (!targetStateDescriptor.ParentId.Equals(currentStateId))
         {
             throw new InvalidOperationException(
                 $"RequestWithModChange from {currentStateId} to {targetStateId} is not allowed. Target must be immediate child of current state.");
