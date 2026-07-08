@@ -13,7 +13,7 @@ namespace Sparkitect.Graphics.Vulkan;
 public partial class VulkanModule : TransitiveStateModule, IHasIdentification
 {
     /// <inheritdoc/>
-    public override IReadOnlyList<Identification> Requires => [];
+    public override IReadOnlyList<Identification> Requires => [StateModuleID.Sparkitect.Event];
 
     /// <summary>Initializes the Vulkan context (loads the API and allocation callbacks).</summary>
     [TransitionFunction("vulkan_init")]

@@ -2,6 +2,7 @@ using Sparkitect.CompilerGenerated.IdExtensions;
 using MinimalSampleMod.CompilerGenerated.IdExtensions;
 using Serilog;
 using Silk.NET.Vulkan;
+using Sparkitect.Events;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
@@ -37,6 +38,20 @@ public partial class SampleEntryState : TransitiveGameState, IHasIdentification
     {
         Log.Information("Dummy value from method registry: {value}",dummyValueManager.GetDummyValue(DummyID.MinimalSampleMod.Hello1));
         Log.Information("Dummy value from provider type: {value}", dummyValueManager.GetDummyValue(DummyID.MinimalSampleMod.DummyProvider));
+    }
+
+    [TransitionFunction("subscribe_vulkan_device_config")]
+    [OnCreateScheduling]
+    [OrderBefore<VulkanModule.CreateDeviceFunc>]
+    [OrderAfter<EventModule.ProcessEventRegistryUpFunc>]
+    public static void SubscribeVulkanDeviceConfig(IEventManager eventManager)
+    {
+        eventManager.Subscribe(EventID.Sparkitect.VulkanDeviceConfiguring, (IVulkanDeviceConfigurationContext ctx) =>
+        {
+            ctx.EnabledFeatures12.DescriptorIndexing = true;
+            ctx.EnabledFeatures12.RuntimeDescriptorArray = true;
+            Log.Information("Available device extensions: {Extensions}", string.Join(", ", ctx.AvailableExtensions));
+        });
     }
 
     [TransitionFunction("test_command_pool")]

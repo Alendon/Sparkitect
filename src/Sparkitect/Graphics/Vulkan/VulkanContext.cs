@@ -9,10 +9,13 @@ using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan.Extensions.KHR;
 using Silk.NET.Windowing;
 using Sparkitect.CompilerGenerated;
+using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.DI;
+using Sparkitect.Events;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan.Vma;
 using Sparkitect.Graphics.Vulkan.VulkanObjects;
+using Sparkitect.Modding.IDs;
 using Sparkitect.Settings;
 using Sparkitect.Utils;
 using Sparkitect.Utils.DU;
@@ -77,6 +80,9 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     /// <summary>The window manager, present only when the windowing module is active.</summary>
     public required IWindowManager? WindowManager { private get; init; }
 
+    /// <summary>The event bus; used to publish instance/device-configuring events that mods subscribe to.</summary>
+    public required IEventManager EventManager { private get; init; }
+
     private bool ValidationEnabled() => SettingsManager.Graphics.VulkanValidation.Value;
 
     /// <inheritdoc/>
@@ -91,9 +97,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     {
         var configContext = new VulkanInstanceConfigurationContext(VkApi);
 
-        using var configuratorContainer =
-            ModDIService.CreateEntrypointContainer<IVulkanInstanceConfigurator>(GameStateManager.LoadedMods);
-        configuratorContainer.ProcessMany(c => c.Configure(configContext));
+        EventManager.Publish(EventID.Sparkitect.VulkanInstanceConfiguring, configContext);
 
         var validationEnabled = ValidationEnabled();
         if (validationEnabled)
@@ -324,9 +328,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     {
         var configContext = new VulkanDeviceConfigurationContext(VkApi, VkPhysicalDevice.PhysicalDevice);
 
-        using var configuratorContainer =
-            ModDIService.CreateEntrypointContainer<IVulkanDeviceConfigurator>(GameStateManager.LoadedMods);
-        configuratorContainer.ProcessMany(c => c.Configure(configContext));
+        EventManager.Publish(EventID.Sparkitect.VulkanDeviceConfiguring, configContext);
 
         // Add swapchain extension if windowing module is active
         if (WindowManager is not null)
