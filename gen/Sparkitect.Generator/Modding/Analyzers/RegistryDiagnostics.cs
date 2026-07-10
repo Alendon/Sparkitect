@@ -9,6 +9,8 @@ namespace Sparkitect.Generator.Modding.Analyzers;
 // - Registration validation (30-39)
 // - YAML resource validation (42-49)
 // - Property name validation (50-59)
+// - Keyed-factory marker validation (60-69)
+// - Typed-identification validation (70-79)
 
 public static class RegistryDiagnostics
 {
@@ -194,4 +196,33 @@ public static class RegistryDiagnostics
             "Add ': IHasIdentification' to '{0}' so its generated Identification member satisfies the registration " +
             "constraint; without it the generated registration fails with CS0311.",
             Category, DiagnosticSeverity.Warning, true);
+
+    // Typed-identification validation (70-79)
+    public static readonly DiagnosticDescriptor MultipleBareTypedIdentificationMarkers =
+        new("SPARK0271", "At most one bare [TypedIdentification] marker per register method",
+            "Registry method '{0}' has more than one bare [TypedIdentification] marker. Only one type " +
+            "parameter may opt into this registry's own Identification<T> emission - remove the extra " +
+            "marker(s), or use [TypedIdentification<TTargetRegistry>] for cross-registry portions instead.",
+            Category, DiagnosticSeverity.Error, true);
+
+    public static readonly DiagnosticDescriptor RegistryShapeIncoherent =
+        new("SPARK0272", "Registry has an incoherent typed-identification shape",
+            "Registry '{0}' has register methods that disagree on whether they carry a bare " +
+            "[TypedIdentification] marker. Every register method in a registry must agree on the same " +
+            "result shape - either all bare Identification, or all Identification<TResult>.",
+            Category, DiagnosticSeverity.Error, true);
+
+    public static readonly DiagnosticDescriptor InvalidTypedIdentificationTarget =
+        new("SPARK0273", "Invalid [TypedIdentification<TTargetRegistry>] target",
+            "[TypedIdentification<{0}>] on registry method '{1}' names a target that is not a " +
+            "[Registry]-attributed type. TTargetRegistry must be a registry so the emitted alias can link " +
+            "to its result shape and id space.",
+            Category, DiagnosticSeverity.Error, true);
+
+    public static readonly DiagnosticDescriptor TypedIdentificationAliasCollision =
+        new("SPARK0274", "Typed-identification alias name collides with a real member",
+            "The alias '{0}' this registry would emit into '{1}' collides with a real, hand-authored " +
+            "member of the same name. Extension members silently lose to real members with no compile " +
+            "error - rename the colliding member, or set a distinguishing [Registry].AliasSuffix.",
+            Category, DiagnosticSeverity.Error, true);
 }

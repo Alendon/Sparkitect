@@ -17,6 +17,7 @@ public class RenderPassRegistry_Metadata
     public const string RegisterMethods = "RegisterRenderPass";
     public const string ResourceFiles = "";
     public const string OwningModule = "global::Sparkitect.Modding.TestModule";
+    public const string AliasSuffix = "";
 
 
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -32,6 +33,7 @@ public class RenderPassRegistry_Metadata
         public const string TypeParameterNames = "TRenderPass";
         public const string ConstraintRefs = "";
         public const string ValueParameterGeneric = "";
+        public const string CrossRegistryMarkers = "";
     }
 
 

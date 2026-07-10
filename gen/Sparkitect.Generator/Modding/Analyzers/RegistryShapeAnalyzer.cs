@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -10,6 +11,9 @@ namespace Sparkitect.Generator.Modding.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
 {
+    private const string TypedIdentificationAttributeName = "Sparkitect.Modding.TypedIdentificationAttribute";
+    private const string RegistryAttributeName = "Sparkitect.Modding.RegistryAttribute";
+
     private static Location? GetAttributeLocation(AttributeData attr)
     {
         return attr.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
@@ -31,7 +35,11 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         RegistryDiagnostics.DuplicateRegistryMethodName,
         RegistryDiagnostics.UseResourceFileMissingKey,
         RegistryDiagnostics.DuplicateResourceFileKey,
-        RegistryDiagnostics.MultiplePrimaryResourceFiles
+        RegistryDiagnostics.MultiplePrimaryResourceFiles,
+        RegistryDiagnostics.MultipleBareTypedIdentificationMarkers,
+        RegistryDiagnostics.RegistryShapeIncoherent,
+        RegistryDiagnostics.InvalidTypedIdentificationTarget,
+        RegistryDiagnostics.TypedIdentificationAliasCollision
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -185,7 +193,42 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
                 regAttrLocation ?? type.Locations.FirstOrDefault(),
                 type.Name));
         }
+
+        // SPARK0272 (D-04): registry-wide typed-identification shape coherence. Every
+        // [RegistryMethod]-attributed method on this type must agree on whether it carries a bare
+        // [TypedIdentification] marker (None vs Identification<TResult>) — a single type with mixed
+        // shapes (some marked, some not) is the exact violation DummyRegistry's
+        // RegisterTypedProvider/RegisterValue/RegisterProvider trio demonstrates (D-12).
+        var registryMethods = type.GetMembers()
+            .OfType<IMethodSymbol>()
+            .Where(m => m.GetAttributes().Any(a =>
+                a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) ==
+                "Sparkitect.Modding.RegistryMethodAttribute"))
+            .ToArray();
+
+        if (registryMethods.Length > 1)
+        {
+            var shapes = registryMethods.Select(HasBareTypedIdentificationMarker).Distinct().ToArray();
+            if (shapes.Length > 1)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    RegistryDiagnostics.RegistryShapeIncoherent,
+                    regAttrLocation ?? type.Locations.FirstOrDefault(),
+                    type.Name));
+            }
+        }
     }
+
+    /// <summary>
+    /// Whether any of a register method's type parameters carries the BARE (non-generic)
+    /// <c>[TypedIdentification]</c> marker — the same-registry shape opt-in (D-04). A closed
+    /// <c>[TypedIdentification&lt;TTarget&gt;]</c> hit does not count; that is a cross-registry linkage
+    /// (D-05), analytically separate from this registry's own result shape.
+    /// </summary>
+    private static bool HasBareTypedIdentificationMarker(IMethodSymbol method) =>
+        method.TypeParameters.Any(tp => tp.GetAttributes().Any(a =>
+            a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) ==
+            TypedIdentificationAttributeName && !a.AttributeClass.IsGenericType));
 
     private static void AnalyzeRegistryMethod(SymbolAnalysisContext ctx)
     {
@@ -210,6 +253,11 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
                 attrLocation ?? method.Locations.FirstOrDefault()));
             return; // other checks rely on being inside a registry
         }
+
+        // SPARK0271/SPARK0273/SPARK0274: typed-identification marker validation (D-05/D-08). Runs
+        // independently of the signature-shape checks below — a method's marker usage can be wrong
+        // regardless of whether its parameter shape is also wrong.
+        AnalyzeTypedIdentificationMarkers(ctx, method, containing!);
 
         // Gather basic signature data
         var paramCount = method.Parameters.Length;
@@ -269,5 +317,119 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
 
         // SPARK0215: Duplicate registry method names within a registry
         // Check once per containing type through AnalyzeRegistryType to avoid N^2; noop here.
+    }
+
+    /// <summary>
+    /// Validates a register method's <c>[TypedIdentification]</c>-family markers (D-05/D-08):
+    /// SPARK0271 (at most one bare marker per method), SPARK0273 ([TypedIdentification&lt;TTarget&gt;]
+    /// must name a [Registry]-attributed type), and SPARK0274 (same-compilation alias-collision —
+    /// best-effort, cannot see across assembly boundaries per RESEARCH Pitfall 3).
+    /// </summary>
+    private static void AnalyzeTypedIdentificationMarkers(SymbolAnalysisContext ctx, IMethodSymbol method,
+        INamedTypeSymbol containingRegistry)
+    {
+        var bareMarkerCount = 0;
+        var crossMarkers = new List<(ITypeParameterSymbol TypeParameter, AttributeData Attribute, INamedTypeSymbol? Target)>();
+
+        foreach (var typeParameter in method.TypeParameters)
+        {
+            foreach (var attribute in typeParameter.GetAttributes())
+            {
+                var attributeClass = attribute.AttributeClass;
+                if (attributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) != TypedIdentificationAttributeName)
+                    continue;
+
+                if (attributeClass.IsGenericType && attributeClass.TypeArguments.Length == 1)
+                {
+                    crossMarkers.Add((typeParameter, attribute, attributeClass.TypeArguments[0] as INamedTypeSymbol));
+                    continue;
+                }
+
+                bareMarkerCount++;
+                if (bareMarkerCount > 1)
+                {
+                    // SPARK0271: report every marker beyond the first — at-most-one bare marker (D-08).
+                    ctx.ReportDiagnostic(Diagnostic.Create(
+                        RegistryDiagnostics.MultipleBareTypedIdentificationMarkers,
+                        GetAttributeLocation(attribute) ?? typeParameter.Locations.FirstOrDefault(),
+                        method.Name));
+                }
+            }
+        }
+
+        if (crossMarkers.Count == 0) return;
+
+        // Registry-level alias suffix (D-06), for the SPARK0274 candidate-name computation below.
+        var regAttr = containingRegistry.GetAttributes().FirstOrDefault(a =>
+            a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) == RegistryAttributeName);
+        string? aliasSuffix = null;
+        if (regAttr is not null)
+        {
+            foreach (var na in regAttr.NamedArguments)
+            {
+                if (na.Key == "AliasSuffix" && na.Value.Value is string s)
+                {
+                    aliasSuffix = s;
+                    break;
+                }
+            }
+        }
+
+        var modIdAvailable = ctx.Options.AnalyzerConfigOptionsProvider.GlobalOptions
+            .TryGetValue("build_property.ModId", out var modId) && !string.IsNullOrWhiteSpace(modId);
+
+        foreach (var (typeParameter, attribute, target) in crossMarkers)
+        {
+            var location = GetAttributeLocation(attribute) ?? typeParameter.Locations.FirstOrDefault();
+
+            // SPARK0273: TTargetRegistry must resolve to a [Registry]-attributed type (D-05).
+            var targetRegAttr = target?.GetAttributes().FirstOrDefault(a =>
+                a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) == RegistryAttributeName);
+            if (targetRegAttr is null)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    RegistryDiagnostics.InvalidTypedIdentificationTarget,
+                    location,
+                    target?.Name ?? "?",
+                    method.Name));
+                continue; // an invalid target has no id space to check for a collision against
+            }
+
+            // SPARK0274: same-compilation alias-collision detection (D-08/D-06). Best-effort: computes
+            // the candidate alias container ({ModIdPascal}{TargetCategoryPascal}IDs, per D-03) and
+            // candidate alias name ({TypeParameterName}{AliasSuffix}) — the closest proxy available at
+            // the declaration level, since per-entry property names are only known once registration
+            // attributes are walked (Plan 04's emission territory, not this analyzer's). Skipped
+            // entirely when the mod id isn't available (nothing to compute the container name from).
+            if (!modIdAvailable) continue;
+
+            string? targetIdentifier = null;
+            foreach (var na in targetRegAttr.NamedArguments)
+            {
+                if (na.Key == "Identifier" && na.Value.Value is string s)
+                {
+                    targetIdentifier = s;
+                    break;
+                }
+            }
+            if (string.IsNullOrWhiteSpace(targetIdentifier)) continue;
+
+            var containerName = $"{StringCase.ToPascalCase(modId!)}{StringCase.ToPascalCase(targetIdentifier!)}IDs";
+            var candidateAliasName = $"{typeParameter.Name}{aliasSuffix}";
+
+            foreach (var candidateType in ctx.Compilation.GetSymbolsWithName(containerName, SymbolFilter.Type)
+                         .OfType<INamedTypeSymbol>())
+            {
+                var realMember = candidateType.GetMembers(candidateAliasName)
+                    .FirstOrDefault(m => !m.IsImplicitlyDeclared);
+                if (realMember is null) continue;
+
+                ctx.ReportDiagnostic(Diagnostic.Create(
+                    RegistryDiagnostics.TypedIdentificationAliasCollision,
+                    location,
+                    candidateAliasName,
+                    candidateType.Name));
+            }
+        }
     }
 }

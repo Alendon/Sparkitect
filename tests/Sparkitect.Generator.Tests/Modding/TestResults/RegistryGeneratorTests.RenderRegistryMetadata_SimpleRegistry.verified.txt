@@ -16,6 +16,7 @@ public class TestRegistry_Metadata
     public const string RegisterMethods = "RegisterItem;RegisterType";
     public const string ResourceFiles = "data:1:0;config:0:0";
     public const string OwningModule = "";
+    public const string AliasSuffix = "";
 
 
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -31,6 +32,7 @@ public class TestRegistry_Metadata
         public const string TypeParameterNames = "";
         public const string ConstraintRefs = "";
         public const string ValueParameterGeneric = "";
+        public const string CrossRegistryMarkers = "";
     }
 
 
@@ -47,6 +49,7 @@ public class TestRegistry_Metadata
         public const string TypeParameterNames = "";
         public const string ConstraintRefs = "";
         public const string ValueParameterGeneric = "";
+        public const string CrossRegistryMarkers = "";
     }
 
 

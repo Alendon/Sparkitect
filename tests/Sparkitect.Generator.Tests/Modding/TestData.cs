@@ -14,6 +14,7 @@ public static partial class TestData
         public class RegistryAttribute : Attribute
         {
             public required string Identifier { get; set; }
+            public string? AliasSuffix { get; set; }
         }
 
         [AttributeUsage(AttributeTargets.Assembly)]
@@ -39,6 +40,9 @@ public static partial class TestData
 
         [AttributeUsage(AttributeTargets.GenericParameter)]
         public sealed class TypedIdentificationAttribute : Attribute { }
+
+        [AttributeUsage(AttributeTargets.GenericParameter)]
+        public sealed class TypedIdentificationAttribute<TTargetRegistry> : Attribute { }
 
         public interface IRegistryBase { void Unregister(Identification id); }
         public interface IRegistry : IRegistryBase { }

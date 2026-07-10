@@ -16,6 +16,7 @@ public class {{ MetadataClassName }}
     public const string RegisterMethods = "{{ RegisterMethods }}";
     public const string ResourceFiles = "{{ ResourceFiles }}";
     public const string OwningModule = "{{ OwningModule }}";
+    public const string AliasSuffix = "{{ AliasSuffix }}";
 
 {% for method in RegisterMethodsMetadata %}
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -31,6 +32,7 @@ public class {{ MetadataClassName }}
         public const string TypeParameterNames = "{{ method.TypeParameterNames }}";
         public const string ConstraintRefs = "{{ method.ConstraintRefs }}";
         public const string ValueParameterGeneric = "{{ method.ValueParameterGeneric }}";
+        public const string CrossRegistryMarkers = "{{ method.CrossRegistryMarkers }}";
     }
 
 {% endfor %}

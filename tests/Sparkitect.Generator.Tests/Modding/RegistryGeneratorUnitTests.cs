@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -609,9 +610,136 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
 
         var typed = methods.First(m => m.FunctionName == "RegisterTyped");
         await Assert.That(typed.TypedIdentificationTypeParameterName).IsEqualTo("TPayload");
+        await Assert.That(typed.CrossRegistryMarkers).IsEmpty();
 
         var untyped = methods.First(m => m.FunctionName == "RegisterUntyped");
         await Assert.That(untyped.TypedIdentificationTypeParameterName).IsNull();
+        await Assert.That(untyped.CrossRegistryMarkers).IsEmpty();
+    }
+
+    // D-05/D-08: a method carrying BOTH the bare same-registry marker AND a cross-registry
+    // [TypedIdentification<TTarget>] marker on a DISTINCT type parameter extracts both — the kind-
+    // discriminated walk no longer early-returns on the first hit (the fail-silent truncation bug).
+    [Test]
+    public async Task ExtractRegisterMethods_DualMarkerMethod_SeparatesBareFromCrossRegistry(
+        CancellationToken token)
+    {
+        TestSources.Add(("DualMarkerRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            public class SettingRegistry { }
+            [Registry(Identifier = "r")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void RegisterDual<[TypedIdentification] TPayload, [TypedIdentification<SettingRegistry>] TKey>(Identification id)
+                    where TPayload : class, IHasIdentification { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var methods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(methods).HasSingleItem();
+        var method = methods.First();
+
+        await Assert.That(method.TypedIdentificationTypeParameterName).IsEqualTo("TPayload");
+        await Assert.That(method.CrossRegistryMarkers).HasSingleItem();
+        await Assert.That(method.CrossRegistryMarkers.First().ParamName).IsEqualTo("TKey");
+        await Assert.That(method.CrossRegistryMarkers.First().TargetRegistryFqn).IsEqualTo("global::N.SettingRegistry");
+    }
+
+    // D-05: two [TypedIdentification<T>] markers on distinct type parameters, targeting distinct
+    // registries, both survive extraction (no bare marker present here).
+    [Test]
+    public async Task ExtractRegisterMethods_TwoCrossRegistryMarkers_YieldsBothOnDistinctTargets(
+        CancellationToken token)
+    {
+        TestSources.Add(("TwoCrossMarkerRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            public class RegistryA { }
+            public class RegistryB { }
+            [Registry(Identifier = "r")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void RegisterBoth<[TypedIdentification<RegistryA>] T1, [TypedIdentification<RegistryB>] T2>(Identification id) { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var methods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(methods).HasSingleItem();
+        var method = methods.First();
+
+        await Assert.That(method.TypedIdentificationTypeParameterName).IsNull();
+        await Assert.That(method.CrossRegistryMarkers.Count).IsEqualTo(2);
+        await Assert.That(method.CrossRegistryMarkers.Any(m => m.ParamName == "T1" && m.TargetRegistryFqn == "global::N.RegistryA"))
+            .IsTrue();
+        await Assert.That(method.CrossRegistryMarkers.Any(m => m.ParamName == "T2" && m.TargetRegistryFqn == "global::N.RegistryB"))
+            .IsTrue();
+    }
+
+    // METADATA-ROUNDTRIP-SYMMETRY (D-07): the cross-registry marker list survives the same
+    // encode->decode roundtrip as the other per-type-parameter fields, decoded direct-from-symbol.
+    [Test]
+    public async Task RegistryMetadata_Roundtrip_CrossRegistryMarkers_FieldIdentical(CancellationToken token)
+    {
+        TestSources.Add(("CrossMarkerRoundtripRegistry.cs",
+            """
+            using Sparkitect.Modding;
+            namespace N;
+            public class SettingRegistry { }
+            [Registry(Identifier = "r")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void RegisterDual<[TypedIdentification] TPayload, [TypedIdentification<SettingRegistry>] TKey>(Identification id)
+                    where TPayload : class, IHasIdentification { }
+            }
+            """));
+
+        var (_, compilation) = await GetInitialCompilationAsync(token);
+        var rSymbol = compilation.GetTypeByMetadataName("N.R") as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(rSymbol).IsNotNull();
+
+        var sameCompilationMethods = RegistryGenerator.ExtractRegisterMethods(rSymbol!);
+        await Assert.That(sameCompilationMethods).HasSingleItem();
+        var sameCompilationMethod = sameCompilationMethods.First();
+        await Assert.That(sameCompilationMethod.CrossRegistryMarkers).HasSingleItem();
+
+        var model = new RegistryModel("R", "r", "N", false, sameCompilationMethods,
+            ImmutableValueArray.From<(string, bool, bool)>());
+
+        var rendered = RegistryGenerator.RenderRegistryMetadata(model, BuildSettings, out var code, out _);
+        await Assert.That(rendered).IsTrue();
+
+        TestSources.Add(("CrossMarkerRoundtripMetadata.cs", code));
+        var (_, compilation2) = await GetInitialCompilationAsync(token);
+
+        var metadataType = compilation2.GetTypeByMetadataName("SampleTest.Generated.R_Metadata")
+            as Microsoft.CodeAnalysis.INamedTypeSymbol;
+        await Assert.That(metadataType).IsNotNull();
+
+        var success = RegistryGenerator.TryParseRegisterMethod(metadataType!, "RegisterDual", out var parsed);
+        await Assert.That(success).IsTrue();
+
+        await Assert.That(parsed!.CrossRegistryMarkers.Count)
+            .IsEqualTo(sameCompilationMethod.CrossRegistryMarkers.Count);
+        await Assert.That(parsed.CrossRegistryMarkers.First().ParamName)
+            .IsEqualTo(sameCompilationMethod.CrossRegistryMarkers.First().ParamName);
+        await Assert.That(parsed.CrossRegistryMarkers.First().TargetRegistryFqn)
+            .IsEqualTo(sameCompilationMethod.CrossRegistryMarkers.First().TargetRegistryFqn);
+        await Assert.That(parsed.TypedIdentificationTypeParameterName)
+            .IsEqualTo(sameCompilationMethod.TypedIdentificationTypeParameterName);
     }
 
     // VALUE-SOURCE SYMMETRY: the line-575 inner gate lift applies to the value branch too — a
@@ -971,6 +1099,70 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(okP).IsTrue();
         await Assert.That(fileP).IsEqualTo("DummyRegistry.IdProperties_Resources.g.cs");
         await Verifier.Verify(codeP, verifySettings);
+    }
+
+    // D-03 Wave 0 gap: a Verify snapshot pinning the emitted cross-registry extension(...) alias block
+    // for a [TypedIdentification<SettingRegistry>] fixture — the alias-emission mechanism itself (not a
+    // registry-storage test, feedback_no_registry_tests; this is generator-source snapshot coverage).
+    [Test]
+    public async Task RegistryGenerator_FullRun_CrossRegistryAlias_EmitsTypedExtensionBlock_Snapshot(
+        CancellationToken token)
+    {
+        TestSources.Add(("CrossEmissionFixture.cs", """
+            using Sparkitect.DI.GeneratorAttributes;
+            using Sparkitect.Modding;
+
+            namespace DiTest
+            {
+                // Stand-in target registry — carries [Registry(Identifier = "setting")] so the SOURCE
+                // registry's extraction resolves the target category key directly off this live symbol
+                // (D-03), no cross-assembly metadata round-trip needed for the target side.
+                [Registry(Identifier = "setting")]
+                public class SettingRegistry : IRegistry<TestModule>
+                {
+                    [RegistryMethod]
+                    public void RegisterSetting(Identification id) { }
+                }
+
+                // Source registry: a Type-source register method carrying a cross-registry marker
+                // (D-05) plus a registry-level alias suffix (D-06).
+                [Registry(Identifier = "dummy", AliasSuffix = "Key")]
+                public class DummyRegistry : IRegistry<TestModule>
+                {
+                    [RegistryMethod]
+                    public void RegisterTypedProvider<[TypedIdentification<SettingRegistry>] TKey>(Identification id) { }
+                }
+
+                [DummyRegistry.RegisterTypedProvider("jump_input")]
+                public class JumpInput { }
+            }
+            """));
+
+        var (_, driverRunResult) = await RunGeneratorAsync(token);
+
+        var trees = driverRunResult.GeneratedTrees
+            .ToDictionary(t => Path.GetFileName(t.FilePath), t => t.GetText().ToString());
+        var allFiles = string.Join(", ", trees.Keys.OrderBy(f => f));
+
+        await Assert.That(trees.ContainsKey("DummyRegistry.CrossEmissionAlias_Providers.g.cs"))
+            .IsTrue().Because($"Generated files: {allFiles}");
+
+        var aliasCode = trees["DummyRegistry.CrossEmissionAlias_Providers.g.cs"];
+
+        // Static extension(...) member — no instance receiver (D-03 Pattern 1, not the
+        // instance-receiver SettingsAccessor shape).
+        await Assert.That(aliasCode).Contains("extension(SampleTestSettingIDs)");
+        // Typed Identification<T>, the D-06 suffix ("Key") appended to the alias member name.
+        await Assert.That(aliasCode)
+            .Contains("public static global::Sparkitect.Modding.Identification<global::DiTest.JumpInput> JumpInputKey");
+        // Wraps the SOURCE registry's own id via the Identification(Identification) ctor.
+        await Assert.That(aliasCode)
+            .Contains("=> new(global::Sparkitect.Modding.IDs.DummyID.SampleTest.JumpInput);");
+        // [RegisteredFrom] annotation for Rider Go-to-Registration.
+        await Assert.That(aliasCode)
+            .Contains("[global::Sparkitect.Modding.RegisteredFrom(typeof(global::DiTest.JumpInput))]");
+
+        await Verifier.Verify(aliasCode, verifySettings);
     }
 
     // Task 2a tests

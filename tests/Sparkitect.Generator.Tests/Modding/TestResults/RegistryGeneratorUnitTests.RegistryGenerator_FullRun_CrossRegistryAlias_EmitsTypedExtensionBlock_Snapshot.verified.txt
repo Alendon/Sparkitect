@@ -1,0 +1,14 @@
+﻿#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace SampleTest.Generated.IdExtensions;
+
+public static partial class DummyRegistryCrossEmissionExtensions
+{
+extension(SampleTestSettingIDs)
+    {
+[global::Sparkitect.Modding.RegisteredFrom(typeof(global::DiTest.JumpInput))]
+public static global::Sparkitect.Modding.Identification<global::DiTest.JumpInput> JumpInputKey
+            => new(global::Sparkitect.Modding.IDs.DummyID.SampleTest.JumpInput);
+}
+}

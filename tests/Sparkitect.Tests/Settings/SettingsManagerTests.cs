@@ -47,7 +47,7 @@ internal sealed class StubSource : ISettingSource
 
 public class SettingsManagerTests
 {
-    private static readonly Identification Flag = Identification.Create(100, 1, 1);
+    private static readonly Identification<bool> Flag = new(Identification.Create(100, 1, 1));
     private static readonly Identification UserSourceId = Identification.Create(100, 2, 1);
     private static readonly Identification HighSourceId = Identification.Create(100, 2, 2);
     private static readonly Identification LowSourceId = Identification.Create(100, 2, 3);

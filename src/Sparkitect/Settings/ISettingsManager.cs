@@ -16,7 +16,7 @@ public interface ISettingsManager
     /// <typeparam name="T">The setting's primitive value type.</typeparam>
     /// <param name="id">The setting id.</param>
     /// <param name="definition">The declaration payload carrying the default and optional CLI option.</param>
-    void Declare<T>(Identification id, SettingDefinition<T> definition);
+    void Declare<T>(Identification<T> id, SettingDefinition<T> definition);
 
     /// <summary>Removes a previously declared setting. Called by the settings registry on teardown.</summary>
     /// <param name="id">The setting id to undeclare.</param>
@@ -37,12 +37,12 @@ public interface ISettingsManager
     /// <summary>Returns a lightweight typed handle over the manager for <paramref name="id"/>.</summary>
     /// <typeparam name="T">The setting's primitive value type.</typeparam>
     /// <param name="id">The setting id.</param>
-    Setting<T> GetSetting<T>(Identification id);
+    Setting<T> GetSetting<T>(Identification<T> id);
 
     /// <summary>Resolves the effective value of <paramref name="id"/> over the ordered source list.</summary>
     /// <typeparam name="T">The setting's primitive value type.</typeparam>
     /// <param name="id">The setting id.</param>
-    T GetValue<T>(Identification id);
+    T GetValue<T>(Identification<T> id);
 
     /// <summary>
     /// Writes <paramref name="value"/> to the source <paramref name="sourceId"/>, then dispatches
@@ -53,14 +53,14 @@ public interface ISettingsManager
     /// <param name="sourceId">The target source id.</param>
     /// <param name="value">The value to write.</param>
     /// <returns>Ok on success, or a <see cref="SetError"/> arm when the write is refused.</returns>
-    Result<SetError> Set<T>(Identification id, Identification sourceId, T value);
+    Result<SetError> Set<T>(Identification<T> id, Identification sourceId, T value);
 
     /// <summary>Writes <paramref name="value"/> to the conventional writable (user) source.</summary>
     /// <typeparam name="T">The setting's primitive value type.</typeparam>
     /// <param name="id">The setting id.</param>
     /// <param name="value">The value to write.</param>
     /// <returns>Ok on success, or a <see cref="SetError"/> arm when no writable source is available.</returns>
-    Result<SetError> SetUserValue<T>(Identification id, T value);
+    Result<SetError> SetUserValue<T>(Identification<T> id, T value);
 
     /// <summary>
     /// Subscribes to effective-value changes of <paramref name="id"/>. The subscription binds to the
@@ -70,5 +70,5 @@ public interface ISettingsManager
     /// <param name="id">The setting id.</param>
     /// <param name="onEffectiveChange">Invoked synchronously with the new resolved value on effective change.</param>
     /// <returns>A handle that removes the subscription when disposed.</returns>
-    IDisposable Subscribe<T>(Identification id, Action<T> onEffectiveChange);
+    IDisposable Subscribe<T>(Identification<T> id, Action<T> onEffectiveChange);
 }

@@ -17,6 +17,7 @@ public class TypedRegistry_Metadata
     public const string RegisterMethods = "RegisterTyped;RegisterUntyped";
     public const string ResourceFiles = "";
     public const string OwningModule = "global::Sparkitect.Modding.TestModule";
+    public const string AliasSuffix = "";
 
 
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -32,6 +33,7 @@ public class TypedRegistry_Metadata
         public const string TypeParameterNames = "TPayload";
         public const string ConstraintRefs = "";
         public const string ValueParameterGeneric = "";
+        public const string CrossRegistryMarkers = "";
     }
 
 
@@ -48,6 +50,7 @@ public class TypedRegistry_Metadata
         public const string TypeParameterNames = "TOther";
         public const string ConstraintRefs = "";
         public const string ValueParameterGeneric = "";
+        public const string CrossRegistryMarkers = "";
     }
 
 

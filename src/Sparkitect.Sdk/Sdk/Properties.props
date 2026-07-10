@@ -1,4 +1,12 @@
 <Project>
+    <!-- Language version: SG-emitted extension(...) members (e.g. cross-registry typed id aliases,
+         settings accessors) require C# 14. Centralizing this here means every mod project consuming
+         Sparkitect.Sdk inherits it without hand-setting LangVersion, matching what the engine
+         (Sparkitect.csproj) and the sample mod (MinimalSampleMod.csproj) already set by hand. -->
+    <PropertyGroup>
+        <LangVersion>preview</LangVersion>
+    </PropertyGroup>
+
     <!-- Mod specific properties -->
     <PropertyGroup>
         <ModId></ModId>

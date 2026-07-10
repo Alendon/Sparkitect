@@ -14,12 +14,12 @@ namespace Sparkitect.Settings;
 public readonly struct Setting<T>
 {
     private readonly ISettingsManager _manager;
-    private readonly Identification _id;
+    private readonly Identification<T> _id;
 
     /// <summary>Creates a handle over <paramref name="manager"/> for setting <paramref name="id"/>.</summary>
     /// <param name="manager">The owning settings manager.</param>
     /// <param name="id">The setting id.</param>
-    public Setting(ISettingsManager manager, Identification id)
+    public Setting(ISettingsManager manager, Identification<T> id)
     {
         _manager = manager;
         _id = id;

@@ -485,11 +485,16 @@ public partial class RegistryGenerator : IIncrementalGenerator
         var externalEntry = registryAttribute.NamedArguments.FirstOrDefault(x => x.Key == "External");
         var isExternal = externalEntry.Value.Value is true;
 
+        // D-06: optional registry-level alias suffix, applied to every alias THIS registry emits into
+        // other registries' id-space (Plan 04). Null when the mod author declares no suffix.
+        var aliasSuffixEntry = registryAttribute.NamedArguments.FirstOrDefault(x => x.Key == "AliasSuffix");
+        var aliasSuffix = aliasSuffixEntry.Value.Value as string;
+
         //TODO Registry Analyzer: Registry class cannot live outside namespace
         //General Analyzer (Utility class): No Type outside defined root namespace
         //Alternative: Define "GeneratorBaseNamespace", where the generator places it general entries
         return new RegistryModel(symbol.Name, id, namespaceName!, isExternal, ExtractRegisterMethods(symbol),
-            ExtractResourceFiles(symbol), OwningModuleFullName: ExtractOwningModule(symbol));
+            ExtractResourceFiles(symbol), OwningModuleFullName: ExtractOwningModule(symbol), AliasSuffix: aliasSuffix);
     }
 
     /// <summary>
@@ -568,8 +573,11 @@ public partial class RegistryGenerator : IIncrementalGenerator
             var markerTKey = method.Parameters.First().Type
                 .ToDisplayString(DisplayFormats.NamespaceAndType);
 
-            // D-04: which type parameter (if any) opts into Identification<T> emission.
-            var typedIdentificationTypeParameterName = ExtractTypedIdentificationTypeParameterName(method);
+            // D-04/D-05: which type parameter (if any) opts into same-registry Identification<T> emission,
+            // plus 0..N cross-registry [TypedIdentification<TTarget>] linkages (D-08 kind-discriminated walk).
+            var typedIdentificationExtraction = ExtractTypedIdentificationMarkers(method);
+            var typedIdentificationTypeParameterName = typedIdentificationExtraction.BareMarker;
+            var crossRegistryMarkers = typedIdentificationExtraction.CrossMarkers;
 
             //Method registration
             if (method.Parameters.Length == 2)
@@ -598,14 +606,16 @@ public partial class RegistryGenerator : IIncrementalGenerator
                     result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Value, constraintFlag,
                         typeConstraints, markerTBase, markerTKey, typedIdentificationTypeParameterName,
                         TypeParameterNames: typeParameterNames, ConstraintRefs: constraintRefs,
-                        ValueParameterGeneric: valueParameterGeneric));
+                        ValueParameterGeneric: valueParameterGeneric,
+                        CrossRegistryMarkers: crossRegistryMarkers));
 
                     continue;
                 }
 
                 result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Value, TypeConstraintFlag.None,
                     ((string[])[parameter.ToDisplayString(DisplayFormats.NamespaceAndType)]).ToImmutableValueArray(),
-                    markerTBase, markerTKey, typedIdentificationTypeParameterName));
+                    markerTBase, markerTKey, typedIdentificationTypeParameterName,
+                    CrossRegistryMarkers: crossRegistryMarkers));
 
                 continue;
             }
@@ -622,7 +632,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
                     out var constraintRefs);
                 result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.Type, constraintFlag,
                     typeConstraints, markerTBase, markerTKey, typedIdentificationTypeParameterName,
-                    TypeParameterNames: typeParameterNames, ConstraintRefs: constraintRefs));
+                    TypeParameterNames: typeParameterNames, ConstraintRefs: constraintRefs,
+                    CrossRegistryMarkers: crossRegistryMarkers));
 
                 continue;
             }
@@ -630,27 +641,63 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
             //Resource file registration
             result.Add(new RegisterMethodModel(method.Name, PrimaryParameterKind.None, TypeConstraintFlag.None, [],
-                markerTBase, markerTKey));
+                markerTBase, markerTKey, CrossRegistryMarkers: crossRegistryMarkers));
         }
 
         return result.ToImmutableValueArray();
     }
 
     /// <summary>
-    /// Scans a register method's type parameters for the <c>[TypedIdentification]</c> marker (D-04) and
-    /// returns the name of the annotated one, or null when none opt in.
+    /// Scans a register method's type parameters for typed-identification markers (D-08). Walks ALL type
+    /// parameters once — never returns early, which IS the fail-silent truncation fix this closes — and
+    /// buckets each attribute hit by kind: a bare <c>[TypedIdentification]</c> hit contributes to the
+    /// single same-registry marker name (D-04, first-wins, unchanged <see cref="ComputeIdentificationType"/>
+    /// consumer contract); a <c>[TypedIdentification&lt;TTarget&gt;]</c> hit — detected via
+    /// <see cref="ITypeSymbol.IsGenericType"/> on the matched attribute class, since
+    /// <see cref="DisplayFormats.NamespaceAndType"/>'s <c>GenericsOptions.None</c> already collapses both
+    /// the bare and generic forms to the same base name (mirrors the <c>UseResourceFileAttribute</c>
+    /// open-generic idiom at <c>RegistryShapeAnalyzer.cs:134-139</c>) — appends
+    /// (typeParameter.Name, targetRegistryFqn, targetCategoryKey) to the cross-registry list (D-05). The
+    /// target category key is resolved directly off the target's live symbol via
+    /// <see cref="TryExtractRegistryKey"/> — this ALWAYS runs on a live <see cref="ITypeSymbol"/> (the
+    /// attribute's own type argument), regardless of whether the target registry is declared in this
+    /// compilation or referenced, so no cross-assembly metadata round-trip is needed for the target side
+    /// (D-03). Empty when the target isn't a recognizable <c>[Registry]</c> type — Plan 04's alias
+    /// emission surfaces this as a loud <c>extension()</c> compile error, never a silently-skipped alias.
     /// </summary>
-    internal static string? ExtractTypedIdentificationTypeParameterName(IMethodSymbol method)
+    internal static TypedIdentificationExtraction ExtractTypedIdentificationMarkers(IMethodSymbol method)
     {
+        string? bareMarker = null;
+        var crossMarkers = new ImmutableValueArray<(string ParamName, string TargetRegistryFqn, string TargetCategoryKey)>.Builder();
+
         foreach (var typeParameter in method.TypeParameters)
         {
-            var hasAttribute = typeParameter.GetAttributes().Any(a =>
-                a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) ==
-                TypedIdentificationAttribute);
-            if (hasAttribute) return typeParameter.Name;
+            foreach (var attribute in typeParameter.GetAttributes())
+            {
+                var attributeClass = attribute.AttributeClass;
+                if (attributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) != TypedIdentificationAttribute)
+                    continue;
+
+                if (attributeClass.IsGenericType && attributeClass.TypeArguments.Length == 1)
+                {
+                    var targetType = attributeClass.TypeArguments[0];
+                    var targetRegistryFqn = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var targetCategoryKey = targetType is INamedTypeSymbol targetNamedType
+                        && TryExtractRegistryKey(targetNamedType, out var key)
+                        ? key
+                        : string.Empty;
+                    crossMarkers.Add((typeParameter.Name, targetRegistryFqn, targetCategoryKey));
+                }
+                else
+                {
+                    // D-04: at most one bare marker feeds ComputeIdentificationType; first-wins mirrors the
+                    // prior scalar semantics. Registry-wide ambiguity across methods is Plan 05's analyzer.
+                    bareMarker ??= typeParameter.Name;
+                }
+            }
         }
 
-        return null;
+        return new TypedIdentificationExtraction(bareMarker, crossMarkers.ToImmutableValueArray());
     }
 
     /// <summary>
@@ -862,6 +909,18 @@ public partial class RegistryGenerator : IIncrementalGenerator
             owningModule = owningModuleData;
         }
 
+        // D-06: optional registry-level alias suffix, same bypass-reader.Of() idiom as OwningModule so
+        // pre-Plan-04 metadata (predating this field) still parses cleanly.
+        string? aliasSuffix = null;
+        var aliasSuffixField = ((INamedTypeSymbol)metadata).GetMembers("AliasSuffix")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (aliasSuffixField is { IsConst: true, HasConstantValue: true, ConstantValue: string aliasSuffixData }
+            && !string.IsNullOrEmpty(aliasSuffixData))
+        {
+            aliasSuffix = aliasSuffixData;
+        }
+
         model = new RegistryModel(
             Of("TypeName"),
             Of("Key"),
@@ -870,7 +929,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
             methodModels.ToImmutableValueArray(),
             resourceFiles.ToImmutableValueArray(),
             declaringSgNamespace,
-            owningModule);
+            owningModule,
+            aliasSuffix);
 
         allValid &= reader.AllValid;
 
@@ -995,6 +1055,27 @@ public partial class RegistryGenerator : IIncrementalGenerator
             valueParameterGeneric = decodedValueParameterGeneric;
         }
 
+        // D-07: external registries provide cross-registry portion info manually through this SAME
+        // decode shape — direct-symbol const-field read, bypassing reader.Of() so legacy metadata
+        // predating this field never trips reader.AllValid.
+        var crossRegistryMarkers = new ImmutableValueArray<(string ParamName, string TargetRegistryFqn, string TargetCategoryKey)>.Builder();
+        var crossRegistryMarkersField = methodMetadata.GetMembers("CrossRegistryMarkers")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (crossRegistryMarkersField is
+            { IsConst: true, HasConstantValue: true, ConstantValue: string crossRegistryMarkersData }
+            && !string.IsNullOrEmpty(crossRegistryMarkersData))
+        {
+            foreach (var encodedMarker in crossRegistryMarkersData.Split([';'], StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = encodedMarker.Split('|');
+                if (parts.Length == 3)
+                {
+                    crossRegistryMarkers.Add((parts[0], parts[1], parts[2]));
+                }
+            }
+        }
+
         model = new RegisterMethodModel(
             Of("FunctionName"),
             parameterKind,
@@ -1005,7 +1086,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
             typedIdentificationTypeParameterName,
             TypeParameterNames: typeParameterNames.ToImmutableValueArray(),
             ConstraintRefs: constraintRefs.ToImmutableValueArray(),
-            ValueParameterGeneric: valueParameterGeneric
+            ValueParameterGeneric: valueParameterGeneric,
+            CrossRegistryMarkers: crossRegistryMarkers.ToImmutableValueArray()
         );
 
         return reader.AllValid;

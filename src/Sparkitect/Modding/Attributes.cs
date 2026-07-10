@@ -27,6 +27,13 @@ public class RegistryAttribute : Attribute
     /// this as false.
     /// </summary>
     public bool External { get; set; } = false;
+
+    /// <summary>
+    /// Optional suffix appended to every alias this registry's methods emit into a target
+    /// registry's id space, for provenance and collision-proofing against silent
+    /// extension-member shadowing. Null means no suffix.
+    /// </summary>
+    public string? AliasSuffix { get; set; }
 }
 
 /// <summary>
@@ -196,6 +203,15 @@ public sealed class KeyedFactoryGenerationMarkerAttribute<TBase> : Attribute whe
 [AttributeUsage(AttributeTargets.GenericParameter)]
 [PublicAPI]
 public sealed class TypedIdentificationAttribute : Attribute;
+
+/// <summary>
+/// Marks a register-method type parameter as a cross-registry portion emitting a typed alias
+/// into the named target registry's id space.
+/// </summary>
+/// <typeparam name="TTargetRegistry">The target registry type the marked portion emits an alias into.</typeparam>
+[AttributeUsage(AttributeTargets.GenericParameter)]
+[PublicAPI]
+public sealed class TypedIdentificationAttribute<TTargetRegistry> : Attribute;
 
 /// <summary>
 /// Marks a class as containing code that depends on an optional mod's types.

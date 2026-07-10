@@ -216,6 +216,12 @@ public partial class RegistryGenerator
                 var identificationType = ComputeIdentificationType(entryRegisterMethod, entryResolvedArgs);
                 var hasTypedIdentification = entryRegisterMethod?.TypedIdentificationTypeParameterName is
                     { Length: > 0 };
+                // D-03: per-entry cross-registry alias descriptors — the SAME entryRegisterMethod/
+                // entryResolvedArgs inputs ComputeIdentificationType uses, keyed off CrossRegistryMarkers
+                // instead of the scalar TypedIdentificationTypeParameterName. Consumed by
+                // RenderRegistryCrossEmissionAliasUnit, not by this (IdProperties) template.
+                var crossRegistryAliases = ComputeCrossRegistryAliases(entryRegisterMethod, entryResolvedArgs,
+                    settings, propName, registeredType, e.RegisteredMember);
                 return new
                 {
                     Id = e.Id,
@@ -239,7 +245,10 @@ public partial class RegistryGenerator
                     // non-opted-in entries, "global::Sparkitect.Modding.Identification<Concrete>" for
                     // opted-in ones. HasTypedIdentification gates the template's wrapping-constructor branch.
                     IdentificationType = identificationType,
-                    HasTypedIdentification = hasTypedIdentification
+                    HasTypedIdentification = hasTypedIdentification,
+                    // D-03: 0..N resolved cross-registry alias descriptors for this entry (empty when the
+                    // entry's register method carries no [TypedIdentification<T>] markers).
+                    CrossRegistryAliases = crossRegistryAliases
                 };
             })
             .ToArray();
@@ -319,7 +328,142 @@ public partial class RegistryGenerator
 
         return $"{bare}<{concrete}>";
     }
-    
+
+    /// <summary>
+    /// A single D-03 cross-registry alias, fully resolved and ready to feed
+    /// <c>RegistryCrossEmissionAlias.Unit.liquid</c>: the target's per-mod ID-struct name (grouping key —
+    /// entries sharing a target struct share one <c>extension(...)</c> block), the closed concrete type
+    /// the alias's <c>Identification&lt;T&gt;</c> wraps, the alias member name (source entry's
+    /// PropertyName, before the registry-level suffix — applied once at render time, not per-descriptor),
+    /// and the source entry's own backward-coordinate ([RegisteredFrom]) target.
+    /// </summary>
+    internal sealed record CrossRegistryAliasDescriptor(
+        string TargetModStructName,
+        string ConcreteType,
+        string AliasName,
+        string? RegisteredTypeFullName,
+        string? RegisteredMember);
+
+    /// <summary>
+    /// Computes the D-03 cross-registry alias descriptor list for one registration entry: for every
+    /// <c>[TypedIdentification&lt;TTarget&gt;]</c> marker on the entry's register method (D-05), resolves
+    /// the marker's concrete closed type using the SAME per-entry <paramref name="resolvedTypeArguments"/>/
+    /// <see cref="RegisterMethodModel.TypeParameterNames"/> <see cref="ComputeIdentificationType"/> uses
+    /// (reuse, do not rebuild — RESEARCH "Don't Hand-Roll"), and pairs it with the marker's pre-resolved
+    /// <c>TargetCategoryKey</c> (resolved at extraction time off the target's live symbol, D-03/D-05) to
+    /// build the target's per-mod ID-struct name (<c>{SourceModIdPascal}{TargetCategoryPascal}IDs</c>,
+    /// RESEARCH Q2). Fail-loud (T-61.3-06): an unresolvable concrete type OR missing target category key
+    /// yields an empty <see cref="CrossRegistryAliasDescriptor.ConcreteType"/>/
+    /// <see cref="CrossRegistryAliasDescriptor.TargetModStructName"/>, which the template surfaces as a
+    /// genuine <c>extension(...)</c>/<c>Identification&lt;&gt;</c> compile error — never a
+    /// silently-skipped alias.
+    /// </summary>
+    private static ImmutableValueArray<CrossRegistryAliasDescriptor> ComputeCrossRegistryAliases(
+        RegisterMethodModel? registerMethod, ImmutableValueArray<string> resolvedTypeArguments,
+        ModBuildSettings settings, string aliasName, string? registeredTypeFullName, string? registeredMember)
+    {
+        var builder = new ImmutableValueArray<CrossRegistryAliasDescriptor>.Builder();
+        if (registerMethod?.CrossRegistryMarkers is not { Count: > 0 } crossMarkers)
+            return builder.ToImmutableValueArray();
+
+        var names = registerMethod.TypeParameterNames;
+        var sourceModIdPascal = StringCase.ToPascalCase(settings.ModId);
+
+        foreach (var marker in crossMarkers)
+        {
+            var index = names is null ? -1 : IndexOfTypeParameter(names, marker.ParamName);
+            var concrete = index >= 0 && resolvedTypeArguments is not null && index < resolvedTypeArguments.Count
+                ? resolvedTypeArguments[index]
+                : string.Empty;
+
+            var targetModStructName = marker.TargetCategoryKey is { Length: > 0 } targetCategoryKey
+                ? $"{sourceModIdPascal}{StringCase.ToPascalCase(targetCategoryKey)}IDs"
+                : string.Empty;
+
+            builder.Add(new CrossRegistryAliasDescriptor(
+                targetModStructName, concrete, aliasName, registeredTypeFullName, registeredMember));
+        }
+
+        return builder.ToImmutableValueArray();
+    }
+
+    /// <summary>
+    /// Renders the D-03 cross-registry alias emission for one <see cref="RegistrationUnit"/>: collects
+    /// every entry's <see cref="ComputeCrossRegistryAliases"/> output, groups by target ID-struct name
+    /// (multiple entries — even across different target registries — can share or differ per method),
+    /// and emits one <c>extension(TargetModStructName) { ... }</c> block per distinct target inside a
+    /// single <c>{RegistryName}CrossEmissionExtensions</c> static partial class in the SOURCE mod's own
+    /// <c>IdExtensions</c> namespace (D-03: "emitted by the SOURCE registry's generation pass into the
+    /// source compilation") — the SAME namespace the target's own per-mod ID-struct partial declaration
+    /// lives in (<see cref="RenderRegistryIdPropertiesUnit"/>/<see cref="RenderRegistryIdExtensionsFramework"/>),
+    /// so no additional using is needed. The registry-level <see cref="RegistryModel.AliasSuffix"/> (D-06)
+    /// is applied to every alias name here (not per-descriptor) since it is uniform across the whole unit.
+    /// Returns false (no file) when the unit has no cross-registry aliases at all.
+    /// </summary>
+    public static bool RenderRegistryCrossEmissionAliasUnit(RegistrationUnit unit, ModBuildSettings settings,
+        out string code, out string fileName)
+    {
+        var suffix = unit.SourceKind == SourceKind.Provider ? "Providers" : "Resources";
+        fileName = $"{unit.Model.TypeName}.CrossEmissionAlias_{suffix}.g.cs";
+
+        var extensionsNs = settings.ComputeOutputNamespace("IdExtensions");
+        var aliasSuffix = unit.Model.AliasSuffix ?? string.Empty;
+        var sourceCategoryPascal = StringCase.ToPascalCase(unit.Model.Key);
+        var sourceModIdPascal = StringCase.ToPascalCase(settings.ModId);
+        // Chain to the SOURCE entry's own id property: IDs.{SourceCategoryPascal}ID.{SourceModIdPascal}.{PropertyName}
+        // (no leading global:: — the template prepends it, matching the RegisteredFrom convention).
+        var sourceIdContainer = $"Sparkitect.Modding.IDs.{sourceCategoryPascal}ID.{sourceModIdPascal}";
+
+        var allAliases = unit.Entries
+            .OrderBy(e => e.Id)
+            .SelectMany(e =>
+            {
+                var propName = StringCase.ToPascalCase(e.Id);
+                var (entryMethodName, entryResolvedArgs) = GetEntryResolutionInputs(e);
+                var entryRegisterMethod = unit.Model.RegisterMethods
+                    .FirstOrDefault(m => m.FunctionName == entryMethodName);
+                var registeredType = e.RegisteredTypeFullName is { Length: > 0 } rt
+                    ? (rt.StartsWith("global::") ? rt.Substring("global::".Length) : rt)
+                    : null;
+                return ComputeCrossRegistryAliases(entryRegisterMethod, entryResolvedArgs, settings, propName,
+                    registeredType, e.RegisteredMember);
+            })
+            .ToArray();
+
+        if (allAliases.Length == 0)
+        {
+            code = string.Empty;
+            return false;
+        }
+
+        var groups = allAliases
+            .GroupBy(a => a.TargetModStructName)
+            .OrderBy(g => g.Key)
+            .Select(g => new
+            {
+                TargetModStructName = g.Key,
+                Aliases = g.Select(a => new
+                {
+                    a.ConcreteType,
+                    AliasName = a.AliasName + aliasSuffix,
+                    SourcePropertyName = a.AliasName,
+                    a.RegisteredTypeFullName,
+                    a.RegisteredMember
+                }).ToArray()
+            })
+            .ToArray();
+
+        var tpl = new
+        {
+            ExtensionsNamespace = extensionsNs,
+            RegistryName = unit.Model.TypeName,
+            SourceIdContainer = sourceIdContainer,
+            TargetGroups = groups
+        };
+
+        return FluidHelper.TryRenderTemplate("Modding.RegistryCrossEmissionAlias.Unit.liquid", tpl, out code);
+    }
+
     /// <summary>
     /// Semicolon-joins a register method's ordered type-parameter names for metadata roundtrip. Null-safe
     /// because <see cref="RegisterMethodModel.TypeParameterNames"/> defaults unset for register methods
@@ -349,6 +493,19 @@ public partial class RegistryGenerator
                string.Join(",", constraintRef.ArgTypeParameterNames);
     }
 
+    /// <summary>
+    /// Semicolon-joins the encoded form of every cross-registry marker (D-05/D-08) for metadata
+    /// roundtrip: one sub-entry per marked type parameter,
+    /// <c>{ParamName}|{TargetRegistryFqn}|{TargetCategoryKey}</c>. Reuses the SAME two-level
+    /// <c>;</c>-then-<c>|</c> idiom as <see cref="EncodeConstraintRefs"/> — no new delimiter scheme;
+    /// <c>TargetCategoryKey</c> is a plain registry Identifier (snake_case, never contains <c>|</c>).
+    /// </summary>
+    private static string EncodeCrossRegistryMarkers(
+        ImmutableValueArray<(string ParamName, string TargetRegistryFqn, string TargetCategoryKey)> crossRegistryMarkers)
+        => crossRegistryMarkers is null
+            ? string.Empty
+            : string.Join(";", crossRegistryMarkers.Select(m => $"{m.ParamName}|{m.TargetRegistryFqn}|{m.TargetCategoryKey}"));
+
     internal static bool RenderRegistryMetadata(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
     {
         fileName = $"{model.TypeName}_Metadata.g.cs";
@@ -369,7 +526,10 @@ public partial class RegistryGenerator
             // never appear in a FullyQualifiedFormat FQN.
             TypeParameterNames = EncodeTypeParameterNames(method.TypeParameterNames),
             ConstraintRefs = EncodeConstraintRefs(method.ConstraintRefs),
-            ValueParameterGeneric = EncodeConstraintRef(method.ValueParameterGeneric)
+            ValueParameterGeneric = EncodeConstraintRef(method.ValueParameterGeneric),
+            // D-05/D-07: cross-registry marker list, same two-level `;`-then-`|` idiom as EncodeConstraintRef
+            // — one sub-entry per marked type parameter, {ParamName}|{TargetRegistryFqn} joined by `;`.
+            CrossRegistryMarkers = EncodeCrossRegistryMarkers(method.CrossRegistryMarkers)
         }).ToArray();
         
         var registerMethodsString = string.Join(";", model.RegisterMethods.Select(m => m.FunctionName));
@@ -388,6 +548,9 @@ public partial class RegistryGenerator
             RegisterMethods = registerMethodsString,
             ResourceFiles = resourceFilesString,
             OwningModule = model.OwningModuleFullName ?? string.Empty,
+            // D-06: registry-level alias suffix, roundtripped so cross-assembly consumers of THIS
+            // registry (as a source of cross-registry aliases) apply the same suffix as same-compilation.
+            AliasSuffix = model.AliasSuffix ?? string.Empty,
             RegisterMethodsMetadata = methodsMetadata
         };
         
@@ -821,6 +984,13 @@ public static class {containerClassName}
         if (RenderRegistryIdPropertiesUnit(arg.unit, arg.settings, out var code, out var file))
         {
             context.AddSource(file, code);
+        }
+
+        // D-03: cross-registry alias emission — a second, independent output for the SAME unit. No-op
+        // (no file) when the unit carries no [TypedIdentification<T>] cross-registry markers.
+        if (RenderRegistryCrossEmissionAliasUnit(arg.unit, arg.settings, out var aliasCode, out var aliasFile))
+        {
+            context.AddSource(aliasFile, aliasCode);
         }
     }
 

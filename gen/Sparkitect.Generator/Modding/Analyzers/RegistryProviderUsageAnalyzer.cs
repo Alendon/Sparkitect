@@ -247,8 +247,17 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
             Report(ctx, RegistryDiagnostics.ProviderKindMismatch, attrSyntax.GetLocation(), attrSyntax.Name.ToString(), usageKind.ToString(), methodKind.ToString());
         }
 
-        // SPARK0225: return type incompatible for non-generic value methods
-        if (usageKind == ProviderUsageKind.Value && methodKind == PrimaryKind.Value)
+        // SPARK0225: return type incompatible for non-generic value methods. Skipped when the value
+        // parameter's type is open — a bare type parameter (RegisterValue<T>(Identification, T)) or a
+        // constructed generic mentioning one (RegisterX<T1,T2>(Identification, Wrapper<T1,T2>)) — since
+        // there is no fixed expected type to compare against; the provider's return type IS what
+        // resolves the open slot(s) (D-02), and SPARK0226 below already covers constraint validation
+        // for that recovered type. Mirrors RecoverEffectiveTypeArgument's skip-don't-false-report
+        // philosophy instead of comparing display strings of an unresolved type parameter.
+        if (usageKind == ProviderUsageKind.Value && methodKind == PrimaryKind.Value
+            && !registryMethod.TypeParameters.Any(tp =>
+                registryMethod.Parameters.Length >= 2 &&
+                RegistryGenerator.MentionsTypeParameter(registryMethod.Parameters[1].Type, tp)))
         {
             var expected = registryMethod.Parameters.Length >= 2 ? registryMethod.Parameters[1].Type : null;
             if (expected != null)

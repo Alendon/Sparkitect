@@ -29,7 +29,7 @@ public sealed class SettingsManager : ISettingsManager
     private Identification? _userSourceId;
 
     /// <inheritdoc/>
-    public void Declare<T>(Identification id, SettingDefinition<T> definition) => _declarations[id] = definition;
+    public void Declare<T>(Identification<T> id, SettingDefinition<T> definition) => _declarations[id] = definition;
 
     /// <inheritdoc/>
     public void Undeclare(Identification id) => _declarations.Remove(id);
@@ -62,13 +62,13 @@ public sealed class SettingsManager : ISettingsManager
     }
 
     /// <inheritdoc/>
-    public Setting<T> GetSetting<T>(Identification id) => new(this, id);
+    public Setting<T> GetSetting<T>(Identification<T> id) => new(this, id);
 
     /// <inheritdoc/>
-    public T GetValue<T>(Identification id) => Resolve<T>(id);
+    public T GetValue<T>(Identification<T> id) => Resolve<T>(id);
 
     /// <inheritdoc/>
-    public Result<SetError> Set<T>(Identification id, Identification sourceId, T value)
+    public Result<SetError> Set<T>(Identification<T> id, Identification sourceId, T value)
     {
         if (!_declarations.ContainsKey(id))
         {
@@ -101,13 +101,13 @@ public sealed class SettingsManager : ISettingsManager
     }
 
     /// <inheritdoc/>
-    public Result<SetError> SetUserValue<T>(Identification id, T value) =>
+    public Result<SetError> SetUserValue<T>(Identification<T> id, T value) =>
         _userSourceId is { } userSource
             ? Set(id, userSource, value)
             : new SetError.UnknownSource(Identification.Empty);
 
     /// <inheritdoc/>
-    public IDisposable Subscribe<T>(Identification id, Action<T> onEffectiveChange)
+    public IDisposable Subscribe<T>(Identification<T> id, Action<T> onEffectiveChange)
     {
         var subscription = new Subscription(_frameTokenProvider(), value => onEffectiveChange((T)value!));
         if (!_subscriptions.TryGetValue(id, out var list))

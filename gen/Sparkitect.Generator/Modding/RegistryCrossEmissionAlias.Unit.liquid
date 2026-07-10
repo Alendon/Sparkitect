@@ -1,0 +1,20 @@
+#pragma warning disable CS9113
+#pragma warning disable CS1591
+
+namespace {{ ExtensionsNamespace }};
+
+public static partial class {{ RegistryName }}CrossEmissionExtensions
+{
+{% for group in TargetGroups -%}
+    extension({{ group.TargetModStructName }})
+    {
+{% for alias in group.Aliases -%}
+{% if alias.RegisteredTypeFullName -%}
+        [global::Sparkitect.Modding.RegisteredFrom(typeof(global::{{ alias.RegisteredTypeFullName }}){% if alias.RegisteredMember %}, Member = "{{ alias.RegisteredMember }}"{% endif %})]
+{% endif -%}
+        public static global::Sparkitect.Modding.Identification<{{ alias.ConcreteType }}> {{ alias.AliasName }}
+            => new(global::{{ SourceIdContainer }}.{{ alias.SourcePropertyName }});
+{% endfor -%}
+    }
+{% endfor -%}
+}

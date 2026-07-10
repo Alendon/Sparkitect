@@ -10,7 +10,7 @@ namespace Sparkitect.Tests.Settings;
 /// </summary>
 public class SettingSourceOrderingTests
 {
-    private static readonly Identification Setting = Identification.Create(101, 1, 1);
+    private static readonly Identification<int> Setting = new(Identification.Create(101, 1, 1));
     private static readonly Identification SourceA = Identification.Create(101, 2, 1);
     private static readonly Identification SourceB = Identification.Create(101, 2, 2);
 

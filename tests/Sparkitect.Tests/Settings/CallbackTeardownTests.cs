@@ -26,7 +26,7 @@ public class CallbackTeardownTests
     private static readonly Identification ChildStateId = Identification.Create(900, 2, 1);
     private static readonly Identification TeardownFunctionId = Identification.Create(900, 3, 1);
 
-    private static readonly Identification Flag = Identification.Create(901, 1, 1);
+    private static readonly Identification<bool> Flag = new(Identification.Create(901, 1, 1));
     private static readonly Identification UserSourceId = Identification.Create(901, 2, 1);
 
     // ── Task 2: the ambient (Root anchor) gate is what admits a root-only module's frame-exit function ──

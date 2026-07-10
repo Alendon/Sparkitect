@@ -31,6 +31,13 @@ public partial class SampleEntryState : TransitiveGameState, IHasIdentification
     [DummyRegistry.RegisterValue("hello1")]
     public static string SomeValueToRegister() => "Hello World";
 
+    // RegisterTypedProvider's dual-marker signature carries TypedDummyValueProvider (this
+    // registry's own bare-marked payload) plus a plain string setting value; the SG emits the
+    // settings alias, and DummyRegistry's body declares the same id against it.
+    [DummyRegistry.RegisterTypedProvider("dummy_typed_provider_setting")]
+    public static TypedSettingProvider<TypedDummyValueProvider, string> ProvideTypedDummySetting() =>
+        new("Hello from Typed Provider Setting");
+
     [TransitionFunction("dummy_value_read")]
     [OnCreateScheduling]
     [OrderAfter<SampleModule.ProcessRegistryEnterFunc>]
@@ -86,16 +93,19 @@ public partial class SampleEntryState : TransitiveGameState, IHasIdentification
     }
 }
 
+// Public (not internal): RegisterProvider's TProvider now carries [TypedIdentification], so the
+// generated Identification<DummyValueProvider> id property is public, and a public property's
+// type argument must be at least as accessible as the property (CS0053) — every RegisterProvider
+// target needs public accessibility now.
 [DummyRegistry.RegisterProvider("dummy_provider")]
-internal partial class DummyValueProvider : IDummyValueProvider, IHasIdentification
+public partial class DummyValueProvider : IDummyValueProvider, IHasIdentification
 {
     public string Provide() => "Hello from Provider";
 }
 
-// typed register-method proof: DummyRegistry.RegisterTypedProvider opt-in feeds Identification<T> emission.
-// Public (not internal): the generated Identification<TypedDummyValueProvider> id property is public,
-// and a public property's type argument must be at least as accessible as the property (CS0053).
-[DummyRegistry.RegisterTypedProvider("dummy_typed_provider")]
+// Registered via RegisterProvider (Type-source) so IHasIdentification is auto-emitted; the
+// cross-registry proof itself is a separate RegisterTypedProvider entry (see ProvideTypedDummySetting).
+[DummyRegistry.RegisterProvider("dummy_typed_provider")]
 public partial class TypedDummyValueProvider : IDummyValueProvider, IHasIdentification
 {
     public string Provide() => "Hello from Typed Provider";

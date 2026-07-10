@@ -21,7 +21,8 @@ public partial class SettingRegistry(ISettingsManager manager) : IRegistry<CoreM
     /// <param name="id">The setting id.</param>
     /// <param name="definition">The declaration payload carrying the default and optional CLI option.</param>
     [RegistryMethod]
-    public void RegisterSetting<T>(Identification id, SettingDefinition<T> definition) => manager.Declare(id, definition);
+    public void RegisterSetting<[TypedIdentification] T>(Identification id, SettingDefinition<T> definition) =>
+        manager.Declare(new Identification<T>(id), definition);
 
     /// <inheritdoc/>
     public void Unregister(Identification id) => manager.Undeclare(id);

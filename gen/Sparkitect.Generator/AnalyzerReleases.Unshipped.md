@@ -39,6 +39,10 @@ SPARK0261 | Sparkitect | Error | Marker-flagged registry method missing required
 SPARK0262 | Sparkitect | Warning | Hand-authored ': IHasIdentification' without a registration attribute
 SPARK0263 | Sparkitect | Warning | Registered concrete missing explicit ': IHasIdentification'
 SPARK0270 | Sparkitect | Error | Duplicate settings group ownership
+SPARK0271 | Sparkitect | Error | At most one bare [TypedIdentification] marker per register method
+SPARK0272 | Sparkitect | Error | Registry has an incoherent typed-identification shape
+SPARK0273 | Sparkitect | Error | Invalid [TypedIdentification<TTargetRegistry>] target
+SPARK0274 | Sparkitect | Error | Typed-identification alias name collides with a real member
 SPARK0301 | Sparkitect | Error | StateService does not implement declared interface
 SPARK0302 | Sparkitect | Error | StateService does not implement required facade
 SPARK0304 | Sparkitect | Error | Facade interface missing [FacadeFor] attribute
