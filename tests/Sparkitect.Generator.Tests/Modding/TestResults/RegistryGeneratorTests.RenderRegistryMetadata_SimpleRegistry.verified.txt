@@ -17,6 +17,7 @@ public class TestRegistry_Metadata
     public const string ResourceFiles = "data:1:0;config:0:0";
     public const string OwningModule = "";
     public const string AliasSuffix = "";
+    public const string PerTargetAliasSuffixes = "";
 
 
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

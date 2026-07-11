@@ -15,6 +15,11 @@ internal record RegistryWithFactory(
 /// <param name="AliasSuffix">Optional registry-level suffix (D-06) applied to every alias this registry
 /// emits into other registries' id-space (D-03) — provenance in the name, collision-proofing against
 /// silent extension-member shadowing. Null/empty applies no suffix.</param>
+/// <param name="PerTargetAliasSuffixes">Per-target-registry suffix overrides (C-2), one entry per
+/// distinct <c>[AliasSuffix&lt;TTargetRegistry&gt;]</c> declared on the registry class, keyed by the
+/// target registry's fully-qualified name. Resolved ahead of the uniform <see cref="AliasSuffix"/>
+/// fallback by the shared <see cref="AliasSuffixResolver"/> both the emission path and the SPARK0274
+/// collision check call. Null/empty when the registry declares no per-target overrides.</param>
 public record RegistryModel(
     string TypeName,
     string Key,
@@ -24,7 +29,8 @@ public record RegistryModel(
     ImmutableValueArray<(string Key, bool Required, bool Primary)> ResourceFiles,
     string? DeclaringSgNamespace = null,
     string? OwningModuleFullName = null,
-    string? AliasSuffix = null);
+    string? AliasSuffix = null,
+    ImmutableValueArray<(string TargetRegistryFqn, string Suffix)> PerTargetAliasSuffixes = default!);
 
 public record FileRegistrationEntry(
     string RegistryClass,

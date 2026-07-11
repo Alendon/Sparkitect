@@ -342,7 +342,8 @@ public partial class RegistryGenerator
         string ConcreteType,
         string AliasName,
         string? RegisteredTypeFullName,
-        string? RegisteredMember);
+        string? RegisteredMember,
+        string TargetRegistryFqn);
 
     /// <summary>
     /// Computes the D-03 cross-registry alias descriptor list for one registration entry: for every
@@ -381,7 +382,8 @@ public partial class RegistryGenerator
                 : string.Empty;
 
             builder.Add(new CrossRegistryAliasDescriptor(
-                targetModStructName, concrete, aliasName, registeredTypeFullName, registeredMember));
+                targetModStructName, concrete, aliasName, registeredTypeFullName, registeredMember,
+                marker.TargetRegistryFqn));
         }
 
         return builder.ToImmutableValueArray();
@@ -396,8 +398,9 @@ public partial class RegistryGenerator
     /// <c>IdExtensions</c> namespace (D-03: "emitted by the SOURCE registry's generation pass into the
     /// source compilation") — the SAME namespace the target's own per-mod ID-struct partial declaration
     /// lives in (<see cref="RenderRegistryIdPropertiesUnit"/>/<see cref="RenderRegistryIdExtensionsFramework"/>),
-    /// so no additional using is needed. The registry-level <see cref="RegistryModel.AliasSuffix"/> (D-06)
-    /// is applied to every alias name here (not per-descriptor) since it is uniform across the whole unit.
+    /// so no additional using is needed. Each alias's suffix is resolved per-target via
+    /// <see cref="ResolveAliasSuffix"/> (C-2): a per-target <see cref="RegistryModel.PerTargetAliasSuffixes"/>
+    /// override wins, else the registry-level uniform <see cref="RegistryModel.AliasSuffix"/> (D-06) applies.
     /// Returns false (no file) when the unit has no cross-registry aliases at all.
     /// </summary>
     public static bool RenderRegistryCrossEmissionAliasUnit(RegistrationUnit unit, ModBuildSettings settings,
@@ -407,7 +410,6 @@ public partial class RegistryGenerator
         fileName = $"{unit.Model.TypeName}.CrossEmissionAlias_{suffix}.g.cs";
 
         var extensionsNs = settings.ComputeOutputNamespace("IdExtensions");
-        var aliasSuffix = unit.Model.AliasSuffix ?? string.Empty;
         var sourceCategoryPascal = StringCase.ToPascalCase(unit.Model.Key);
         var sourceModIdPascal = StringCase.ToPascalCase(settings.ModId);
         // Chain to the SOURCE entry's own id property: IDs.{SourceCategoryPascal}ID.{SourceModIdPascal}.{PropertyName}
@@ -445,7 +447,9 @@ public partial class RegistryGenerator
                 Aliases = g.Select(a => new
                 {
                     a.ConcreteType,
-                    AliasName = a.AliasName + aliasSuffix,
+                    AliasName = a.AliasName +
+                                ResolveAliasSuffix(unit.Model.PerTargetAliasSuffixes, unit.Model.AliasSuffix,
+                                    a.TargetRegistryFqn),
                     SourcePropertyName = a.AliasName,
                     a.RegisteredTypeFullName,
                     a.RegisteredMember
@@ -506,6 +510,17 @@ public partial class RegistryGenerator
             ? string.Empty
             : string.Join(";", crossRegistryMarkers.Select(m => $"{m.ParamName}|{m.TargetRegistryFqn}|{m.TargetCategoryKey}"));
 
+    /// <summary>
+    /// Semicolon-joins the encoded form of every per-target alias-suffix override (C-2) for metadata
+    /// roundtrip: one sub-entry per target, <c>{TargetRegistryFqn}|{Suffix}</c>. Reuses the SAME
+    /// two-level <c>;</c>-then-<c>|</c> idiom as <see cref="EncodeCrossRegistryMarkers"/>.
+    /// </summary>
+    private static string EncodePerTargetAliasSuffixes(
+        ImmutableValueArray<(string TargetRegistryFqn, string Suffix)> perTargetAliasSuffixes)
+        => perTargetAliasSuffixes is null
+            ? string.Empty
+            : string.Join(";", perTargetAliasSuffixes.Select(m => $"{m.TargetRegistryFqn}|{m.Suffix}"));
+
     internal static bool RenderRegistryMetadata(RegistryModel model, ModBuildSettings settings, out string code, out string fileName)
     {
         fileName = $"{model.TypeName}_Metadata.g.cs";
@@ -551,6 +566,9 @@ public partial class RegistryGenerator
             // D-06: registry-level alias suffix, roundtripped so cross-assembly consumers of THIS
             // registry (as a source of cross-registry aliases) apply the same suffix as same-compilation.
             AliasSuffix = model.AliasSuffix ?? string.Empty,
+            // C-2: per-target-registry suffix overrides, same two-level `;`-then-`|` idiom as
+            // EncodeCrossRegistryMarkers — one sub-entry per target, {TargetRegistryFqn}|{Suffix}.
+            PerTargetAliasSuffixes = EncodePerTargetAliasSuffixes(model.PerTargetAliasSuffixes),
             RegisterMethodsMetadata = methodsMetadata
         };
         

@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Sparkitect.Generator;
+using Sparkitect.Generator.Modding;
 using Sparkitect.Utilities;
 
 namespace Sparkitect.Generator.Modding.Analyzers;
@@ -13,6 +14,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
 {
     private const string TypedIdentificationAttributeName = "Sparkitect.Modding.TypedIdentificationAttribute";
     private const string RegistryAttributeName = "Sparkitect.Modding.RegistryAttribute";
+    private const string AliasSuffixAttributeName = "Sparkitect.Modding.AliasSuffixAttribute";
 
     private static Location? GetAttributeLocation(AttributeData attr)
     {
@@ -359,7 +361,10 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
 
         if (crossMarkers.Count == 0) return;
 
-        // Registry-level alias suffix (D-06), for the SPARK0274 candidate-name computation below.
+        // Registry-level alias suffix (D-06) + per-target overrides (C-2), for the SPARK0274
+        // candidate-name computation below — resolved through the SAME shared helper the emission
+        // path (RegistryGenerator.Output.cs) uses, so the two can never independently disagree
+        // (Pitfall 6).
         var regAttr = containingRegistry.GetAttributes().FirstOrDefault(a =>
             a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) == RegistryAttributeName);
         string? aliasSuffix = null;
@@ -373,6 +378,21 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
                     break;
                 }
             }
+        }
+
+        var perTargetAliasSuffixes = new List<(string TargetRegistryFqn, string Suffix)>();
+        foreach (var classAttribute in containingRegistry.GetAttributes())
+        {
+            var classAttributeClass = classAttribute.AttributeClass;
+            if (classAttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) != AliasSuffixAttributeName)
+                continue;
+            if (!classAttributeClass.IsGenericType || classAttributeClass.TypeArguments.Length != 1) continue;
+            if (classAttribute.ConstructorArguments.Length == 0 ||
+                classAttribute.ConstructorArguments[0].Value is not string perTargetSuffix) continue;
+
+            var perTargetFqn = classAttributeClass.TypeArguments[0]
+                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            perTargetAliasSuffixes.Add((perTargetFqn, perTargetSuffix));
         }
 
         var modIdAvailable = ctx.Options.AnalyzerConfigOptionsProvider.GlobalOptions
@@ -397,10 +417,10 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
 
             // SPARK0274: same-compilation alias-collision detection (D-08/D-06). Best-effort: computes
             // the candidate alias container ({ModIdPascal}{TargetCategoryPascal}IDs, per D-03) and
-            // candidate alias name ({TypeParameterName}{AliasSuffix}) — the closest proxy available at
-            // the declaration level, since per-entry property names are only known once registration
-            // attributes are walked (Plan 04's emission territory, not this analyzer's). Skipped
-            // entirely when the mod id isn't available (nothing to compute the container name from).
+            // candidate alias name ({TypeParameterName}{ResolveAliasSuffix(...)}) — the closest proxy
+            // available at the declaration level, since per-entry property names are only known once
+            // registration attributes are walked (Plan 04's emission territory, not this analyzer's).
+            // Skipped entirely when the mod id isn't available (nothing to compute the container name from).
             if (!modIdAvailable) continue;
 
             string? targetIdentifier = null;
@@ -414,8 +434,12 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             }
             if (string.IsNullOrWhiteSpace(targetIdentifier)) continue;
 
+            var targetRegistryFqn = target?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? string.Empty;
+            var resolvedAliasSuffix = RegistryGenerator.ResolveAliasSuffix(perTargetAliasSuffixes, aliasSuffix,
+                targetRegistryFqn);
+
             var containerName = $"{StringCase.ToPascalCase(modId!)}{StringCase.ToPascalCase(targetIdentifier!)}IDs";
-            var candidateAliasName = $"{typeParameter.Name}{aliasSuffix}";
+            var candidateAliasName = $"{typeParameter.Name}{resolvedAliasSuffix}";
 
             foreach (var candidateType in ctx.Compilation.GetSymbolsWithName(containerName, SymbolFilter.Type)
                          .OfType<INamedTypeSymbol>())

@@ -494,7 +494,60 @@ public partial class RegistryGenerator : IIncrementalGenerator
         //General Analyzer (Utility class): No Type outside defined root namespace
         //Alternative: Define "GeneratorBaseNamespace", where the generator places it general entries
         return new RegistryModel(symbol.Name, id, namespaceName!, isExternal, ExtractRegisterMethods(symbol),
-            ExtractResourceFiles(symbol), OwningModuleFullName: ExtractOwningModule(symbol), AliasSuffix: aliasSuffix);
+            ExtractResourceFiles(symbol), OwningModuleFullName: ExtractOwningModule(symbol), AliasSuffix: aliasSuffix,
+            PerTargetAliasSuffixes: ExtractPerTargetAliasSuffixes(symbol));
+    }
+
+    /// <summary>
+    /// Extracts every class-level <c>[AliasSuffix&lt;TTargetRegistry&gt;("suffix")]</c> attribute (C-2) into
+    /// a <c>targetRegistryFqn -&gt; suffix</c> map. Mirrors the generic-attribute detection idiom
+    /// <see cref="ExtractTypedIdentificationMarkers"/> uses for <c>[TypedIdentification&lt;TTarget&gt;]</c>:
+    /// <see cref="DisplayFormats.NamespaceAndType"/> collapses both bare and generic forms to the same base
+    /// name, so <see cref="ITypeSymbol.IsGenericType"/> + a single type argument confirms the closed generic
+    /// form. Empty when the registry declares no per-target overrides (the uniform <c>AliasSuffix</c> then
+    /// applies to every target via <see cref="ResolveAliasSuffix"/>).
+    /// </summary>
+    internal static ImmutableValueArray<(string TargetRegistryFqn, string Suffix)> ExtractPerTargetAliasSuffixes(
+        INamedTypeSymbol symbol)
+    {
+        var builder = new ImmutableValueArray<(string TargetRegistryFqn, string Suffix)>.Builder();
+
+        foreach (var attribute in symbol.GetAttributes())
+        {
+            var attributeClass = attribute.AttributeClass;
+            if (attributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) != AliasSuffixAttribute) continue;
+            if (!attributeClass.IsGenericType || attributeClass.TypeArguments.Length != 1) continue;
+            if (attribute.ConstructorArguments.Length == 0 ||
+                attribute.ConstructorArguments[0].Value is not string suffix) continue;
+
+            var targetRegistryFqn = attributeClass.TypeArguments[0]
+                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            builder.Add((targetRegistryFqn, suffix));
+        }
+
+        return builder.ToImmutableValueArray();
+    }
+
+    /// <summary>
+    /// Resolves the alias-name suffix for one (registry, target-registry) pair (C-2): a per-target
+    /// override wins, else the registry's uniform fallback, else empty. This is the SOLE path both the
+    /// emission path (<see cref="RegistryGenerator.Output"/>'s <c>RenderRegistryCrossEmissionAliasUnit</c>)
+    /// and the SPARK0274 collision check (<see cref="Analyzers.RegistryShapeAnalyzer"/>) call, so the two
+    /// can never independently disagree on the same candidate name (Pitfall 6).
+    /// </summary>
+    internal static string ResolveAliasSuffix(
+        System.Collections.Generic.IEnumerable<(string TargetRegistryFqn, string Suffix)>? perTargetSuffixes,
+        string? uniformSuffix, string targetRegistryFqn)
+    {
+        if (perTargetSuffixes is not null)
+        {
+            foreach (var entry in perTargetSuffixes)
+            {
+                if (entry.TargetRegistryFqn == targetRegistryFqn) return entry.Suffix;
+            }
+        }
+
+        return uniformSuffix ?? string.Empty;
     }
 
     /// <summary>
@@ -921,6 +974,26 @@ public partial class RegistryGenerator : IIncrementalGenerator
             aliasSuffix = aliasSuffixData;
         }
 
+        // C-2: optional per-target-registry alias-suffix overrides, same bypass-reader.Of() idiom so
+        // pre-Plan-61.2 metadata (predating this field) still parses cleanly.
+        var perTargetAliasSuffixes = new ImmutableValueArray<(string TargetRegistryFqn, string Suffix)>.Builder();
+        var perTargetAliasSuffixesField = ((INamedTypeSymbol)metadata).GetMembers("PerTargetAliasSuffixes")
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault();
+        if (perTargetAliasSuffixesField is
+            { IsConst: true, HasConstantValue: true, ConstantValue: string perTargetAliasSuffixesData }
+            && !string.IsNullOrEmpty(perTargetAliasSuffixesData))
+        {
+            foreach (var encoded in perTargetAliasSuffixesData.Split([';'], StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = encoded.Split('|');
+                if (parts.Length == 2)
+                {
+                    perTargetAliasSuffixes.Add((parts[0], parts[1]));
+                }
+            }
+        }
+
         model = new RegistryModel(
             Of("TypeName"),
             Of("Key"),
@@ -930,7 +1003,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
             resourceFiles.ToImmutableValueArray(),
             declaringSgNamespace,
             owningModule,
-            aliasSuffix);
+            aliasSuffix,
+            perTargetAliasSuffixes.ToImmutableValueArray());
 
         allValid &= reader.AllValid;
 

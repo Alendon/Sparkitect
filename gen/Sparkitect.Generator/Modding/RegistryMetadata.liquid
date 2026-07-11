@@ -17,6 +17,7 @@ public class {{ MetadataClassName }}
     public const string ResourceFiles = "{{ ResourceFiles }}";
     public const string OwningModule = "{{ OwningModule }}";
     public const string AliasSuffix = "{{ AliasSuffix }}";
+    public const string PerTargetAliasSuffixes = "{{ PerTargetAliasSuffixes }}";
 
 {% for method in RegisterMethodsMetadata %}
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

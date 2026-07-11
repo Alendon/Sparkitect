@@ -438,6 +438,85 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     }
 
     [Test]
+    public async Task AliasCollision_PerTargetSuffix_RealMemberMatchesResolvedCandidateAlias_Reports_0274()
+    {
+        // C-2/Pitfall 6: SPARK0274's candidate-name computation must resolve the suffix through the
+        // SAME shared helper the emission path uses — a per-target [AliasSuffix<T>("Suffix")] override
+        // resolves to "TKeySuffix", which collides with a real hand-authored member of that exact name.
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace N
+        {
+            public partial struct SampleModTargetCatIDs
+            {
+                public static int TKeySuffix => 0;
+            }
+
+            [Registry(Identifier = "target_cat")]
+            public class TargetRegistry : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void M(Identification id) { }
+            }
+
+            [Registry(Identifier = "good_id")]
+            [AliasSuffix<TargetRegistry>("Suffix")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void M<TIn, [TypedIdentification<TargetRegistry>] TKey>(Identification id, TIn description) { }
+            }
+        }
+        """;
+
+        TestSources.Add(("TI6.cs", code));
+        GlobalOptions["build_property.ModId"] = "sample_mod";
+        var diagnostics = await RunAnalyzerAsync();
+        await AssertDiagnosticCount(diagnostics, "SPARK0274", 1);
+    }
+
+    [Test]
+    public async Task AliasCollision_PerTargetSuffix_DifferentSuffix_NoCollision_No0274()
+    {
+        // Companion to the collision case above: the SAME real member ("TKeySuffix") exists, but the
+        // registry declares a DIFFERENT per-target suffix ("Other"), so the resolved candidate name is
+        // "TKeyOther" — proving the analyzer reads the per-target suffix (not the uniform/wrong one)
+        // and correctly stays silent when the resolved name doesn't collide.
+        var code = """
+        using Sparkitect.Modding;
+
+        namespace N
+        {
+            public partial struct SampleModTargetCatIDs
+            {
+                public static int TKeySuffix => 0;
+            }
+
+            [Registry(Identifier = "target_cat")]
+            public class TargetRegistry : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void M(Identification id) { }
+            }
+
+            [Registry(Identifier = "good_id")]
+            [AliasSuffix<TargetRegistry>("Other")]
+            public class R : IRegistry<TestModule>
+            {
+                [RegistryMethod]
+                public void M<TIn, [TypedIdentification<TargetRegistry>] TKey>(Identification id, TIn description) { }
+            }
+        }
+        """;
+
+        TestSources.Add(("TI7.cs", code));
+        GlobalOptions["build_property.ModId"] = "sample_mod";
+        var diagnostics = await RunAnalyzerAsync();
+        await Assert.That(diagnostics.Any(d => d.Id == "SPARK0274")).IsFalse();
+    }
+
+    [Test]
     public async Task SingleMethodCoherentRegistry_LikeEventOrSettingRegistry_NoNewDiagnostics()
     {
         // D-11: the coherent single-method reference shape (EventRegistry/SettingRegistry's own

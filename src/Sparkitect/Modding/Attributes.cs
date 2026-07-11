@@ -214,6 +214,23 @@ public sealed class TypedIdentificationAttribute : Attribute;
 public sealed class TypedIdentificationAttribute<TTargetRegistry> : Attribute;
 
 /// <summary>
+/// Declares the alias-name suffix a registry applies to every alias it emits specifically into
+/// <typeparamref name="TTargetRegistry"/>'s id space. One instance per distinct target registry;
+/// the registry-level <see cref="RegistryAttribute.AliasSuffix"/> remains the fallback for targets
+/// with no override.
+/// </summary>
+/// <typeparam name="TTargetRegistry">The target registry this suffix applies to.</typeparam>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+[PublicAPI]
+public sealed class AliasSuffixAttribute<TTargetRegistry>(string suffix) : Attribute
+{
+    /// <summary>
+    /// The suffix appended to every alias this registry emits into <typeparamref name="TTargetRegistry"/>.
+    /// </summary>
+    public string Suffix { get; } = suffix;
+}
+
+/// <summary>
 /// Marks a class as containing code that depends on an optional mod's types.
 /// Isolate optional mod type references to marked classes to prevent TypeLoadException.
 /// </summary>

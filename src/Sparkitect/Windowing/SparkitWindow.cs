@@ -32,6 +32,30 @@ internal class SparkitWindow : ISparkitWindow
 
     public bool IsOpen => !_silkWindow.IsClosing && !_isDisposed;
 
+    /// <summary>True once created via <c>CreateWindow(..., WindowManagementMode.Managed)</c> — tracked and
+    /// pumped by <c>WindowManager</c>, which never owns it. Gates the direct-<see cref="Dispose"/> guard
+    /// below; teardown for a managed window must go through <c>WindowManager.DestroyWindow</c>.</summary>
+    internal bool IsManaged { get; private set; }
+
+    /// <summary>The identity assigned by <c>WindowManager</c> when this window was tracked. Only meaningful
+    /// when <see cref="IsManaged"/>; carried into the identity-only <c>WindowDestroyed</c> event payload.</summary>
+    internal int ManagedId { get; private set; }
+
+    /// <summary>
+    /// Set by <c>WindowManager.DestroyWindow</c> immediately before it calls <see cref="Dispose"/>, permitting
+    /// the one call the guard in <see cref="Dispose"/> allows through for a managed window. Never set anywhere
+    /// else — a direct external <see cref="Dispose"/> call on a managed window must still throw.
+    /// </summary>
+    internal bool ManagedDisposalAuthorized { private get; set; }
+
+    /// <summary>Marks this window as managed and assigns its tracking identity. Called once, by
+    /// <c>WindowManager.CreateWindow</c>, immediately after construction.</summary>
+    internal void MarkManaged(int id)
+    {
+        IsManaged = true;
+        ManagedId = id;
+    }
+
     public Input.IKeyboard Keyboard => _keyboard;
     public IMouseInput Mouse => _mouse;
 
@@ -100,6 +124,13 @@ internal class SparkitWindow : ISparkitWindow
 
     public void Dispose()
     {
+        if (IsManaged && !ManagedDisposalAuthorized)
+        {
+            throw new InvalidOperationException(
+                $"Window '{Title}' is managed and tracked by WindowManager; dispose it through " +
+                "WindowManager.DestroyWindow(window), not directly.");
+        }
+
         if (_isDisposed) return;
         _isDisposed = true;
 

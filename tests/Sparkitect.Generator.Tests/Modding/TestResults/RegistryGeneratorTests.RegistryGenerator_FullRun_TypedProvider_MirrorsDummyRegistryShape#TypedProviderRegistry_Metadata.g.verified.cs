@@ -18,6 +18,7 @@ public class TypedProviderRegistry_Metadata
     public const string ResourceFiles = "";
     public const string OwningModule = "global::Sparkitect.Modding.TestModule";
     public const string AliasSuffix = "";
+    public const string PerTargetAliasSuffixes = "";
 
 
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]

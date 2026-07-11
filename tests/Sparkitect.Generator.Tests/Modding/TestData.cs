@@ -44,6 +44,13 @@ public static partial class TestData
         [AttributeUsage(AttributeTargets.GenericParameter)]
         public sealed class TypedIdentificationAttribute<TTargetRegistry> : Attribute { }
 
+        [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+        public sealed class AliasSuffixAttribute<TTargetRegistry> : Attribute
+        {
+            public AliasSuffixAttribute(string suffix) => Suffix = suffix;
+            public string Suffix { get; }
+        }
+
         public interface IRegistryBase { void Unregister(Identification id); }
         public interface IRegistry : IRegistryBase { }
 
