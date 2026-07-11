@@ -48,6 +48,15 @@
     <toolWindow id="Sparkitect Game State" anchor="bottom"
               factoryClass="sparkitect.riderplugin.debug.GameStateToolWindowFactory" />
 
+    <!--
+      The Sparkitect Explorer tool window (D-08). Always available (no availability condition) so its
+      empty states are reachable regardless of solution contents; the factory binds the Solution-scoped
+      ExplorerModel Ext (backend PSI walk), a sibling of the Game State window. Anchored left as a
+      browsable structure explorer distinct from the bottom-anchored runtime Game State inspector.
+    -->
+    <toolWindow id="Sparkitect Explorer" anchor="left"
+              factoryClass="sparkitect.riderplugin.explorer.ExplorerToolWindowFactory" />
+
     <rd.languageAssociation backendLanguage="YAML" frontendLanguage="SparkresYaml" />
     <backend.markup.adapterFactory language="SparkresYaml"
               implementationClass="com.jetbrains.rdclient.daemon.FrontendMarkupAdapterFactory" />
@@ -68,6 +77,12 @@
             class="sparkitect.riderplugin.actions.GoToRegistrationAction"
             text="Registration"
             description="Navigate from a generated identification to its registration site">
+      <add-to-group group-id="EditorPopupMenu.GoTo" anchor="first" />
+    </action>
+    <action id="GoToOrderTarget"
+            class="sparkitect.riderplugin.actions.GoToOrderTargetAction"
+            text="Order Target"
+            description="Navigate from an OrderAfter/OrderBefore argument to the authored method">
       <add-to-group group-id="EditorPopupMenu.GoTo" anchor="first" />
     </action>
   </actions>

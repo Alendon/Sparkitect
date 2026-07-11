@@ -71,6 +71,13 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
     // Guards the selector<->model echo so syncing the combo from the model does not re-fire selection.
     private var syncingSelection = false
 
+    // D-05: SF-row action reaching the authored method — the same destination D-04's caret jump lands on
+    // (RegistrationFactory.FromLeaf -> NavigableTarget, dispatched by RegistrationSite backend-side). Gated
+    // to STATELESS_FUNCTION rows in the popup handler, so it is hidden on module/frame/mod rows.
+    private val toAuthoredMethod = JMenuItem("Go to Authored Method").apply {
+        addActionListener { selectedNavId()?.let { navigate(it, NavigationTarget.RegistrationSite) } }
+    }
+
     init {
         val lifetimeDef = LifetimeDefinition()
         Disposer.register(toolWindow.disposable, Disposable { lifetimeDef.terminate() })
@@ -264,19 +271,24 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
             override fun invokePopup(comp: java.awt.Component, x: Int, y: Int) {
                 val path = tree.getClosestPathForLocation(x, y) ?: return
                 tree.selectionPath = path
-                if (selectedNavId() != null) contextMenu.show(comp, x, y)
+                if (selectedNavId() != null) {
+                    // D-05: the authored-method action is offered only on SF rows.
+                    toAuthoredMethod.isVisible = selectedRowKind() == RowKind.STATELESS_FUNCTION
+                    contextMenu.show(comp, x, y)
+                }
             }
         })
     }
 
     private fun buildContextMenu(): JPopupMenu {
-        // Registration-site navigation is intentionally not offered: declaration and registration are
-        // directly tied for every row kind, so one target suffices.
+        // Type-declaration navigation is offered for every nav row; the authored-method action (the D-04
+        // registration-site hop) is additionally offered on SF rows, gated in the popup handler.
         val menu = JPopupMenu()
         val toDeclaration = JMenuItem("Go to Type Declaration").apply {
             addActionListener { selectedNavId()?.let { navigate(it, NavigationTarget.TypeDeclaration) } }
         }
         menu.add(toDeclaration)
+        menu.add(toAuthoredMethod)
         return menu
     }
 
@@ -289,6 +301,11 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
     private fun selectedNavId(): IdName? {
         val node = tree.lastSelectedPathComponent as? DefaultMutableTreeNode ?: return null
         return (node.userObject as? Row)?.navId
+    }
+
+    private fun selectedRowKind(): RowKind? {
+        val node = tree.lastSelectedPathComponent as? DefaultMutableTreeNode ?: return null
+        return (node.userObject as? Row)?.kind
     }
 
     private fun showMessage(text: String) {

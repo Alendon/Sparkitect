@@ -28,6 +28,7 @@
   -->
   <ItemGroup Condition="Exists('$(SparkitectDebugGeneratedDir)')">
     <Compile Include="$(SparkitectDebugGeneratedDir)\DebugToolWindowModel.Generated.cs" />
+    <Compile Include="$(SparkitectDebugGeneratedDir)\ExplorerModel.Generated.cs" />
   </ItemGroup>
 
   <ItemGroup>

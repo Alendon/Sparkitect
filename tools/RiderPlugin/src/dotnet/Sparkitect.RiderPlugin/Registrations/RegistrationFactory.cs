@@ -3,6 +3,7 @@ using JetBrains.ReSharper.Psi;
 using JetBrains.ReSharper.Psi.CSharp.Tree;
 using JetBrains.ReSharper.Psi.Tree;
 using JetBrains.ReSharper.Psi.Util;
+using JetBrains.Util;
 using Sparkitect.RiderPlugin.References;
 
 namespace Sparkitect.RiderPlugin.Registrations;
@@ -16,6 +17,9 @@ namespace Sparkitect.RiderPlugin.Registrations;
 /// </summary>
 public static class RegistrationFactory
 {
+    private static readonly ILogger Logger =
+        JetBrains.Util.Logging.Logger.GetLogger(typeof(RegistrationFactory));
+
     /// <summary>
     /// External-function registries are <c>External = true</c> and register methods rather than types;
     /// their leaves carry an optional Type(Member) payload. Held as the one explicit category set so the
@@ -93,7 +97,16 @@ public static class RegistrationFactory
 
         var literal = FindRegistrationLiteral(owner.Type, key.Value);
         if (literal == null)
+        {
+            // Fail-loud (D-07b): a C# owner is present but no matching id-string literal was found on it — the
+            // symptom of an unresolvable cross-registry alias leaf. Distinct from the legitimate "no C# owner"
+            // return above (a resource-owned leaf navigated via RegisteredFromReader). Return contract is
+            // unchanged (still null); the failure is merely made diagnosable. No alias representation encoded.
+            Logger.Warn(
+                $"FromLeaf: owner type '{owner.Type.GetClrName().FullName}' present but no registration literal "
+                + $"matched key ({key.Value.IdsStructClrName}.{key.Value.MemberName}); leaf navigation unresolved.");
             return null;
+        }
 
         var category = OwnerCategory(literal);
         return category == null ? null : Create(category, literal, key.Value);

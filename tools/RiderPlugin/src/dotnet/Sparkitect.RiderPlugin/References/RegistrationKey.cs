@@ -1,8 +1,10 @@
+using System;
 using System.Linq;
 using System.Text;
 using JetBrains.Metadata.Reader.Impl;
 using JetBrains.ReSharper.Psi;
 using JetBrains.ReSharper.Psi.Util;
+using JetBrains.Util;
 
 namespace Sparkitect.RiderPlugin.References;
 
@@ -23,6 +25,9 @@ public readonly struct RegistrationKey
     private const string IdExtensionsNamespaceSuffix = ".CompilerGenerated.IdExtensions.";
     private const string IdsStructSuffix = "IDs";
     private const string RegistrationMarkerFullName = "Sparkitect.Modding.RegistrationMarkerAttribute";
+
+    private static readonly ILogger Logger =
+        JetBrains.Util.Logging.Logger.GetLogger(typeof(RegistrationKey));
 
     /// <summary>CLR name of the generated <c>{Mod}{Category}IDs</c> struct.</summary>
     public string IdsStructClrName { get; }
@@ -96,7 +101,22 @@ public readonly struct RegistrationKey
             new ClrTypeName(RegistrationMarkerFullName), AttributesSource.Self);
         foreach (var instance in instances)
         {
-            var value = instance.PositionParameter(0);
+            // Reading a positional attribute argument forces the SDK to convert the constant to the
+            // parameter type, which NREs in some build-261 PSI states (GetRuntimeFeatures returns null
+            // mid-walk). One quirky attribute must not abort the whole enumeration — log loud and let the
+            // caller fall back (e.g. ExplorerEnumeration's register-method category path). Not a swallow:
+            // the failure is surfaced, and returning null is this method's documented "no marker" outcome.
+            AttributeValue value;
+            try
+            {
+                value = instance.PositionParameter(0);
+            }
+            catch (Exception e)
+            {
+                Logger.Warn($"RegistrationKey.MarkerCategory: positional-argument read threw for '{attributeType.GetClrName().FullName}': {e.Message}");
+                continue;
+            }
+
             if (!value.IsBadValue && value.IsConstant && value.ConstantValue.IsString())
                 return value.ConstantValue.AsString();
         }
