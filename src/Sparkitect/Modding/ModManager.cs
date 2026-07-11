@@ -1,14 +1,18 @@
 ﻿using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Sparkitect.DI;
 using Semver;
 using Serilog;
+using Sparkitect.CompilerGenerated;
 using Sparkitect.GameState;
+using Sparkitect.Settings;
 using Sparkitect.Settings.Sources;
 using Sparkitect.Utils;
 using Sparkitect.Utils.DU;
+using Sparkitect.Utils.Ordering;
 
 namespace Sparkitect.Modding;
 
@@ -21,12 +25,26 @@ internal class ModManager : IModManager
     private readonly Dictionary<string, LoadedMod> _loadedMods = [];
     private readonly List<ModManifest> _discoveredArchives = [];
 
-    private readonly Dictionary<string, Assembly> _preLoadedAssemblies = [];
-
     private readonly Stack<LoadedModGroup> _loadedModGroups = new();
     public required IIdentificationManager IdentificationManager { private get; init; }
     public required IDIService ModDiService { private get; init; }
     public required IResourceManager ResourceManager { private get; init; }
+
+    /// <summary>
+    /// D-11/D-12 shared bounded-drain iteration cap. Microsoft's own canonical unloadability sample uses
+    /// 10 as an illustrative default ("in most cases, just one pass ... is required"); no hard justification
+    /// beyond that exists, this value is Claude's Discretion per CONTEXT.md.
+    /// </summary>
+    internal const int UnloadDrainIterationCap = 10;
+
+    /// <summary>
+    /// The most-recently-unloaded group's per-context <see cref="WeakReference"/>s, tagged with the mod ids
+    /// each context carried — REPLACED (never appended) on every <see cref="UnloadLastModGroup"/> call
+    /// (D-11/disposition 1: the GSM is a strict stack, one group in flight between pops, so only the
+    /// immediately-prior unload ever needs confirming, never an unbounded cross-group history). One entry
+    /// in PerGroup mode, one per mod in PerMod mode.
+    /// </summary>
+    private IReadOnlyList<CapturedUnload> _lastUnloadedContexts = [];
 
     private const string AddModDirsArgument = "add-mod-dirs";
 
@@ -43,17 +61,6 @@ internal class ModManager : IModManager
                 CliArgValue.Multi multi => multi.Values,
             }
             : [];
-    }
-
-    public ModManager()
-    {
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            var name = assembly.GetName().Name;
-            if (string.IsNullOrEmpty(name)) continue;
-
-            _preLoadedAssemblies[name] = assembly;
-        }
     }
 
     /// <summary>
@@ -268,6 +275,122 @@ internal class ModManager : IModManager
     }
 
     /// <summary>
+    /// Builds the D-07 resolve-safety set for a mod: its own primary assembly and <see cref="ModManifest.RequiredAssemblies"/>,
+    /// unioned with the transitive closure of its non-incompatible, non-optional dependency mods' own
+    /// primary assembly and <see cref="ModManifest.RequiredAssemblies"/>. A plain BFS over
+    /// <see cref="ModManifest.Relationships"/> against <see cref="_discoveredArchives"/> — this is
+    /// reachability, not ordering, so it deliberately does not reuse <c>OrderingGraphBuilder</c>. The
+    /// resulting set is observability-only (D-07): a resolve outside it warns and still resolves.
+    /// </summary>
+    private HashSet<string> BuildAllowedAssemblyNames(ModManifest manifest)
+    {
+        var allowed = new HashSet<string>(StringComparer.Ordinal);
+        var visited = new HashSet<string> { manifest.Id };
+        var queue = new Queue<ModManifest>();
+        queue.Enqueue(manifest);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+
+            allowed.Add(Path.GetFileNameWithoutExtension(current.ModAssembly));
+            foreach (var requiredAssembly in current.RequiredAssemblies)
+            {
+                allowed.Add(Path.GetFileNameWithoutExtension(requiredAssembly));
+            }
+
+            foreach (var relationship in current.Relationships)
+            {
+                if (relationship.IsIncompatible || relationship.IsOptional) continue;
+                if (!visited.Add(relationship.Id)) continue;
+
+                var dependencyManifest = _discoveredArchives.FirstOrDefault(m => m.Id == relationship.Id);
+                if (dependencyManifest is not null)
+                {
+                    queue.Enqueue(dependencyManifest);
+                }
+            }
+        }
+
+        return allowed;
+    }
+
+    /// <summary>
+    /// D-05 topo-sort: orders a group's mods by their required (non-optional, non-incompatible) dependency
+    /// edges, keyed on <see cref="ModManifest.Id"/>, via the shared <see cref="OrderingGraphBuilder{TNode}"/>
+    /// core (no hand-rolled sort) under the same lexicographic (ordinal) tiebreak as
+    /// <see cref="Sparkitect.DI.Ordering.EntrypointOrderingResolver"/>. A required dependency living outside
+    /// this group (already loaded in a parent group/layer) is registered as an <c>optional: true</c> edge
+    /// so it is silently dropped from the intra-group ordering rather than erroring — <see cref="ValidateModDependencies"/>
+    /// already enforced upstream that the dependency is actually satisfied somewhere in the stack. A cycle
+    /// throws (fail-loud, consistent with <see cref="ValidateModDependencies"/>) — this is explicitly
+    /// outside the never-throwing D-11/D-12/D-13 unload machinery.
+    /// </summary>
+    /// <param name="groupManifests">The manifests of the mods being loaded together in this group.</param>
+    /// <returns>The mod ids in dependency-respecting, deterministic load order.</returns>
+    /// <exception cref="InvalidOperationException">A dependency cycle was found among the group's mods.</exception>
+    internal static IReadOnlyList<string> BuildModLoadOrder(IReadOnlyList<ModManifest> groupManifests)
+    {
+        var graph = new OrderingGraphBuilder<string>();
+
+        foreach (var manifest in groupManifests)
+        {
+            graph.AddNode(manifest.Id);
+        }
+
+        foreach (var manifest in groupManifests)
+        {
+            foreach (var relationship in manifest.Relationships)
+            {
+                if (relationship.IsOptional || relationship.IsIncompatible) continue;
+
+                // Dependency (relationship.Id) must load before the dependent (manifest.Id).
+                graph.AddEdge(relationship.Id, manifest.Id, optional: true);
+            }
+        }
+
+        var result = graph.Sort(OrderingTiebreak<string>.Lexicographic(StringComparer.Ordinal));
+
+        if (result is Result<IReadOnlyList<string>, OrderingError<string>>.Ok ok)
+        {
+            return ok.Value;
+        }
+
+        var error = ((Result<IReadOnlyList<string>, OrderingError<string>>.Error)result).Value;
+        throw error switch
+        {
+            OrderingError<string>.Cycle cycle => new InvalidOperationException(
+                $"Mod dependency cycle detected while ordering the per-mod ALC chain. Participants: {string.Join(", ", cycle.Participants)}"),
+            OrderingError<string>.MissingRequiredDependency missing => new InvalidOperationException(
+                $"Per-mod ALC chain ordering failed: required dependency {missing.From} -> {missing.To} is missing."),
+        };
+    }
+
+    /// <summary>
+    /// D-02 fail-loud guard: asserts that the engine-layer assemblies a newly-created <see cref="SparkitectLoadContext"/>
+    /// resolves are the SAME instances the engine layer already holds — compared by <see cref="Assembly"/>
+    /// reference identity (<c>ReferenceEquals</c>), never by name string. Invoked immediately after
+    /// every <see cref="SparkitectLoadContext"/> creation. Throws, naming the offending assembly, on any
+    /// mismatch (unlike D-07/D-11/D-12/D-13, which only warn/error-log).
+    /// </summary>
+    private static void AssertEngineLayerIdentity(SparkitectLoadContext newContext)
+    {
+        ReadOnlySpan<Assembly> engineLayerAssemblies = [typeof(ModManager).Assembly];
+
+        foreach (var engineAssembly in engineLayerAssemblies)
+        {
+            var name = engineAssembly.GetName();
+            var resolved = newContext.LoadFromAssemblyName(name);
+
+            if (!ReferenceEquals(resolved, engineAssembly))
+            {
+                throw new InvalidOperationException(
+                    $"ALC identity violation: {name.Name} resolved to a different instance than the engine layer holds.");
+            }
+        }
+    }
+
+    /// <summary>
     /// Creates a virtual manifest for the Sparkitect core mod
     /// </summary>
     /// <returns>A ModManifest representing the Sparkitect core</returns>
@@ -289,11 +412,68 @@ internal class ModManager : IModManager
     }
 
     /// <summary>
+    /// D-11/D-12 shared bounded drain: <see cref="GC.Collect()"/> + <see cref="GC.WaitForPendingFinalizers"/>
+    /// up to <paramref name="maxIterations"/> times or until <paramref name="alcWeakRef"/> dies, whichever
+    /// comes first. Isolated in its own <see cref="MethodImplOptions.NoInlining"/> method so the caller's
+    /// stack frame cannot pin the context being drained (Pitfall 2) — the canonical Microsoft-documented
+    /// unloadability pattern. Never throws.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void DrainUnload(WeakReference alcWeakRef, int maxIterations)
+    {
+        for (var i = 0; alcWeakRef.IsAlive && i < maxIterations; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+    }
+
+    /// <summary>
+    /// Partitions a captured group's per-context liveness into cleanly-unloaded vs still-leaked mod ids,
+    /// attributed PER CONTEXT (never a group-wide roll-up) — an interior mod that leaks is named while its
+    /// clean siblings are reported clean (D-04/D-12/D-13 exact attribution). The virtual engine mod is
+    /// excluded from both lists: it lives in the default load context and can never (un)load, so naming
+    /// it in an unload verdict is always misattribution. Extracted so it is unit-testable against
+    /// synthetic captures without touching Serilog or real mod loading.
+    /// </summary>
+    internal static (IReadOnlyList<string> Clean, IReadOnlyList<string> Leaked) ClassifyUnloadOutcomes(
+        IReadOnlyList<CapturedUnload> captured)
+    {
+        var clean = new List<string>();
+        var leaked = new List<string>();
+
+        foreach (var entry in captured)
+        {
+            var target = entry.Context.IsAlive ? leaked : clean;
+            target.AddRange(entry.ModIds.Where(id => id != Constants.VirtualSparkitectModId));
+        }
+
+        return (clean, leaked);
+    }
+
+    /// <summary>
     /// Loads the specified mods by their file identifiers.
     /// </summary>
     /// <param name="identifiers">The mod file identifiers (ID + Version) to load.</param>
     public void LoadMods(params ReadOnlySpan<ModFileIdentifier> identifiers)
     {
+        // D-11: unconditional pre-load barrier — never a setting. Drains every context this ModManager
+        // most recently unloaded before proceeding with this load, so two versions of a mod DLL are never
+        // alive at once. In the common menu-dwell case (world-exit -> menu dwell -> world-enter) each drain
+        // degenerates to a near-free IsAlive check (the context already died naturally); this never blocks
+        // the load and never throws.
+        foreach (var lastUnloaded in _lastUnloadedContexts)
+        {
+            DrainUnload(lastUnloaded.Context, UnloadDrainIterationCap);
+
+            if (lastUnloaded.Context.IsAlive)
+            {
+                Log.Error(
+                    "Mod context for {ModIds} failed to unload before the next load after {Cap} GC passes",
+                    lastUnloaded.ModIds, UnloadDrainIterationCap);
+            }
+        }
+
         // Validation uses IDs only (dependencies are ID-based)
         var modIds = identifiers.ToArray().Select(x => x.Id).ToArray();
         var validationResult = ValidateModDependencies(modIds);
@@ -305,66 +485,93 @@ internal class ModManager : IModManager
         }
 
         _loadedModGroups.TryPeek(out var parentModGroup);
-        var loadContext = new SparkitectLoadContext(parentModGroup?.LoadContextHandle.Target as SparkitectLoadContext,
-            _preLoadedAssemblies);
+        var parentContext = parentModGroup?.LeafLoadContext;
 
-        var newLoadedMods = new List<LoadedMod>(identifiers.Length);
+        var groupManifests = identifiers.ToArray()
+            .Select(id => _discoveredArchives.FirstOrDefault(m => m.Id == id.Id && m.Version == id.Version))
+            .Where(m => m is not null)
+            .Select(m => m!)
+            .ToArray();
 
+        // Fail loud on a missing manifest up front, identically for both granularity modes. The per-mod
+        // branch below only walks groupManifests (BuildModLoadOrder can only order mods it has a manifest
+        // for), so without this pass a per-mod load would silently drop a not-found mod instead of
+        // throwing the way the per-group branch's identifier loop always has.
         foreach (var identifier in identifiers)
         {
-            // Find manifest by BOTH Id AND Version for unambiguous selection
-            var modManifest = _discoveredArchives.FirstOrDefault(m => m.Id == identifier.Id && m.Version == identifier.Version);
-            IdentificationManager.RegisterMod(identifier.Id);
-
-            if (modManifest is null)
+            if (groupManifests.All(m => m.Id != identifier.Id || m.Version != identifier.Version))
             {
+                IdentificationManager.RegisterMod(identifier.Id);
                 //TODO result based error handling
                 throw new InvalidOperationException($"Mod {identifier} not found");
             }
+        }
 
-            // Check if it is a virtual mod (e.g. Sparkitect core)
-            if (modManifest.ModPath is null)
+        // EarlySettings, not the stack accessor: the first group load runs before the sparkitect
+        // registrations exist, and the cached read keeps granularity constant across every group.
+        var granularity = EarlySettings.Read("mod_alc_granularity", EngineSettingDeclarations.ModAlcGranularity);
+        var newLoadedMods = new List<LoadedMod>(identifiers.Length);
+        var contextHandles = new List<ModContextHandle>();
+
+        if (granularity == AlcGranularity.PerMod)
+        {
+            // D-05: one collectible context per mod, chained in dependency-topo order — each mod parents
+            // to the PREVIOUS mod's context (the first parents to the prior group's leaf context / engine
+            // layer). Resolution behavior stays identical to PerGroup; only inspection/attribution
+            // granularity changes.
+            var loadOrder = BuildModLoadOrder(groupManifests);
+            var manifestsById = groupManifests.ToDictionary(m => m.Id);
+            var identifiersById = identifiers.ToArray().ToDictionary(i => i.Id);
+
+            var previousContext = parentContext;
+
+            foreach (var modId in loadOrder)
             {
-                if (!_preLoadedAssemblies.TryGetValue(modManifest.ModAssembly, out var preLoadedAssembly))
-                {
-                    Log.Warning("Virtual mod {ModId} assembly {Assembly} not found", identifier.Id, modManifest.ModAssembly);
-                    continue;
-                }
+                var modManifest = manifestsById[modId];
+                var identifier = identifiersById[modId];
 
-                newLoadedMods.Add(new LoadedMod
+                var allowedAssemblyNames = BuildAllowedAssemblyNames(modManifest);
+                var modContext = new SparkitectLoadContext(previousContext, allowedAssemblyNames, modId);
+                AssertEngineLayerIdentity(modContext);
+
+                LoadMod(identifier, modContext, newLoadedMods);
+
+                // Each mod's context is independently rooted by its own strong GCHandle — interior
+                // contexts must be independently drainable for per-mod unload attribution (Plan 04),
+                // not merely reachable transitively through the leaf handle.
+                contextHandles.Add(new ModContextHandle
                 {
-                    Archive = null, // No archive for virtual mod
-                    Assembly = preLoadedAssembly,
-                    Manifest = modManifest
+                    Handle = GCHandle.Alloc(modContext, GCHandleType.Normal),
+                    Mods = [identifier]
                 });
 
-                Log.Information("Loaded virtual mod: {ModId}", identifier.Id);
-                continue;
+                previousContext = modContext;
             }
-
-            // Handle regular mods with archives
-            ZipArchive? archive = null;
-            try
+        }
+        else
+        {
+            // D-06 default (PerGroup): single context for the whole group, behaviorally unchanged from
+            // Plan 02 — allowed-set is the union of every mod's D-07 closure.
+            var allowedAssemblyNames = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var manifest in groupManifests)
             {
-                archive = ZipFile.OpenRead(modManifest.ModPath);
-
-                // Load required assemblies first
-                LoadModDependencies(modManifest, archive, identifier.Id, loadContext);
-
-                // Load the main mod assembly
-                var assembly = LoadModAssembly(archive, modManifest, identifier.Id, loadContext);
-                newLoadedMods.Add(new LoadedMod
-                {
-                    Archive = archive,
-                    Assembly = assembly,
-                    Manifest = modManifest
-                });
-                archive = null; // Transfer ownership to LoadedMod, prevent disposal
+                allowedAssemblyNames.UnionWith(BuildAllowedAssemblyNames(manifest));
             }
-            finally
+
+            var ownerLabel = string.Join(",", identifiers.ToArray().Select(i => i.Id));
+            var groupContext = new SparkitectLoadContext(parentContext, allowedAssemblyNames, ownerLabel);
+            AssertEngineLayerIdentity(groupContext);
+
+            foreach (var identifier in identifiers)
             {
-                archive?.Dispose(); // Only disposes if exception occurred (archive not transferred)
+                LoadMod(identifier, groupContext, newLoadedMods);
             }
+
+            contextHandles.Add(new ModContextHandle
+            {
+                Handle = GCHandle.Alloc(groupContext, GCHandleType.Normal),
+                Mods = identifiers.ToArray()
+            });
         }
 
         foreach (var newLoadedMod in newLoadedMods)
@@ -373,9 +580,9 @@ internal class ModManager : IModManager
             ResourceManager.OnModLoaded(newLoadedMod.Manifest.Id, newLoadedMod.Archive);
         }
 
-        var modGroup = new LoadedModGroup()
+        var modGroup = new LoadedModGroup
         {
-            LoadContextHandle = GCHandle.Alloc(loadContext, GCHandleType.Normal),
+            ContextHandles = contextHandles,
             ModIdentifiers = identifiers.ToArray()
         };
 
@@ -390,6 +597,64 @@ internal class ModManager : IModManager
         Log.Information("Loaded {ModCount} mods", _loadedMods.Count);
     }
 
+    /// <summary>
+    /// Loads a single mod's assembly (and its required dependency assemblies) into <paramref name="loadContext"/>,
+    /// appending the result to <paramref name="newLoadedMods"/>. Shared by both granularity branches of
+    /// <see cref="LoadMods"/> so per-group and per-mod modes resolve assemblies identically (D-05) — only
+    /// which context each mod loads into differs between the two callers.
+    /// </summary>
+    private void LoadMod(ModFileIdentifier identifier, SparkitectLoadContext loadContext, List<LoadedMod> newLoadedMods)
+    {
+        // Find manifest by BOTH Id AND Version for unambiguous selection
+        var modManifest = _discoveredArchives.FirstOrDefault(m => m.Id == identifier.Id && m.Version == identifier.Version);
+        IdentificationManager.RegisterMod(identifier.Id);
+
+        if (modManifest is null)
+        {
+            //TODO result based error handling
+            throw new InvalidOperationException($"Mod {identifier} not found");
+        }
+
+        // Check if it is a virtual mod (e.g. Sparkitect core). The virtual sparkitect mod's assembly IS
+        // the engine assembly — resolve it directly via engine-layer knowledge, no dict lookup (D-09).
+        if (modManifest.ModPath is null)
+        {
+            newLoadedMods.Add(new LoadedMod
+            {
+                Archive = null, // No archive for virtual mod
+                Assembly = typeof(ModManager).Assembly,
+                Manifest = modManifest
+            });
+
+            Log.Information("Loaded virtual mod: {ModId}", identifier.Id);
+            return;
+        }
+
+        // Handle regular mods with archives
+        ZipArchive? archive = null;
+        try
+        {
+            archive = ZipFile.OpenRead(modManifest.ModPath);
+
+            // Load required assemblies first
+            LoadModDependencies(modManifest, archive, identifier.Id, loadContext);
+
+            // Load the main mod assembly
+            var assembly = LoadModAssembly(archive, modManifest, identifier.Id, loadContext);
+            newLoadedMods.Add(new LoadedMod
+            {
+                Archive = archive,
+                Assembly = assembly,
+                Manifest = modManifest
+            });
+            archive = null; // Transfer ownership to LoadedMod, prevent disposal
+        }
+        finally
+        {
+            archive?.Dispose(); // Only disposes if exception occurred (archive not transferred)
+        }
+    }
+
     public IReadOnlyList<ModFileIdentifier> UnloadLastModGroup()
     {
         if (_loadedModGroups.Count == 0)
@@ -398,8 +663,62 @@ internal class ModManager : IModManager
             return Array.Empty<ModFileIdentifier>();
         }
 
+        var (identifiers, captured) = ReleaseLastModGroup();
+
+        // Setting-gated (default ON) forced-wait drain, once per distinct context; logging of initiation
+        // + outcome is unconditional — only the wait itself is gated. EarlySettings, not the stack
+        // accessor: the root group's unload runs after its own registrations are torn down.
+        if (EarlySettings.Read("unload_wait_on_shutdown", EngineSettingDeclarations.UnloadWaitOnShutdown))
+        {
+            foreach (var entry in captured)
+            {
+                DrainUnload(entry.Context, UnloadDrainIterationCap);
+            }
+        }
+
+        var (clean, leaked) = ClassifyUnloadOutcomes(captured);
+
+        if (leaked.Count > 0)
+        {
+            // D-13: never throw on exhaustion — a leak is observability, not a fatal condition.
+            Log.Error("Mod(s) failed to unload after {Cap} GC passes: {ModIds}", UnloadDrainIterationCap, leaked);
+
+            if (EarlySettings.Read("heap_dump_on_leak", EngineSettingDeclarations.HeapDumpOnLeak))
+            {
+                LeakHeapDump.Write(leaked, UnloadDrainIterationCap);
+            }
+        }
+
+        if (clean.Count > 0)
+        {
+            Log.Information("Mod(s) unloaded cleanly: {ModIds}", clean);
+        }
+
+        // D-11: feed the next LoadMods barrier with this group's full per-context capture, REPLACING
+        // (never appending to) the prior unload's list.
+        _lastUnloadedContexts = captured;
+
+        Log.Information("Unloaded {ModCount} mods from group", identifiers.Length);
+        return identifiers;
+    }
+
+    /// <summary>
+    /// Pops the last group and performs every strong-reference-touching step of its teardown: archive
+    /// disposal, DI unregistration, per-context WeakReference capture (Pitfall 1: BEFORE any
+    /// Unload()/Free()), and the Unload()/handle-free pass, leaf-first. Isolated in its own
+    /// <see cref="MethodImplOptions.NoInlining"/> method because debug codegen keeps every local —
+    /// including hidden pattern-match and cast temporaries — alive until method end: this frame must
+    /// have returned before the caller's drain can observe collection. Confirmed via gcroot on a live
+    /// leak dump, where the only true roots were this code's stack slots in the caller.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private (ModFileIdentifier[] Identifiers, List<CapturedUnload> Captured) ReleaseLastModGroup()
+    {
         var group = _loadedModGroups.Pop();
         var identifiers = group.ModIdentifiers;
+
+        Log.Information("Unloading {ModCount} mods from group: {ModIds}", identifiers.Length,
+            identifiers.Select(i => i.Id));
 
         foreach (var identifier in identifiers)
         {
@@ -411,18 +730,30 @@ internal class ModManager : IModManager
             }
         }
 
-        if (group.LoadContextHandle.Target is SparkitectLoadContext loadContext)
-        {
-            loadContext.Unload();
-        }
-        group.LoadContextHandle.Free();
-
-        // Notify ModDIService of unloaded mods (uses IDs)
+        // DI registrations hold mod-typed factories, so they must drop before the caller's drain — an
+        // unregister after the forced wait would guarantee the contexts stay rooted through it.
         var modIds = identifiers.Select(i => i.Id).ToArray();
         ModDiService.UnregisterMods(modIds);
 
-        Log.Information("Unloaded {ModCount} mods from group", identifiers.Length);
-        return identifiers;
+        var captured = new List<CapturedUnload>(group.ContextHandles.Count);
+        for (var i = group.ContextHandles.Count - 1; i >= 0; i--)
+        {
+            var contextHandle = group.ContextHandles[i];
+            if (contextHandle.Handle.Target is SparkitectLoadContext ctx)
+            {
+                captured.Add(new CapturedUnload(new WeakReference(ctx),
+                    contextHandle.Mods.Select(m => m.Id).ToArray()));
+            }
+        }
+
+        for (var i = group.ContextHandles.Count - 1; i >= 0; i--)
+        {
+            var contextHandle = group.ContextHandles[i];
+            (contextHandle.Handle.Target as SparkitectLoadContext)?.Unload();
+            contextHandle.Handle.Free();
+        }
+
+        return (identifiers, captured);
     }
 
     private static Assembly LoadModAssembly(ZipArchive archive, ModManifest modManifest, string modId,
@@ -486,10 +817,37 @@ internal class ModManager : IModManager
         }
     }
 
+    /// <summary>
+    /// One distinct mod-context handle: a strong <see cref="GCHandle"/> to a single
+    /// <see cref="SparkitectLoadContext"/> plus the mod id(s) that context loaded. <see cref="LoadedModGroup"/>
+    /// tracks one of these per distinct context — a single entry (all group mods) in PerGroup mode, one
+    /// entry per mod in PerMod mode — so unload can attribute liveness per mod (D-04/D-12/D-13).
+    /// </summary>
+    private class ModContextHandle
+    {
+        public required GCHandle Handle { get; init; }
+        public required ModFileIdentifier[] Mods { get; init; }
+    }
+
+    /// <summary>
+    /// One distinct context's D-12 capture: a <see cref="WeakReference"/> taken BEFORE that context's
+    /// <c>Unload()</c>/<c>GCHandle.Free()</c> ran (Pitfall 1), paired with the mod id(s) it carried. Feeds
+    /// both <see cref="ClassifyUnloadOutcomes"/> (unload-time leak report) and the next <see cref="LoadMods"/>
+    /// call's D-11 barrier (via <see cref="_lastUnloadedContexts"/>).
+    /// </summary>
+    internal readonly record struct CapturedUnload(WeakReference Context, IReadOnlyList<string> ModIds);
+
     private class LoadedModGroup
     {
-        public required GCHandle LoadContextHandle { get; init; }
+        public required IReadOnlyList<ModContextHandle> ContextHandles { get; init; }
         public required ModFileIdentifier[] ModIdentifiers { get; init; }
+
+        /// <summary>
+        /// The LEAF (last) context of this group — in PerGroup mode the sole context, in PerMod mode the
+        /// last mod's context in topo-chain order. The next <see cref="LoadMods"/> call's stack-parent
+        /// lookup (D-08) must parent to this, not to an arbitrary/interior context.
+        /// </summary>
+        public SparkitectLoadContext? LeafLoadContext => ContextHandles[^1].Handle.Target as SparkitectLoadContext;
     }
 
     private class LoadedMod

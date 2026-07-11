@@ -57,6 +57,13 @@ internal interface IRegistryLifecycleManager
     void ProcessModuleRegistriesForMods(Identification moduleId, IReadOnlyList<string> modIds, ICoreContainer container);
 
     /// <summary>
+    /// Reverses the registrations of the registries owned by <paramref name="moduleId"/> for a specific
+    /// mod set — the unload-side mirror of <see cref="ProcessModuleRegistriesForMods"/>. Must run while
+    /// the mods' assemblies are still loaded, before their contexts unload.
+    /// </summary>
+    void UnprocessModuleRegistriesForMods(Identification moduleId, IReadOnlyList<string> modIds, ICoreContainer container);
+
+    /// <summary>
     /// Root-entry bootstrap: adds and populates every currently-resolvable registry (CoreModule's four) for
     /// the root mods before the finalize pass, so states and modules are registered when it validates them.
     /// </summary>

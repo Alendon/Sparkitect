@@ -33,6 +33,10 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
         typeof(RegistryManager).GetMethod(nameof(ProcessRegistryForMods),
             BindingFlags.NonPublic | BindingFlags.Instance)!;
 
+    private static readonly MethodInfo ReverseRegistrationsForModsMethod =
+        typeof(RegistryManager).GetMethod(nameof(ReverseRegistrationsForMods),
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
+
     private GsmTransitionDirection CurrentDirection =>
         ((IGameStateTransitionSignal)GameStateManager).TransitionDirection;
 
@@ -108,6 +112,26 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
         }
     }
 
+    public void UnprocessModuleRegistriesForMods(Identification moduleId, IReadOnlyList<string> modIds,
+        ICoreContainer container)
+    {
+        UpdateCache(container);
+
+        // Snapshot ownership before any reversal: unregistering the module registry clears the generated
+        // Identification statics that ReadOwningModule reads. Then reverse in the opposite of resolve
+        // order — the module/state registries resolve first and carry the ids later entries depend on,
+        // so they must be the last to go down.
+        var owned = new List<Type>();
+        foreach (var (_, instance) in _registryFactory.ResolveAll())
+        {
+            var type = instance.GetType();
+            if (ReadOwningModule(type).Equals(moduleId)) owned.Add(type);
+        }
+
+        for (var i = owned.Count - 1; i >= 0; i--)
+            InvokeUnprocessForMods(owned[i], modIds);
+    }
+
     public void BootstrapRootRegistries(IReadOnlyList<string> modIds, ICoreContainer container)
     {
         // At root entry only CoreModule's registries resolve; their owning module is not registered yet, so
@@ -169,6 +193,18 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
         try
         {
             ProcessRegistryForModsMethod.MakeGenericMethod(registryType).Invoke(this, new object[] { modIds });
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException is not null)
+        {
+            throw tie.InnerException;
+        }
+    }
+
+    private void InvokeUnprocessForMods(Type registryType, IReadOnlyList<string> modIds)
+    {
+        try
+        {
+            ReverseRegistrationsForModsMethod.MakeGenericMethod(registryType).Invoke(this, new object[] { modIds });
         }
         catch (TargetInvocationException tie) when (tie.InnerException is not null)
         {
@@ -291,14 +327,31 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
             return;
         }
 
-        Log.Information("Unregistering {Count} mods for registry {RegistryIdentifier}", processedMods.Count, registryIdentifier);
+        ReverseRegistrationsForMods<TRegistry>(processedMods.ToArray());
+    }
+
+    private void ReverseRegistrationsForMods<TRegistry>(IReadOnlyList<string> modIds) where TRegistry : class, IRegistry
+    {
+        var registryIdentifier = TRegistry.Identifier;
+
+        if (!_processedModsByRegistry.TryGetValue(registryIdentifier, out var processedMods))
+        {
+            return;
+        }
+
+        var modsToUnregister = modIds.Where(processedMods.Contains).ToArray();
+        if (modsToUnregister.Length == 0)
+        {
+            return;
+        }
+
+        Log.Information("Unregistering {Count} mods for registry {RegistryIdentifier}", modsToUnregister.Length, registryIdentifier);
 
         _registryState.EnterTearingDown();
         try
         {
             var registry = CreateRegistryInstance<TRegistry>();
 
-            var modsToUnregister = processedMods.ToArray();
             foreach (var modId in modsToUnregister)
             {
                 ProcessSingleModUnregistration(registry, modId);

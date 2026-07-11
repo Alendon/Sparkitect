@@ -18,6 +18,11 @@ internal sealed class StatelessFunctionManager : IStatelessFunctionManager
         _wrapperTypes[id] = typeof(TStatelessFunction);
     }
 
+    public void RemoveFunction(Identification id)
+    {
+        _wrapperTypes.Remove(id);
+    }
+
     public IReadOnlyList<IStatelessFunction> InstantiateWrappers(
         IReadOnlyList<Identification> sortedIds,
         IResolutionScope scope)

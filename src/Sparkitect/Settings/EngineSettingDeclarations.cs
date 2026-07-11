@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using Serilog.Events;
+using Sparkitect.Modding;
 
 namespace Sparkitect.Settings;
 
@@ -58,4 +59,23 @@ public static class EngineSettingDeclarations
     [SettingRegistry.RegisterSetting("debug_channel")]
     [SettingAccessor("debug", "ChannelEnabled", "debug_channel")]
     public static SettingDefinition<bool> DebugChannel => new(false, CliOption: "debug-channel");
+
+    /// <summary>Mod ALC granularity: per-state-stack-group (default) or per-mod. Explicit source only.</summary>
+    [SettingRegistry.RegisterSetting("mod_alc_granularity")]
+    [SettingAccessor("modding", "AlcGranularity", "mod_alc_granularity")]
+    public static SettingDefinition<AlcGranularity> ModAlcGranularity =>
+        new(AlcGranularity.PerGroup, CliOption: "mod-alc-granularity");
+
+    /// <summary>Forced wait + per-mod leak reporting on mod-group unload/shutdown. Default on.</summary>
+    [SettingRegistry.RegisterSetting("unload_wait_on_shutdown")]
+    [SettingAccessor("modding", "UnloadWaitOnShutdown", "unload_wait_on_shutdown")]
+    public static SettingDefinition<bool> UnloadWaitOnShutdown => new(true, CliOption: "unload-wait-on-shutdown");
+
+    /// <summary>
+    /// Full-heap process dump (plus metadata sidecar) when a mod context survives the unload drain,
+    /// written under the log directory. Default off.
+    /// </summary>
+    [SettingRegistry.RegisterSetting("heap_dump_on_leak")]
+    [SettingAccessor("modding", "HeapDumpOnLeak", "heap_dump_on_leak")]
+    public static SettingDefinition<bool> HeapDumpOnLeak => new(false, CliOption: "heap-dump-on-leak");
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Semver;
 using Serilog;
 using Sparkitect.CompilerGenerated.IdExtensions;
@@ -76,6 +77,18 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     {
         Log.Information("Entering root state");
 
+        // All mod-touching locals (entry frame, selector instance, entrypoint container) must live in
+        // their own frame: this method stays on the stack for the whole run, and debug codegen keeps
+        // its locals alive to method end — straight through the shutdown unload drain.
+        EnterEntryState();
+
+        Log.Information("Entry state active, starting main loop");
+        StartMainLoop();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void EnterEntryState()
+    {
         // Select and load root mods using config file or fallback logic
         var rootMods = SelectRootMods();
         if (rootMods.All(x => x.Id != Constants.VirtualSparkitectModId))
@@ -129,9 +142,6 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
         // Execute entry sequence
         ExecuteEnterMethods(entryFrame.TransitionEnterMethods);
-
-        Log.Information("Entry state active, starting main loop");
-        StartMainLoop();
     }
 
     public void Request(Identification stateId)
@@ -345,7 +355,10 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
             // Read direct declarations off an ephemeral instance, then discard it (zero reflection).
             var instance = new TGameState();
             var parentId = instance.ParentId;
-            var modules = instance.DirectModules;
+            // Copy into an engine-owned array: the list instance a state returns is typically a
+            // compiler-synthesized collection-expression wrapper defined in the state's own assembly,
+            // and retaining it engine-side pins a collectible mod's load context.
+            var modules = instance.DirectModules.ToArray();
             // Pre-composition record: ModuleIds carries the direct declarations; ComposedSet is populated
             // by FinalizeRegistrations once the parent chain is composed.
             return new StateMetadata(identification, parentId, modules, new HashSet<Identification>(), typeof(TGameState));
@@ -354,6 +367,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
 
     public void RemoveStateDescriptor(Identification id)
     {
+        _stateDirectModules.Remove(id);
         if (_registeredStates.Remove(id))
         {
             Log.Debug("Removed state: {StateId}", id);
@@ -672,29 +686,69 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
         _stateStack.Push(frame);
     }
 
-    private ActiveStateFrame PopState()
+    private void PopState()
     {
         if (_stateStack.Count == 0)
         {
             throw new InvalidOperationException("Cannot pop from empty state stack");
         }
 
-        var frame = _stateStack.Pop();
+        var (stateId, hadAddedMods) = ReleaseTopFrame();
 
-        // Auto-remove the registries owned by this frame's modules (bookkeeping only).
-        LeaveFrameRegistries(frame);
-
-        // Unload mods if this frame added any
-        if (frame.AddedMods.Count > 0)
+        if (hadAddedMods)
         {
             var unloadedMods = ModManager.UnloadLastModGroup();
-            Log.Debug("Unloaded {ModCount} mods when popping state {StateId}", unloadedMods.Count, frame.StateId);
+            Log.Debug("Unloaded {ModCount} mods when popping state {StateId}", unloadedMods.Count, stateId);
+        }
+    }
+
+    /// <summary>
+    /// Pops and fully releases the top frame: registry bookkeeping removal, CoreModule per-mod
+    /// registration reversal (CoreModule never leaves the stack, so the exit-transition path skips its
+    /// registries; reversing must happen while the mod assemblies are still loaded), and container
+    /// disposal. Isolated in its own <see cref="MethodImplOptions.NoInlining"/> method: debug codegen
+    /// keeps every local and hidden temporary alive to method end, so any frame that touched the popped
+    /// frame object must have returned before the unload drain runs — confirmed by dump analysis, where
+    /// the pinning roots were this code's temporaries in the caller.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private (Identification StateId, bool HadAddedMods) ReleaseTopFrame()
+    {
+        var frame = _stateStack.Pop();
+
+        LeaveFrameRegistries(frame);
+
+        var stateId = frame.StateId;
+        var hadAddedMods = frame.AddedMods.Count > 0;
+
+        if (hadAddedMods)
+        {
+            RegistryLifecycle.UnprocessModuleRegistriesForMods(CoreModule.Identification, frame.AddedMods,
+                CurrentCoreContainer);
         }
 
-        // Dispose container
         frame.Container.Dispose();
+        return (stateId, hadAddedMods);
+    }
 
-        return frame;
+    /// <summary>
+    /// Executes the top frame's per-frame methods without leaking frame/list temporaries into the
+    /// caller's stack slots (see <see cref="ReleaseTopFrame"/> for the debug-codegen pinning rationale).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void ExecuteTopFramePerFrameMethods()
+    {
+        ExecuteMethods(_stateStack.Peek().PerFrameMethods);
+    }
+
+    /// <summary>
+    /// Executes the top frame's exit-transition methods without leaking frame/list temporaries into the
+    /// caller's stack slots (see <see cref="ReleaseTopFrame"/> for the debug-codegen pinning rationale).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void ExecuteTopFrameExitMethods()
+    {
+        ExecuteExitMethods(_stateStack.Peek().TransitionExitMethods);
     }
 
     private void TransitionToParent()
@@ -704,10 +758,9 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             throw new InvalidOperationException("Cannot transition to parent from empty stack");
         }
 
-        var childFrame = _stateStack.Peek();
-
-        // Execute child exit sequence
-        ExecuteExitMethods(childFrame.TransitionExitMethods);
+        // Execute child exit sequence. No frame local: a leaf-frame reference held across PopState
+        // would root the mod contexts through this stack frame during the unload drain.
+        ExecuteTopFrameExitMethods();
 
         // Pop child
         PopState();
@@ -818,8 +871,7 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             // Execute PerFrame methods from current leaf state
             if (_stateStack.Count > 0)
             {
-                var currentFrame = _stateStack.Peek();
-                ExecuteMethods(currentFrame.PerFrameMethods);
+                ExecuteTopFramePerFrameMethods();
             }
 
             // Check and execute pending transition after frame
@@ -837,11 +889,10 @@ private ICoreContainer BuildContainerForState(Identification stateId, ICoreConta
             TransitionToParent();
         }
 
-        // Exit and pop root state
+        // Exit and pop root state. No frame local, same drain-rooting concern as TransitionToParent.
         if (_stateStack.Count > 0)
         {
-            var rootFrame = _stateStack.Peek();
-            ExecuteExitMethods(rootFrame.TransitionExitMethods);
+            ExecuteTopFrameExitMethods();
             PopState();
         }
 

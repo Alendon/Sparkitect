@@ -38,4 +38,11 @@ public interface IStatelessFunctionManager
     /// <typeparam name="TStatelessFunction">The generated wrapper type implementing IStatelessFunction.</typeparam>
     /// <param name="id">The function's identification.</param>
     internal void AddFunction<TStatelessFunction>(Identification id) where TStatelessFunction : IStatelessFunction;
+
+    /// <summary>
+    /// Removes a previously registered stateless function. Must run when the owning registration is
+    /// reversed: a retained wrapper <see cref="Type"/> from an unloaded mod pins its whole load context.
+    /// </summary>
+    /// <param name="id">The function's identification.</param>
+    internal void RemoveFunction(Identification id);
 }

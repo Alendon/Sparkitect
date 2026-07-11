@@ -22,10 +22,13 @@ public abstract class StatelessFunctionRegistryBase : IRegistryBase
         StatelessFunctionManager.AddFunction<TStatelessFunction>(id);
     }
 
-    /// <summary>Removes a previously registered function by identification.</summary>
+    /// <summary>Removes a previously registered function by identification, mirroring the manager forward
+    /// in <see cref="Register{TStatelessFunction}"/> — the manager outlives the frame, so an entry left
+    /// behind there pins the function's load context.</summary>
     public void Unregister(Identification id)
     {
         _wrapperTypes.Remove(id);
+        StatelessFunctionManager.RemoveFunction(id);
     }
 
     internal bool TryGetWrapperType(Identification id, out Type wrapperType)
