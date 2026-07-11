@@ -14,8 +14,8 @@ public interface IPongRuntimeService
     Vector3 BackgroundColor { get; set; }
 
     void Initialize();
+    void WireInput();
     void CreateGraph();
-    void PollWindow();
 
     /// <summary>Drives one render-graph frame; acquire/submit/present are owned by the graph.</summary>
     void RunFrame();

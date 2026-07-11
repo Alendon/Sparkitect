@@ -102,6 +102,71 @@ public class EventManagerTests
         await Assert.That(bCount).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task Dispose_NonLastSubscriber_LaterSiblingsStillDeliveredOnPublish()
+    {
+        var manager = new EventManager();
+        var id = new Identification<int>(Identification.Create(1, 1, 9));
+        var secondCount = 0;
+        var thirdCount = 0;
+
+        var first = manager.Subscribe(id, _ => { });
+        manager.Subscribe(id, _ => secondCount++);
+        manager.Subscribe(id, _ => thirdCount++);
+
+        first.Dispose();
+
+        manager.Publish(id, 42);
+
+        await Assert.That(secondCount).IsEqualTo(1);
+        await Assert.That(thirdCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Dispose_LaterSubscribersAfterEarlierRemoval_RemainIndependentlyReleasable()
+    {
+        var manager = new EventManager();
+        var id = new Identification<int>(Identification.Create(1, 1, 10));
+        var firstCount = 0;
+        var secondCount = 0;
+        var thirdCount = 0;
+
+        var first = manager.Subscribe(id, _ => firstCount++);
+        var second = manager.Subscribe(id, _ => secondCount++);
+        var third = manager.Subscribe(id, _ => thirdCount++);
+
+        first.Dispose();
+        second.Dispose();
+
+        manager.Publish(id, 1);
+        await Assert.That(firstCount).IsEqualTo(0);
+        await Assert.That(secondCount).IsEqualTo(0);
+        await Assert.That(thirdCount).IsEqualTo(1);
+
+        third.Dispose();
+
+        manager.Publish(id, 2);
+        await Assert.That(thirdCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Dispose_AlreadyDisposedNonLastSubscriber_IsNoOpAndSiblingsUnaffected()
+    {
+        var manager = new EventManager();
+        var id = new Identification<int>(Identification.Create(1, 1, 11));
+        var secondCount = 0;
+
+        var first = manager.Subscribe(id, _ => { });
+        manager.Subscribe(id, _ => secondCount++);
+
+        first.Dispose();
+        first.Dispose();
+
+        manager.Publish(id, 42);
+
+        await Assert.That(secondCount).IsEqualTo(1);
+    }
+
     public record struct IntPayload(int Value);
 
     [Test]

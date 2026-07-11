@@ -30,15 +30,14 @@ internal sealed class MinimalSampleHost : IMinimalSampleHost
             _window);
     }
 
-    public void PollEvents() => _window?.PollEvents();
-
     public void RunFrame() => _renderGraph?.RunFrame();
 
     public void Shutdown()
     {
         _renderGraph?.Dispose();
         _renderGraph = null;
-        _window?.Dispose();
+        if (_window is not null)
+            WindowManager.DestroyWindow(_window);
         _window = null;
     }
 }

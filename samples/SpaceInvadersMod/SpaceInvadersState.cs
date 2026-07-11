@@ -1,6 +1,7 @@
 using SpaceInvadersMod.CompilerGenerated.IdExtensions;
 using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
+using Sparkitect.Input;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
@@ -18,12 +19,19 @@ public partial class SpaceInvadersState : TransitiveGameState, IHasIdentificatio
         StateModuleID.Sparkitect.Vulkan,
         StateModuleID.Sparkitect.RenderGraph,
         StateModuleID.Sparkitect.Windowing,
+        StateModuleID.Sparkitect.Input,
         StateModuleID.Sparkitect.Ecs
     ];
 
+    [TransitionFunction("si_wire_input")]
+    [OnCreateScheduling]
+    [OrderAfter<InputModule.ProcessActionRegistryUpFunc>]
+    [OrderAfter<SiInitFunc>]
+    static void WireInput(ISpaceInvadersRuntimeServiceStateFacade manager) => manager.WireInput();
+
     [PerFrameFunction("process_input")]
     [PerFrameScheduling]
-    [OrderAfter<SiPollWindowFunc>]
+    [OrderAfter<InputModule.InputProcessedFunc>]
     [OrderBefore<SimulateEcsWorldFunc>]
     static void ProcessInput(ISpaceInvadersRuntimeServiceStateFacade manager)
     {

@@ -2,6 +2,7 @@ using Sparkitect.GameState;
 using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Stateless;
+using Sparkitect.Windowing;
 
 namespace SpaceInvadersMod;
 
@@ -19,13 +20,9 @@ public partial class SpaceInvadersState
     [OrderAfter<RenderGraphModule.ProcessRenderGraphRegistriesEnterFunc>]
     static void CreateGraph(ISpaceInvadersRuntimeServiceStateFacade manager) => manager.CreateGraph();
 
-    [PerFrameFunction("si_poll_window")]
-    [PerFrameScheduling]
-    static void PollWindow(ISpaceInvadersRuntimeService runtime) => runtime.PollWindow();
-
     [PerFrameFunction("si_check_window_closed")]
     [PerFrameScheduling]
-    [OrderAfter<SiPollWindowFunc>]
+    [OrderAfter<WindowingModule.PumpWindowsFunc>]
     static void CheckWindowClosed(ISpaceInvadersRuntimeService runtime, IGameStateManager gameStateManager)
     {
         if (!runtime.IsOpen)
@@ -47,5 +44,6 @@ public partial class SpaceInvadersState
     [OnDestroyScheduling]
     [OrderAfter<SiDestroyGraphFunc>]
     [OrderBefore<VulkanModule.DestroyDeviceFunc>]
+    [OrderBefore<WindowingModule.WindowsTeardownFunc>]
     static void Cleanup(ISpaceInvadersRuntimeServiceStateFacade manager) => manager.Cleanup();
 }

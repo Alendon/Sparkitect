@@ -1,6 +1,7 @@
 using Sparkitect.GameState;
 using Sparkitect.Graphics.Vulkan;
 using Sparkitect.Stateless;
+using Sparkitect.Windowing;
 
 namespace MinimalSampleMod;
 
@@ -13,13 +14,9 @@ public partial class SampleEntryState
     [OrderAfter<Sparkitect.Graphics.RenderGraph.RenderGraphModule.ProcessRenderGraphRegistriesEnterFunc>]
     public static void CreateRenderGraph(IMinimalSampleHost host) => host.Initialize();
 
-    [PerFrameFunction("poll_window")]
-    [PerFrameScheduling]
-    public static void PollWindow(IMinimalSampleHost host) => host.PollEvents();
-
     [PerFrameFunction("check_window_closed")]
     [PerFrameScheduling]
-    [OrderAfter<PollWindowFunc>]
+    [OrderAfter<WindowingModule.PumpWindowsFunc>]
     public static void CheckWindowClosed(IMinimalSampleHost host, IGameStateManager gameStateManager)
     {
         if (!host.IsOpen)
@@ -35,5 +32,6 @@ public partial class SampleEntryState
     [TransitionFunction("destroy_render_graph")]
     [OnDestroyScheduling]
     [OrderBefore<VulkanModule.BeginVulkanTeardownFunc>]
+    [OrderBefore<WindowingModule.WindowsTeardownFunc>]
     public static void DestroyRenderGraph(IMinimalSampleHost host) => host.Shutdown();
 }

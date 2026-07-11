@@ -6,8 +6,6 @@ public interface IMinimalSampleHost
 
     void Initialize();
 
-    void PollEvents();
-
     void RunFrame();
 
     void Shutdown();

@@ -4,9 +4,11 @@ using Sparkitect.CompilerGenerated.IdExtensions;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.Vulkan;
+using Sparkitect.Input;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Stateless;
+using Sparkitect.Windowing;
 
 namespace PongMod;
 
@@ -20,7 +22,8 @@ public partial class PongState : TransitiveGameState, IHasIdentification
         StateModuleID.PongMod.Pong,
         StateModuleID.Sparkitect.Vulkan,
         StateModuleID.Sparkitect.RenderGraph,
-        StateModuleID.Sparkitect.Windowing
+        StateModuleID.Sparkitect.Windowing,
+        StateModuleID.Sparkitect.Input
     ];
 
     [TransitionFunction("pong_init")]
@@ -34,6 +37,12 @@ public partial class PongState : TransitiveGameState, IHasIdentification
         Log.Information("Pong state initialized");
     }
 
+    [TransitionFunction("pong_wire_input")]
+    [OnCreateScheduling]
+    [OrderAfter<InputModule.ProcessActionRegistryUpFunc>]
+    [OrderAfter<PongInitFunc>]
+    public static void WireInput(IPongRuntimeService pongRuntime) => pongRuntime.WireInput();
+
     [TransitionFunction("pong_create_graph")]
     [OnFrameEnterScheduling]
     [OrderAfter<RenderGraphModule.ProcessRenderGraphRegistriesEnterFunc>]
@@ -41,15 +50,12 @@ public partial class PongState : TransitiveGameState, IHasIdentification
 
     [PerFrameFunction("pong_frame")]
     [PerFrameScheduling]
+    [OrderAfter<InputModule.InputProcessedFunc>]
     public static void Frame(IPongRuntimeService pongRuntime) => pongRuntime.Tick();
-
-    [PerFrameFunction("pong_poll_window")]
-    [PerFrameScheduling]
-    public static void PollWindow(IPongRuntimeService pongRuntime) => pongRuntime.PollWindow();
 
     [PerFrameFunction("pong_check_window_closed")]
     [PerFrameScheduling]
-    [OrderAfter<PongPollWindowFunc>]
+    [OrderAfter<WindowingModule.PumpWindowsFunc>]
     public static void CheckWindowClosed(IPongRuntimeService pongRuntime, IGameStateManager gameStateManager)
     {
         if (!pongRuntime.IsOpen)
@@ -71,6 +77,7 @@ public partial class PongState : TransitiveGameState, IHasIdentification
     [OnDestroyScheduling]
     [OrderAfter<PongDestroyGraphFunc>]
     [OrderBefore<VulkanModule.DestroyDeviceFunc>]
+    [OrderBefore<WindowingModule.WindowsTeardownFunc>]
     public static void Cleanup(IPongRuntimeService pongRuntime)
     {
         pongRuntime.Cleanup();

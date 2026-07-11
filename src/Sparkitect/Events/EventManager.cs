@@ -41,8 +41,12 @@ internal sealed class EventManager : IEventManager, IEventManagerRegistryFacade
         var bareId = (Identification)id;
         if (!_subscribers.TryGetValue(bareId, out var list)) return;
 
-        foreach (var (_, handler) in list.ToArray())
-            handler(payload);
+        // Allocation-free hot path (input publishes per action, per frame): tombstoning keeps
+        // slot indices stable under unsubscribe-during-publish, and capturing the count excludes
+        // handlers subscribed during this publish.
+        var count = list.Count;
+        for (var i = 0; i < count; i++)
+            list[i].handler?.Invoke(payload);
     }
 
     internal void ReleaseSubscription(SubscriptionToken token)
@@ -50,6 +54,6 @@ internal sealed class EventManager : IEventManager, IEventManagerRegistryFacade
         if (!_subscribers.TryGetValue(token.EventId, out var list)) return;
         if (token.SlotIndex < 0 || token.SlotIndex >= list.Count) return;
         if (list[token.SlotIndex].generation == token.Generation)
-            list.RemoveAt(token.SlotIndex);
+            list[token.SlotIndex] = (-1, null!); // tombstone: keeps later slot indices stable
     }
 }

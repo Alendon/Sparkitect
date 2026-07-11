@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Numerics;
 using PongMod.CompilerGenerated.IdExtensions;
 using Serilog;
-using Silk.NET.Input;
 using Sparkitect.GameState;
 using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.RenderGraph.Runtime;
+using Sparkitect.Input;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Windowing;
@@ -23,8 +23,14 @@ internal class PongRuntimeService : IPongRuntimeService
     private ISparkitWindow? _window;
     private RenderGraph? _renderGraph;
 
+    private IPushBinding? _leftPaddlePush;
+    private IPushBinding? _rightPaddlePush;
+    private float _leftIntent;
+    private float _rightIntent;
+
     public required IWindowManager WindowManager { private get; init; }
     public required IRenderGraphManager RenderGraphManager { private get; init; }
+    public required IInputActions InputActions { private get; init; }
 
     public ref PongGameData GameData => ref _gameData;
     public float DeltaTime { get; private set; }
@@ -64,7 +70,11 @@ internal class PongRuntimeService : IPongRuntimeService
             _window);
     }
 
-    public void PollWindow() => _window?.PollEvents();
+    public void WireInput()
+    {
+        _leftPaddlePush = ActionID.PongMod.LeftPaddle.Push(InputActions, v => _leftIntent = v);
+        _rightPaddlePush = ActionID.PongMod.RightPaddle.Push(InputActions, v => _rightIntent = v);
+    }
 
     public void RunFrame() => _renderGraph?.RunFrame();
 
@@ -85,7 +95,14 @@ internal class PongRuntimeService : IPongRuntimeService
 
     public void Cleanup()
     {
-        _window?.Dispose();
+        _leftPaddlePush?.Dispose();
+        _leftPaddlePush = null;
+        _rightPaddlePush?.Dispose();
+        _rightPaddlePush = null;
+
+
+        if (_window is not null)
+            WindowManager.DestroyWindow(_window);
         _window = null;
 
         Log.Debug("Pong runtime cleanup complete");
@@ -93,21 +110,11 @@ internal class PongRuntimeService : IPongRuntimeService
 
     private void UpdateSimulation()
     {
-        if (_window != null)
-        {
-            var keyboard = _window.Keyboard;
-            var paddleSpeed = 0.8f;
-
-            if (keyboard.IsKeyDown(Key.W))
-                MoveLeftPaddle(-paddleSpeed * DeltaTime);
-            if (keyboard.IsKeyDown(Key.S))
-                MoveLeftPaddle(paddleSpeed * DeltaTime);
-
-            if (keyboard.IsKeyDown(Key.Up))
-                MoveRightPaddle(-paddleSpeed * DeltaTime);
-            if (keyboard.IsKeyDown(Key.Down))
-                MoveRightPaddle(paddleSpeed * DeltaTime);
-        }
+        const float paddleSpeed = 0.8f;
+        MoveLeftPaddle(_leftIntent * paddleSpeed * DeltaTime);
+        _leftIntent = 0f;
+        MoveRightPaddle(_rightIntent * paddleSpeed * DeltaTime);
+        _rightIntent = 0f;
 
         var deltaTime = DeltaTime;
         _gameData.BallPosition += _gameData.BallVelocity * deltaTime;

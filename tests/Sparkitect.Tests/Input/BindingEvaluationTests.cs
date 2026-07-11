@@ -118,7 +118,7 @@ public class BindingEvaluationTests
     [Test]
     public async Task KeyboardKey_Pressed_ComposesValueTrue()
     {
-        var instances = new[] { new KeyboardKey(new KeyboardKeySetting(Key.Space), isPressed: true) };
+        var instances = new[] { new KeyboardKey(Key.Space, isPressed: true) };
         var results = new ActionResult<bool>[1];
 
         KeyboardKey.Evaluate(instances, results);
@@ -130,7 +130,7 @@ public class BindingEvaluationTests
     [Test]
     public async Task KeyboardKey_Unpressed_ComposesNoValue_NeverValueFalse()
     {
-        var instances = new[] { new KeyboardKey(new KeyboardKeySetting(Key.Space), isPressed: false) };
+        var instances = new[] { new KeyboardKey(Key.Space, isPressed: false) };
         var results = new ActionResult<bool>[1];
 
         KeyboardKey.Evaluate(instances, results);
@@ -143,7 +143,7 @@ public class BindingEvaluationTests
     {
         var instances = new[]
         {
-            new KeyboardAxis(new KeyboardAxisSetting(Key.A, Key.D), negativePressed: false, positivePressed: true)
+            new KeyboardAxis(new InputAxis<Key>(Key.A, Key.D), negativePressed: false, positivePressed: true)
         };
         var results = new ActionResult<float>[1];
 
@@ -158,7 +158,7 @@ public class BindingEvaluationTests
     {
         var instances = new[]
         {
-            new KeyboardAxis(new KeyboardAxisSetting(Key.A, Key.D), negativePressed: true, positivePressed: false)
+            new KeyboardAxis(new InputAxis<Key>(Key.A, Key.D), negativePressed: true, positivePressed: false)
         };
         var results = new ActionResult<float>[1];
 
@@ -173,7 +173,7 @@ public class BindingEvaluationTests
     {
         var instances = new[]
         {
-            new KeyboardAxis(new KeyboardAxisSetting(Key.A, Key.D), negativePressed: false, positivePressed: false)
+            new KeyboardAxis(new InputAxis<Key>(Key.A, Key.D), negativePressed: false, positivePressed: false)
         };
         var results = new ActionResult<float>[1];
 
@@ -182,7 +182,7 @@ public class BindingEvaluationTests
         await Assert.That(results[0].HasValue).IsFalse();
     }
 
-    private static readonly KeyboardVector2Setting WasdSetting =
+    private static readonly InputVector2<Key> WasdSetting =
         new(Up: Key.W, Down: Key.S, Left: Key.A, Right: Key.D);
 
     [Test]
@@ -233,13 +233,13 @@ public class BindingEvaluationTests
     }
 
     [Test]
-    public async Task KeyboardVector2Setting_UsableAsCompositeSettingDefinition_RoundTripsInMemory()
+    public async Task InputVector2Setting_UsableAsCompositeSettingDefinition_RoundTripsInMemory()
     {
-        // R-6: the first composite value-type setting in the codebase — proves a struct-of-4-keys
-        // is usable as SettingDefinition<TComposite>'s value, enums stored directly (no string
-        // encoding), and round-trips through the Default property untouched.
+        // Proves a struct-of-4-keys is usable as SettingDefinition<TComposite>'s value, enums
+        // stored directly (no string encoding), and round-trips through the Default property
+        // untouched.
         var composite = WasdSetting;
-        var definition = new SettingDefinition<KeyboardVector2Setting>(composite);
+        var definition = new SettingDefinition<InputVector2<Key>>(composite);
 
         await Assert.That(definition.Default).IsEqualTo(composite);
         await Assert.That(definition.Default.Up).IsEqualTo(Key.W);

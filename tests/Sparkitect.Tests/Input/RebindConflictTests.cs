@@ -7,63 +7,75 @@ using Sparkitect.Settings;
 using Sparkitect.Tests.Settings;
 using Sparkitect.Utils.DU;
 using Sparkitect.WindowInput;
+using Sparkitect.WindowInput.Bindings;
 
 namespace Sparkitect.Tests.Input;
 
 /// <summary>
-/// Covers INPT-05's headless rebind model (D-21/D-22/D-23): the AddBinding/RemoveBinding/Rebind
-/// verbs round-tripping through Settings, the atomic composite-value-type rebind proof (R-6), the
-/// informational (non-vetoing) conflict reverse-lookup query, and the oscillation-safe rebind-dirty
-/// subscription (Pitfall 1).
+/// Covers the Settings-backed rebind model: an action's registered default binding round-tripping
+/// through Settings via the Rebind verb, the atomic composite-value-type rebind proof, the
+/// informational (non-vetoing) conflict reverse-lookup query, and the oscillation-safe
+/// rebind-dirty subscription.
 /// </summary>
 public class RebindConflictTests
 {
     private static readonly Identification UserSourceId = Identification.Create(710, 9, 1);
 
-    private static (SettingsManager Settings, EventManager Events, InputManager Manager) NewManager()
+    private sealed class StubKeyProvider : IInputSourceProvider<Key, bool>
     {
-        var settingsManager = new SettingsManager();
-        settingsManager.RegisterSource(UserSourceId, new StubSource("user", canWrite: true));
-        var eventManager = new EventManager();
-        var manager = new InputManager { EventManager = eventManager, SettingsManager = settingsManager };
-        return (settingsManager, eventManager, manager);
+        internal Key PressedKey { get; set; } = Key.Unknown;
+
+        public void Sample(ReadOnlySpan<Key> values, Span<bool> results)
+        {
+            for (var i = 0; i < values.Length; i++) results[i] = values[i] == PressedKey;
+        }
+    }
+
+    private static (SettingsManager Settings, WindowInputActions Actions, ActionRegistry Registry, StubKeyProvider Provider)
+        NewRuntime()
+    {
+        var settings = new SettingsManager();
+        settings.RegisterSource(UserSourceId, new StubSource("user", canWrite: true));
+        var events = new EventManager();
+        var actions = new WindowInputActions { SettingsManager = settings, EventManager = events };
+        var registry = new ActionRegistry(settings, events, actions);
+        var provider = new StubKeyProvider();
+        actions.RegisterSource<Key, bool>(provider);
+        return (settings, actions, registry, provider);
     }
 
     [Test]
-    public async Task AddBinding_Rebind_RemoveBinding_RoundTripThroughSettings()
+    public async Task RegisterAction_Rebind_Unregister_RoundTripThroughSettings()
     {
-        var (settings, _, manager) = NewManager();
-        var actionId = new Identification<bool>(Identification.Create(710, 1, 1));
-        var settingId = new Identification<KeyboardKeySetting>(Identification.Create(710, 2, 1));
+        var (settings, actions, registry, _) = NewRuntime();
+        var bareId = Identification.Create(710, 1, 1);
+        registry.RegisterAction<bool, Key>(bareId, new ActionDescription<bool, Key>(Key.Space));
+        var settingId = new Identification<Key>(bareId);
 
-        var handle = manager.AddBinding(actionId, settingId, new KeyboardKeySetting(Key.Space),
-            s => new KeyboardKey(s, isPressed: true));
+        await Assert.That(settings.GetValue(settingId)).IsEqualTo(Key.Space);
 
-        await Assert.That(settings.GetValue(settingId).Key).IsEqualTo(Key.Space);
-
-        var rebindResult = manager.Rebind(handle, new KeyboardKeySetting(Key.W));
+        var rebindResult = actions.Rebind(settingId, Key.W);
         await Assert.That(rebindResult is Result<SetError>.Ok).IsTrue();
-        await Assert.That(settings.GetValue(settingId).Key).IsEqualTo(Key.W);
+        await Assert.That(settings.GetValue(settingId)).IsEqualTo(Key.W);
 
-        manager.RemoveBinding(handle);
+        registry.Unregister(bareId);
         await Assert.That(settings.GetDeclaration(settingId)).IsNull();
     }
 
     [Test]
     public async Task CompositeVector2Setting_RebindsAtomically_ReadsBack()
     {
-        // R-6: the codebase's first composite value-type setting rebinds in ONE atomic write, never
-        // partial-field writes -- proven here at the rebind-verb layer (Plan 09 proved the settings
-        // declaration itself is possible; this proves the Rebind verb round-trips it).
-        var (settings, _, manager) = NewManager();
-        var actionId = new Identification<Vector2>(Identification.Create(710, 1, 2));
-        var settingId = new Identification<KeyboardVector2Setting>(Identification.Create(710, 2, 2));
+        // A composite value-type default binding rebinds in ONE atomic write, never
+        // partial-field writes -- proven here at the Rebind-verb layer.
+        var (settings, actions, registry, _) = NewRuntime();
+        var bareId = Identification.Create(710, 1, 2);
+        var initial = new InputVector2<Key>(Key.W, Key.S, Key.A, Key.D);
+        registry.RegisterAction<Vector2, InputVector2<Key>>(
+            bareId, new ActionDescription<Vector2, InputVector2<Key>>(initial));
+        var settingId = new Identification<InputVector2<Key>>(bareId);
 
-        var initial = new KeyboardVector2Setting(Key.W, Key.S, Key.A, Key.D);
-        var handle = manager.AddBinding(actionId, settingId, initial, s => new KeyboardVector2(s));
-
-        var rebound = new KeyboardVector2Setting(Key.Up, Key.Down, Key.Left, Key.Right);
-        var rebindResult = manager.Rebind(handle, rebound);
+        var rebound = new InputVector2<Key>(Key.Up, Key.Down, Key.Left, Key.Right);
+        var rebindResult = actions.Rebind(settingId, rebound);
 
         await Assert.That(rebindResult is Result<SetError>.Ok).IsTrue();
         await Assert.That(settings.GetValue(settingId)).IsEqualTo(rebound);
@@ -72,102 +84,101 @@ public class RebindConflictTests
     [Test]
     public async Task ConflictQuery_ReturnsReverseLookup_AndRebindStillSucceeds_NoVeto()
     {
-        // D-23: the reverse-lookup is informational only -- it never blocks/vetoes a rebind, even
-        // when it reports a shared key across two different actions (first-match ordering already
+        // The reverse-lookup is informational only -- it never blocks/vetoes a rebind, even when
+        // it reports a shared key across two different actions (first-match ordering already
         // resolves in-action collisions; cross-action sharing is legitimate game policy).
-        var (settings, _, manager) = NewManager();
-        var actionA = new Identification<bool>(Identification.Create(710, 1, 3));
-        var actionB = new Identification<bool>(Identification.Create(710, 1, 4));
-        var settingA = new Identification<KeyboardKeySetting>(Identification.Create(710, 2, 3));
-        var settingB = new Identification<KeyboardKeySetting>(Identification.Create(710, 2, 4));
+        var (settings, actions, registry, _) = NewRuntime();
+        var actionA = Identification.Create(710, 1, 3);
+        var actionB = Identification.Create(710, 1, 4);
+        registry.RegisterAction<bool, Key>(actionA, new ActionDescription<bool, Key>(Key.Space));
+        registry.RegisterAction<bool, Key>(actionB, new ActionDescription<bool, Key>(Key.Space));
+        var settingA = new Identification<Key>(actionA);
 
-        var handleA = manager.AddBinding(actionA, settingA, new KeyboardKeySetting(Key.Space), s => new KeyboardKey(s));
-        manager.AddBinding(actionB, settingB, new KeyboardKeySetting(Key.Space), s => new KeyboardKey(s));
-
-        var sharingSpace = manager.FindBindingsReferencing<KeyboardKeySetting>(s => s.Key == Key.Space);
+        var sharingSpace = actions.FindBindingsReferencing<Key>(key => key == Key.Space);
         await Assert.That(sharingSpace.Count).IsEqualTo(2);
-        await Assert.That(sharingSpace.Contains((Identification)settingA)).IsTrue();
-        await Assert.That(sharingSpace.Contains((Identification)settingB)).IsTrue();
+        await Assert.That(sharingSpace.Contains(actionA)).IsTrue();
+        await Assert.That(sharingSpace.Contains(actionB)).IsTrue();
 
-        var onActionA = manager.FindBindingsOnActionReferencing<KeyboardKeySetting>(actionA, s => s.Key == Key.Space);
+        var onActionA = actions.FindBindingsOnActionReferencing<Key>(actionA, key => key == Key.Space);
         await Assert.That(onActionA.Count).IsEqualTo(1);
-        await Assert.That(onActionA[0]).IsEqualTo((Identification)settingA);
+        await Assert.That(onActionA[0]).IsEqualTo(actionA);
 
-        // Rebinding the OTHER shared-key binding still succeeds -- no veto from the conflict.
-        var rebindResult = manager.Rebind(handleA, new KeyboardKeySetting(Key.ShiftLeft));
+        // Rebinding one of the shared-key bindings still succeeds -- no veto from the conflict.
+        var rebindResult = actions.Rebind(settingA, Key.ShiftLeft);
         await Assert.That(rebindResult is Result<SetError>.Ok).IsTrue();
-        await Assert.That(settings.GetValue(settingA).Key).IsEqualTo(Key.ShiftLeft);
+        await Assert.That(settings.GetValue(settingA)).IsEqualTo(Key.ShiftLeft);
 
         // The reverse-lookup for Key.Space now reflects only the un-rebound binding.
-        var stillSharingSpace = manager.FindBindingsReferencing<KeyboardKeySetting>(s => s.Key == Key.Space);
+        var stillSharingSpace = actions.FindBindingsReferencing<Key>(key => key == Key.Space);
         await Assert.That(stillSharingSpace.Count).IsEqualTo(1);
-        await Assert.That(stillSharingSpace[0]).IsEqualTo((Identification)settingB);
+        await Assert.That(stillSharingSpace[0]).IsEqualTo(actionB);
     }
 
     [Test]
-    public async Task Rebind_MarksDirty_NextSnapshotReflectsNewValue()
+    public async Task Rebind_MarksDirty_NextFrameReflectsNewValue()
     {
-        var (_, _, manager) = NewManager();
-        var actionId = new Identification<bool>(Identification.Create(710, 1, 5));
-        var settingId = new Identification<KeyboardKeySetting>(Identification.Create(710, 2, 5));
+        var (_, actions, registry, provider) = NewRuntime();
+        provider.PressedKey = Key.W;
 
-        // The factory's pressed-state is derived from the CURRENT setting's key -- a synthetic
-        // stand-in for a live device sample, letting the test observe whether dirty-processing
-        // actually re-invoked the factory with the NEW settings value (rather than merely writing
-        // through Settings without touching the live binding instance).
-        var handle = manager.AddBinding(actionId, settingId, new KeyboardKeySetting(Key.Space),
-            s => new KeyboardKey(s, isPressed: s.Key == Key.W));
-        manager.EstablishRebindDirtySubscriptions();
+        var bareId = Identification.Create(710, 1, 5);
+        registry.RegisterAction<bool, Key>(bareId, new ActionDescription<bool, Key>(Key.Space));
+        var actionId = new Identification<bool>(bareId);
+        var settingId = new Identification<Key>(bareId);
 
-        var actionHandle = manager.Handle(actionId);
+        actions.EstablishRebindDirtySubscriptions();
 
-        manager.BuildSnapshot();
-        var before = manager.Read<bool>(actionHandle);
+        using var pull = actions.Pull(actionId);
+
+        ((IWindowInputActionsStateFacade)actions).ProcessFrame();
+        var before = pull.Read();
         await Assert.That(before.HasValue).IsFalse();
 
-        manager.Rebind(handle, new KeyboardKeySetting(Key.W));
-        manager.BuildSnapshot();
-        var after = manager.Read<bool>(actionHandle);
+        actions.Rebind(settingId, Key.W);
+        ((IWindowInputActionsStateFacade)actions).ProcessFrame();
+        var after = pull.Read();
 
         await Assert.That(after.HasValue).IsTrue();
         await Assert.That(after.Value()).IsTrue();
     }
 
     [Test]
-    public async Task RebindDirtySubscription_SurvivesSimulatedEnterReplay_Pitfall1Guard()
+    public async Task RebindDirtySubscription_SurvivesSimulatedEnterReplay()
     {
-        // Pitfall 1 regression guard: simulates GameStateManager.TransitionToParent's exact failure
-        // mode -- a child-frame teardown sweeps subscriptions wholesale (ClearSubscriptionsForFrame),
-        // then the parent's enter methods re-run (GameStateManager.cs:768-773). If the rebind-dirty
-        // subscription were established anywhere OUTSIDE an [OnFrameEnterScheduling] function, this
-        // sweep would silently and permanently disable rebinding for this binding: the second Rebind
-        // call below would never mark it dirty, and `after` would stay NoValue.
-        var (settings, _, manager) = NewManager();
-        var actionId = new Identification<bool>(Identification.Create(710, 1, 6));
-        var settingId = new Identification<KeyboardKeySetting>(Identification.Create(710, 2, 6));
+        // Regression guard: simulates GameStateManager.TransitionToParent's exact failure mode --
+        // a child-frame teardown sweeps subscriptions wholesale (ClearSubscriptionsForFrame), then
+        // the parent's enter methods re-run. If the rebind-dirty subscription were established
+        // anywhere OUTSIDE an [OnFrameEnterScheduling] function, this sweep would silently and
+        // permanently disable rebinding for this binding: the Rebind call below would never mark
+        // it dirty, and `after` would stay NoValue.
+        var (settings, actions, registry, provider) = NewRuntime();
+        provider.PressedKey = Key.W;
 
+        var bareId = Identification.Create(710, 1, 6);
         var frameTokenA = new object();
         settings.UseFrameTokenProvider(() => frameTokenA);
 
-        var handle = manager.AddBinding(actionId, settingId, new KeyboardKeySetting(Key.Space),
-            s => new KeyboardKey(s, isPressed: s.Key == Key.W));
-        manager.EstablishRebindDirtySubscriptions();
+        registry.RegisterAction<bool, Key>(bareId, new ActionDescription<bool, Key>(Key.Space));
+        var actionId = new Identification<bool>(bareId);
+        var settingId = new Identification<Key>(bareId);
+
+        actions.EstablishRebindDirtySubscriptions();
 
         // Simulate the child-frame teardown sweep.
         settings.ClearSubscriptionsForFrame(frameTokenA);
 
         // Simulate the parent's enter-function replay establishing subscriptions again, now bound
-        // to a new frame token -- exactly what InputModule.EstablishRebindDirtySubscriptions does
-        // on every [OnFrameEnterScheduling] run, unconditionally.
+        // to a new frame token -- exactly what WindowInputModule's
+        // establish_rebind_dirty_subscriptions transition does on every [OnFrameEnterScheduling]
+        // run, unconditionally.
         var frameTokenB = new object();
         settings.UseFrameTokenProvider(() => frameTokenB);
-        manager.EstablishRebindDirtySubscriptions();
+        actions.EstablishRebindDirtySubscriptions();
 
-        manager.Rebind(handle, new KeyboardKeySetting(Key.W));
-        manager.BuildSnapshot();
+        actions.Rebind(settingId, Key.W);
 
-        var actionHandle = manager.Handle(actionId);
-        var after = manager.Read<bool>(actionHandle);
+        using var pull = actions.Pull(actionId);
+        ((IWindowInputActionsStateFacade)actions).ProcessFrame();
+        var after = pull.Read();
 
         await Assert.That(after.HasValue).IsTrue();
         await Assert.That(after.Value()).IsTrue();

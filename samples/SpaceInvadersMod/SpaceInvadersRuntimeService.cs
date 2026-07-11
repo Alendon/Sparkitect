@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Serilog;
-using Silk.NET.Input;
 using SpaceInvadersMod.CompilerGenerated.IdExtensions;
 using SpaceInvadersMod.Components;
 using Sparkitect.ECS;
@@ -15,6 +14,7 @@ using Sparkitect.GameState;
 using Sparkitect.Graphics.RenderGraph;
 using Sparkitect.Graphics.RenderGraph.Push;
 using Sparkitect.Graphics.RenderGraph.Runtime;
+using Sparkitect.Input;
 using Sparkitect.Modding;
 using Sparkitect.Modding.IDs;
 using Sparkitect.Utils;
@@ -39,26 +39,21 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     private StorageHandle _playerStorageHandle;
     private StorageHandle _enemyStorageHandle;
 
-    // Input: physical key → action mapping, cached per frame
-    private static readonly Dictionary<Key, GameAction> KeyMap = new()
-    {
-        [Key.Left] = GameAction.MoveLeft,
-        [Key.A] = GameAction.MoveLeft,
-        [Key.Right] = GameAction.MoveRight,
-        [Key.D] = GameAction.MoveRight,
-        [Key.Up] = GameAction.Shoot,
-        [Key.Space] = GameAction.Shoot,
-        [Key.P] = GameAction.TogglePause,
-        [Key.R] = GameAction.Restart,
-    };
-
-    private readonly HashSet<GameAction> _activeActions = [];
-    private bool _pauseToggleConsumed;
-    private bool _restartConsumed;
+    private IPushBinding? _movePush;
+    private IPushBinding? _shootPush;
+    private IPullBinding<bool>? _pausePull;
+    private IPullBinding<bool>? _restartPull;
+    private float _moveIntent;
+    private bool _shootHeld;
+    private ActionResult<bool> _pausePrevious = ActionResult<bool>.NoValue;
+    private ActionResult<bool> _restartPrevious = ActionResult<bool>.NoValue;
+    private bool _pauseRequested;
+    private bool _restartRequested;
 
     public required IWindowManager WindowManager { private get; init; }
     public required IRenderGraphManager RenderGraphManager { private get; init; }
     public required IGameStateManager GameStateManager { private get; init; }
+    public required IInputActions InputActions { private get; init; }
 
     public IWorld? GetWorld() => _world;
 
@@ -72,7 +67,8 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     public bool IsGameplayActive => _isGameplayActive;
     public void SetGameplayActive(bool active) => _isGameplayActive = active;
 
-    public bool IsActionDown(GameAction action) => _activeActions.Contains(action);
+    public float MoveAxis => _moveIntent;
+    public bool IsShootHeld => _shootHeld;
 
     /// <summary>Creates the mod-owned window before the render-graph registries are processed.</summary>
     public void Initialize()
@@ -96,7 +92,13 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             _window!);
     }
 
-    public void PollWindow() => _window?.PollEvents();
+    public void WireInput()
+    {
+        _movePush = ActionID.SpaceInvadersMod.MoveHorizontal.Push(InputActions, v => _moveIntent = v);
+        _shootPush = ActionID.SpaceInvadersMod.Shoot.Push(InputActions, v => _shootHeld = v);
+        _pausePull = ActionID.SpaceInvadersMod.TogglePause.Pull(InputActions);
+        _restartPull = ActionID.SpaceInvadersMod.Restart.Pull(InputActions);
+    }
 
     /// <summary>Drives one render-graph frame (acquire/submit/present owned by the graph).</summary>
     public void RunFrame() => _renderGraph?.RunFrame();
@@ -123,49 +125,34 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
 
     public void Cleanup()
     {
-        _window?.Dispose();
+        _movePush?.Dispose();
+        _movePush = null;
+        _shootPush?.Dispose();
+        _shootPush = null;
+        _pausePull?.Dispose();
+        _pausePull = null;
+        _restartPull?.Dispose();
+        _restartPull = null;
+
+        if (_window is not null)
+            WindowManager.DestroyWindow(_window);
         _window = null;
         Log.Debug("Space Invaders rendering cleanup complete");
     }
 
+    // Runs after this frame's input processing (push callbacks already re-asserted _moveIntent/
+    // _shootHeld): derives the once-per-press pause/restart edges from the NoValue-preserving
+    // pull stream. The held-intent fields reset at the end of CheckGameState, after every
+    // consumer has read them.
     public void ProcessInput()
     {
-        _activeActions.Clear();
+        var pause = _pausePull!.Read();
+        _pauseRequested = ActionEdge.IsPressEdge(_pausePrevious, pause);
+        _pausePrevious = pause;
 
-        var keyboard = _window?.Keyboard;
-        if (keyboard is null) return;
-
-        foreach (var (key, action) in KeyMap)
-        {
-            if (keyboard.IsKeyDown(key))
-                _activeActions.Add(action);
-        }
-
-        // Edge-detect pause toggle: only fire once per press
-        if (_activeActions.Contains(GameAction.TogglePause))
-        {
-            if (_pauseToggleConsumed)
-                _activeActions.Remove(GameAction.TogglePause);
-            else
-                _pauseToggleConsumed = true;
-        }
-        else
-        {
-            _pauseToggleConsumed = false;
-        }
-
-        // Edge-detect restart: only fire once per press
-        if (_activeActions.Contains(GameAction.Restart))
-        {
-            if (_restartConsumed)
-                _activeActions.Remove(GameAction.Restart);
-            else
-                _restartConsumed = true;
-        }
-        else
-        {
-            _restartConsumed = false;
-        }
+        var restart = _restartPull!.Read();
+        _restartRequested = ActionEdge.IsPressEdge(_restartPrevious, restart);
+        _restartPrevious = restart;
     }
 
     public void CheckGameState()
@@ -184,13 +171,13 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
                 BuildWorld();
                 // Start paused so player can see fresh board before pressing Space
             }
-            else if (IsActionDown(GameAction.TogglePause))
+            else if (_pauseRequested)
             {
                 _isGameplayActive = false;
                 _world.SetNodeState(EcsSystemGroupID.SpaceInvadersMod.Gameplay, SystemState.Inactive);
             }
         }
-        else if (IsActionDown(GameAction.Restart))
+        else if (_restartRequested)
         {
             // Rebuild the world to restart the game
             DestroyWorld();
@@ -198,11 +185,18 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
             _isGameplayActive = true;
             _world!.SetNodeState(EcsSystemGroupID.SpaceInvadersMod.Gameplay, SystemState.Active);
         }
-        else if (IsActionDown(GameAction.TogglePause) || IsActionDown(GameAction.Shoot))
+        else if (_pauseRequested || _shootHeld)
         {
             _isGameplayActive = true;
             _world.SetNodeState(EcsSystemGroupID.SpaceInvadersMod.Gameplay, SystemState.Active);
         }
+
+        // All consumers (PlayerInputSystem during simulate, the checks above) have read this
+        // frame's intent; reset so a released key does not persist into the next frame.
+        _pauseRequested = false;
+        _restartRequested = false;
+        _moveIntent = 0f;
+        _shootHeld = false;
     }
 
     public IWorld BuildWorld()

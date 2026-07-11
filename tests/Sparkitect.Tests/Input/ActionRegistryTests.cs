@@ -2,20 +2,23 @@ using Sparkitect.Events;
 using Sparkitect.Input;
 using Sparkitect.Modding;
 using Sparkitect.Settings;
+using Sparkitect.WindowInput;
 
 namespace Sparkitect.Tests.Input;
 
 public class ActionRegistryTests
 {
-    // The default-binding value type: a small composite value type, per D-17's binding-backing
-    // settings boundary (code-authored struct, never a scalar-source-fed primitive).
+    // A default-binding value shape no adapter interprets in these tests -- the action stays a
+    // pending composition state at the input implementation, which is exactly what lets these
+    // tests focus on the settings/event fan-out alone.
     public readonly record struct JumpKeyBinding(int PrimaryKey);
 
     private static (SettingsManager settings, EventManager events, ActionRegistry registry) NewRegistry()
     {
         var settingsManager = new SettingsManager();
         var eventManager = new EventManager();
-        var registry = new ActionRegistry(settingsManager, eventManager);
+        var actions = new WindowInputActions { SettingsManager = settingsManager, EventManager = eventManager };
+        var registry = new ActionRegistry(settingsManager, eventManager, actions);
         return (settingsManager, eventManager, registry);
     }
 
@@ -24,28 +27,27 @@ public class ActionRegistryTests
     {
         var (_, _, registry) = NewRegistry();
         var id = Identification.Create(500, 1, 1);
-        var description = new ActionDescription<bool, JumpKeyBinding, bool>(new JumpKeyBinding(42));
+        var description = new ActionDescription<bool, JumpKeyBinding>(new JumpKeyBinding(42));
 
         // The action's own typed id falls out of the bare marker alone — no store is touched for
         // it. Proving it "resolves" means: after registration succeeds, the same underlying id can
         // be meaningfully wrapped as Identification<TResult> and round-trips unchanged.
-        registry.RegisterAction<bool, JumpKeyBinding, bool>(id, description);
+        registry.RegisterAction(id, description);
         var ownTypedId = new Identification<bool>(id);
 
         await Assert.That((Identification)ownTypedId).IsEqualTo(id);
     }
 
     [Test]
-    public async Task RegisterAction_EventAlias_RoundTripsEndToEndThroughDistinctSuffixedId()
+    public async Task RegisterAction_DeliveryEvent_RoundTripsEndToEndThroughSameId()
     {
-        // R-5 first-event-target proof + Pitfall-5 guard: if the hand-authored
-        // eventFacade.RegisterEvent fan-out were omitted, EventManager.Publish would silently no-op
-        // (it never checks _definitions) and this subscriber would never fire.
+        // If the hand-authored eventFacade.RegisterEvent fan-out were omitted, EventManager.Publish
+        // would silently no-op (it never checks _definitions) and this subscriber would never fire.
         var (_, eventManager, registry) = NewRegistry();
         var id = Identification.Create(500, 1, 2);
-        var description = new ActionDescription<bool, JumpKeyBinding, bool>(new JumpKeyBinding(7));
+        var description = new ActionDescription<bool, JumpKeyBinding>(new JumpKeyBinding(7));
 
-        registry.RegisterAction<bool, JumpKeyBinding, bool>(id, description);
+        registry.RegisterAction(id, description);
 
         var eventId = new Identification<bool>(id);
         var received = false;
@@ -63,13 +65,13 @@ public class ActionRegistryTests
     }
 
     [Test]
-    public async Task RegisterAction_OptionA_DefaultBindingDeclaresAndReadsBack()
+    public async Task RegisterAction_DefaultBindingDeclaresAndReadsBack()
     {
         var (settingsManager, _, registry) = NewRegistry();
         var id = Identification.Create(500, 1, 3);
-        var description = new ActionDescription<bool, JumpKeyBinding, bool>(new JumpKeyBinding(99));
+        var description = new ActionDescription<bool, JumpKeyBinding>(new JumpKeyBinding(99));
 
-        registry.RegisterAction<bool, JumpKeyBinding, bool>(id, description);
+        registry.RegisterAction(id, description);
 
         var settingId = new Identification<JumpKeyBinding>(id);
         var value = settingsManager.GetValue(settingId);
@@ -82,8 +84,8 @@ public class ActionRegistryTests
     {
         var (settingsManager, eventManager, registry) = NewRegistry();
         var id = Identification.Create(500, 1, 4);
-        var description = new ActionDescription<bool, JumpKeyBinding, bool>(new JumpKeyBinding(1));
-        registry.RegisterAction<bool, JumpKeyBinding, bool>(id, description);
+        var description = new ActionDescription<bool, JumpKeyBinding>(new JumpKeyBinding(1));
+        registry.RegisterAction(id, description);
 
         var eventId = new Identification<bool>(id);
         var received = false;

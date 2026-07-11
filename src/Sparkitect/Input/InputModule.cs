@@ -9,9 +9,9 @@ namespace Sparkitect.Input;
 
 /// <summary>
 /// Device-agnostic state module providing the input action core: <see cref="ActionRegistry"/>
-/// processing and the <see cref="IInputManager"/> service. Never references Windowing and never
-/// names a device vocabulary (D-01). Declares its own independent edge onto the Event module
-/// (C-5) to publish action edge events — never relies on another module's Event edge.
+/// identity + fan-out registration only. Never references any input implementation (D-01/D-02)
+/// and carries no per-frame function — sampling, evaluation, and push/pull dispatch are entirely
+/// implementation-owned (e.g. <c>WindowInput</c>'s <c>WindowInputModule</c>).
 /// </summary>
 [PublicAPI]
 [ModuleRegistry.RegisterModule("input")]
@@ -38,25 +38,13 @@ public sealed partial class InputModule : TransitiveStateModule, IHasIdentificat
     }
 
     /// <summary>
-    /// (Re)establishes the rebind-dirty settings subscription for every live binding instance
-    /// (D-21/D-22, Pitfall 1), UNCONDITIONALLY on every frame-enter — subscriptions are
-    /// frame-token-scoped and swept wholesale on frame teardown, and
-    /// <c>GameStateManager.TransitionToParent</c> re-runs the parent's enter methods on every
-    /// pop/push oscillation (<c>GameStateManager.cs:768-773</c>). Reaches the manager only through
-    /// the DI-resolved state-facade parameter (SPARK0401/0406 purity).
+    /// Per-frame ordering anchor, deliberately a no-op: input implementations order their
+    /// processing BEFORE this function, consumers order their simulation AFTER it — so a mod
+    /// ticking on processed input never names any implementation module.
     /// </summary>
-    [TransitionFunction("establish_rebind_dirty_subscriptions")]
-    [OnFrameEnterScheduling]
-    internal static void EstablishRebindDirtySubscriptions(IInputManagerStateFacade inputManager) =>
-        inputManager.EstablishRebindDirtySubscriptions();
-
-    /// <summary>
-    /// The engine's second per-frame function (D-18): builds one input snapshot per frame -- dirty
-    /// processing, type-bunched binding evaluation, first-match composition into per-action result
-    /// slots, then edge-detect + publish. Reaches the manager only through the DI-resolved state-facade
-    /// parameter (SPARK0401/0406 purity) -- the snapshot state itself lives in <see cref="InputManager"/>.
-    /// </summary>
-    [PerFrameFunction("build_input_snapshot")]
+    [PerFrameFunction("input_processed")]
     [PerFrameScheduling]
-    public static void BuildInputSnapshot(IInputManagerStateFacade inputManager) => inputManager.BuildSnapshot();
+    public static void InputProcessed()
+    {
+    }
 }

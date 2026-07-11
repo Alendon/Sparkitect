@@ -30,11 +30,7 @@ public partial class SpaceInvadersSystemGroup
             ref var vel = ref entity.GetVelocity();
             ref var cooldown = ref entity.GetShootCooldown();
 
-            var moveDir = 0f;
-            if (runtimeService.IsActionDown(GameAction.MoveLeft))
-                moveDir -= 1f;
-            if (runtimeService.IsActionDown(GameAction.MoveRight))
-                moveDir += 1f;
+            var moveDir = runtimeService.MoveAxis;
 
             vel.Value = new Vector2(moveDir * SpaceInvadersConstants.PlayerSpeed, 0f);
             pos.Value.X = Math.Clamp(
@@ -46,7 +42,7 @@ public partial class SpaceInvadersSystemGroup
 
             // Shooting (per SINV-02): fire bullet upward with cooldown
             cooldown.Remaining -= dt;
-            if (cooldown.Remaining <= 0f && runtimeService.IsActionDown(GameAction.Shoot))
+            if (cooldown.Remaining <= 0f && runtimeService.IsShootHeld)
             {
                 cooldown.Remaining = SpaceInvadersConstants.PlayerShootCooldown;
 

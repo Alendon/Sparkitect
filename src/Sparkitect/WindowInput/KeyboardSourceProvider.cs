@@ -1,5 +1,5 @@
 using Silk.NET.Input;
-using Sparkitect.Input;
+using Sparkitect.WindowInput.Bindings;
 using Sparkitect.Windowing.Input;
 
 namespace Sparkitect.WindowInput;

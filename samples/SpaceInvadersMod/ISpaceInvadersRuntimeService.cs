@@ -20,9 +20,6 @@ public interface ISpaceInvadersRuntimeService
     /// <summary>Whether the window is still open.</summary>
     bool IsOpen { get; }
 
-    /// <summary>Pumps the window's OS event queue; must run every frame.</summary>
-    void PollWindow();
-
     RenderEntity[] GetRenderBuffer();
 
     /// <summary>
@@ -33,7 +30,12 @@ public interface ISpaceInvadersRuntimeService
 
     bool IsGameplayActive { get; }
     void SetGameplayActive(bool active);
-    bool IsActionDown(GameAction action);
+
+    /// <summary>This frame's push-fed horizontal movement intent (-1..+1; 0 when nothing contributes).</summary>
+    float MoveAxis { get; }
+
+    /// <summary>Whether the shoot action is producing a value this frame.</summary>
+    bool IsShootHeld { get; }
 }
 
 [FacadeFor<ISpaceInvadersRuntimeService>]
@@ -46,6 +48,9 @@ public interface ISpaceInvadersRuntimeServiceStateFacade
     /// <summary>Creates the mod-owned window before the render-graph registries are processed.</summary>
     void Initialize();
 
+    /// <summary>Attaches the push/pull consumers to the registered actions.</summary>
+    void WireInput();
+
     /// <summary>Builds the render graph after the render-graph registries are processed.</summary>
     void CreateGraph();
 
@@ -55,7 +60,7 @@ public interface ISpaceInvadersRuntimeServiceStateFacade
     /// <summary>Tears down the render graph.</summary>
     void ShutdownGraph();
 
-    /// <summary>Disposes the window.</summary>
+    /// <summary>Disposes the input bindings and destroys the window through the manager.</summary>
     void Cleanup();
 
     void ProcessInput();

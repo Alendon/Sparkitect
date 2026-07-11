@@ -25,7 +25,8 @@ public partial class SampleEntryState : TransitiveGameState, IHasIdentification
         StateModuleID.Sparkitect.Vulkan,
         StateModuleID.Sparkitect.Ecs,
         StateModuleID.Sparkitect.RenderGraph,
-        StateModuleID.Sparkitect.Windowing
+        StateModuleID.Sparkitect.Windowing,
+        StateModuleID.Sparkitect.Input
     ];
 
     [DummyRegistry.RegisterValue("hello1")]
