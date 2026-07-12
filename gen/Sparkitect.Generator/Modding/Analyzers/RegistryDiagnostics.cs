@@ -61,11 +61,6 @@ public static class RegistryDiagnostics
             "(3) partial void Name<T>(Identification id, T value).",
             Category, DiagnosticSeverity.Error, true);
 
-    public static readonly DiagnosticDescriptor TooManyTypeParameters =
-        new("SPARK0212", "Registry method has too many type parameters",
-            "Registry method '{0}' has too many type parameters. Use at most one type parameter.",
-            Category, DiagnosticSeverity.Error, true);
-
     public static readonly DiagnosticDescriptor GenericValueMismatch =
         new("SPARK0213", "Generic value method mismatch",
             "Registry method '{0}' declares a type parameter but second parameter doesn't match. Use the generic type as the second parameter.",

@@ -13,7 +13,6 @@ SPARK0205 | Sparkitect | Warning | Duplicate registry type names across namespac
 SPARK0206 | Sparkitect | Error | Category Identifier must be snake_case
 SPARK0210 | Sparkitect | Error | [RegistryMethod] only inside registries
 SPARK0211 | Sparkitect | Error | Invalid [RegistryMethod] signature
-SPARK0212 | Sparkitect | Error | Registry method has too many type parameters
 SPARK0213 | Sparkitect | Error | Generic value method mismatch
 SPARK0214 | Sparkitect | Error | First parameter must be Identification
 SPARK0215 | Sparkitect | Error | Duplicate registry method name

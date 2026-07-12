@@ -33,6 +33,17 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     }
 
     [Test]
+    public async Task RetiredArityCapDiagnostic_NoLongerExists()
+    {
+        // F-08: the retired arity-cap diagnostic (the descriptor that guarded a since-lifted
+        // one-type-parameter limit) must not remain as a supported/release-tracked descriptor
+        // with no reachable report path -- the field itself must be gone, not merely unreported.
+        var retiredField = typeof(RegistryDiagnostics).GetField("TooManyTypeParameters",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        await Assert.That(retiredField).IsNull();
+    }
+
+    [Test]
     public async Task RegistryRequiresInterface_WhenMissing_Reports_2001()
     {
         var code = """
@@ -176,10 +187,9 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     [Test]
     public async Task RegistryMethod_MultipleTypeParams_NoLongerReports_2012()
     {
-        // D-02: the arity cap is lifted — a type-source register method with two type parameters,
-        // where T1 is constrained by RelationShip<T2>, compiles clean at the gate level (no SPARK0212,
-        // no other registry-shape diagnostic). Mirrors the load-bearing constraint-walk shape from
-        // CONTEXT.md D-03 (Reg<T1,T2>() where T1 : RelationShip<T2>).
+        // The arity cap is lifted — a type-source register method with two type parameters,
+        // where T1 is constrained by RelationShip<T2>, compiles clean at the gate level (no
+        // retired arity-cap diagnostic, no other registry-shape diagnostic).
         var code = """
         namespace Sparkitect.Modding { public class RegistryMethodAttribute : System.Attribute; public interface IRegistry; }
 

@@ -31,7 +31,6 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         RegistryDiagnostics.CategoryIdentifierNotSnakeCase,
         RegistryDiagnostics.RegistryMethodOutsideRegistry,
         RegistryDiagnostics.InvalidRegistryMethodSignature,
-        RegistryDiagnostics.TooManyTypeParameters,
         RegistryDiagnostics.GenericValueMismatch,
         RegistryDiagnostics.FirstParameterMustBeIdentification,
         RegistryDiagnostics.DuplicateRegistryMethodName,
@@ -265,10 +264,8 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         var paramCount = method.Parameters.Length;
         var typeParamCount = method.TypeParameters.Length;
 
-        // 0..N type parameters are accepted (D-02): the arity cap is lifted here in tandem with the
-        // generator's collapsed taxonomy (Plan 02), so SPARK0212/TooManyTypeParameters is no longer
-        // reported for typeParamCount > 1. The descriptor stays declared/registered in
-        // SupportedDiagnostics (it may still be referenced) — only the early report path is removed.
+        // 0..N type parameters are accepted: multi-type-parameter register methods (constrained
+        // value-source shapes) are current, supported grammar — no arity cap is enforced here.
 
         // Must have 1 or 2 parameters; first must be Identification
         if (paramCount == 0 || paramCount > 2)
