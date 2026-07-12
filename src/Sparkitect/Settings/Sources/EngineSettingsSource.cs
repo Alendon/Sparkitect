@@ -8,7 +8,7 @@ namespace Sparkitect.Settings.Sources;
 /// <summary>
 /// The readonly engine-config source. Reads the human-editable <c>Sparkitect.yaml</c> via YAML node
 /// traversal (never POCO/reflection auto-bind) and supplies each mapped scalar parsed against the
-/// declared setting type. Window size is deliberately not carried here (D-20). Writes are refused.
+/// declared setting type. Window size is deliberately not carried here. Writes are refused.
 /// </summary>
 [PublicAPI]
 public sealed class EngineSettingsSource : ISettingSource
@@ -59,7 +59,7 @@ public sealed class EngineSettingsSource : ISettingSource
 
     /// <summary>
     /// Reads the working-directory <see cref="ConfigFileName"/> and returns its root scalar entries via the
-    /// same node traversal the source uses. Shared with the pre-container logger read (D-16) so engine-config
+    /// same node traversal the source uses. Shared with the pre-container logger read so engine-config
     /// parsing has a single source of truth. A missing file yields an empty map.
     /// </summary>
     internal static IReadOnlyDictionary<string, string> ReadWorkingDirectoryScalars() =>
@@ -105,7 +105,7 @@ public sealed class EngineSettingsSource : ISettingSource
     public Result<SetError> Write(Identification id, object? value) => new SetError.SourceReadonly(Identification.Empty);
 
     // Node traversal only: read the root mapping's scalar->scalar children. Nested structures are ignored
-    // (settings are primitives, D-19); there is no DeserializerBuilder/POCO binding.
+    // (settings are primitives); there is no DeserializerBuilder/POCO binding.
     private static Dictionary<string, string> ParseScalars(string? yamlText)
     {
         var scalars = new Dictionary<string, string>(StringComparer.Ordinal);

@@ -64,8 +64,8 @@ public class GenerateModManifest : Microsoft.Build.Utilities.Task
     /// </summary>
     public ITaskItem[] ModProjectDependencies { get; set; } = Array.Empty<ITaskItem>();
 
-    // TODO: ModDependency (package-style) processing deferred to future phase.
-    // When implemented, add: public ITaskItem[] ModDependencies { get; set; } = Array.Empty<ITaskItem>();
+    // Package-style ModDependency processing is not implemented; when it is, add:
+    // public ITaskItem[] ModDependencies { get; set; } = Array.Empty<ITaskItem>();
 
     /// <summary>
     /// Whether this mod can be loaded as a root mod by the bootstrapper.

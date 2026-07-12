@@ -251,8 +251,8 @@ public class VkSwapchain : VulkanObject
                 return preferred;
         }
 
-        // Fallback: B8G8R8A8_UNORM (storage-compatible) with SRGB colorspace
-        // TODO: SRGB formats don't support storage bit, prefer UNORM for compute compatibility
+        // Fallback: B8G8R8A8_UNORM (storage-compatible) with SRGB colorspace.
+        // SRGB formats don't support the storage bit, so UNORM is preferred for compute compatibility.
         var unorm = formats.FirstOrDefault(f =>
             f.Format == Format.B8G8R8A8Unorm &&
             f.ColorSpace == ColorSpaceKHR.SpaceSrgbNonlinearKhr);

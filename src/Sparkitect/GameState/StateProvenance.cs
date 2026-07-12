@@ -33,11 +33,11 @@ internal sealed record ModuleProvenance(
     IReadOnlyList<Identification> Requirers);
 
 /// <summary>
-/// A single active state frame's runtime StatelessFunction identities (D-05/D-22): the per-frame,
+/// A single active state frame's runtime StatelessFunction identities: the per-frame,
 /// transition-enter, and transition-exit SFs the debuggee's scheduling actually holds for that frame —
 /// mod contributions included, since these are the graph-resolved wrapper instances, not a static PSI
 /// enumeration. Raw <see cref="Identification"/>s; string-coordinate resolution for reverse-lookup
-/// navigation is the snapshot builder's job (later plan), not this seam's.
+/// navigation is the snapshot builder's job, not this seam's.
 /// </summary>
 /// <param name="StateId">The frame's state identity.</param>
 /// <param name="PerFrame">Per-frame SF identities.</param>
@@ -50,7 +50,7 @@ internal sealed record FrameStatelessFunctions(
     IReadOnlyList<Identification> TransitionExit);
 
 /// <summary>
-/// Debug-information seam (D-18/D-22): re-derives each module's origin badge and one-hop requirers for a
+/// Debug-information seam: re-derives each module's origin badge and one-hop requirers for a
 /// state's complete composed set by replaying the <see cref="StateComposer"/>'s closure + ActivatesWith
 /// fixpoint over the same plain inputs — without mutating the shipped pure static composer, which retains
 /// no origin on success. The set it resolves is identical to the composer's <c>ComposedSet</c> by

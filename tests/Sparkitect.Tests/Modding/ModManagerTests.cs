@@ -8,7 +8,7 @@ using Sparkitect.Utils;
 namespace Sparkitect.Tests.Modding;
 
 /// <summary>
-/// Covers <see cref="ModManager.BuildModLoadOrder"/> (D-05): the topo-order over a group's required
+/// Covers <see cref="ModManager.BuildModLoadOrder"/>: the topo-order over a group's required
 /// (non-optional, non-incompatible) mod-dependency edges that feeds the per-mod ALC chain. Reached via
 /// <c>InternalsVisibleTo("Sparkitect.Tests")</c> — see <see cref="Sparkitect.Modding.ModManager"/>'s
 /// internal static method. Sort mechanics themselves (tiebreak, cycle/missing-dependency diagnostics,
@@ -163,9 +163,9 @@ public class ModManagerLoadDependenciesTests
 }
 
 /// <summary>
-/// Covers <see cref="ModManager.DrainUnload"/> (D-11/D-12 shared bounded drain loop) and
-/// <see cref="ModManager.ClassifyUnloadOutcomes"/> (D-04/D-12/D-13 per-mod leak attribution) against
-/// synthetic collectible <see cref="AssemblyLoadContext"/>s. Per D-14, real mod-DLL unload is proven by the
+/// Covers <see cref="ModManager.DrainUnload"/> (shared bounded drain loop) and
+/// <see cref="ModManager.ClassifyUnloadOutcomes"/> (per-mod leak attribution) against
+/// synthetic collectible <see cref="AssemblyLoadContext"/>s. Real mod-DLL unload is proven by the
 /// manual Release/no-debugger sample-mod run — these tests assert only the drain loop's shape (drives a
 /// released context to !IsAlive; returns without throwing when exhausted against a still-rooted target) and
 /// the classification helper's per-context (never group-wide) attribution. No Serilog assertions, no

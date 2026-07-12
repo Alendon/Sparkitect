@@ -334,7 +334,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     [Test]
     public async Task MultipleBareTypedIdentificationMarkers_Reports_0271()
     {
-        // D-08: at-most-one bare [TypedIdentification] marker per register method. Two DIFFERENT
+        // at-most-one bare [TypedIdentification] marker per register method. Two DIFFERENT
         // type parameters each carrying their own bare marker (AllowMultiple=false on the attribute
         // itself rules out stacking two on ONE type parameter) is the shape that must fail loud.
         var code = """
@@ -359,8 +359,8 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     [Test]
     public async Task RegistryShapeIncoherent_MixedBareMarkerMethods_Reports_0272()
     {
-        // D-04: registry-wide coherence — ALL register methods must agree on presence/absence of the
-        // bare marker. One marked + one unmarked is exactly DummyRegistry's expected-break shape (D-12).
+        // registry-wide coherence — ALL register methods must agree on presence/absence of the
+        // bare marker. One marked + one unmarked is exactly DummyRegistry's expected-break shape.
         var code = """
         using Sparkitect.Modding;
 
@@ -386,7 +386,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     [Test]
     public async Task InvalidTypedIdentificationTarget_NotARegistry_Reports_0273()
     {
-        // D-05: [TypedIdentification<TTarget>] must name a [Registry]-attributed type.
+        // [TypedIdentification<TTarget>] must name a [Registry]-attributed type.
         var code = """
         using Sparkitect.Modding;
 
@@ -411,8 +411,8 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     [Test]
     public async Task AliasCollision_SameCompilation_RealMemberMatchesCandidateAlias_Reports_0274()
     {
-        // D-08/D-06: same-compilation alias-collision detection. The candidate alias container is
-        // {ModIdPascal}{TargetCategoryPascal}IDs (D-03); the candidate alias name is the marked type
+        // same-compilation alias-collision detection. The candidate alias container is
+        // {ModIdPascal}{TargetCategoryPascal}IDs; the candidate alias name is the marked type
         // parameter's own name plus the registry's (unset here) AliasSuffix. A real, hand-authored
         // member on that struct with the exact candidate name must be flagged.
         var code = """
@@ -529,7 +529,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     [Test]
     public async Task SingleMethodCoherentRegistry_LikeEventOrSettingRegistry_NoNewDiagnostics()
     {
-        // D-11: the coherent single-method reference shape (EventRegistry/SettingRegistry's own
+        // the coherent single-method reference shape (EventRegistry/SettingRegistry's own
         // shape) must stay green — a future regression that starts flagging it must be caught here.
         var code = """
         using Sparkitect.Modding;

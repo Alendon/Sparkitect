@@ -31,16 +31,16 @@ internal class ModManager : IModManager
     public required IResourceManager ResourceManager { private get; init; }
 
     /// <summary>
-    /// D-11/D-12 shared bounded-drain iteration cap. Microsoft's own canonical unloadability sample uses
+    /// Shared bounded-drain iteration cap for context unload. Microsoft's own canonical unloadability sample uses
     /// 10 as an illustrative default ("in most cases, just one pass ... is required"); no hard justification
-    /// beyond that exists, this value is Claude's Discretion per CONTEXT.md.
+    /// beyond that exists.
     /// </summary>
     internal const int UnloadDrainIterationCap = 10;
 
     /// <summary>
     /// The most-recently-unloaded group's per-context <see cref="WeakReference"/>s, tagged with the mod ids
     /// each context carried — REPLACED (never appended) on every <see cref="UnloadLastModGroup"/> call
-    /// (D-11/disposition 1: the GSM is a strict stack, one group in flight between pops, so only the
+    /// (the GSM is a strict stack, one group in flight between pops, so only the
     /// immediately-prior unload ever needs confirming, never an unbounded cross-group history). One entry
     /// in PerGroup mode, one per mod in PerMod mode.
     /// </summary>
@@ -275,12 +275,12 @@ internal class ModManager : IModManager
     }
 
     /// <summary>
-    /// Builds the D-07 resolve-safety set for a mod: its own primary assembly and <see cref="ModManifest.RequiredAssemblies"/>,
+    /// Builds the resolve-safety set for a mod: its own primary assembly and <see cref="ModManifest.RequiredAssemblies"/>,
     /// unioned with the transitive closure of its non-incompatible, non-optional dependency mods' own
     /// primary assembly and <see cref="ModManifest.RequiredAssemblies"/>. A plain BFS over
     /// <see cref="ModManifest.Relationships"/> against <see cref="_discoveredArchives"/> — this is
     /// reachability, not ordering, so it deliberately does not reuse <c>OrderingGraphBuilder</c>. The
-    /// resulting set is observability-only (D-07): a resolve outside it warns and still resolves.
+    /// resulting set is observability-only: a resolve outside it warns and still resolves.
     /// </summary>
     private HashSet<string> BuildAllowedAssemblyNames(ModManifest manifest)
     {
@@ -316,7 +316,7 @@ internal class ModManager : IModManager
     }
 
     /// <summary>
-    /// D-05 topo-sort: orders a group's mods by their required (non-optional, non-incompatible) dependency
+    /// Topo-sort: orders a group's mods by their required (non-optional, non-incompatible) dependency
     /// edges, keyed on <see cref="ModManifest.Id"/>, via the shared <see cref="OrderingGraphBuilder{TNode}"/>
     /// core (no hand-rolled sort) under the same lexicographic (ordinal) tiebreak as
     /// <see cref="Sparkitect.DI.Ordering.EntrypointOrderingResolver"/>. A required dependency living outside
@@ -324,7 +324,7 @@ internal class ModManager : IModManager
     /// so it is silently dropped from the intra-group ordering rather than erroring — <see cref="ValidateModDependencies"/>
     /// already enforced upstream that the dependency is actually satisfied somewhere in the stack. A cycle
     /// throws (fail-loud, consistent with <see cref="ValidateModDependencies"/>) — this is explicitly
-    /// outside the never-throwing D-11/D-12/D-13 unload machinery.
+    /// outside the never-throwing unload machinery.
     /// </summary>
     /// <param name="groupManifests">The manifests of the mods being loaded together in this group.</param>
     /// <returns>The mod ids in dependency-respecting, deterministic load order.</returns>
@@ -367,11 +367,11 @@ internal class ModManager : IModManager
     }
 
     /// <summary>
-    /// D-02 fail-loud guard: asserts that the engine-layer assemblies a newly-created <see cref="SparkitectLoadContext"/>
+    /// Fail-loud guard: asserts that the engine-layer assemblies a newly-created <see cref="SparkitectLoadContext"/>
     /// resolves are the SAME instances the engine layer already holds — compared by <see cref="Assembly"/>
     /// reference identity (<c>ReferenceEquals</c>), never by name string. Invoked immediately after
     /// every <see cref="SparkitectLoadContext"/> creation. Throws, naming the offending assembly, on any
-    /// mismatch (unlike D-07/D-11/D-12/D-13, which only warn/error-log).
+    /// mismatch (unlike the resolve-safety-set and unload-drain paths above, which only warn/error-log).
     /// </summary>
     private static void AssertEngineLayerIdentity(SparkitectLoadContext newContext)
     {
@@ -412,10 +412,10 @@ internal class ModManager : IModManager
     }
 
     /// <summary>
-    /// D-11/D-12 shared bounded drain: <see cref="GC.Collect()"/> + <see cref="GC.WaitForPendingFinalizers"/>
+    /// Shared bounded drain: <see cref="GC.Collect()"/> + <see cref="GC.WaitForPendingFinalizers"/>
     /// up to <paramref name="maxIterations"/> times or until <paramref name="alcWeakRef"/> dies, whichever
     /// comes first. Isolated in its own <see cref="MethodImplOptions.NoInlining"/> method so the caller's
-    /// stack frame cannot pin the context being drained (Pitfall 2) — the canonical Microsoft-documented
+    /// stack frame cannot pin the context being drained — the canonical Microsoft-documented
     /// unloadability pattern. Never throws.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -431,7 +431,7 @@ internal class ModManager : IModManager
     /// <summary>
     /// Partitions a captured group's per-context liveness into cleanly-unloaded vs still-leaked mod ids,
     /// attributed PER CONTEXT (never a group-wide roll-up) — an interior mod that leaks is named while its
-    /// clean siblings are reported clean (D-04/D-12/D-13 exact attribution). The virtual engine mod is
+    /// clean siblings are reported clean. The virtual engine mod is
     /// excluded from both lists: it lives in the default load context and can never (un)load, so naming
     /// it in an unload verdict is always misattribution. Extracted so it is unit-testable against
     /// synthetic captures without touching Serilog or real mod loading.
@@ -457,7 +457,7 @@ internal class ModManager : IModManager
     /// <param name="identifiers">The mod file identifiers (ID + Version) to load.</param>
     public void LoadMods(params ReadOnlySpan<ModFileIdentifier> identifiers)
     {
-        // D-11: unconditional pre-load barrier — never a setting. Drains every context this ModManager
+        // Unconditional pre-load barrier — never a setting. Drains every context this ModManager
         // most recently unloaded before proceeding with this load, so two versions of a mod DLL are never
         // alive at once. In the common menu-dwell case (world-exit -> menu dwell -> world-enter) each drain
         // degenerates to a near-free IsAlive check (the context already died naturally); this never blocks
@@ -502,7 +502,7 @@ internal class ModManager : IModManager
             if (groupManifests.All(m => m.Id != identifier.Id || m.Version != identifier.Version))
             {
                 IdentificationManager.RegisterMod(identifier.Id);
-                //TODO result based error handling
+                // Exception-based error path (not yet Result-based).
                 throw new InvalidOperationException($"Mod {identifier} not found");
             }
         }
@@ -515,7 +515,7 @@ internal class ModManager : IModManager
 
         if (granularity == AlcGranularity.PerMod)
         {
-            // D-05: one collectible context per mod, chained in dependency-topo order — each mod parents
+            // One collectible context per mod, chained in dependency-topo order — each mod parents
             // to the PREVIOUS mod's context (the first parents to the prior group's leaf context / engine
             // layer). Resolution behavior stays identical to PerGroup; only inspection/attribution
             // granularity changes.
@@ -537,7 +537,7 @@ internal class ModManager : IModManager
                 LoadMod(identifier, modContext, newLoadedMods);
 
                 // Each mod's context is independently rooted by its own strong GCHandle — interior
-                // contexts must be independently drainable for per-mod unload attribution (Plan 04),
+                // contexts must be independently drainable for per-mod unload attribution,
                 // not merely reachable transitively through the leaf handle.
                 contextHandles.Add(new ModContextHandle
                 {
@@ -550,8 +550,8 @@ internal class ModManager : IModManager
         }
         else
         {
-            // D-06 default (PerGroup): single context for the whole group, behaviorally unchanged from
-            // Plan 02 — allowed-set is the union of every mod's D-07 closure.
+            // Default (PerGroup): single context for the whole group — allowed-set is the union of
+            // every mod's resolve-safety closure.
             var allowedAssemblyNames = new HashSet<string>(StringComparer.Ordinal);
             foreach (var manifest in groupManifests)
             {
@@ -600,7 +600,7 @@ internal class ModManager : IModManager
     /// <summary>
     /// Loads a single mod's assembly (and its required dependency assemblies) into <paramref name="loadContext"/>,
     /// appending the result to <paramref name="newLoadedMods"/>. Shared by both granularity branches of
-    /// <see cref="LoadMods"/> so per-group and per-mod modes resolve assemblies identically (D-05) — only
+    /// <see cref="LoadMods"/> so per-group and per-mod modes resolve assemblies identically — only
     /// which context each mod loads into differs between the two callers.
     /// </summary>
     private void LoadMod(ModFileIdentifier identifier, SparkitectLoadContext loadContext, List<LoadedMod> newLoadedMods)
@@ -611,12 +611,12 @@ internal class ModManager : IModManager
 
         if (modManifest is null)
         {
-            //TODO result based error handling
+            // Exception-based error path (not yet Result-based).
             throw new InvalidOperationException($"Mod {identifier} not found");
         }
 
         // Check if it is a virtual mod (e.g. Sparkitect core). The virtual sparkitect mod's assembly IS
-        // the engine assembly — resolve it directly via engine-layer knowledge, no dict lookup (D-09).
+        // the engine assembly — resolve it directly via engine-layer knowledge, no dict lookup.
         if (modManifest.ModPath is null)
         {
             newLoadedMods.Add(new LoadedMod
@@ -680,7 +680,7 @@ internal class ModManager : IModManager
 
         if (leaked.Count > 0)
         {
-            // D-13: never throw on exhaustion — a leak is observability, not a fatal condition.
+            // Never throw on exhaustion — a leak is observability, not a fatal condition.
             Log.Error("Mod(s) failed to unload after {Cap} GC passes: {ModIds}", UnloadDrainIterationCap, leaked);
 
             if (EarlySettings.Read("heap_dump_on_leak", EngineSettingDeclarations.HeapDumpOnLeak))
@@ -694,7 +694,7 @@ internal class ModManager : IModManager
             Log.Information("Mod(s) unloaded cleanly: {ModIds}", clean);
         }
 
-        // D-11: feed the next LoadMods barrier with this group's full per-context capture, REPLACING
+        // Feed the next LoadMods barrier with this group's full per-context capture, REPLACING
         // (never appending to) the prior unload's list.
         _lastUnloadedContexts = captured;
 
@@ -704,7 +704,7 @@ internal class ModManager : IModManager
 
     /// <summary>
     /// Pops the last group and performs every strong-reference-touching step of its teardown: archive
-    /// disposal, DI unregistration, per-context WeakReference capture (Pitfall 1: BEFORE any
+    /// disposal, DI unregistration, per-context WeakReference capture (BEFORE any
     /// Unload()/Free()), and the Unload()/handle-free pass, leaf-first. Isolated in its own
     /// <see cref="MethodImplOptions.NoInlining"/> method because debug codegen keeps every local —
     /// including hidden pattern-match and cast temporaries — alive until method end: this frame must
@@ -762,7 +762,7 @@ internal class ModManager : IModManager
         var modAssemblyEntry = archive.GetEntry(modManifest.ModAssembly);
         if (modAssemblyEntry is null)
         {
-            //TODO result based error handling
+            // Exception-based error path (not yet Result-based).
             throw new InvalidOperationException(
                 $"Mod {modId} does not contain the specified assembly {modManifest.ModAssembly}");
         }
@@ -814,7 +814,7 @@ internal class ModManager : IModManager
     /// One distinct mod-context handle: a strong <see cref="GCHandle"/> to a single
     /// <see cref="SparkitectLoadContext"/> plus the mod id(s) that context loaded. <see cref="LoadedModGroup"/>
     /// tracks one of these per distinct context — a single entry (all group mods) in PerGroup mode, one
-    /// entry per mod in PerMod mode — so unload can attribute liveness per mod (D-04/D-12/D-13).
+    /// entry per mod in PerMod mode — so unload can attribute liveness per mod.
     /// </summary>
     private class ModContextHandle
     {
@@ -823,10 +823,10 @@ internal class ModManager : IModManager
     }
 
     /// <summary>
-    /// One distinct context's D-12 capture: a <see cref="WeakReference"/> taken BEFORE that context's
-    /// <c>Unload()</c>/<c>GCHandle.Free()</c> ran (Pitfall 1), paired with the mod id(s) it carried. Feeds
+    /// One distinct context's capture: a <see cref="WeakReference"/> taken BEFORE that context's
+    /// <c>Unload()</c>/<c>GCHandle.Free()</c> ran, paired with the mod id(s) it carried. Feeds
     /// both <see cref="ClassifyUnloadOutcomes"/> (unload-time leak report) and the next <see cref="LoadMods"/>
-    /// call's D-11 barrier (via <see cref="_lastUnloadedContexts"/>).
+    /// call's pre-load barrier (via <see cref="_lastUnloadedContexts"/>).
     /// </summary>
     internal readonly record struct CapturedUnload(WeakReference Context, IReadOnlyList<string> ModIds);
 
@@ -838,7 +838,7 @@ internal class ModManager : IModManager
         /// <summary>
         /// The LEAF (last) context of this group — in PerGroup mode the sole context, in PerMod mode the
         /// last mod's context in topo-chain order. The next <see cref="LoadMods"/> call's stack-parent
-        /// lookup (D-08) must parent to this, not to an arbitrary/interior context.
+        /// lookup must parent to this, not to an arbitrary/interior context.
         /// </summary>
         public SparkitectLoadContext? LeafLoadContext => ContextHandles[^1].Handle.Target as SparkitectLoadContext;
     }

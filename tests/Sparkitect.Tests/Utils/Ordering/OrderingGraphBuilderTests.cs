@@ -7,7 +7,7 @@ using OrderResult = Sparkitect.Utils.DU.Result<
 namespace Sparkitect.Tests.Utils.Ordering;
 
 /// <summary>
-/// The single home (D-06) for shared ordering sort mechanics: correctness under both tiebreak
+/// The single home for shared ordering sort mechanics: correctness under both tiebreak
 /// strategies, cycle/missing-dependency diagnostics, and edge policy (self-edge skip, parallel dedup).
 /// Consumers of the core do NOT re-test these mechanics.
 /// </summary>

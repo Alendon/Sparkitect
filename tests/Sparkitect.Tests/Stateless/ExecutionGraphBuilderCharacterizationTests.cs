@@ -70,7 +70,7 @@ public class ExecutionGraphBuilderCharacterizationTests
         await Assert.That(order).IsEquivalentTo(new[] { A, B, C }, CollectionOrdering.Matching);
     }
 
-    // Fail-loud (D-07 unwrap-or-throw): a required edge to an absent node throws at the SF layer,
+    // Fail-loud (unwrap-or-throw): a required edge to an absent node throws at the SF layer,
     // naming the missing endpoint.
     [Test]
     public async Task RequiredEdge_MissingEndpoint_ThrowsNamingMissing()
@@ -84,8 +84,7 @@ public class ExecutionGraphBuilderCharacterizationTests
             .WithMessageMatching($"*Required ordering dependency not found: {B}*");
     }
 
-    // D-04 leveled-up diagnostics: a cycle throws naming the participating nodes (the pre-migration
-    // message named none).
+    // Leveled-up diagnostics: a cycle throws naming the participating nodes.
     [Test]
     public async Task Cycle_ThrowsNamingParticipants()
     {

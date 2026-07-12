@@ -35,7 +35,7 @@ public sealed partial class RenderGraph : IRenderGraph, IRenderGraphSetupHandler
     private readonly IGameStateManager _gameStateManager;
     private readonly IRenderGraphManager _renderGraphManager;
 
-    // The FPS cap is read inline from this at frame pacing (D-17). Resolved from the per-graph container
+    // The FPS cap is read inline from this at frame pacing. Resolved from the per-graph container
     // (which falls back to the CoreModule host) at Setup, before any frame runs.
     private ISettingsManager _settingsManager = null!;
 

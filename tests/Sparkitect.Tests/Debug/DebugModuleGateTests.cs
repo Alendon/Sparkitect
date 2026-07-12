@@ -4,7 +4,7 @@ using Sparkitect.Modding;
 namespace Sparkitect.Tests.Debug;
 
 /// <summary>
-/// Pins the D-20 composition-inclusion gate outcome. The debug module is modelled as an integration module
+/// Pins the composition-inclusion gate outcome. The debug module is modelled as an integration module
 /// (<c>ActivatesWith =&gt; [Core]</c>). The test drives the real gate's on/off decision and asserts
 /// composed-set membership of a Core-bearing state. All ids are synthetic (module ids are runtime-assigned;
 /// the pure composer is id-agnostic under set semantics).

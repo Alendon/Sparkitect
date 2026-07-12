@@ -4,7 +4,7 @@ using Sparkitect.Input;
 namespace Sparkitect.WindowInput.Bindings;
 
 /// <summary>
-/// The open modding seam (D-16): a binding type owns the entire sliver connecting physical
+/// The open modding seam: a binding type owns the entire sliver connecting physical
 /// source values to an action's result — which source values it references, its
 /// settings-backing shape (only it knows how many/which keys it needs), how it refreshes its own
 /// raw channel slots each frame, and how it composes those slots into an

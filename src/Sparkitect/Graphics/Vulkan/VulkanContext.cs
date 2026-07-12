@@ -74,7 +74,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
     /// <summary>The game state manager providing the loaded mod set.</summary>
     public required IGameStateManager GameStateManager { private get; init; }
 
-    /// <summary>The settings manager; the validation toggle is read inline from it at device creation (D-17).</summary>
+    /// <summary>The settings manager; the validation toggle is read inline from it at device creation.</summary>
     public required ISettingsManager SettingsManager { private get; init; }
 
     /// <summary>The window manager, present only when the windowing module is active.</summary>

@@ -7,6 +7,12 @@
 - name: Core
   href: core/toc.yml
   topicHref: core/index.md
+- name: Settings
+  href: settings/toc.yml
+  topicHref: settings/index.md
+- name: Input
+  href: input/toc.yml
+  topicHref: input/index.md
 - name: Vulkan
   href: vulkan/toc.yml
   topicHref: vulkan/index.md

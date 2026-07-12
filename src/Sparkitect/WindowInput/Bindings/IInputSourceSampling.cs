@@ -7,7 +7,7 @@ namespace Sparkitect.WindowInput.Bindings;
 /// <see cref="IBindingType{TSelf,TResult}.Sample"/> step routes through to refresh its raw
 /// channel slots. Routes to the registered <see cref="IInputSourceProvider{TValue,TRaw}"/> for
 /// <c>TValue</c>; a channel with no registered provider leaves <c>results</c> untouched — a
-/// providerless channel is a composition state, never an error (D-20). Public: <see cref="IBindingType{TSelf,TResult}"/>
+/// providerless channel is a composition state, never an error. Public: <see cref="IBindingType{TSelf,TResult}"/>
 /// is an open modding seam, so a third-party binding type's <c>Sample</c> implementation must be
 /// able to receive and call this parameter type.
 /// </summary>

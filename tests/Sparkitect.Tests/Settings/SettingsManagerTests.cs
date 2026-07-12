@@ -83,10 +83,10 @@ public class SettingsManagerTests
     [Test]
     public async Task WriteToUserSource_OverridesDeclaredDefault()
     {
-        // Mod-override proxy (ROADMAP Success Criterion #5): per D-10 there is no mod-override source;
+        // Mod-override proxy: there is no mod-override source;
         // a mod overrides another mod's default via a later-ordered Entrypoint that imperatively calls
         // this same write primitive. The "later-ordered entrypoint runs after the target" half is owned
-        // and tested by the Entrypoint system + the 57.1 ordering core, not re-proven here.
+        // and tested by the Entrypoint system + the shared ordering core, not re-proven here.
         var manager = new SettingsManager();
         manager.Declare(Flag, new SettingDefinition<bool>(Default: false));
         manager.RegisterSource(UserSourceId, new StubSource("user", canWrite: true));

@@ -9,10 +9,10 @@ namespace Sparkitect.Modding;
 
 /// <summary>
 /// A collectible <see cref="AssemblyLoadContext"/> for a mod (group). Owns its own assembly cache that
-/// dies with the context (D-03/D-10) — no cache is shared across sibling contexts. Cross-ALC identity
+/// dies with the context — no cache is shared across sibling contexts. Cross-ALC identity
 /// must always be compared by <see cref="Assembly"/>/<see cref="Type"/> reference (<c>ReferenceEquals</c>),
 /// never by name string: a name match across two different ALCs does not imply the same loaded instance,
-/// and comparing by name is exactly the split-identity bug this contract guards against (D-02).
+/// and comparing by name is exactly the split-identity bug this contract guards against.
 /// </summary>
 internal class SparkitectLoadContext : AssemblyLoadContext
 {
@@ -21,12 +21,12 @@ internal class SparkitectLoadContext : AssemblyLoadContext
     private readonly IReadOnlySet<string>? _allowedAssemblyNames;
     private readonly string _ownerLabel;
 
-    /// <param name="parentContext">The parent context to walk up to for scoped downward sharing (D-05).</param>
+    /// <param name="parentContext">The parent context to walk up to for scoped downward sharing.</param>
     /// <param name="allowedAssemblyNames">
-    /// The D-07 resolve-safety set: simple assembly names this context is expected to resolve. A resolve
+    /// The resolve-safety set: simple assembly names this context is expected to resolve. A resolve
     /// outside this set is a warn-only observability signal (never enforced) — pass null to skip the check.
     /// </param>
-    /// <param name="ownerLabel">A label naming the owner (mod/group) for D-07 warning messages.</param>
+    /// <param name="ownerLabel">A label naming the owner (mod/group) for resolve-safety warning messages.</param>
     public SparkitectLoadContext(SparkitectLoadContext? parentContext,
         IReadOnlySet<string>? allowedAssemblyNames = null, string ownerLabel = "") : base(true)
     {
@@ -38,8 +38,8 @@ internal class SparkitectLoadContext : AssemblyLoadContext
         // A collectible ALC that keeps strong references to its own loaded Assembly instances in a managed
         // field never unloads — the field roots the assemblies, which root this context, and the collectible
         // unload machinery cannot break that cycle while the strong refs live. Dropping them at Unload()
-        // initiation (the Unloading event) is what actually lets the cache "die with its context" (D-03) and
-        // is the prerequisite that makes the mod DLL leave memory (RLHD-04). Verified empirically: without
+        // initiation (the Unloading event) is what actually lets the cache "die with its context" and
+        // is the prerequisite that makes the mod DLL leave memory. Verified empirically: without
         // this clear the context stays alive across unbounded forced-GC drains; with it, it dies immediately.
         Unloading += _ => _loadedAssemblies.Clear();
     }
@@ -89,7 +89,7 @@ internal class SparkitectLoadContext : AssemblyLoadContext
         {
             _loadedAssemblies[assemblyName.Name] = assembly;
 
-            // D-07: warn-only resolve-safety net. A resolve outside the manifest-derived allowed set is
+            // Warn-only resolve-safety net. A resolve outside the manifest-derived allowed set is
             // observed, never blocked — the load already happened above and proceeds normally either way.
             if (_allowedAssemblyNames is not null && !_allowedAssemblyNames.Contains(assemblyName.Name))
             {

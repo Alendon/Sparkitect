@@ -17,7 +17,7 @@ namespace Sparkitect.Debug;
 internal static class DebugSnapshotBuilder
 {
     /// <summary>
-    /// The debug-channel wire protocol version marker (D-09). Bumped whenever the snapshot data design
+    /// The debug-channel wire protocol version marker. Bumped whenever the snapshot data design
     /// changes so a mismatched plugin degrades loudly rather than half-rendering.
     /// </summary>
     public const int ProtocolVersion = 1;
@@ -41,7 +41,7 @@ internal static class DebugSnapshotBuilder
         // Per-frame added-mods come from the public stack projection, indexed by state so the SF spine joins.
         var addedModsByState = gsm.StateStack.ToDictionary(e => e.StateId, e => e.AddedMods);
 
-        // The per-frame SF accessor is the render spine: top-of-stack first (D-04), runtime SF truth (D-05).
+        // The per-frame SF accessor is the render spine: top-of-stack first, runtime SF truth.
         var frames = gsm.GetFrameStatelessFunctions()
             .Select(frame => BuildFrame(frame, gsm, identifications, addedModsByState))
             .ToList();
@@ -55,8 +55,8 @@ internal static class DebugSnapshotBuilder
         IIdentificationManager ids,
         IReadOnlyDictionary<Identification, IReadOnlyList<string>> addedModsByState)
     {
-        // Modules = the COMPLETE composed set with origin badges + one-hop requirers (Pitfall 4: never the
-        // delta — a child frame shows every inherited module).
+        // Modules = the COMPLETE composed set with origin badges + one-hop requirers, never the
+        // delta — a child frame shows every inherited module.
         var modules = gsm.GetStateProvenance(frame.StateId)
             .Select(p => new ModuleEntry(
                 Resolve(p.Id, ids),
@@ -73,7 +73,7 @@ internal static class DebugSnapshotBuilder
             ? mods.ToList()
             : [];
 
-        // Summary counts feed the enriched header (D-04): module set size + mods-added count.
+        // Summary counts feed the enriched header: module set size + mods-added count.
         return new StateFrame(
             Resolve(frame.StateId, ids),
             modules,
@@ -95,7 +95,7 @@ internal static class DebugSnapshotBuilder
         }
     }
 
-    // Resolves a runtime numeric Identification to its string mod/category/item triple (Pitfall 3). Fails
+    // Resolves a runtime numeric Identification to its string mod/category/item triple. Fails
     // loud when unresolvable — a navigable row without a resolvable string id is a broken snapshot, not a
     // silently-emptied one.
     private static IdName Resolve(Identification id, IIdentificationManager identifications)
@@ -104,7 +104,7 @@ internal static class DebugSnapshotBuilder
         {
             throw new InvalidOperationException(
                 $"Debug snapshot could not resolve identification {id} to a string (mod/category/item) triple; " +
-                "every navigable row requires a resolvable string id (Pitfall 3).");
+                "every navigable row requires a resolvable string id.");
         }
 
         return new IdName(mod!, category!, item!);

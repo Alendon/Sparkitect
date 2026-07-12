@@ -10,7 +10,7 @@ namespace Sparkitect.Settings;
 /// <summary>
 /// State module that drives the settings registration passes: it processes the setting and
 /// setting-source registries on state entry and exit. Depends on the core module, which owns the
-/// registries and the manager. The callback-teardown state function is added in a later plan.
+/// registries and the manager.
 /// </summary>
 [ModuleRegistry.RegisterModule("settings")]
 [PublicAPI]
@@ -47,8 +47,8 @@ public partial class SettingsModule : TransitiveStateModule, IHasIdentification
             settingsManager.ProcessRegisteredSources();
     }
 
-    // Binds new subscriptions to the current leaf frame's container identity (D-15). This module is
-    // root-loaded and thus ambiently scheduled (D-22), so this runs on every frame enter and keeps the
+    // Binds new subscriptions to the current leaf frame's container identity. This module is
+    // root-loaded and thus ambiently scheduled, so this runs on every frame enter and keeps the
     // provider pointed at the live leaf container; ClearSubscriptions below tears down that frame's bag.
     [OnFrameEnterScheduling]
     [TransitionFunction("wire_settings_frame_token")]
@@ -58,7 +58,7 @@ public partial class SettingsModule : TransitiveStateModule, IHasIdentification
             settingsManager.UseFrameTokenProvider(() => gameStateManager.CurrentCoreContainer);
     }
 
-    // Frame-exit teardown trigger (D-21): clears the exiting frame's subscriptions so they never outlive
+    // Frame-exit teardown trigger: clears the exiting frame's subscriptions so they never outlive
     // the frame (rooting-leak mitigation). The exit runs while the exiting frame is still the leaf, so
     // CurrentCoreContainer is that frame's container — the same token WireFrameToken bound at subscribe time.
     [OnFrameExitScheduling]

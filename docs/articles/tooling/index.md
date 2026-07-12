@@ -19,3 +19,4 @@ The SDK covers project setup, dependency declaration, build output, and running 
 - **<xref:sparkitect.tooling.sdk>** - Project configuration and build pipeline for mod development
 - **<xref:sparkitect.tooling.mod-specification>** - Mod archive format and manifest specification
 - **<xref:sparkitect.tooling.source-generation>** - How Sparkitect source generators work and how to use them
+- **<xref:sparkitect.tooling.rider-plugin>** - Navigation between registrations and generated identifications

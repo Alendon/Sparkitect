@@ -206,17 +206,17 @@ public partial class RegistryGenerator
                 var sourcePath = e is ResourceRegistrationEntry { SourcePath: { Length: > 0 } sp } ? sp : null;
                 var sourceLine = e is ResourceRegistrationEntry res ? res.SourceLine : 0;
                 var sourceColumn = e is ResourceRegistrationEntry res2 ? res2.SourceColumn : 0;
-                // D-05: the single emission point where bare Identification becomes Identification<T> for
+                // the single emission point where bare Identification becomes Identification<T> for
                 // opted-in registrations. Decided SOLELY on the register method's annotation (fail-loud —
                 // see ComputeIdentificationType); applies uniformly to both value-source and type-source
-                // entries (D-06) since both carry a normalized ResolvedTypeArguments list (D-08).
+                // entries since both carry a normalized ResolvedTypeArguments list.
                 var (entryMethodName, entryResolvedArgs) = GetEntryResolutionInputs(e);
                 var entryRegisterMethod = unit.Model.RegisterMethods
                     .FirstOrDefault(m => m.FunctionName == entryMethodName);
                 var identificationType = ComputeIdentificationType(entryRegisterMethod, entryResolvedArgs);
                 var hasTypedIdentification = entryRegisterMethod?.TypedIdentificationTypeParameterName is
                     { Length: > 0 };
-                // D-03: per-entry cross-registry alias descriptors — the SAME entryRegisterMethod/
+                // per-entry cross-registry alias descriptors — the SAME entryRegisterMethod/
                 // entryResolvedArgs inputs ComputeIdentificationType uses, keyed off CrossRegistryMarkers
                 // instead of the scalar TypedIdentificationTypeParameterName. Consumed by
                 // RenderRegistryCrossEmissionAliasUnit, not by this (IdProperties) template.
@@ -241,12 +241,12 @@ public partial class RegistryGenerator
                     SourcePath = sourcePath,
                     SourceLine = sourceLine,
                     SourceColumn = sourceColumn,
-                    // D-05 id-property type: bare "global::Sparkitect.Modding.Identification" for
+                    // Id-property type: bare "global::Sparkitect.Modding.Identification" for
                     // non-opted-in entries, "global::Sparkitect.Modding.Identification<Concrete>" for
                     // opted-in ones. HasTypedIdentification gates the template's wrapping-constructor branch.
                     IdentificationType = identificationType,
                     HasTypedIdentification = hasTypedIdentification,
-                    // D-03: 0..N resolved cross-registry alias descriptors for this entry (empty when the
+                    // 0..N resolved cross-registry alias descriptors for this entry (empty when the
                     // entry's register method carries no [TypedIdentification<T>] markers).
                     CrossRegistryAliases = crossRegistryAliases
                 };
@@ -286,7 +286,7 @@ public partial class RegistryGenerator
     /// <summary>
     /// Extracts a registration entry's register-method name and resolved type-argument list uniformly
     /// across all four <see cref="RegistrationEntry"/> kinds. Used to look up the owning
-    /// <see cref="RegisterMethodModel"/> and feed <see cref="ComputeIdentificationType"/> (D-05/D-06/D-08).
+    /// <see cref="RegisterMethodModel"/> and feed <see cref="ComputeIdentificationType"/>.
     /// <see cref="ResourceRegistrationEntry"/> (the None kind) carries no generics and yields a null
     /// resolved-args list, which <see cref="ComputeIdentificationType"/> treats as empty.
     /// </summary>
@@ -301,13 +301,13 @@ public partial class RegistryGenerator
     };
 
     /// <summary>
-    /// Computes the id-property type string for one registration entry (D-05): the single point where bare
+    /// Computes the id-property type string for one registration entry: the single point where bare
     /// <c>Identification</c> becomes <c>Identification&lt;T&gt;</c>. Decided SOLELY on the register method's
     /// opt-in annotation — <see cref="RegisterMethodModel.TypedIdentificationTypeParameterName"/> null emits
     /// bare <c>Identification</c>; non-null (opted-in) ALWAYS emits the typed
     /// <c>Identification&lt;Concrete&gt;</c> form using the resolved slot's value, even when that value is an
-    /// empty string (yielding <c>Identification&lt;&gt;</c>, a loud compile error consistent with Plan 04's
-    /// empty-string call-site error). An opted-in method never silently falls back to bare — including when
+    /// empty string (yielding <c>Identification&lt;&gt;</c>, a loud compile error consistent with the
+    /// resolution walk's empty-string call-site error). An opted-in method never silently falls back to bare — including when
     /// the annotated parameter name is not found in <see cref="RegisterMethodModel.TypeParameterNames"/>
     /// (should not occur post-roundtrip; treated as the genuinely-unresolvable fail-loud case).
     /// </summary>
@@ -330,7 +330,7 @@ public partial class RegistryGenerator
     }
 
     /// <summary>
-    /// A single D-03 cross-registry alias, fully resolved and ready to feed
+    /// A single cross-registry alias, fully resolved and ready to feed
     /// <c>RegistryCrossEmissionAlias.Unit.liquid</c>: the target's per-mod ID-struct name (grouping key —
     /// entries sharing a target struct share one <c>extension(...)</c> block), the closed concrete type
     /// the alias's <c>Identification&lt;T&gt;</c> wraps, the alias member name (source entry's
@@ -346,14 +346,14 @@ public partial class RegistryGenerator
         string TargetRegistryFqn);
 
     /// <summary>
-    /// Computes the D-03 cross-registry alias descriptor list for one registration entry: for every
-    /// <c>[TypedIdentification&lt;TTarget&gt;]</c> marker on the entry's register method (D-05), resolves
+    /// Computes the cross-registry alias descriptor list for one registration entry: for every
+    /// <c>[TypedIdentification&lt;TTarget&gt;]</c> marker on the entry's register method, resolves
     /// the marker's concrete closed type using the SAME per-entry <paramref name="resolvedTypeArguments"/>/
     /// <see cref="RegisterMethodModel.TypeParameterNames"/> <see cref="ComputeIdentificationType"/> uses
-    /// (reuse, do not rebuild — RESEARCH "Don't Hand-Roll"), and pairs it with the marker's pre-resolved
-    /// <c>TargetCategoryKey</c> (resolved at extraction time off the target's live symbol, D-03/D-05) to
-    /// build the target's per-mod ID-struct name (<c>{SourceModIdPascal}{TargetCategoryPascal}IDs</c>,
-    /// RESEARCH Q2). Fail-loud (T-61.3-06): an unresolvable concrete type OR missing target category key
+    /// (reuse, do not rebuild), and pairs it with the marker's pre-resolved
+    /// <c>TargetCategoryKey</c> (resolved at extraction time off the target's live symbol) to
+    /// build the target's per-mod ID-struct name (<c>{SourceModIdPascal}{TargetCategoryPascal}IDs</c>).
+    /// Fail-loud: an unresolvable concrete type OR missing target category key
     /// yields an empty <see cref="CrossRegistryAliasDescriptor.ConcreteType"/>/
     /// <see cref="CrossRegistryAliasDescriptor.TargetModStructName"/>, which the template surfaces as a
     /// genuine <c>extension(...)</c>/<c>Identification&lt;&gt;</c> compile error — never a
@@ -390,17 +390,17 @@ public partial class RegistryGenerator
     }
 
     /// <summary>
-    /// Renders the D-03 cross-registry alias emission for one <see cref="RegistrationUnit"/>: collects
+    /// Renders the cross-registry alias emission for one <see cref="RegistrationUnit"/>: collects
     /// every entry's <see cref="ComputeCrossRegistryAliases"/> output, groups by target ID-struct name
     /// (multiple entries — even across different target registries — can share or differ per method),
     /// and emits one <c>extension(TargetModStructName) { ... }</c> block per distinct target inside a
     /// single <c>{RegistryName}CrossEmissionExtensions</c> static partial class in the SOURCE mod's own
-    /// <c>IdExtensions</c> namespace (D-03: "emitted by the SOURCE registry's generation pass into the
+    /// <c>IdExtensions</c> namespace ("emitted by the SOURCE registry's generation pass into the
     /// source compilation") — the SAME namespace the target's own per-mod ID-struct partial declaration
     /// lives in (<see cref="RenderRegistryIdPropertiesUnit"/>/<see cref="RenderRegistryIdExtensionsFramework"/>),
     /// so no additional using is needed. Each alias's suffix is resolved per-target via
     /// <see cref="ResolveAliasSuffix"/> (C-2): a per-target <see cref="RegistryModel.PerTargetAliasSuffixes"/>
-    /// override wins, else the registry-level uniform <see cref="RegistryModel.AliasSuffix"/> (D-06) applies.
+    /// override wins, else the registry-level uniform <see cref="RegistryModel.AliasSuffix"/> applies.
     /// Returns false (no file) when the unit has no cross-registry aliases at all.
     /// </summary>
     public static bool RenderRegistryCrossEmissionAliasUnit(RegistrationUnit unit, ModBuildSettings settings,
@@ -498,7 +498,7 @@ public partial class RegistryGenerator
     }
 
     /// <summary>
-    /// Semicolon-joins the encoded form of every cross-registry marker (D-05/D-08) for metadata
+    /// Semicolon-joins the encoded form of every cross-registry marker for metadata
     /// roundtrip: one sub-entry per marked type parameter,
     /// <c>{ParamName}|{TargetRegistryFqn}|{TargetCategoryKey}</c>. Reuses the SAME two-level
     /// <c>;</c>-then-<c>|</c> idiom as <see cref="EncodeConstraintRefs"/> — no new delimiter scheme;
@@ -534,15 +534,15 @@ public partial class RegistryGenerator
             KeyedFactoryMarkerTBase = method.KeyedFactoryMarkerTBase ?? string.Empty,
             KeyedFactoryMarkerTKey = method.KeyedFactoryMarkerTKey ?? string.Empty,
             TypedIdentificationTypeParameterName = method.TypedIdentificationTypeParameterName ?? string.Empty,
-            // FULL per-type-parameter roundtrip (D-03/D-08 cross-assembly fix): a RegisterMethodModel
+            // FULL per-type-parameter roundtrip (cross-assembly fix): a RegisterMethodModel
             // parsed from an external engine registry's metadata must carry the SAME fields as one
-            // extracted same-compilation, so Plan 04's constraint walk resolves typed ids cross-assembly.
+            // extracted same-compilation, so the constraint walk resolves typed ids cross-assembly.
             // Delimiters (';' between refs, '|' between a ref's 3 sub-fields, ',' between arg names)
             // never appear in a FullyQualifiedFormat FQN.
             TypeParameterNames = EncodeTypeParameterNames(method.TypeParameterNames),
             ConstraintRefs = EncodeConstraintRefs(method.ConstraintRefs),
             ValueParameterGeneric = EncodeConstraintRef(method.ValueParameterGeneric),
-            // D-05/D-07: cross-registry marker list, same two-level `;`-then-`|` idiom as EncodeConstraintRef
+            // cross-registry marker list, same two-level `;`-then-`|` idiom as EncodeConstraintRef
             // — one sub-entry per marked type parameter, {ParamName}|{TargetRegistryFqn} joined by `;`.
             CrossRegistryMarkers = EncodeCrossRegistryMarkers(method.CrossRegistryMarkers)
         }).ToArray();
@@ -563,7 +563,7 @@ public partial class RegistryGenerator
             RegisterMethods = registerMethodsString,
             ResourceFiles = resourceFilesString,
             OwningModule = model.OwningModuleFullName ?? string.Empty,
-            // D-06: registry-level alias suffix, roundtripped so cross-assembly consumers of THIS
+            // registry-level alias suffix, roundtripped so cross-assembly consumers of THIS
             // registry (as a source of cross-registry aliases) apply the same suffix as same-compilation.
             AliasSuffix = model.AliasSuffix ?? string.Empty,
             // C-2: per-target-registry suffix overrides, same two-level `;`-then-`|` idiom as
@@ -1004,7 +1004,7 @@ public static class {containerClassName}
             context.AddSource(file, code);
         }
 
-        // D-03: cross-registry alias emission — a second, independent output for the SAME unit. No-op
+        // cross-registry alias emission — a second, independent output for the SAME unit. No-op
         // (no file) when the unit carries no [TypedIdentification<T>] cross-registry markers.
         if (RenderRegistryCrossEmissionAliasUnit(arg.unit, arg.settings, out var aliasCode, out var aliasFile))
         {

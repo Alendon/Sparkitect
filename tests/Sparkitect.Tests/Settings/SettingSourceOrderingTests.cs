@@ -4,9 +4,9 @@ using Sparkitect.Settings;
 namespace Sparkitect.Tests.Settings;
 
 /// <summary>
-/// Asserts the translation of source OrderBefore/OrderAfter metadata into the shared 57.1 ordering core
+/// Asserts the translation of source OrderBefore/OrderAfter metadata into the shared ordering core
 /// produces the right resolved precedence, and that cycles / missing required sources fail loud naming
-/// the participating source ids. Does not re-test the 57.1 sort mechanics (57.1 D-06 owns those).
+/// the participating source ids. Does not re-test the shared ordering core's own sort mechanics.
 /// </summary>
 public class SettingSourceOrderingTests
 {

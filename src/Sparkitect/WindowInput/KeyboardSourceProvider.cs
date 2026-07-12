@@ -5,10 +5,10 @@ using Sparkitect.Windowing.Input;
 namespace Sparkitect.WindowInput;
 
 /// <summary>
-/// Bulk-fills keyboard key pressed-states for the keyboard channel (D-14): one
+/// Bulk-fills keyboard key pressed-states for the keyboard channel: one
 /// <see cref="Sample"/> call per frame over the deduped key list Input hands it, reading the
 /// existing thin <see cref="SparkitKeyboard"/> wrapper. The natural home for
-/// <see cref="FocusLostBehavior"/> (a device concern, D-14) — <see cref="SparkitKeyboard"/> lives
+/// <see cref="FocusLostBehavior"/> (a device concern) — <see cref="SparkitKeyboard"/> lives
 /// inside Windowing and is not itself part of the modding seam the bridge exposes.
 /// </summary>
 internal sealed class KeyboardSourceProvider : IInputSourceProvider<Key, bool>

@@ -13,7 +13,7 @@ namespace Sparkitect.Modding;
 public readonly struct Identification<T> : IEquatable<Identification<T>>
 {
     // Note: [StructLayout(LayoutKind.Explicit)] is not usable here — the CLR throws a
-    // TypeLoadException for explicit layout on generic types. The 8-byte guarantee (D-09) is
+    // TypeLoadException for explicit layout on generic types. The 8-byte guarantee is
     // preserved anyway: sole field is the already-explicit-layout, 8-byte Identification, so the
     // default (sequential) layout of this single-field struct is exactly 8 bytes with no padding.
     internal readonly Identification Id;

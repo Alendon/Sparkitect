@@ -22,10 +22,10 @@ internal class WindowManager : IWindowManager, IWindowManagerStateFacade
 
     internal required IVulkanContext VulkanContext { private get; init; }
 
-    /// <summary>The settings manager; window size and vsync/present-mode are read inline from it (D-17).</summary>
+    /// <summary>The settings manager; window size and vsync/present-mode are read inline from it.</summary>
     internal required ISettingsManager SettingsManager { private get; init; }
 
-    /// <summary>Publishes the window lifecycle events (D-11) for managed create/destroy.</summary>
+    /// <summary>Publishes the window lifecycle events for managed create/destroy.</summary>
     internal required IEventManager EventManager { private get; init; }
 
     /// <summary>

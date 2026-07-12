@@ -518,7 +518,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(methods.First().KeyedFactoryMarkerTBase).IsNull();
     }
 
-    // D-01: Value and the removed GenericValue merge into a single source-axis kind — a one-type-param
+    // Value and the removed GenericValue merge into a single source-axis kind — a one-type-param
     // value method must classify as Value, never fall through to a removed enum member.
     [Test]
     public async Task ExtractRegisterMethods_OneTypeParamValueMethod_ClassifiesAsValue(CancellationToken token)
@@ -545,7 +545,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(methods.First().PrimaryParameterKind).IsEqualTo(PrimaryParameterKind.Value);
     }
 
-    // D-02: the inner type-registration gate lifted from == 1 to > 0 — a 2-type-parameter,
+    // the inner type-registration gate lifted from == 1 to > 0 — a 2-type-parameter,
     // single-Identification-parameter method classifies as Type (not None), and the constraint capture
     // loop (no longer limited to TypeParameters.First()) records the T1 -> RelationShip<T2> resolution map.
     [Test]
@@ -578,7 +578,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(method.ConstraintRefs.Any(r => r.ArgTypeParameterNames.Contains("T2"))).IsTrue();
     }
 
-    // D-04: the [TypedIdentification] type-parameter opt-in is extracted by name; an unannotated method's
+    // the [TypedIdentification] type-parameter opt-in is extracted by name; an unannotated method's
     // type parameter yields null (opt-in preserved).
     [Test]
     public async Task ExtractRegisterMethods_TypedIdentificationAnnotation_CapturesParameterName(
@@ -617,7 +617,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(untyped.CrossRegistryMarkers).IsEmpty();
     }
 
-    // D-05/D-08: a method carrying BOTH the bare same-registry marker AND a cross-registry
+    // a method carrying BOTH the bare same-registry marker AND a cross-registry
     // [TypedIdentification<TTarget>] marker on a DISTINCT type parameter extracts both — the kind-
     // discriminated walk no longer early-returns on the first hit (the fail-silent truncation bug).
     [Test]
@@ -652,7 +652,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Assert.That(method.CrossRegistryMarkers.First().TargetRegistryFqn).IsEqualTo("global::N.SettingRegistry");
     }
 
-    // D-05: two [TypedIdentification<T>] markers on distinct type parameters, targeting distinct
+    // two [TypedIdentification<T>] markers on distinct type parameters, targeting distinct
     // registries, both survive extraction (no bare marker present here).
     [Test]
     public async Task ExtractRegisterMethods_TwoCrossRegistryMarkers_YieldsBothOnDistinctTargets(
@@ -688,7 +688,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             .IsTrue();
     }
 
-    // METADATA-ROUNDTRIP-SYMMETRY (D-07): the cross-registry marker list survives the same
+    // METADATA-ROUNDTRIP-SYMMETRY: the cross-registry marker list survives the same
     // encode->decode roundtrip as the other per-type-parameter fields, decoded direct-from-symbol.
     [Test]
     public async Task RegistryMetadata_Roundtrip_CrossRegistryMarkers_FieldIdentical(CancellationToken token)
@@ -845,8 +845,8 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
     }
 
     // RESOLVER-LEVEL (walk math only — no symbols, no .Combine() driver): the load-bearing fixpoint case.
-    // B : RelationShip<A> serialized as the hierarchy Task 1 captures at TryBuildProviderCandidate; Reg<T1,T2>
-    // where T1 : RelationShip<T2> is the ConstraintRef Plan 02 captures. The walk seeds T1 with the anchor
+    // B : RelationShip<A> serialized as the hierarchy captured at TryBuildProviderCandidate; Reg<T1,T2>
+    // where T1 : RelationShip<T2> is the ConstraintRef the walk captures. The walk seeds T1 with the anchor
     // (B), matches RelationShip<T>'s open FQN against the hierarchy entry, and reads T2 from position 0 of
     // that entry's TypeArgumentFqns (A) — proving the pure-string resolver at RegistryGenerator.Providers.cs.
     [Test]
@@ -1101,9 +1101,9 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
         await Verifier.Verify(codeP, verifySettings);
     }
 
-    // D-03 Wave 0 gap: a Verify snapshot pinning the emitted cross-registry extension(...) alias block
+    // A Verify snapshot pinning the emitted cross-registry extension(...) alias block
     // for a [TypedIdentification<SettingRegistry>] fixture — the alias-emission mechanism itself (not a
-    // registry-storage test, feedback_no_registry_tests; this is generator-source snapshot coverage).
+    // registry-storage test; this is generator-source snapshot coverage).
     [Test]
     public async Task RegistryGenerator_FullRun_CrossRegistryAlias_EmitsTypedExtensionBlock_Snapshot(
         CancellationToken token)
@@ -1115,8 +1115,8 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
             namespace DiTest
             {
                 // Stand-in target registry — carries [Registry(Identifier = "setting")] so the SOURCE
-                // registry's extraction resolves the target category key directly off this live symbol
-                // (D-03), no cross-assembly metadata round-trip needed for the target side.
+                // registry's extraction resolves the target category key directly off this live symbol,
+                // no cross-assembly metadata round-trip needed for the target side.
                 [Registry(Identifier = "setting")]
                 public class SettingRegistry : IRegistry<TestModule>
                 {
@@ -1125,7 +1125,7 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
                 }
 
                 // Source registry: a Type-source register method carrying a cross-registry marker
-                // (D-05) plus a registry-level alias suffix (D-06).
+                // plus a registry-level alias suffix.
                 [Registry(Identifier = "dummy", AliasSuffix = "Key")]
                 public class DummyRegistry : IRegistry<TestModule>
                 {
@@ -1149,10 +1149,10 @@ public class RegistryGeneratorUnitTests : SourceGeneratorTestBase<RegistryGenera
 
         var aliasCode = trees["DummyRegistry.CrossEmissionAlias_Providers.g.cs"];
 
-        // Static extension(...) member — no instance receiver (D-03 Pattern 1, not the
+        // Static extension(...) member — no instance receiver (not the
         // instance-receiver SettingsAccessor shape).
         await Assert.That(aliasCode).Contains("extension(SampleTestSettingIDs)");
-        // Typed Identification<T>, the D-06 suffix ("Key") appended to the alias member name.
+        // Typed Identification<T>, the alias suffix ("Key") appended to the alias member name.
         await Assert.That(aliasCode)
             .Contains("public static global::Sparkitect.Modding.Identification<global::DiTest.JumpInput> JumpInputKey");
         // Wraps the SOURCE registry's own id via the Identification(Identification) ctor.

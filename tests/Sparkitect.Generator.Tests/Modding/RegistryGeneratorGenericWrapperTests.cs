@@ -10,7 +10,7 @@ using static Sparkitect.Generator.Tests.TestData;
 
 namespace Sparkitect.Generator.Tests.Modding;
 
-// Guards the D-18 generator relaxation (57-01): a register method whose value parameter is a
+// Guards the generator relaxation: a register method whose value parameter is a
 // constructed generic over the method type parameter — RegisterSetting<T>(Identification,
 // SettingDefinition<T>) — generates its attribute and preserves the closed generic value type.
 // These would fail against the pre-relaxation generator, where the wrapper method was silently
@@ -96,7 +96,7 @@ public class RegistryGeneratorGenericWrapperTests : SourceGeneratorTestBase<Regi
 }
 
 // The shape analyzer must NOT report SPARK0213 (GenericValueMismatch) for the wrapper-over-T
-// register method — it is a valid shape after the D-18 relaxation.
+// register method — it is a valid, current shape.
 public class RegistryShapeAnalyzerGenericWrapperTests : AnalyzerTestBase<RegistryShapeAnalyzer>
 {
     [Before(Test)]

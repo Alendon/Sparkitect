@@ -69,11 +69,11 @@ using Sparkitect.CompilerGenerated.IdExtensions;
 namespace HelloWorld;
 
 [ModuleRegistry.RegisterModule("hello")]
-public partial class HelloModule : IStateModule
+public partial class HelloModule : TransitiveStateModule, IHasIdentification
 {
     public static Identification Identification => StateModuleID.HelloWorld.Hello;
 
-    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
+    public override IReadOnlyList<Identification> Requires => [];
 
     [TransitionFunction("say_hello")]
     [OnCreateScheduling]
@@ -134,6 +134,8 @@ See [Project SDK](xref:sparkitect.tooling.sdk) for more on launch configuration.
 - [Game State System](xref:sparkitect.core.game-state-system) for modules, states, and transitions
 - [Stateless Functions](xref:sparkitect.core.stateless-functions) for transition and per-frame logic
 - [Dependency Injection](xref:sparkitect.core.dependency-injection) for service registration
+- [Settings](xref:sparkitect.settings) for layered, typed configuration
+- [Input](xref:sparkitect.input) for named, device-neutral input actions
 - [Registry System](xref:sparkitect.core.registry-system) for object registration
 - [Modding Framework](xref:sparkitect.core.modding-framework) for mod structure and loading
 

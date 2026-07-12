@@ -10,8 +10,8 @@ using WireOrigin = Sparkitect.Debug.Protocol.ModuleOrigin;
 namespace Sparkitect.Tests.Debug;
 
 /// <summary>
-/// Pins the D-22/D-11 snapshot-builder OUTCOME against a hand-built composed stack: the per-frame Modules
-/// section is the COMPLETE composed set (a child frame shows inherited modules, Pitfall 4), each module
+/// Pins the snapshot-builder OUTCOME against a hand-built composed stack: the per-frame Modules
+/// section is the COMPLETE composed set (a child frame shows inherited modules), each module
 /// carries its origin badge + one-hop requirers, per-frame SF sets are present with the right kinds, every
 /// navigable id is a resolved string triple, and the summary counts + version marker are set. Tests the
 /// produced snapshot, never registrations or log side effects.

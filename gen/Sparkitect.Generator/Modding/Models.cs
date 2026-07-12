@@ -12,8 +12,8 @@ internal record RegistryWithFactory(
     FactoryWithRegistration FactoryData,
     ImmutableValueArray<FacadeMetadataModel> FacadeMetadata);
 
-/// <param name="AliasSuffix">Optional registry-level suffix (D-06) applied to every alias this registry
-/// emits into other registries' id-space (D-03) — provenance in the name, collision-proofing against
+/// <param name="AliasSuffix">Optional registry-level suffix applied to every alias this registry
+/// emits into other registries' id-space — provenance in the name, collision-proofing against
 /// silent extension-member shadowing. Null/empty applies no suffix.</param>
 /// <param name="PerTargetAliasSuffixes">Per-target-registry suffix overrides (C-2), one entry per
 /// distinct <c>[AliasSuffix&lt;TTargetRegistry&gt;]</c> declared on the registry class, keyed by the
@@ -44,7 +44,7 @@ public record FileRegistrationEntry(
 
 /// <summary>
 /// A constructed-generic constraint on one of a register method's type parameters that references
-/// another type parameter. This is the resolution map the constraint-guided walk (Plan 04) consumes.
+/// another type parameter. This is the resolution map the constraint-guided walk consumes.
 /// </summary>
 /// <param name="TypeParameterName">The type parameter the constraint is declared on.</param>
 /// <param name="ConstraintOpenDefinitionFqn">The constraint's open generic definition FQN (e.g. <c>RelationShip&lt;&gt;</c>).</param>
@@ -57,18 +57,18 @@ public record RegisterConstraintRef(
 
 /// <summary>
 /// Kind-discriminated result of scanning a register method's type parameters for typed-identification
-/// markers (D-08). <see cref="BareMarker"/> is the at-most-one same-registry marker
-/// (<c>[TypedIdentification]</c>, D-04) — first-wins, unchanged consumer contract for
+/// markers. <see cref="BareMarker"/> is the at-most-one same-registry marker
+/// (<c>[TypedIdentification]</c>) — first-wins, unchanged consumer contract for
 /// <see cref="RegisterMethodModel.TypedIdentificationTypeParameterName"/>. <see cref="CrossMarkers"/> is
-/// the 0..N cross-registry linkage list (<c>[TypedIdentification&lt;TTarget&gt;]</c>, D-05), one entry
-/// per marked type parameter carrying its bound target-registry FQN AND that target's own category key
-/// (D-03), resolved directly off the target's live symbol at extraction time via
+/// the 0..N cross-registry linkage list (<c>[TypedIdentification&lt;TTarget&gt;]</c>), one entry
+/// per marked type parameter carrying its bound target-registry FQN AND that target's own category key,
+/// resolved directly off the target's live symbol at extraction time via
 /// <see cref="RegistryGenerator.TryExtractRegistryKey"/> — works uniformly whether the target type is
 /// declared in this compilation or referenced, since attribute metadata is always resolvable on any
 /// <see cref="Microsoft.CodeAnalysis.INamedTypeSymbol"/>. Empty when the target isn't itself a
 /// recognizable <c>[Registry]</c> type (fail-loud downstream, never silently dropped). The extraction
 /// walks ALL of a method's type parameters once and never returns early — this is the fail-silent
-/// truncation fix D-08 closes.
+/// truncation fix this design closes.
 /// </summary>
 public record TypedIdentificationExtraction(
     string? BareMarker,
@@ -88,12 +88,12 @@ public record TypedIdentificationExtraction(
 /// <param name="TypeParameterNames">The method's type parameters in declaration order; index 0 is the
 /// type-source anchor (the slot the registered type fills).</param>
 /// <param name="ConstraintRefs">One entry per constructed-generic constraint that references another
-/// type parameter — the resolution map for Plan 04's pure-string walk.</param>
+/// type parameter — the resolution map for the pure-string walk.</param>
 /// <param name="ValueParameterGeneric">The value parameter's constructed-generic structure, for
 /// value-source resolution against the provider return type; null for bare-<c>T</c> or non-generic
 /// value params.</param>
 /// <param name="CrossRegistryMarkers">Per marked type parameter, the (paramName, targetRegistryFqn,
-/// targetCategoryKey) triple for every <c>[TypedIdentification&lt;TTarget&gt;]</c> hit (D-05/D-08) —
+/// targetCategoryKey) triple for every <c>[TypedIdentification&lt;TTarget&gt;]</c> hit —
 /// 0..N, one per distinct target registry. Empty for methods carrying only (or none of) the bare
 /// same-registry marker.</param>
 public record RegisterMethodModel(

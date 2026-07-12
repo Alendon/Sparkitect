@@ -83,7 +83,7 @@ public interface IWindowManagerStateFacade
     void PumpTrackedWindows();
 
     /// <summary>
-    /// Every currently tracked managed window. Exists so a race-free catch-up query (D-15) can enumerate
+    /// Every currently tracked managed window. Exists so a race-free catch-up query can enumerate
     /// windows that were already tracked before a subscriber's <c>WindowCreated</c> subscription existed —
     /// the Windowing/Input bridge is the intended consumer, resolved via this state-facade-exclusive surface,
     /// never the general mod-facing <see cref="IWindowManager"/>.

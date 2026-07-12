@@ -7,7 +7,7 @@ using Sparkitect.Stateless;
 namespace Sparkitect.Tests.Debug;
 
 /// <summary>
-/// Pins the D-18/D-22 provenance re-derivation OUTCOME against a hand-built module graph: each of the four
+/// Pins the provenance re-derivation OUTCOME against a hand-built module graph: each of the four
 /// origin badges and the one-hop requirer edge. Tests the derived origin, never the composer's internals or
 /// any log side effect. Ids are synthetic (module ids are runtime-assigned; the pure derivation is
 /// id-agnostic under set semantics, mirroring the composer).
@@ -87,7 +87,7 @@ public class StateProvenanceTests
 }
 
 /// <summary>
-/// Pins the D-05/D-22 per-frame StatelessFunction accessor OUTCOME: each frame's PerFrame/TransitionEnter/
+/// Pins the per-frame StatelessFunction accessor OUTCOME: each frame's PerFrame/TransitionEnter/
 /// TransitionExit SF identities surface top-of-stack first, and a mod-contributed SF present in a frame's
 /// runtime wrappers appears. Frames are hand-built with known SFs and pushed onto the private stack via
 /// <see cref="UnsafeAccessor"/> (no reflection); the accessor's own deps are unused so they are left null.

@@ -24,7 +24,7 @@ public sealed partial class RenderGraph
                 "RenderGraph.RunFrame: Setup has not been invoked. Construct render graphs via " +
                 "IRenderGraphManager.CreateGraph<TRenderGraph>(passIds, window).");
 
-        // FPS cap read inline from settings each frame (D-17); 0 = uncapped (preserved semantics).
+        // FPS cap read inline from settings each frame; 0 = uncapped (preserved semantics).
         var fpsCap = _settingsManager.Graphics.FpsCap.Value;
         if (fpsCap != 0)
         {

@@ -130,9 +130,9 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
     // RESOLVER-LEVEL PROOF (metadata roundtrip parse + walk math) — the honest replacement for a
     // cross-assembly full-driver test. External-registry discovery scans only compilation.References, so a
     // single-compilation RunGeneratorAsync can never drive that path; the full-pipeline cross-assembly
-    // emission is proven by Plan 06's sample mod (a genuinely separate assembly referencing the engine).
+    // emission is proven by MinimalSampleMod's DummyRegistry (a genuinely separate assembly referencing the engine).
     // This test authors a Reg<T1,T2>(Identification) where T1 : RelationShip<T2> registry as HAND-WRITTEN
-    // external-registry metadata (ExtractFromMetadata_Valid style), encoded with Plan 02's exact writer
+    // external-registry metadata (ExtractFromMetadata_Valid style), encoded with the generator's exact writer
     // format (RegistryGenerator.Output.cs: EncodeTypeParameterNames ';'-joins names, EncodeConstraintRef is
     // '{TypeParameterName}|{ConstraintOpenDefinitionFqn}|{arg0,arg1,...}'), pulls the metadata symbol via
     // GetTypeByMetadataName, calls TryParseRegisterMethod directly, and asserts the roundtripped fields parse
@@ -609,7 +609,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Assert.That(fileNames.Any(f => f == "MyItem_KeyedFactory.g.cs")).IsFalse();
     }
 
-    // D-05/D-06: the single emission point where bare Identification becomes Identification<T> for an
+    // the single emission point where bare Identification becomes Identification<T> for an
     // opted-in registration (type-source, single-type-parameter anchor case). A sibling non-opted-in
     // method on the same registry proves bare stays bare — the transform never leaks across entries.
     [Test]
@@ -651,7 +651,7 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         var idPropertiesCode = idPropertiesTree!.GetText().ToString();
 
         // Opted-in entry: the public property AND OrDefault peek are Identification<Concrete>; the
-        // backing field stays bare (D-09 — no reverse conversion needed).
+        // backing field stays bare (no reverse conversion needed).
         await Assert.That(idPropertiesCode)
             .Contains("global::Sparkitect.Modding.Identification<global::DiTest.TypedItem> TypedItem");
         await Assert.That(idPropertiesCode)
@@ -668,10 +668,10 @@ public class RegistryGeneratorTests : SourceGeneratorTestBase<RegistryGenerator>
         await Verifier.Verify(driverRunResult, verifySettings);
     }
 
-    // Phase 61.2 Plan 06 (D-10): pins the same-compilation typed-provider shape mirroring
+    // Pins the same-compilation typed-provider shape mirroring
     // MinimalSampleMod/DummyRegistry.RegisterTypedProvider — a DI-constructed registry (manager
     // dependency) with a [TypedIdentification] type-source register method constrained to a provider
-    // interface + IHasIdentification, plus a placement registration. Complements Plan 06 Task 1's
+    // interface + IHasIdentification, plus a placement registration. Complements the
     // sample-mod compile: this test asserts the emitted id-property SHAPE only (RunGeneratorAsync
     // builds one compilation and cannot drive external-registry discovery — that is proven by the
     // cross-assembly sample-mod build).

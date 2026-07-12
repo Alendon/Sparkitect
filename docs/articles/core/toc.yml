@@ -16,5 +16,7 @@
   href: stateless-functions.md
 - name: Registry System
   href: registry-system.md
+- name: Events and Identification
+  href: events-and-identification.md
 - name: Utility Infrastructure
   href: utility-infrastructure.md

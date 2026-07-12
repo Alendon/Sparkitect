@@ -58,6 +58,22 @@ In a `.sparkres.yaml` file, **Go to Declaration** (F12) from an entry-ID scalar 
 
 Recognized scalars are highlighted under a shared, configurable inspection severity: the top-level `{registry}.{method}:` keys and the entry-ID scalars nested beneath them. The highlight tooltip states that F12 navigates to the registration site and Find Usages lists the consumers.
 
+## GSM Debugger Tool Window
+
+The GSM Debugger is a debugger-time tool window that discovers running engine processes through a per-user rendezvous file, then opens a socket connection to the selected process. It displays the live composed module-set stack for that process, with per-frame stateless functions and their scheduling-origin badges. Double-clicking a row navigates to the module class or the stateless function method, through the same registration-metadata lookup Go to Registration uses.
+
+## Explorer Tool Window
+
+The Explorer is a solution-scoped, stateless tree view of every registered category and entry across all loaded mod projects. It is independent of any running game process — it walks static registration metadata rather than opening a socket — and refreshes on solution-wide compilation changes. Rows navigate to their registration site the same way the Debugger's rows do.
+
+## Build/Live Boundary
+
+Go to Registration, Find Usages redirection, YAML resource navigation, and the Explorer all work without a running game process — they read static registration metadata from the compiled solution. The GSM Debugger is the one feature that requires a live process: it has nothing to show without an active socket connection.
+
+## Native-IDE Doctrine
+
+The plugin extends existing Rider mechanisms — the Go To submenu, Find Usages, F12, standard highlighting severities — rather than inventing custom UI where an existing IDE action already fits. New tool windows exist only where no native Rider concept covers the need, which is why the Debugger and Explorer are dedicated windows while registration navigation rides the standard Go To/Find Usages actions.
+
 ## See Also
 
 - <xref:sparkitect.core.registry-system> for how registrations produce identifications

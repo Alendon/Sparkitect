@@ -5,7 +5,7 @@ using Sparkitect.Generator.Modding;
 
 namespace Sparkitect.Generator.Tests.Modding;
 
-// Guards the 57-05 group single-ownership invariant (D-04, Pitfall 6): a settings group id is owned by
+// Guards the group single-ownership invariant: a settings group id is owned by
 // exactly one container. A second ownership declaration of an already-owned group id fails loud
 // (SPARK0270) — ownership is a generation-time concept (groups have no runtime registry), so the fail
 // is a generator diagnostic. Adding accessor members onto an existing group is fine; re-declaring

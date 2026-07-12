@@ -14,7 +14,7 @@ using Sparkitect.Windowing.Input;
 namespace Sparkitect.WindowInput;
 
 /// <summary>
-/// The auto-composed bridge between Windowing and Input (D-01/D-02). It declares no direct
+/// The auto-composed bridge between Windowing and Input. It declares no direct
 /// <see cref="Requires"/> edge to either module -- it activates only once BOTH are present in a
 /// composed state's set (<see cref="ActivatesWith"/>, the AND-fixpoint) -- and wires each managed
 /// window's keyboard into the runtime's device-agnostic source seam
@@ -22,7 +22,7 @@ namespace Sparkitect.WindowInput;
 /// same public control-plane a gamepad mod would use later to add its own source: no privileged
 /// engine path. Being the only party that knows both modules, it is also the only place their
 /// per-frame execution order can be expressed (<see cref="ProcessWindowInput"/>'s ordering
-/// anchor). It also owns the runtime's own per-frame processing function and the D-20 residual
+/// anchor). It also owns the runtime's own per-frame processing function and the residual
 /// teardown sweep, since core Input carries neither.
 /// </summary>
 [PublicAPI]
@@ -37,14 +37,14 @@ public sealed partial class WindowInputModule : TransitiveStateModule, IHasIdent
         [StateModuleID.Sparkitect.Windowing, StateModuleID.Sparkitect.Input];
 
     /// <summary>
-    /// Wires managed-window keyboards into Input's source seam, race-free by construction (D-15): it
+    /// Wires managed-window keyboards into Input's source seam, race-free by construction: it
     /// BOTH subscribes to <see cref="WindowLifecycleEvents.WindowCreated"/> for windows created from now
     /// on AND catch-up-queries <see cref="IWindowManagerStateFacade.TrackedWindows"/> for windows already
     /// tracked before this subscription existed -- subscribe-vs-create ordering stops mattering. Also
     /// subscribes to <see cref="WindowLifecycleEvents.WindowClosing"/> to unregister a window's source
-    /// while it is still fully alive (real cleanup, D-11). Re-running this on oscillation replay
+    /// while it is still fully alive (real cleanup). Re-running this on oscillation replay
     /// (state re-enter without recreation) is safe: subscriptions are reset before being re-established,
-    /// and the catch-up query skips windows already tracked (D-26).
+    /// and the catch-up query skips windows already tracked.
     /// </summary>
     [OnFrameEnterScheduling]
     [TransitionFunction("wire_window_keyboards")]
@@ -73,14 +73,14 @@ public sealed partial class WindowInputModule : TransitiveStateModule, IHasIdent
     private static void RegisterWindowKeyboard(
         ISparkitWindow window, IInputActions inputActions, IWindowInputSourceRegistry sourceRegistry)
     {
-        // Idempotent under oscillation replay (D-26): the live subscription and the catch-up query can
+        // Idempotent under oscillation replay: the live subscription and the catch-up query can
         // both reach the same window (e.g. a window created just before this enter re-runs).
         if (sourceRegistry.IsTracked(window)) return;
 
         var provider = new KeyboardSourceProvider((SparkitKeyboard)window.Keyboard);
-        // Both interfaces are implemented by the one registered WindowInputActions instance (D-02:
+        // Both interfaces are implemented by the one registered WindowInputActions instance --
         // core Input never learns about this facade, so it is reached by casting the DI-resolved
-        // public IInputActions rather than a second DI registration).
+        // public IInputActions rather than a second DI registration.
         var source = ((IWindowInputActionsStateFacade)inputActions).RegisterSource<Key, bool>(provider);
         sourceRegistry.Track(window, source);
     }
@@ -89,7 +89,7 @@ public sealed partial class WindowInputModule : TransitiveStateModule, IHasIdent
     /// Tears down the bridge's wiring on state exit: unsubscribes from the window lifecycle events and
     /// disposes any still-registered sources. Live handles at this point are residuals -- windows that
     /// closed via a path other than <see cref="IWindowManager.DestroyWindow"/>, or a teardown ordering
-    /// gap -- so they are auto-cleaned with a provenance warning rather than throwing (D-27): fail-loud
+    /// gap -- so they are auto-cleaned with a provenance warning rather than throwing: fail-loud
     /// is for precise, targeted issues at the offending call, not non-corrupting teardown residuals.
     /// </summary>
     [OnFrameExitScheduling]
@@ -99,7 +99,7 @@ public sealed partial class WindowInputModule : TransitiveStateModule, IHasIdent
         sourceRegistry.ReleaseAll();
 
     /// <summary>
-    /// D-22/Pitfall-1: (re)establishes every live Settings-backed binding's rebind-dirty
+    /// (Re)establishes every live Settings-backed binding's rebind-dirty
     /// subscription (relocated from the deleted core <c>InputModule</c>), UNCONDITIONALLY, on
     /// EVERY frame-enter -- including oscillation replay (<c>GameStateManager.TransitionToParent</c>
     /// re-runs the parent's enter methods on every pop/push). Subscriptions are frame-token-scoped
@@ -114,7 +114,7 @@ public sealed partial class WindowInputModule : TransitiveStateModule, IHasIdent
         ((IWindowInputActionsStateFacade)inputActions).EstablishRebindDirtySubscriptions();
 
     /// <summary>
-    /// D-20 residual sweep: at state exit, auto-cleans any still-live push/pull binding with a
+    /// Residual sweep: at state exit, auto-cleans any still-live push/pull binding with a
     /// provenance-rich warning, never interrupting teardown -- mirrors
     /// <see cref="UnwireWindowKeyboards"/>'s residual-source cleanup precedent, just for the
     /// runtime's push/pull bindings instead of its keyboard sources. Reaches the runtime only
@@ -128,12 +128,12 @@ public sealed partial class WindowInputModule : TransitiveStateModule, IHasIdent
         ((IWindowInputActionsStateFacade)inputActions).SweepResidualBindings();
 
     /// <summary>
-    /// The runtime's per-frame processing function (relocated from core, D-02): samples every
+    /// The runtime's per-frame processing function (relocated from core): samples every
     /// registered binding group's raw channel slots, evaluates them, first-match-composes each
     /// action's result, and pushes every processed <c>Value(T)</c> to its live push callbacks --
-    /// every frame, dropping only <c>NoValue</c> (D-08). Also carries the cross-module ordering
-    /// anchor (D-15): Input and Windowing may never declare a <see cref="Requires"/> edge against
-    /// each other (D-01), so the bridge -- the only party knowing both -- is the sole place their
+    /// every frame, dropping only <c>NoValue</c>. Also carries the cross-module ordering
+    /// anchor: Input and Windowing may never declare a <see cref="Requires"/> edge against
+    /// each other, so the bridge -- the only party knowing both -- is the sole place their
     /// transitive per-frame order can be expressed, placing <c>pump_windows -&gt; (this)</c> in the
     /// per-frame execution graph. Reaches the runtime only through the DI-resolved
     /// <see cref="IInputActions"/> parameter, cast to the internal facade (SPARK0401/0406 purity)
@@ -174,7 +174,7 @@ internal interface IWindowInputSourceRegistry
     void ResetSubscriptions(EventBinding windowCreated, EventBinding windowClosing);
 
     /// <summary>
-    /// Disposes the tracked subscriptions and every still-registered source (warning on each residual, D-27),
+    /// Disposes the tracked subscriptions and every still-registered source (warning on each residual),
     /// then clears all bookkeeping. Called from the exit transition.
     /// </summary>
     void ReleaseAll();

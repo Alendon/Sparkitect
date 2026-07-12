@@ -154,7 +154,7 @@ public sealed class SettingsManager : ISettingsManager
     }
 
     /// <summary>
-    /// Sets the frame-token provider used to tag new subscriptions. Plan 04 wires this to the current
+    /// Sets the frame-token provider used to tag new subscriptions, wiring it to the current
     /// state frame's identity; unset, subscriptions bind to a single process-lifetime token.
     /// </summary>
     /// <param name="provider">Returns the token identifying the current state frame.</param>

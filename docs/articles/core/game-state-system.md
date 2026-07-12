@@ -148,17 +148,16 @@ public static void CheckMenuRequest(IMenuService menu, IGameStateManager stateMa
 
 ### Transition with Mod Loading
 
-[`RequestWithModChange`](xref:Sparkitect.GameState.IGameStateManager.RequestWithModChange(System.Func{Sparkitect.Modding.Identification},System.Collections.Generic.IReadOnlyList{Sparkitect.Modding.ModFileIdentifier},System.Object)) loads additional mods and then transitions to a child state. Unlike `Request`, this executes synchronously (the transition completes before the call returns):
+[`RequestWithModChange`](xref:Sparkitect.GameState.IGameStateManager.RequestWithModChange(Sparkitect.Modding.ILazyIdentification,System.Collections.Generic.IReadOnlyList{Sparkitect.Modding.ModFileIdentifier})) loads additional mods and then transitions to a child state. Unlike `Request`, this executes synchronously (the transition completes before the call returns):
 
 ```csharp
 stateManager.RequestWithModChange(
-    () => StateID.MyMod.MultiplayerState,  // Called after mods load
-    [new ModFileIdentifier("multiplayer_content_mod", SemVersion.Parse("1.0.0"))],
-    payloadData                             // Optional payload
+    LazyIdentification.Of<MultiplayerState>(),
+    [new ModFileIdentifier("multiplayer_content_mod", SemVersion.Parse("1.0.0"))]
 );
 ```
 
-The first parameter is a `Func<Identification>` because the target state may come from a mod that hasn't loaded yet. Each [`ModFileIdentifier`](xref:Sparkitect.Modding.ModFileIdentifier) contains an `Id` (string) and `Version` (`SemVersion`) for unambiguous mod selection.
+The first parameter is an [`ILazyIdentification`](xref:Sparkitect.Modding.ILazyIdentification) because the target state may come from a mod that has not loaded yet — `LazyIdentification.Of<T>()` builds a deferred, no-cache reference that resolves `T`'s identification only when `Resolve()` is actually called. Each [`ModFileIdentifier`](xref:Sparkitect.Modding.ModFileIdentifier) contains an `Id` (string) and `Version` (`SemVersion`) for unambiguous mod selection.
 
 ### Lifecycle and Transition Execution
 

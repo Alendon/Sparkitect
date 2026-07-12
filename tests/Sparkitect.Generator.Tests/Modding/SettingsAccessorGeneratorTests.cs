@@ -8,7 +8,7 @@ namespace Sparkitect.Generator.Tests.Modding;
 
 // Guards the 57-05 SG accessor hierarchy: the generator emits settingsManager.<Group>.<Setting>
 // members returning Setting<T> handles that delegate to the hand-written GetSetting<T> path — pure
-// sugar over the standalone typed API (D-02).
+// sugar over the standalone typed API.
 public class SettingsAccessorGeneratorTests : SourceGeneratorTestBase<SettingsAccessorGenerator>
 {
     // Minimal declaration surface: the settings-accessor attributes, a SettingDefinition<T> stub, a

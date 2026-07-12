@@ -6,9 +6,9 @@ These `*.Generated.cs` files are the **C#-reversed** endpoint of the rd debug ch
 
 - `DebugLibrary.Generated.cs` — the shared snapshot data design (`Sparkitect.Debug.Protocol`):
   `IdName`, `ModuleOrigin`, `StatelessFunctionKind`, `ModuleEntry`, `StatelessFunctionEntry`,
-  `StateFrame`, `DebugSnapshot`, plus the generic D-21 floor (`DebugEntryField`/`GenericDebugEntry`).
+  `StateFrame`, `DebugSnapshot`, plus the generic extensible-entry floor (`DebugEntryField`/`GenericDebugEntry`).
 - `SparkitectDebugModel.Generated.cs` — the game channel `RdExtBase` (`Sparkitect.Debug.Protocol.Game`)
-  the engine hosts over a socket (plan 06).
+  the engine hosts over a socket.
 
 ## Committed snapshot, not a build-time regeneration
 

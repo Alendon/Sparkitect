@@ -6,9 +6,9 @@ description: Window management, Vulkan surface integration, and keyboard/mouse i
 
 # Windowing and Input
 
-Sparkitect provides window management through [`IWindowManager`](xref:Sparkitect.Windowing.IWindowManager) and [`ISparkitWindow`](xref:Sparkitect.Windowing.ISparkitWindow). Unlike many game engines, **input is accessed directly through the window object** rather than through a global input service.
+Sparkitect provides window management through [`IWindowManager`](xref:Sparkitect.Windowing.IWindowManager) and [`ISparkitWindow`](xref:Sparkitect.Windowing.ISparkitWindow).
 
-> **Important**: There is no global `IInputService`. Keyboard and mouse state are accessed through `window.Keyboard` and `window.Mouse` properties.
+Raw keyboard and mouse state is available directly through `window.Keyboard`/`window.Mouse` as a low-level escape hatch. Most mod code should consume input through the named action layer (see [Input](xref:sparkitect.input)) instead — actions are device-neutral, Settings-backed, and rebindable; raw per-window polling is for cases the action layer does not yet cover.
 
 ## Window Management
 
@@ -88,9 +88,9 @@ public interface ISparkitWindow : IDisposable
 
 > **Note**: The `SilkWindow` property provides direct access to the underlying Silk.NET `IWindow` for advanced scenarios not covered by the Sparkitect API. Use this as an escape hatch when you need Silk.NET-specific functionality.
 
-## Input Access Pattern
+## Raw Input Access (Escape Hatch)
 
-**Input is accessed through the window, not through a global service.** This design:
+Accessing input through the window directly:
 - Supports multiple windows with independent input states
 - Makes input ownership explicit
 - Avoids hidden global state
@@ -226,48 +226,9 @@ _window.Present(imageIndex, _renderFinishedSemaphore, _graphicsQueue);
 
 The `autoRecreate` parameter automatically handles swapchain recreation on window resize.
 
-## Complete Example: Pong Input Handling
+## Real Integration
 
-From the Pong sample:
-
-```csharp
-public void Render()
-{
-    if (_window is null) return;
-
-    _window.PollEvents();
-    if (!_window.IsOpen)
-    {
-        GameStateManager.Shutdown();
-        return;
-    }
-
-    // ... rendering code ...
-}
-
-private void UpdateSimulation()
-{
-    if (_window != null)
-    {
-        var keyboard = _window.Keyboard;
-        var paddleSpeed = 0.8f;
-
-        // Left paddle: W/S
-        if (keyboard.IsKeyDown(Key.W))
-            MoveLeftPaddle(-paddleSpeed * DeltaTime);
-        if (keyboard.IsKeyDown(Key.S))
-            MoveLeftPaddle(paddleSpeed * DeltaTime);
-
-        // Right paddle: Up/Down arrows
-        if (keyboard.IsKeyDown(Key.Up))
-            MoveRightPaddle(-paddleSpeed * DeltaTime);
-        if (keyboard.IsKeyDown(Key.Down))
-            MoveRightPaddle(paddleSpeed * DeltaTime);
-    }
-
-    // ... physics simulation ...
-}
-```
+See `samples/PongMod/PongRuntimeService.cs` for a real integration; note Pong itself now consumes input through the action layer ([Input](xref:sparkitect.input)), not raw polling.
 
 ## Integration with Game State
 
@@ -338,10 +299,11 @@ The window automatically disposes its `VkSurface` and `VkSwapchain` resources.
 2. **Check IsOpen after polling**: Always check `IsOpen` after `PollEvents()` to handle close requests
 3. **Store window reference**: Keep the window reference in your service rather than re-resolving it
 4. **Dispose properly**: Always dispose windows in your cleanup function
-5. **No global input**: Remember that input is per-window, not global
+5. **Prefer named actions**: Reach for the action layer before raw per-window polling unless you are implementing a new input source
 
 ## See Also
 
+- <xref:sparkitect.input> for the named action layer, the recommended way most mods consume input
 - <xref:sparkitect.vulkan.vulkan-graphics> for rendering to window surfaces
 - <xref:sparkitect.core.game-state-system> for state lifecycle and state-scoped services
 - <xref:sparkitect.core.dependency-injection> for accessing `IWindowManager` through DI

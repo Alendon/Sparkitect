@@ -28,7 +28,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
     private readonly Dictionary<Identification, ModuleMetadata> _registeredModules = new();
     private readonly Stack<ActiveStateFrame> _stateStack = new();
 
-    // Debug-information seam (D-18): the per-state direct module declarations, retained at finalize before
+    // Debug-information seam: the per-state direct module declarations, retained at finalize before
     // StateMetadata.ModuleIds is overwritten with the container-layering delta. Provenance re-derivation
     // (StateProvenance) needs the direct declarations to distinguish added-direct from added-transitive;
     // the composer discards them. Read only via the internal debug accessor (downcast), never on the public API.
@@ -298,14 +298,14 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
     }
 
-    // Debug-specific composition-inclusion gate (D-20). Reads the debug_channel setting early — at finalize
+    // Debug-specific composition-inclusion gate. Reads the debug_channel setting early — at finalize
     // time the container's CLI/engine-config setting sources are not yet registered, so the ambient manager
     // would see only the default — and drops the debug module from _registeredModules before compose when
     // the channel is off. Not a general setting-gated-module mechanism.
     private void ExcludeDebugModuleWhenDisabled() =>
         DebugModuleGate.ExcludeWhenDisabled(_registeredModules, DebugChannelSettingReader.ReadEnabled());
 
-    // Debug-information seam (D-18/D-22): re-derives per-module origin badges + one-hop requirers for a
+    // Debug-information seam: re-derives per-module origin badges + one-hop requirers for a
     // registered state's complete composed set, replaying the composer over the retained finalize-time
     // inputs (StateProvenance — the shipped static composer is untouched and retains no origin on success).
     // Reached by in-assembly downcast (the SettingsModule pattern); never promoted onto IGameStateManager.
@@ -333,12 +333,12 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         return StateProvenance.Derive(declaration, parentChainComposedSet, moduleCompositions);
     }
 
-    // Debug-information seam (D-05/D-22): projects each active frame's cached runtime StatelessFunction
+    // Debug-information seam: projects each active frame's cached runtime StatelessFunction
     // wrappers (mod-inclusive graph-resolved instances, not a static PSI enumeration) into per-frame SF
     // identity records, top-of-stack first. Mirrors the StateStack projection shape; reached by in-assembly
     // downcast, never promoted onto IGameStateManager.
     internal IReadOnlyList<FrameStatelessFunctions> GetFrameStatelessFunctions() =>
-        // Stack<T> enumerates top-of-stack first (LIFO), which is the D-04 render order.
+        // Stack<T> enumerates top-of-stack first (LIFO), which is the render order.
         _stateStack
             .Select(f => new FrameStatelessFunctions(
                 f.StateId,
@@ -385,7 +385,7 @@ internal sealed class GameStateManager : IGameStateManager, IGameStateManagerReg
         }
         _pendingModules.Clear();
 
-        // D-20 composition-inclusion gate — a named seam between the pending-module drain and compose. With
+        // Composition-inclusion gate — a named seam between the pending-module drain and compose. With
         // the debug channel setting off, drop the debug module from the registered set so its
         // ActivatesWith => [Core] auto-activation never pulls it into any state's composed set (off ⇒
         // absent, not merely inert).

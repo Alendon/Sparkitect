@@ -251,7 +251,7 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
         // parameter's type is open — a bare type parameter (RegisterValue<T>(Identification, T)) or a
         // constructed generic mentioning one (RegisterX<T1,T2>(Identification, Wrapper<T1,T2>)) — since
         // there is no fixed expected type to compare against; the provider's return type IS what
-        // resolves the open slot(s) (D-02), and SPARK0226 below already covers constraint validation
+        // resolves the open slot(s), and SPARK0226 below already covers constraint validation
         // for that recovered type. Mirrors RecoverEffectiveTypeArgument's skip-don't-false-report
         // philosophy instead of comparing display strings of an unresolved type parameter.
         if (usageKind == ProviderUsageKind.Value && methodKind == PrimaryKind.Value
@@ -285,10 +285,10 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        // SPARK0226: generic constraints, looped across every type parameter (D-02) instead of only
+        // SPARK0226: generic constraints, looped across every type parameter instead of only
         // index 0. For type source, only the anchor type parameter (index 0 — the registered type
         // itself, per placement) is determinable at usage time without the generator's
-        // constraint-hierarchy walk (D-03); further type parameters require that walk and are skipped
+        // constraint-hierarchy walk; further type parameters require that walk and are skipped
         // here rather than false-reported. For value source, each type parameter's effective concrete
         // argument is recovered from the provider return type when the value parameter references it;
         // type parameters the value parameter doesn't reference are skipped the same way. A genuinely
@@ -367,8 +367,8 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
     private enum PrimaryKind { None, Value, Type }
 
     /// <summary>
-    /// Classifies a register method by the value/type source axis (D-01), determined solely by the
-    /// presence of a value parameter — independent of type-parameter count (D-02). A two-parameter
+    /// Classifies a register method by the value/type source axis, determined solely by the
+    /// presence of a value parameter — independent of type-parameter count. A two-parameter
     /// method is value source regardless of how many type parameters it carries; a one-parameter
     /// method with one or more type parameters is still type source. The removed `GenericValue` kind
     /// is not reintroduced here — "has a generic" is data on the value-source case, not a fourth kind.
@@ -392,7 +392,7 @@ public sealed class RegistryProviderUsageAnalyzer : DiagnosticAnalyzer
     /// return type (bool from SettingDefinition&lt;bool&gt;), so the constraint check reads the inner
     /// value type, not the wrapper. Returns null (skip, don't false-report) when the value parameter
     /// doesn't reference this specific type parameter at all — relevant once a value-source method may
-    /// carry multiple, possibly orthogonal, type parameters (D-02).
+    /// carry multiple, possibly orthogonal, type parameters.
     /// </summary>
     private static ITypeSymbol? RecoverEffectiveTypeArgument(IMethodSymbol registryMethod,
         ITypeParameterSymbol tp, ITypeSymbol? providerReturnType)

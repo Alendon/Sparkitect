@@ -8,9 +8,9 @@ A modular game engine for .NET with deep modding support.
 
 Sparkitect is a game engine where everything is a mod. There is no separate "engine API" vs "mod API". The engine and mods register services through the same attributes, define logic through the same function types, and populate registries through the same generated infrastructure. Anything the engine does, a mod can extend or replace.
 
-The engine uses Roslyn source generators to create all DI wiring at compile time. The frame loop executes with zero reflection: generated wrapper classes hold pre-resolved dependencies and call your methods directly. Containers are immutable during simulation, so reads require no locks. Invalid configurations are caught at build time through analyzers rather than at runtime.
+The engine uses Roslyn source generators to create all DI wiring at compile time. The frame loop executes with zero reflection: generated wrapper classes hold pre-resolved dependencies and call your methods directly. Containers are immutable during simulation, so reads require no locks. Many invalid configurations are caught at build time through analyzers; state and module composition is validated at runtime with fail-loud diagnostics that name the exact resolution chain.
 
-v1.5 adds a general-purpose Entity Component System and a render-graph resource model over the Vulkan backend.
+Sparkitect includes a general-purpose Entity Component System, a render-graph resource model over Vulkan, a layered Settings system, and a named input action layer.
 
 Sparkitect is a framework, not an editor. It targets PC platforms (Windows, Linux, macOS).
 
@@ -19,6 +19,8 @@ Sparkitect is a framework, not an editor. It targets PC platforms (Windows, Linu
 - **Source-generated dependency injection** — zero-reflection resolution, validated at build time.
 - **Game state machine** — hierarchical states composed from modules with dependency ordering.
 - **Registry system** — dual human-readable and numeric identifiers with per-state activation.
+- **Settings system** — layered Identification-keyed configuration (CLI > user > engine-config > defaults) with typed accessors and effective-change callbacks.
+- **Input action layer** — named, device-neutral actions consumed via push or pull, with Settings-backed default bindings.
 - **Attribute-driven discovery** — mark code with attributes; source generators handle the wiring.
 - **Entity Component System** — SoA archetype storage with chunk-based queries and command buffers.
 - **Render graph** — declarative resource model over a Vulkan backend (Silk.NET).
@@ -89,10 +91,10 @@ Define a module with a transition function:
 
 ```csharp
 [ModuleRegistry.RegisterModule("hello")]
-public partial class HelloModule : IStateModule
+public partial class HelloModule : TransitiveStateModule, IHasIdentification
 {
     public static Identification Identification => StateModuleID.HelloWorld.Hello;
-    public static IReadOnlyList<Identification> RequiredModules => [StateModuleID.Sparkitect.Core];
+    public override IReadOnlyList<Identification> Requires => [];
 
     [TransitionFunction("say_hello")]
     [OnCreateScheduling]

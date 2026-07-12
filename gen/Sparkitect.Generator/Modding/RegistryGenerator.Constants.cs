@@ -23,7 +23,7 @@ public partial class RegistryGenerator
 
     internal const string IHasIdentificationInterface = "Sparkitect.Modding.IHasIdentification";
 
-    // D-04: the type-parameter-level opt-in marking which generic feeds Identification<T> emission.
+    // the type-parameter-level opt-in marking which generic feeds Identification<T> emission.
     private const string TypedIdentificationAttribute = "Sparkitect.Modding.TypedIdentificationAttribute";
 
     // C-2: class-level, per-target-registry alias-suffix override.

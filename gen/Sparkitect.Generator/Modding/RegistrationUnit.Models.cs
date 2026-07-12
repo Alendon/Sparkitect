@@ -34,7 +34,7 @@ public sealed record MethodRegistrationEntry(
     ImmutableValueArray<(string paramType, bool isNullable)> DiParameters,
     string? RegisteredContainerFullName = null,
     string? RegisteredMemberName = null,
-    // Carried for Plan 05's id-typing (value-source emission stays inference-based — the compiler infers
+    // Carried for id-typing (value-source emission stays inference-based — the compiler infers
     // T at the call site, so this list is NOT consumed by EmitRegistrationEntryCode below).
     ImmutableValueArray<string> ResolvedTypeArguments = default!)
     : RegistrationEntry(Id, Files)
@@ -78,7 +78,7 @@ public sealed record PropertyRegistrationEntry(
     string ProviderFullName,
     string? RegisteredContainerFullName = null,
     string? RegisteredMemberName = null,
-    // Carried for Plan 05's id-typing (value-source emission stays inference-based — the compiler infers
+    // Carried for id-typing (value-source emission stays inference-based — the compiler infers
     // T at the call site, so this list is NOT consumed by EmitRegistrationEntryCode below).
     ImmutableValueArray<string> ResolvedTypeArguments = default!)
     : RegistrationEntry(Id, Files)
@@ -98,7 +98,7 @@ public sealed record TypeRegistrationEntry(
     string TypeFullName,
     KeyedFactoryGenerationInfo? KeyedFactoryGeneration = null,
     RegistrationTypeKind TypeKind = RegistrationTypeKind.Class,
-    // Fully-resolved, closed type-argument list from Plan 04's constraint-guided walk (D-03/D-08). Empty
+    // Fully-resolved, closed type-argument list from the constraint-guided walk. Empty
     // (or unset) falls back to the single TypeFullName below; non-empty emits ALL resolved args — C# has
     // no partial generic inference, so a multi-type-parameter type-source call must be fully closed.
     ImmutableValueArray<string> ResolvedTypeArguments = default!)

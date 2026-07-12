@@ -195,11 +195,11 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
                 type.Name));
         }
 
-        // SPARK0272 (D-04): registry-wide typed-identification shape coherence. Every
+        // SPARK0272: registry-wide typed-identification shape coherence. Every
         // [RegistryMethod]-attributed method on this type must agree on whether it carries a bare
         // [TypedIdentification] marker (None vs Identification<TResult>) — a single type with mixed
         // shapes (some marked, some not) is the exact violation DummyRegistry's
-        // RegisterTypedProvider/RegisterValue/RegisterProvider trio demonstrates (D-12).
+        // RegisterTypedProvider/RegisterValue/RegisterProvider trio demonstrates.
         var registryMethods = type.GetMembers()
             .OfType<IMethodSymbol>()
             .Where(m => m.GetAttributes().Any(a =>
@@ -222,9 +222,9 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
 
     /// <summary>
     /// Whether any of a register method's type parameters carries the BARE (non-generic)
-    /// <c>[TypedIdentification]</c> marker — the same-registry shape opt-in (D-04). A closed
-    /// <c>[TypedIdentification&lt;TTarget&gt;]</c> hit does not count; that is a cross-registry linkage
-    /// (D-05), analytically separate from this registry's own result shape.
+    /// <c>[TypedIdentification]</c> marker — the same-registry shape opt-in. A closed
+    /// <c>[TypedIdentification&lt;TTarget&gt;]</c> hit does not count; that is a cross-registry linkage,
+    /// analytically separate from this registry's own result shape.
     /// </summary>
     private static bool HasBareTypedIdentificationMarker(IMethodSymbol method) =>
         method.TypeParameters.Any(tp => tp.GetAttributes().Any(a =>
@@ -255,7 +255,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
             return; // other checks rely on being inside a registry
         }
 
-        // SPARK0271/SPARK0273/SPARK0274: typed-identification marker validation (D-05/D-08). Runs
+        // SPARK0271/SPARK0273/SPARK0274: typed-identification marker validation. Runs
         // independently of the signature-shape checks below — a method's marker usage can be wrong
         // regardless of whether its parameter shape is also wrong.
         AnalyzeTypedIdentificationMarkers(ctx, method, containing!);
@@ -293,7 +293,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         // mentioning it among its type arguments (e.g. SettingDefinition<T>). The wrapper-over-T
         // shape carries a closed generic value type through registration and is a valid
         // register-method shape — do not flag it as a mismatch. Loop all type parameters (not just
-        // index 0) so multi-type-parameter value-source methods are validated correctly (D-02).
+        // index 0) so multi-type-parameter value-source methods are validated correctly.
         if (paramCount == 2)
         {
             var p1 = method.Parameters[1];
@@ -319,7 +319,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    /// Validates a register method's <c>[TypedIdentification]</c>-family markers (D-05/D-08):
+    /// Validates a register method's <c>[TypedIdentification]</c>-family markers:
     /// SPARK0271 (at most one bare marker per method), SPARK0273 ([TypedIdentification&lt;TTarget&gt;]
     /// must name a [Registry]-attributed type), and SPARK0274 (same-compilation alias-collision —
     /// best-effort, cannot see across assembly boundaries per RESEARCH Pitfall 3).
@@ -347,7 +347,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
                 bareMarkerCount++;
                 if (bareMarkerCount > 1)
                 {
-                    // SPARK0271: report every marker beyond the first — at-most-one bare marker (D-08).
+                    // SPARK0271: report every marker beyond the first — at-most-one bare marker.
                     ctx.ReportDiagnostic(Diagnostic.Create(
                         RegistryDiagnostics.MultipleBareTypedIdentificationMarkers,
                         GetAttributeLocation(attribute) ?? typeParameter.Locations.FirstOrDefault(),
@@ -358,7 +358,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
 
         if (crossMarkers.Count == 0) return;
 
-        // Registry-level alias suffix (D-06) + per-target overrides (C-2), for the SPARK0274
+        // Registry-level alias suffix + per-target overrides (C-2), for the SPARK0274
         // candidate-name computation below — resolved through the SAME shared helper the emission
         // path (RegistryGenerator.Output.cs) uses, so the two can never independently disagree
         // (Pitfall 6).
@@ -399,7 +399,7 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
         {
             var location = GetAttributeLocation(attribute) ?? typeParameter.Locations.FirstOrDefault();
 
-            // SPARK0273: TTargetRegistry must resolve to a [Registry]-attributed type (D-05).
+            // SPARK0273: TTargetRegistry must resolve to a [Registry]-attributed type.
             var targetRegAttr = target?.GetAttributes().FirstOrDefault(a =>
                 a.AttributeClass?.ToDisplayString(DisplayFormats.NamespaceAndType) == RegistryAttributeName);
             if (targetRegAttr is null)
@@ -412,11 +412,11 @@ public sealed class RegistryShapeAnalyzer : DiagnosticAnalyzer
                 continue; // an invalid target has no id space to check for a collision against
             }
 
-            // SPARK0274: same-compilation alias-collision detection (D-08/D-06). Best-effort: computes
-            // the candidate alias container ({ModIdPascal}{TargetCategoryPascal}IDs, per D-03) and
+            // SPARK0274: same-compilation alias-collision detection. Best-effort: computes
+            // the candidate alias container ({ModIdPascal}{TargetCategoryPascal}IDs) and
             // candidate alias name ({TypeParameterName}{ResolveAliasSuffix(...)}) — the closest proxy
             // available at the declaration level, since per-entry property names are only known once
-            // registration attributes are walked (Plan 04's emission territory, not this analyzer's).
+            // registration attributes are walked (the emission pass's territory, not this analyzer's).
             // Skipped entirely when the mod id isn't available (nothing to compute the container name from).
             if (!modIdAvailable) continue;
 

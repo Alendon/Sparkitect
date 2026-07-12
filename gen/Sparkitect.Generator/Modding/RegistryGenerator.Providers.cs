@@ -19,7 +19,7 @@ public partial class RegistryGenerator
     /// type's base/interface hierarchy, or a provider's return type. Pure string data (no <see cref="ITypeSymbol"/>)
     /// so it can cross the incremental generator's <c>.Combine()</c> boundary; captured where the symbol is
     /// in scope (<see cref="TryBuildProviderCandidate"/>), matched by pure string comparison at the
-    /// <see cref="MapProviderCandidateToUnit"/> join stage (Plan 04's constraint-guided walk).
+    /// <see cref="MapProviderCandidateToUnit"/> join stage (the constraint-guided walk).
     /// </summary>
     internal sealed record SerializedHierarchyType(
         string OpenDefinitionFqn,
@@ -122,7 +122,7 @@ public partial class RegistryGenerator
         string methodOrTypeName;
         var diParamsBuilder = new ImmutableValueArray<(string paramType, bool isNullable)>.Builder();
 
-        // Walk inputs (D-03/D-06): captured here, while the symbol is still in scope, as pure strings — no
+        // Walk inputs: captured here, while the symbol is still in scope, as pure strings — no
         // ITypeSymbol crosses the .Combine() boundary. Type providers capture the registered type's
         // base/interface hierarchy; value providers (method/property) capture the provider's return type.
         var registeredTypeHierarchy = new ImmutableValueArray<SerializedHierarchyType>.Builder()
@@ -261,9 +261,9 @@ public partial class RegistryGenerator
 
         var files = filesBuilder.OrderBy(f => f.fileId).ToImmutableValueArray();
 
-        // Resolution head (D-07/D-08 open-by-construction seam): looked up once here at the join stage.
+        // Resolution head (open-by-construction seam): looked up once here at the join stage.
         // Runs IDENTICALLY whether extracted same-compilation or parsed from external registry metadata —
-        // both produce a field-identical RegisterMethodModel (Plan 02).
+        // both produce a field-identical RegisterMethodModel.
         var registerMethod = model.RegisterMethods.FirstOrDefault(m => m.FunctionName == cand.MethodName);
         var emptyResolvedArgs = new ImmutableValueArray<string>.Builder().ToImmutableValueArray();
 
@@ -332,7 +332,7 @@ public partial class RegistryGenerator
     }
 
     /// <summary>
-    /// Pure-string constraint-guided walk (D-03 type-source): resolves the closed type-argument list for a
+    /// Pure-string constraint-guided walk (type-source): resolves the closed type-argument list for a
     /// type-source register method by matching its constraint structure against the registered type's
     /// serialized hierarchy. Seeds the anchor slot (<see cref="RegisterMethodModel.TypeParameterNames"/>
     /// index 0) with <paramref name="anchorTypeFqn"/> (the registered type itself), then iterates to a
@@ -340,8 +340,7 @@ public partial class RegistryGenerator
     /// resolves every type parameter that entry's constructed-generic arguments reference. No symbol
     /// parameter — runs identically whether <paramref name="method"/> was extracted same-compilation or
     /// parsed from external registry metadata. Genuinely unresolvable slots (no matching hierarchy entry
-    /// ever found) stay empty — fail-loud; the resulting compile error is the loud signal (operator-approved,
-    /// RESEARCH.md open-Q3).
+    /// ever found) stay empty — fail-loud; the resulting compile error is the loud signal.
     /// </summary>
     internal static ImmutableValueArray<string> ResolveTypeSourceGenericArguments(
         ImmutableValueArray<SerializedHierarchyType> hierarchy, RegisterMethodModel method, string anchorTypeFqn)
@@ -394,7 +393,7 @@ public partial class RegistryGenerator
     }
 
     /// <summary>
-    /// Pure-string value-source resolution (D-03/D-06): reads the closed type-argument list from the
+    /// Pure-string value-source resolution: reads the closed type-argument list from the
     /// provider's already-compiler-inferred return type, mirroring <c>SettingsAccessorGenerator</c>'s walk
     /// (:82-92). A wrapper-generic value parameter (<see cref="RegisterMethodModel.ValueParameterGeneric"/>
     /// present) matches its open definition against <paramref name="returnType"/> and reads each referenced

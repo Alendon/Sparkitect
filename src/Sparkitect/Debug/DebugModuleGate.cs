@@ -5,7 +5,7 @@ using Sparkitect.Modding.IDs;
 namespace Sparkitect.Debug;
 
 /// <summary>
-/// The debug channel's composition-inclusion gate (D-20). When the <c>debug_channel</c> setting is off the
+/// The debug channel's composition-inclusion gate. When the <c>debug_channel</c> setting is off the
 /// debug module is dropped from the module universe the composer sees, so its <c>ActivatesWith =&gt; [Core]</c>
 /// auto-activation never pulls it into any composed set — off ⇒ absent from every state's set, not merely
 /// runtime-inert. Deliberately debug-specific, not a general setting-gated-module mechanism.

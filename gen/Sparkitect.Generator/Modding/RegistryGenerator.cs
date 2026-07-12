@@ -485,14 +485,11 @@ public partial class RegistryGenerator : IIncrementalGenerator
         var externalEntry = registryAttribute.NamedArguments.FirstOrDefault(x => x.Key == "External");
         var isExternal = externalEntry.Value.Value is true;
 
-        // D-06: optional registry-level alias suffix, applied to every alias THIS registry emits into
-        // other registries' id-space (Plan 04). Null when the mod author declares no suffix.
+        // Optional registry-level alias suffix, applied to every alias THIS registry emits into
+        // other registries' id-space. Null when the mod author declares no suffix.
         var aliasSuffixEntry = registryAttribute.NamedArguments.FirstOrDefault(x => x.Key == "AliasSuffix");
         var aliasSuffix = aliasSuffixEntry.Value.Value as string;
 
-        //TODO Registry Analyzer: Registry class cannot live outside namespace
-        //General Analyzer (Utility class): No Type outside defined root namespace
-        //Alternative: Define "GeneratorBaseNamespace", where the generator places it general entries
         return new RegistryModel(symbol.Name, id, namespaceName!, isExternal, ExtractRegisterMethods(symbol),
             ExtractResourceFiles(symbol), OwningModuleFullName: ExtractOwningModule(symbol), AliasSuffix: aliasSuffix,
             PerTargetAliasSuffixes: ExtractPerTargetAliasSuffixes(symbol));
@@ -611,7 +608,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         foreach (var (method, _) in candidates)
         {
-            // Parameter-count guard stays; the type-parameter-count cap is lifted (D-02) — a register
+            // Parameter-count guard stays; the type-parameter-count cap is lifted — a register
             // method (value OR type source) may carry 0..N type parameters, resolved per-registration
             // from its source.
             if (method.Parameters.Length == 0 || method.Parameters.Length > 2) continue;
@@ -626,8 +623,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
             var markerTKey = method.Parameters.First().Type
                 .ToDisplayString(DisplayFormats.NamespaceAndType);
 
-            // D-04/D-05: which type parameter (if any) opts into same-registry Identification<T> emission,
-            // plus 0..N cross-registry [TypedIdentification<TTarget>] linkages (D-08 kind-discriminated walk).
+            // Which type parameter (if any) opts into same-registry Identification<T> emission,
+            // plus 0..N cross-registry [TypedIdentification<TTarget>] linkages (kind-discriminated walk).
             var typedIdentificationExtraction = ExtractTypedIdentificationMarkers(method);
             var typedIdentificationTypeParameterName = typedIdentificationExtraction.BareMarker;
             var crossRegistryMarkers = typedIdentificationExtraction.CrossMarkers;
@@ -676,7 +673,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             //Type registration
             if (method.TypeParameters.Length > 0)
             {
-                // Lifted from == 1 → > 0 (D-02): a multi-type-parameter, single-Identification-parameter
+                // Lifted from == 1 → > 0: a multi-type-parameter, single-Identification-parameter
                 // method (Reg<T1,T2>(Identification) where T1 : RelationShip<T2>) classifies as Type
                 // instead of silently falling through to the None/resource-file branch below.
                 ParseTypeParameterConstraints(method.TypeParameters.First(), out var constraintFlag,
@@ -701,21 +698,21 @@ public partial class RegistryGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// Scans a register method's type parameters for typed-identification markers (D-08). Walks ALL type
+    /// Scans a register method's type parameters for typed-identification markers. Walks ALL type
     /// parameters once — never returns early, which IS the fail-silent truncation fix this closes — and
     /// buckets each attribute hit by kind: a bare <c>[TypedIdentification]</c> hit contributes to the
-    /// single same-registry marker name (D-04, first-wins, unchanged <see cref="ComputeIdentificationType"/>
+    /// single same-registry marker name (first-wins, unchanged <see cref="ComputeIdentificationType"/>
     /// consumer contract); a <c>[TypedIdentification&lt;TTarget&gt;]</c> hit — detected via
     /// <see cref="ITypeSymbol.IsGenericType"/> on the matched attribute class, since
     /// <see cref="DisplayFormats.NamespaceAndType"/>'s <c>GenericsOptions.None</c> already collapses both
     /// the bare and generic forms to the same base name (mirrors the <c>UseResourceFileAttribute</c>
     /// open-generic idiom at <c>RegistryShapeAnalyzer.cs:134-139</c>) — appends
-    /// (typeParameter.Name, targetRegistryFqn, targetCategoryKey) to the cross-registry list (D-05). The
+    /// (typeParameter.Name, targetRegistryFqn, targetCategoryKey) to the cross-registry list. The
     /// target category key is resolved directly off the target's live symbol via
     /// <see cref="TryExtractRegistryKey"/> — this ALWAYS runs on a live <see cref="ITypeSymbol"/> (the
     /// attribute's own type argument), regardless of whether the target registry is declared in this
-    /// compilation or referenced, so no cross-assembly metadata round-trip is needed for the target side
-    /// (D-03). Empty when the target isn't a recognizable <c>[Registry]</c> type — Plan 04's alias
+    /// compilation or referenced, so no cross-assembly metadata round-trip is needed for the target side.
+    /// Empty when the target isn't a recognizable <c>[Registry]</c> type — the alias
     /// emission surfaces this as a loud <c>extension()</c> compile error, never a silently-skipped alias.
     /// </summary>
     internal static TypedIdentificationExtraction ExtractTypedIdentificationMarkers(IMethodSymbol method)
@@ -743,8 +740,8 @@ public partial class RegistryGenerator : IIncrementalGenerator
                 }
                 else
                 {
-                    // D-04: at most one bare marker feeds ComputeIdentificationType; first-wins mirrors the
-                    // prior scalar semantics. Registry-wide ambiguity across methods is Plan 05's analyzer.
+                    // At most one bare marker feeds ComputeIdentificationType; first-wins mirrors the
+                    // prior scalar semantics. Registry-wide ambiguity across methods is a separate analyzer's concern.
                     bareMarker ??= typeParameter.Name;
                 }
             }
@@ -754,7 +751,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// Captures the register-method-side resolution inputs Plan 04's pure-string constraint-guided walk
+    /// Captures the register-method-side resolution inputs the pure-string constraint-guided walk
     /// consumes: the method's type parameters in declaration order, and — for every type parameter whose
     /// constraints reference another type parameter — a <see cref="RegisterConstraintRef"/> resolution-map
     /// entry. Loops ALL type parameters (not just the anchor), so 2+-type-parameter methods of either
@@ -787,7 +784,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// Builds the value parameter's constructed-generic structure for value-source resolution (D-03), e.g.
+    /// Builds the value parameter's constructed-generic structure for value-source resolution, e.g.
     /// <c>Wrapper&lt;T1, T2&gt;</c> in <c>RegisterX&lt;T1, T2&gt;(Identification, Wrapper&lt;T1, T2&gt;)</c>.
     /// Null for a bare-<c>T</c> or non-generic value parameter — mirrors the symmetry the operator required
     /// between the value-source and type-source capture paths.
@@ -807,7 +804,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
     /// (<see cref="CaptureTypeParameterResolutionInputs"/>) and a value parameter's constructed-generic
     /// structure (<see cref="BuildValueParameterGeneric"/>). Only produces a ref when at least one argument
     /// position references another of the method's type parameters — a constraint/wrapper over purely
-    /// concrete types carries no resolution information for Plan 04's walk.
+    /// concrete types carries no resolution information for the walk.
     /// </summary>
     private static bool TryBuildConstraintRef(string owningTypeParameterName, ITypeSymbol constructedType,
         ImmutableArray<ITypeParameterSymbol> typeParameters, out RegisterConstraintRef constraintRef)
@@ -962,7 +959,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             owningModule = owningModuleData;
         }
 
-        // D-06: optional registry-level alias suffix, same bypass-reader.Of() idiom as OwningModule so
+        // optional registry-level alias suffix, same bypass-reader.Of() idiom as OwningModule so
         // pre-Plan-04 metadata (predating this field) still parses cleanly.
         string? aliasSuffix = null;
         var aliasSuffixField = ((INamedTypeSymbol)metadata).GetMembers("AliasSuffix")
@@ -1072,7 +1069,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             markerTKey = markerTKeyData;
         }
 
-        // FULL per-type-parameter roundtrip (D-03/D-08 cross-assembly fix) — all four read directly off
+        // FULL per-type-parameter roundtrip (cross-assembly fix) — all four read directly off
         // the symbol, bypassing reader.Of() so AllValid is never affected by absent/legacy metadata.
 
         string? typedIdentificationTypeParameterName = null;
@@ -1129,7 +1126,7 @@ public partial class RegistryGenerator : IIncrementalGenerator
             valueParameterGeneric = decodedValueParameterGeneric;
         }
 
-        // D-07: external registries provide cross-registry portion info manually through this SAME
+        // external registries provide cross-registry portion info manually through this SAME
         // decode shape — direct-symbol const-field read, bypassing reader.Of() so legacy metadata
         // predating this field never trips reader.AllValid.
         var crossRegistryMarkers = new ImmutableValueArray<(string ParamName, string TargetRegistryFqn, string TargetCategoryKey)>.Builder();
@@ -1247,8 +1244,6 @@ public partial class RegistryGenerator : IIncrementalGenerator
 
         return FluidHelper.TryRenderTemplate("Modding.RegistryAttributes.liquid", templateModel, out code);
     }
-
-    // TODO: Analyzer: prevent duplicate registry class names across namespaces (assumption: unique type names).
 
     /// <summary>
     /// Extracts the registry key (Identifier) from a registry type symbol.

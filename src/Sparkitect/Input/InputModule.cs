@@ -9,7 +9,7 @@ namespace Sparkitect.Input;
 
 /// <summary>
 /// Device-agnostic state module providing the input action core: <see cref="ActionRegistry"/>
-/// identity + fan-out registration only. Never references any input implementation (D-01/D-02)
+/// identity + fan-out registration only. Never references any input implementation
 /// and carries no per-frame function — sampling, evaluation, and push/pull dispatch are entirely
 /// implementation-owned (e.g. <c>WindowInput</c>'s <c>WindowInputModule</c>).
 /// </summary>
@@ -21,7 +21,7 @@ public sealed partial class InputModule : TransitiveStateModule, IHasIdentificat
     public override IReadOnlyList<Identification> Requires =>
         [StateModuleID.Sparkitect.Event];
 
-    /// <summary>Processes <see cref="ActionRegistry"/> registrations on state entry (D-26 registry precedent).</summary>
+    /// <summary>Processes <see cref="ActionRegistry"/> registrations on state entry.</summary>
     [TransitionFunction("process_action_registry_up")]
     [OnFrameEnterScheduling]
     internal static void RegisterActions(IRegistryManager registryManager)
@@ -29,7 +29,7 @@ public sealed partial class InputModule : TransitiveStateModule, IHasIdentificat
         registryManager.ProcessRegistry<ActionRegistry, InputModule>();
     }
 
-    /// <summary>Reverses <see cref="ActionRegistry"/> registrations on state exit (D-26 registry precedent).</summary>
+    /// <summary>Reverses <see cref="ActionRegistry"/> registrations on state exit.</summary>
     [TransitionFunction("process_action_registry_down")]
     [OnFrameExitScheduling]
     internal static void UnregisterActions(IRegistryManager registryManager)
