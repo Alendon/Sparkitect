@@ -170,11 +170,20 @@ internal class RegistryManager : IRegistryManager, IRegistryLifecycleManager
 
     private void RemoveRegistryTracking(string identifier)
     {
-        // Bookkeeping only: drop the tracking entry. Registrations this registry created are reversed on the
-        // module-driven teardown path (ProcessRegistry at [OnFrameExit]); native/GPU resources are never
-        // touched here, so instance removal carries no device-idle ordering concern.
+        // Registrations this registry created are reversed on the module-driven teardown path (ProcessRegistry
+        // at [OnFrameExit]) before this runs; native/GPU resources are never touched here, so instance removal
+        // carries no device-idle ordering concern. The category itself must also unregister here so a later
+        // process-up re-registers cleanly instead of colliding with the still-held category id.
         _processedModsByRegistry.Remove(identifier);
         _moduleByRegistry.Remove(identifier);
+
+        if (IdentificationManager.GetCategoryId(identifier) is not Result<ushort, ResolveError>.Ok(var categoryId))
+            return;
+
+        if (!IdentificationManager.UnregisterCategory(categoryId))
+            throw new InvalidOperationException(
+                $"Registry '{identifier}' still has objects registered under its category after teardown; " +
+                "entries must be fully reversed before the category can be removed.");
     }
 
     private static Identification ReadOwningModule(Type registryType)

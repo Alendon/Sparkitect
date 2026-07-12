@@ -16,7 +16,7 @@ namespace Sparkitect.Events;
 public sealed partial class EventModule : TransitiveStateModule, IHasIdentification
 {
     /// <inheritdoc />
-    public override IReadOnlyList<Identification> Requires => [StateModuleID.Sparkitect.Core];
+    public override IReadOnlyList<Identification> Requires => [];
 
     [TransitionFunction("process_event_registry_up")]
     [OnFrameEnterScheduling]

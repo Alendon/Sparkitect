@@ -30,7 +30,7 @@ namespace Sparkitect.WindowInput;
 public sealed partial class WindowInputModule : TransitiveStateModule, IHasIdentification
 {
     /// <inheritdoc/>
-    public override IReadOnlyList<Identification> Requires => [];
+    public override IReadOnlyList<Identification> Requires => [StateModuleID.Sparkitect.Event];
 
     /// <inheritdoc/>
     public override IReadOnlyList<Identification> ActivatesWith =>

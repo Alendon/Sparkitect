@@ -188,6 +188,30 @@ public class WorldTests
     }
 
     [Test]
+    public async Task RemoveStorage_StorageThrowsOnDispose_PreservesBookkeepingAndSurfacesOriginalFailure()
+    {
+        using var world = IWorld.Create();
+        var throwing = new ThrowingStorage();
+        var handle = world.AddStorage(throwing, Array.Empty<CapabilityRegistration>());
+
+        // Single-resource operation: surfaces the original (unwrapped) failure after preserving
+        // required bookkeeping -- never swallows it via logging.
+        await Assert.That(() => world.RemoveStorage(handle))
+            .Throws<InvalidOperationException>()
+            .WithMessageMatching("*Dispose failed on purpose*");
+
+        await Assert.That(throwing.IsDisposed).IsTrue();
+
+        // Bookkeeping preserved despite the failure: the slot is freed and the handle is stale.
+        await Assert.That(() => world.GetStorage(handle)).Throws<InvalidOperationException>();
+
+        // The freed slot is usable again -- the world remains functional after the failure.
+        var replacement = new TestStorage();
+        var newHandle = world.AddStorage(replacement, Array.Empty<CapabilityRegistration>());
+        await Assert.That(newHandle.Index).IsEqualTo(handle.Index);
+    }
+
+    [Test]
     public async Task Resolve_MatchingFilter_ReturnsMatchingHandles()
     {
         using var world = IWorld.Create();
@@ -399,7 +423,7 @@ public class WorldTests
     }
 
     [Test]
-    public async Task Dispose_HandlesPerItemExceptions()
+    public async Task Dispose_PerItemException_AttemptsEveryStorageThenThrowsAggregate()
     {
         var throwing = new ThrowingStorage();
         var normal = new TestStorage();
@@ -408,11 +432,29 @@ public class WorldTests
         world.AddStorage(throwing, Array.Empty<CapabilityRegistration>());
         world.AddStorage(normal, Array.Empty<CapabilityRegistration>());
 
-        // Should not throw even though one storage throws during dispose
-        world.Dispose();
+        // World owns two independent sibling storages: it terminalizes ownership, attempts every
+        // sibling exactly once (both get disposed below), then reports the failure as an aggregate
+        // rather than swallowing it via logging.
+        await Assert.That(() => world.Dispose()).Throws<AggregateException>();
 
         await Assert.That(throwing.IsDisposed).IsTrue();
         await Assert.That(normal.IsDisposed).IsTrue();
+    }
+
+    [Test]
+    public async Task Dispose_PerItemException_IsStillTerminalAndIdempotentAfterThrowing()
+    {
+        var throwing = new ThrowingStorage();
+
+        var world = IWorld.Create();
+        world.AddStorage(throwing, Array.Empty<CapabilityRegistration>());
+
+        await Assert.That(() => world.Dispose()).Throws<AggregateException>();
+
+        // Ownership already terminalized on the first call (ThrowIfDisposed guards below prove it),
+        // so a second Dispose is a safe no-op even though the first call threw.
+        await Assert.That(() => world.Dispose()).ThrowsNothing();
+        await Assert.That(() => world.AllocateEntityId()).Throws<InvalidOperationException>();
     }
 
     [Test]

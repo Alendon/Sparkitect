@@ -82,13 +82,27 @@ internal sealed class WindowInputActions
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Removes the action's slot AND compacts its live instance out of the type-bunched
+    /// <see cref="BindingGroup{TSelf,TResult}"/> storage (swap-remove) so it stops being sampled and
+    /// evaluated every frame. A swap can move another action's still-live instance into the freed
+    /// slot; <see cref="BindingGroup{TSelf,TResult}.RemoveAt"/> retargets that instance's own
+    /// <see cref="BindingInstanceEntry.Index"/>, and <see cref="ActionSlot{TResult}"/> always reads
+    /// the entry's current index rather than a copy, so no other action's evaluation ever reads the
+    /// wrong slot after a compaction.
+    /// </remarks>
     public void Unregister(Identification id)
     {
         if (!_actionsById.Remove(id, out var registration)) return;
 
-        if (registration.LiveBinding is { } entry && _slotsByAction.TryGetValue(id, out var slot))
+        if (registration.LiveBinding is { } entry)
         {
-            slot.Detach(entry.Group, entry.Index);
+            if (_slotsByAction.TryGetValue(id, out var slot))
+            {
+                slot.Detach(entry);
+            }
+
+            ((IBindingGroup)entry.Group).RemoveAt(entry.Index);
         }
 
         _slotsByAction.Remove(id);
@@ -334,16 +348,21 @@ internal sealed class WindowInputActions
             var instance = factory(owner.SettingsManager.GetValue(settingId));
             var slot = owner.GetOrAddSlot<TResult>(actionId);
             var group = owner.GetOrAddGroup<TSelf, TResult>();
-            var index = group.Add(instance);
-            slot.AddBinding(group, index);
 
-            return new BindingInstanceEntry(
+            // entry.Index is read live (via the closures below and by BindingGroup.RemoveAt's swap
+            // retargeting), so the entry must exist before it is handed to the group as its owner.
+            BindingInstanceEntry entry = null!;
+            entry = new BindingInstanceEntry(
                 settingType: typeof(TSetting),
                 group: group,
-                index: index,
-                refreshFromSettings: () => group.Replace(index, factory(owner.SettingsManager.GetValue(settingId))),
+                refreshFromSettings: () => group.Replace(entry.Index, factory(owner.SettingsManager.GetValue(settingId))),
                 establishSubscription: markDirty => owner.SettingsManager.Subscribe(settingId, _ => markDirty()),
                 getCurrentValueBoxed: () => owner.SettingsManager.GetValue(settingId)!);
+
+            entry.Index = group.Add(instance, entry);
+            slot.AddBinding(group, entry);
+
+            return entry;
         }
     }
 
@@ -351,12 +370,8 @@ internal sealed class WindowInputActions
     {
         void Refresh();
 
-        /// <summary>
-        /// Detaches the (group, index) pair from this action's evaluation set. <paramref name="group"/>
-        /// is boxed to <c>object</c> by the type-erased caller — reference identity still matches
-        /// regardless of static type, so no cast is needed.
-        /// </summary>
-        void Detach(object group, int index);
+        /// <summary>Detaches <paramref name="entry"/>'s binding from this action's evaluation set.</summary>
+        void Detach(BindingInstanceEntry entry);
     }
 
     private interface IResultLookup<TResult>
@@ -368,6 +383,14 @@ internal sealed class WindowInputActions
     {
         void Sample(IInputSourceSampling sampling);
         void Evaluate();
+
+        /// <summary>
+        /// Compacts the instance at <paramref name="index"/> out of the group's storage (swap-remove),
+        /// keeping storage bounded across unregister/re-register cycles. If another instance occupied
+        /// the last slot, it moves into <paramref name="index"/> and its owning
+        /// <see cref="BindingInstanceEntry.Index"/> is retargeted accordingly.
+        /// </summary>
+        void RemoveAt(int index);
     }
 
     /// <summary>
@@ -378,21 +401,24 @@ internal sealed class WindowInputActions
     /// </summary>
     private sealed class ActionSlot<TResult>(Action<TResult> publish) : IActionSlot
     {
-        private readonly List<(IResultLookup<TResult> Group, int Index)> _bindings = [];
+        // Stores the owning entry, not a copied index: a sibling action's swap-removal retargets
+        // BindingInstanceEntry.Index in place, and reading it live here keeps this slot correct
+        // without needing to know about (or be updated by) every other action's teardown.
+        private readonly List<(IResultLookup<TResult> Group, BindingInstanceEntry Entry)> _bindings = [];
 
         internal ActionResult<TResult> Current { get; private set; } = ActionResult<TResult>.NoValue;
 
-        internal void AddBinding(IResultLookup<TResult> group, int index) => _bindings.Add((group, index));
+        internal void AddBinding(IResultLookup<TResult> group, BindingInstanceEntry entry) => _bindings.Add((group, entry));
 
-        public void Detach(object group, int index) =>
-            _bindings.RemoveAll(binding => ReferenceEquals(binding.Group, group) && binding.Index == index);
+        public void Detach(BindingInstanceEntry entry) =>
+            _bindings.RemoveAll(binding => ReferenceEquals(binding.Entry, entry));
 
         public void Refresh()
         {
             var combined = ActionResult<TResult>.NoValue;
-            foreach (var (group, index) in _bindings)
+            foreach (var (group, entry) in _bindings)
             {
-                var candidate = group.Result(index);
+                var candidate = group.Result(entry.Index);
                 if (!candidate.HasValue) continue;
                 combined = candidate;
                 break;
@@ -416,12 +442,17 @@ internal sealed class WindowInputActions
         where TSelf : struct, IBindingType<TSelf, TResult>
     {
         private readonly List<TSelf> _instances = [];
+
+        // Parallel to _instances: the entry owning each instance, so a swap-remove can retarget the
+        // moved instance's bookkeeping without a reverse scan over every action.
+        private readonly List<BindingInstanceEntry> _owners = [];
         private ActionResult<TResult>[] _results = [];
 
-        internal int Add(TSelf instance)
+        internal int Add(TSelf instance, BindingInstanceEntry owner)
         {
             var index = _instances.Count;
             _instances.Add(instance);
+            _owners.Add(owner);
             return index;
         }
 
@@ -436,6 +467,27 @@ internal sealed class WindowInputActions
             {
                 _instances[index] = instance;
             }
+        }
+
+        /// <inheritdoc/>
+        public void RemoveAt(int index)
+        {
+            var lastIndex = _instances.Count - 1;
+            if (index < 0 || index > lastIndex)
+            {
+                throw new InvalidOperationException(
+                    $"Binding index {index} is out of range for a group with {_instances.Count} entries.");
+            }
+
+            if (index != lastIndex)
+            {
+                _instances[index] = _instances[lastIndex];
+                _owners[index] = _owners[lastIndex];
+                _owners[index].Index = index;
+            }
+
+            _instances.RemoveAt(lastIndex);
+            _owners.RemoveAt(lastIndex);
         }
 
         public void Sample(IInputSourceSampling sampling) =>
@@ -463,14 +515,21 @@ internal sealed class WindowInputActions
     private sealed class BindingInstanceEntry(
         Type settingType,
         object group,
-        int index,
         Action refreshFromSettings,
         Func<Action, IDisposable> establishSubscription,
         Func<object> getCurrentValueBoxed)
     {
         internal Type SettingType { get; } = settingType;
         internal object Group { get; } = group;
-        internal int Index { get; } = index;
+
+        /// <summary>
+        /// This instance's current position in its <see cref="BindingGroup{TSelf,TResult}"/>. Mutated
+        /// by <see cref="BindingGroup{TSelf,TResult}.RemoveAt"/> when a sibling's swap-remove moves
+        /// this instance into the freed slot — every reader (rebind re-resolution, unregister,
+        /// per-frame result lookup) reads this live rather than a copy taken at attach time.
+        /// </summary>
+        internal int Index { get; set; }
+
         internal Action RefreshFromSettings { get; } = refreshFromSettings;
         internal Func<Action, IDisposable> EstablishSubscription { get; } = establishSubscription;
         internal Func<object> GetCurrentValueBoxed { get; } = getCurrentValueBoxed;

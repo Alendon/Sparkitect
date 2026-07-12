@@ -772,10 +772,7 @@ public unsafe class VulkanContext : IVulkanContext, IVulkanContextStateFacade
             VkInstance.Handle.ToHandle(), null);
 
         if (rawHandle.Handle == 0)
-        {
-            Log.Error("Failed to create Vulkan surface from window");
-            return null;
-        }
+            throw new InvalidOperationException("Failed to create Vulkan surface from window: native handle was zero");
 
         var surfaceHandle = new SurfaceKHR(rawHandle.Handle);
 

@@ -72,10 +72,7 @@ public partial class SampleEntryState : TransitiveGameState, IHasIdentification
         var poolResult = vulkanContext.CreateCommandPool(CommandPoolCreateFlags.ResetCommandBufferBit, 0);
 
         if (poolResult is not Result<VkCommandPool, VkApiResult>.Ok(var pool))
-        {
-            Log.Error("Failed to create command pool");
-            return;
-        }
+            throw new InvalidOperationException("Failed to create command pool");
 
         var singleResult = pool.AllocateCommandBuffer(CommandBufferLevel.Primary);
         if (singleResult is Result<VkCommandBuffer, VkApiResult>.Ok(var singleBuffer))

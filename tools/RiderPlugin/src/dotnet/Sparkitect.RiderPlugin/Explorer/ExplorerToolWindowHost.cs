@@ -76,18 +76,28 @@ public sealed class ExplorerToolWindowHost
     /// <summary>
     /// Freshly walks every solution mod project and its generated Identification structure under a read
     /// lock, mapping <see cref="ExplorerEnumeration" />'s result onto the wire shape. Nothing is cached —
-    /// called fresh on every <c>Fetch</c> request.
+    /// called fresh on every <c>Fetch</c> request. A thrown exception is logged with operation context and
+    /// rethrown: it escapes the rd handler and the protocol delivers it to the frontend as a Fault result,
+    /// which the frontend renders as a visible non-loading state (never a silent no-op).
     /// </summary>
     private List<ModExplorerData> Fetch()
     {
-        var mods = myLocks.ExecuteWithReadLock(() => ExplorerEnumeration.Enumerate(mySolution));
-        return mods
-            .Select(m => new ModExplorerData(
-                new ModItem(m.ModId, m.DisplayName),
-                m.Entries
-                    .Select(e => new ExplorerEntry(e.Category, new IdName(m.ModId, e.Category, e.Item)))
-                    .ToList()))
-            .ToList();
+        try
+        {
+            var mods = myLocks.ExecuteWithReadLock(() => ExplorerEnumeration.Enumerate(mySolution));
+            return mods
+                .Select(m => new ModExplorerData(
+                    new ModItem(m.ModId, m.DisplayName),
+                    m.Entries
+                        .Select(e => new ExplorerEntry(e.Category, new IdName(m.ModId, e.Category, e.Item)))
+                        .ToList()))
+                .ToList();
+        }
+        catch (Exception e)
+        {
+            Logger.Error(e, "SparkitectExplorer: fetch failed.");
+            throw;
+        }
     }
 
     private bool Navigate(NavigationRequest request)
@@ -118,9 +128,9 @@ public sealed class ExplorerToolWindowHost
     }
 
     /// <summary>
-    /// The one demo deep-inspector's detail supply (D-08): given a shader-module entry's id triple, returns
+    /// The one demo deep-inspector's detail supply: given a shader-module entry's id triple, returns
     /// the text of its registration source file, read-only. Strictly scoped to the shader-module category —
-    /// every other category's detail viewer is SEEDED, not built. Fail-loud (<c>Logger.Warn</c>) and null on
+    /// every other category's detail viewer is not built. Fail-loud (<c>Logger.Warn</c>) and null on
     /// any unresolved step; an escaped exception faults the rd call silently, so it is caught and logged.
     /// </summary>
     private string? LoadShaderSource(IdName id)

@@ -9,10 +9,21 @@ public interface IDisposableTestService : IDisposable;
 public class DisposableTestService : IDisposableTestService
 {
     public bool IsDisposed { get; private set; }
-    
+
     public void Dispose()
     {
         IsDisposed = true;
+    }
+}
+
+public class ThrowingDisposableTestService : IDisposableTestService
+{
+    public bool DisposeAttempted { get; private set; }
+
+    public void Dispose()
+    {
+        DisposeAttempted = true;
+        throw new InvalidOperationException("Simulated disposal failure");
     }
 }
 
@@ -109,5 +120,16 @@ public class DisposableEntrypointService : IEntrypointService, IDisposable
     public void Dispose()
     {
         IsDisposed = true;
+    }
+}
+
+public class ThrowingDisposableEntrypointService : IEntrypointService, IDisposable
+{
+    public bool DisposeAttempted { get; private set; }
+
+    public void Dispose()
+    {
+        DisposeAttempted = true;
+        throw new InvalidOperationException("Simulated disposal failure");
     }
 }

@@ -23,7 +23,5 @@ public partial class SettingSourceRegistry(ISettingsManager manager) : IRegistry
     public void RegisterSource(Identification id, ISettingSource source) => manager.RegisterSource(id, source);
 
     /// <inheritdoc/>
-    public void Unregister(Identification id)
-    {
-    }
+    public void Unregister(Identification id) => manager.RemoveSource(id);
 }

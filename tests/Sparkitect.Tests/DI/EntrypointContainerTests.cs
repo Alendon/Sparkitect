@@ -139,4 +139,52 @@ public class EntrypointContainerTests
         // Assert - no exception thrown, disposable only disposed once
         await Assert.That(disposable.IsDisposed).IsTrue();
     }
+
+    // Aggregate disposal tests (boundary-aware shutdown: attempt every sibling once, aggregate failures)
+
+    [Test]
+    public async Task Dispose_WhenInstanceDisposalThrows_AttemptsRemainingSiblingsAnyway()
+    {
+        // Arrange
+        var throwing = new ThrowingDisposableEntrypointService();
+        var succeeding = new DisposableEntrypointService();
+        var instances = new List<IEntrypointService> { throwing, succeeding };
+        var container = new EntrypointContainer<IEntrypointService>(instances);
+
+        // Act
+        try { container.Dispose(); } catch (AggregateException) { }
+
+        // Assert
+        await Assert.That(throwing.DisposeAttempted).IsTrue();
+        await Assert.That(succeeding.IsDisposed).IsTrue();
+    }
+
+    [Test]
+    public async Task Dispose_WhenInstanceDisposalThrows_ThrowsAggregateExceptionNamingContainer()
+    {
+        // Arrange
+        var throwing = new ThrowingDisposableEntrypointService();
+        var instances = new List<IEntrypointService> { throwing };
+        var container = new EntrypointContainer<IEntrypointService>(instances);
+
+        // Act & Assert
+        await Assert.That(() => container.Dispose())
+            .Throws<AggregateException>()
+            .WithMessageMatching("*EntrypointContainer*");
+    }
+
+    [Test]
+    public async Task Dispose_CalledTwiceAfterDisposalFailure_SecondCallIsNoOp()
+    {
+        // Arrange
+        var throwing = new ThrowingDisposableEntrypointService();
+        var instances = new List<IEntrypointService> { throwing };
+        var container = new EntrypointContainer<IEntrypointService>(instances);
+
+        // Act
+        try { container.Dispose(); } catch (AggregateException) { }
+
+        // Act & Assert
+        await Assert.That(() => container.Dispose()).ThrowsNothing();
+    }
 }

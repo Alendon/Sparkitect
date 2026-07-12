@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Sparkitect.DI.Exceptions;
-using Serilog;
 
 namespace Sparkitect.DI.Container;
 
@@ -75,26 +74,19 @@ internal class CoreContainer : ICoreContainer
     {
         if (_disposed)
             return;
-        
-        // Dispose all disposable services
-        foreach (var instance in _instances.Values)
-        {
-            if (instance is IDisposable disposable)
-            {
-                try
-                {
-                    disposable.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    // Log disposal exceptions but don't let them propagate to prevent cascading failures
-                    Log.Error(ex, "Exception disposing {TypeName}", instance.GetType().Name);
-                }
-            }
-        }
-        
-        _instances.Clear();
-        _parentContainer = null;
+
+        // Terminalize ownership before attempting disposal: a repeat call is always a no-op,
+        // even if this attempt fails partway through.
         _disposed = true;
+
+        try
+        {
+            DisposalAggregator.DisposeAll(nameof(CoreContainer), _instances.Values);
+        }
+        finally
+        {
+            _instances.Clear();
+            _parentContainer = null;
+        }
     }
 }

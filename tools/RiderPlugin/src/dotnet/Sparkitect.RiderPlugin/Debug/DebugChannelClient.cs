@@ -12,9 +12,9 @@ namespace Sparkitect.RiderPlugin.Debug;
 
 /// <summary>
 /// The plugin backend's single rd client to a running game's debug channel. The frontend cannot socket
-/// the game (Pitfall 5), so the backend is the sole game-channel client: it opens a
+/// the game directly, so the backend is the sole game-channel client: it opens a
 /// <see cref="SocketWire.Client" /> to the discovered port, binds the generated game-channel model, and
-/// forwards every published snapshot (including the first on-connect one, D-06) to the supplied sink.
+/// forwards every published snapshot (including the first on-connect one) to the supplied sink.
 /// The republish over the Solution-scoped Ext is deliberately NOT done here — see
 /// <c>DebugToolWindowHost</c>; keeping the Ext (which needs the Rider Solution model) out of this type
 /// means the whole client — wire, protocol, model bind, snapshot cache — depends only on

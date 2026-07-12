@@ -24,6 +24,19 @@ public class FactoryContainerTests
         return mock.Object;
     }
 
+    private static IKeyedFactory<ITestService> CreateThrowingDisposableMockFactory(ITestService instance, Action onDisposeAttempted)
+    {
+        var mock = new Mock<IKeyedFactory<ITestService>>();
+        mock.As<IDisposable>().Setup(d => d.Dispose()).Callback(() =>
+        {
+            onDisposeAttempted();
+            throw new InvalidOperationException("Simulated disposal failure");
+        });
+        mock.Setup(f => f.CreateInstance()).Returns(instance);
+        mock.Setup(f => f.ImplementationType).Returns(instance.GetType());
+        return mock.Object;
+    }
+
     [Test]
     public async Task TryResolve_WithStringKey_ReturnsInstance()
     {
@@ -253,5 +266,65 @@ public class FactoryContainerTests
         var resolved = container.TryResolve("shared-key", out var instance);
         await Assert.That(resolved).IsTrue();
         await Assert.That(instance).IsEqualTo(secondService);
+    }
+
+    // Aggregate disposal tests (boundary-aware shutdown: attempt every sibling once, aggregate failures)
+
+    [Test]
+    public async Task Dispose_WhenFactoryDisposalThrows_AttemptsRemainingSiblingsAnyway()
+    {
+        // Arrange
+        var throwAttempted = false;
+        var succeeded = false;
+        var throwingFactory = CreateThrowingDisposableMockFactory(new TestService(), () => throwAttempted = true);
+        var succeedingFactory = CreateDisposableMockFactory(new TestService(), () => succeeded = true);
+        var factories = new Dictionary<string, IKeyedFactory<ITestService>>
+        {
+            { "throwing", throwingFactory },
+            { "succeeding", succeedingFactory }
+        };
+        var container = new FactoryContainer<string, ITestService>(factories);
+
+        // Act
+        try { container.Dispose(); } catch (AggregateException) { }
+
+        // Assert
+        await Assert.That(throwAttempted).IsTrue();
+        await Assert.That(succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task Dispose_WhenFactoryDisposalThrows_ThrowsAggregateExceptionNamingContainer()
+    {
+        // Arrange
+        var throwingFactory = CreateThrowingDisposableMockFactory(new TestService(), () => { });
+        var factories = new Dictionary<string, IKeyedFactory<ITestService>>
+        {
+            { "throwing", throwingFactory }
+        };
+        var container = new FactoryContainer<string, ITestService>(factories);
+
+        // Act & Assert
+        await Assert.That(() => container.Dispose())
+            .Throws<AggregateException>()
+            .WithMessageMatching("*FactoryContainer*");
+    }
+
+    [Test]
+    public async Task Dispose_CalledTwiceAfterDisposalFailure_SecondCallIsNoOp()
+    {
+        // Arrange
+        var throwingFactory = CreateThrowingDisposableMockFactory(new TestService(), () => { });
+        var factories = new Dictionary<string, IKeyedFactory<ITestService>>
+        {
+            { "throwing", throwingFactory }
+        };
+        var container = new FactoryContainer<string, ITestService>(factories);
+
+        // Act
+        try { container.Dispose(); } catch (AggregateException) { }
+
+        // Act & Assert
+        await Assert.That(() => container.Dispose()).ThrowsNothing();
     }
 }

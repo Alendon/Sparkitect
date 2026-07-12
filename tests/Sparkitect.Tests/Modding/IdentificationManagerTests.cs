@@ -732,4 +732,61 @@ public class IdentificationManagerTests
         await Assert.That(result).IsTrue();
     }
 
+
+    // Teardown-symmetry Tests: reversing every object under a mod/category must let the
+    // category (and mod) unregister cleanly. Empty (mod, category) buckets left behind by
+    // UnregisterObject would otherwise read as live dependents (F-02 shader_module teardown).
+
+    [Test]
+    public async Task UnregisterCategory_AfterAllObjectsUnregistered_Succeeds()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
+        var modId = manager.RegisterMod("test_mod");
+        var catId = manager.RegisterCategory("shader_module");
+        var objId = manager.RegisterObject(modId, catId, "space_invaders");
+
+        // Act
+        var objectRemoved = manager.UnregisterObject(objId);
+        var categoryRemoved = manager.UnregisterCategory(catId);
+
+        // Assert
+        await Assert.That(objectRemoved).IsTrue();
+        await Assert.That(categoryRemoved).IsTrue();
+    }
+
+    [Test]
+    public async Task UnregisterMod_AfterAllObjectsUnregistered_Succeeds()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
+        var modId = manager.RegisterMod("test_mod");
+        var catId = manager.RegisterCategory("shader_module");
+        var objId = manager.RegisterObject(modId, catId, "space_invaders");
+
+        // Act
+        var objectRemoved = manager.UnregisterObject(objId);
+        var modRemoved = manager.UnregisterMod(modId);
+
+        // Assert
+        await Assert.That(objectRemoved).IsTrue();
+        await Assert.That(modRemoved).IsTrue();
+    }
+
+    [Test]
+    public async Task UnregisterCategory_WithLiveObjects_ReturnsFalse()
+    {
+        // Arrange
+        var manager = new IdentificationManager();
+        var modId = manager.RegisterMod("test_mod");
+        var catId = manager.RegisterCategory("shader_module");
+        manager.RegisterObject(modId, catId, "space_invaders");
+
+        // Act — objects still live; the category must refuse to unregister
+        var categoryRemoved = manager.UnregisterCategory(catId);
+
+        // Assert
+        await Assert.That(categoryRemoved).IsFalse();
+    }
+
 }

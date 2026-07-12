@@ -247,4 +247,90 @@ public class CoreContainerTests
         await Assert.That(service).IsNotNull();
         await Assert.That(service).IsEqualTo(parentService);
     }
+
+    // Aggregate disposal tests (boundary-aware shutdown: attempt every sibling once, aggregate failures)
+
+    [Test]
+    public async Task Dispose_WhenServiceDisposalThrows_AttemptsRemainingSiblingsAnyway()
+    {
+        // Arrange
+        var throwing = new ThrowingDisposableTestService();
+        var succeeding = new DisposableTestService();
+        var instances = new Dictionary<Type, object>
+        {
+            { typeof(IDisposableTestService), throwing },
+            { typeof(DisposableTestService), succeeding }
+        };
+        var container = new CoreContainer(instances, null);
+
+        // Act - Dispose throws, but both siblings must have been attempted
+        try { container.Dispose(); } catch (AggregateException) { }
+
+        // Assert
+        await Assert.That(throwing.DisposeAttempted).IsTrue();
+        await Assert.That(succeeding.IsDisposed).IsTrue();
+    }
+
+    [Test]
+    public async Task Dispose_WhenServiceDisposalThrows_ThrowsAggregateExceptionNamingContainer()
+    {
+        // Arrange
+        var throwing = new ThrowingDisposableTestService();
+        var instances = new Dictionary<Type, object>
+        {
+            { typeof(IDisposableTestService), throwing }
+        };
+        var container = new CoreContainer(instances, null);
+
+        // Act & Assert
+        await Assert.That(() => container.Dispose())
+            .Throws<AggregateException>()
+            .WithMessageMatching("*CoreContainer*");
+    }
+
+    [Test]
+    public async Task Dispose_WhenServiceDisposalThrows_AggregateContainsOriginalFailure()
+    {
+        // Arrange
+        var throwing = new ThrowingDisposableTestService();
+        var instances = new Dictionary<Type, object>
+        {
+            { typeof(IDisposableTestService), throwing }
+        };
+        var container = new CoreContainer(instances, null);
+
+        // Act
+        AggregateException? caught = null;
+        try
+        {
+            container.Dispose();
+        }
+        catch (AggregateException ex)
+        {
+            caught = ex;
+        }
+
+        // Assert
+        await Assert.That(caught).IsNotNull();
+        await Assert.That(caught!.InnerExceptions.Count).IsEqualTo(1);
+        await Assert.That(caught.InnerExceptions[0]).IsTypeOf<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task Dispose_CalledTwiceAfterDisposalFailure_SecondCallIsNoOp()
+    {
+        // Arrange
+        var throwing = new ThrowingDisposableTestService();
+        var instances = new Dictionary<Type, object>
+        {
+            { typeof(IDisposableTestService), throwing }
+        };
+        var container = new CoreContainer(instances, null);
+
+        // Act - first Dispose terminalizes ownership even though it throws
+        try { container.Dispose(); } catch (AggregateException) { }
+
+        // Act & Assert - repeat disposal never re-attempts and never throws again
+        await Assert.That(() => container.Dispose()).ThrowsNothing();
+    }
 }

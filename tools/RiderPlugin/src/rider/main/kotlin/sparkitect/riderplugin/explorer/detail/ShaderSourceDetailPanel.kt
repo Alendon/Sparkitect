@@ -14,9 +14,9 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 
 /**
- * The ONE demo deep-inspector (D-08): renders a shader-module entry's registration source in a read-only
+ * The ONE demo deep-inspector: renders a shader-module entry's registration source in a read-only
  * editor, proving the extensible detail-pane slot end-to-end (backend rd supply -> frontend viewer). Every
- * other category's viewer is SEEDED, not built. Read-only via [EditorTextField.setViewer]; no dependency on
+ * other category's viewer is not built. Read-only via [EditorTextField.setViewer]; no dependency on
  * `org.intellij.images` (the illustrative FUTURE image/texture case for the slot).
  */
 class ShaderSourceDetailPanel(

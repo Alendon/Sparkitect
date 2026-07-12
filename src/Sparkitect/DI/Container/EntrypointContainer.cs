@@ -1,6 +1,4 @@
-﻿using Serilog;
-
-namespace Sparkitect.DI.Container;
+﻿namespace Sparkitect.DI.Container;
 
 /// <summary>
 /// Implementation of an entrypoint container that stores and provides access to entrypoint instances
@@ -52,24 +50,18 @@ internal sealed class EntrypointContainer<TBase> : IEntrypointContainer<TBase>
     {
         if (_disposed)
             return;
-        
-        // Dispose all disposable entrypoint instances
-        foreach (var instance in _instances)
-        {
-            if (instance is IDisposable disposable)
-            {
-                try
-                {
-                    disposable.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Exception disposing {TypeName}", instance.GetType().Name);
-                }
-            }
-        }
-        
-        _instances.Clear();
+
+        // Terminalize ownership before attempting disposal: a repeat call is always a no-op,
+        // even if this attempt fails partway through.
         _disposed = true;
+
+        try
+        {
+            DisposalAggregator.DisposeAll(nameof(EntrypointContainer<TBase>), _instances);
+        }
+        finally
+        {
+            _instances.Clear();
+        }
     }
 }

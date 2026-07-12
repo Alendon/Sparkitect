@@ -34,6 +34,14 @@ public interface ISettingsManager
     /// <param name="source">The source instance.</param>
     void RegisterSource(Identification id, ISettingSource source);
 
+    /// <summary>
+    /// Removes a previously registered source, recomputes the resolution order, and dispatches
+    /// effective-change callbacks for every subscribed setting whose resolved value changes as a
+    /// result. Called by the setting-source registry on teardown.
+    /// </summary>
+    /// <param name="id">The source id to remove.</param>
+    void RemoveSource(Identification id);
+
     /// <summary>Returns a lightweight typed handle over the manager for <paramref name="id"/>.</summary>
     /// <typeparam name="T">The setting's primitive value type.</typeparam>
     /// <param name="id">The setting id.</param>

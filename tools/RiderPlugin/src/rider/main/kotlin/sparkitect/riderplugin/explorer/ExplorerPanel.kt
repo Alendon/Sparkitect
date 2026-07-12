@@ -41,16 +41,16 @@ import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 
 /**
- * The Identification-structure explorer left pane (D-08). Binds the Solution-scoped [ExplorerModel]
+ * The Identification-structure explorer left pane. Binds the Solution-scoped [ExplorerModel]
  * Ext: a mod selector (each pane inspects ONE mod at a time, mirroring the Game State process
  * selector) and a 2-level category→entry tree of the selected mod's generated Identifications.
  * Double-click and a context menu fire the shared `navigate` call to source through the identical
  * backend reverse-lookup the Game State window uses.
  *
- * Master-detail (D-08): the tree is the left master of a [JBSplitter]; the right detail is a
+ * Master-detail: the tree is the left master of a [JBSplitter]; the right detail is a
  * `JPanel(CardLayout)` keyed by a `Map<category, DetailPanelFactory>`. Selecting an entry shows its
  * category's registered viewer (only the shader-module demo is built; every other category maps to the
- * default/empty card — the extensible slot is designed for them but they are SEEDED, not an IntelliJ EP).
+ * default/empty card — the extensible slot is designed for them but none is built, not an IntelliJ EP).
  */
 class ExplorerPanel(private val project: Project, toolWindow: ToolWindow) : JPanel(BorderLayout()) {
 
@@ -65,7 +65,7 @@ class ExplorerPanel(private val project: Project, toolWindow: ToolWindow) : JPan
     private val messageLabel = JBLabel().apply { border = JBUI.Borders.empty(12) }
 
     // Detail (right) pane: a card per category, swapped on tree selection. The Map is the extensible slot
-    // (in-repo categories, NOT an IntelliJ EP); only the shader-module demo factory is registered (Task 3).
+    // (in-repo categories, NOT an IntelliJ EP); only the shader-module demo factory is registered.
     private val detailLayout = CardLayout()
     private val detailPane = JPanel(detailLayout)
     private val detailFactories = LinkedHashMap<String, DetailPanelFactory>()
@@ -74,7 +74,7 @@ class ExplorerPanel(private val project: Project, toolWindow: ToolWindow) : JPan
         secondComponent = detailPane
     }
 
-    // Local frontend state (D-08 target shape): the last fetched per-mod tree and the current selection.
+    // Local frontend state: the last fetched per-mod tree and the current selection.
     // No round-trip to the backend for a mod switch — both are purely local.
     private var currentMods: List<ModExplorerData> = emptyList()
     private var selectedModId: String? = null
@@ -134,10 +134,16 @@ class ExplorerPanel(private val project: Project, toolWindow: ToolWindow) : JPan
     }
 
     // Pulls the full per-mod tree on demand. The backend stores nothing -- every call is a fresh walk.
+    // Every terminal outcome ends loading: success renders the tree, fault/cancel render a visible
+    // non-loading message distinct from the empty-success state, and a retry (re-invalidation or the
+    // window becoming visible again) can still recover into a normal tree.
     private fun fetch() {
         model.fetch.start(lifetime, Unit).result.advise(lifetime) { taskResult ->
-            val mods = (taskResult as? RdTaskResult.Success)?.value ?: return@advise
-            onFetched(mods)
+            when (taskResult) {
+                is RdTaskResult.Success -> onFetched(taskResult.value)
+                is RdTaskResult.Fault -> showMessage("Failed to load Sparkitect mods: ${taskResult.error.reasonAsText}")
+                is RdTaskResult.Cancelled -> showMessage("Loading Sparkitect mods was cancelled.")
+            }
         }
     }
 
@@ -244,7 +250,7 @@ class ExplorerPanel(private val project: Project, toolWindow: ToolWindow) : JPan
             EMPTY_CARD,
         )
         // The one demo viewer occupies the extensible slot for the shader-module category; all other
-        // categories fall through to the empty card above (SEEDED, no viewer built).
+        // categories fall through to the empty card above (no viewer built).
         registerDetail(ShaderSourceDetailPanel(project, model, lifetime))
         detailLayout.show(detailPane, EMPTY_CARD)
     }
@@ -334,7 +340,7 @@ class ExplorerPanel(private val project: Project, toolWindow: ToolWindow) : JPan
 }
 
 /**
- * A per-category detail viewer for the explorer's right pane (D-08). One card per [category]; [component]
+ * A per-category detail viewer for the explorer's right pane. One card per [category]; [component]
  * is added to the detail [java.awt.CardLayout] under that key and [show] refreshes it for the selected
  * entry. The extensible slot is this in-repo interface — categories are known at build time, so a
  * `Map<category, DetailPanelFactory>` is used rather than an IntelliJ extension point.

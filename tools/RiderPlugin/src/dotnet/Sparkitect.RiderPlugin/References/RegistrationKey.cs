@@ -125,8 +125,8 @@ public readonly struct RegistrationKey
     }
 
     /// <summary>
-    /// Assembles the IDs-struct CLR name from reliable inputs — the retained deterministic reconstruction
-    /// (D-49): <c>{PascalMod}.CompilerGenerated.IdExtensions.{PascalMod}{PascalCategory}IDs</c>, member =
+    /// Assembles the IDs-struct CLR name from reliable inputs — the retained deterministic reconstruction:
+    /// <c>{PascalMod}.CompilerGenerated.IdExtensions.{PascalMod}{PascalCategory}IDs</c>, member =
     /// <c>SnakeToPascal(idString)</c>. Mirrors the generator's <c>StringCase.ToPascalCase(ModId)</c> +
     /// <c>ToPascalCase(category)</c> struct naming.
     /// </summary>
@@ -149,7 +149,7 @@ public readonly struct RegistrationKey
         return new RegistrationKey(idsStruct, member);
     }
 
-    /// <summary>The deterministic snake_case → PascalCase transform retained on the reliable-input path (D-49).</summary>
+    /// <summary>The deterministic snake_case → PascalCase transform retained on the reliable-input path.</summary>
     public static string SnakeToPascal(string snake)
     {
         var builder = new StringBuilder(snake.Length);

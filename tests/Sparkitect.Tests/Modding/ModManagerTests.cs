@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using Semver;
@@ -87,6 +88,77 @@ public class ModManagerTests
         };
 
         await Assert.That(() => ModManager.BuildModLoadOrder(manifests)).Throws<InvalidOperationException>();
+    }
+}
+
+/// <summary>
+/// Covers <see cref="ModManager.LoadModDependencies"/> (F-04): a mod's <see cref="ModManifest.RequiredAssemblies"/>
+/// are hard dependencies, unlike <see cref="ModRelationship.IsOptional"/> mod-to-mod relationships. Both
+/// failure paths (entry absent from the archive; entry present but fails to load) must stop the load at
+/// origin rather than warn/log and continue silently — mirrors the existing throw shape in
+/// <see cref="ModManager.LoadModAssembly"/>, its sibling for the primary mod assembly.
+/// </summary>
+public class ModManagerLoadDependenciesTests
+{
+    private static ModManifest Manifest(string id, params string[] requiredAssemblies) => new(
+        Id: id,
+        Name: id,
+        Description: "",
+        Version: SemVersion.Parse("1.0.0", SemVersionStyles.Any),
+        Authors: [],
+        ModPath: null,
+        Relationships: [],
+        ModAssembly: $"{id}.dll",
+        RequiredAssemblies: requiredAssemblies);
+
+    private static ZipArchive EmptyArchive(MemoryStream backing)
+    {
+        using (var writer = new ZipArchive(backing, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            // No entries — the required assembly is absent from the archive.
+        }
+        backing.Seek(0, SeekOrigin.Begin);
+        return new ZipArchive(backing, ZipArchiveMode.Read);
+    }
+
+    private static ZipArchive ArchiveWithCorruptEntry(MemoryStream backing, string entryPath)
+    {
+        using (var writer = new ZipArchive(backing, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var entry = writer.CreateEntry(entryPath);
+            using var entryStream = entry.Open();
+            // Not a valid PE/metadata image — ModuleMetadata.CreateFromStream must fail on this.
+            byte[] garbage = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07];
+            entryStream.Write(garbage, 0, garbage.Length);
+        }
+        backing.Seek(0, SeekOrigin.Begin);
+        return new ZipArchive(backing, ZipArchiveMode.Read);
+    }
+
+    [Test]
+    public async Task MissingRequiredAssemblyEntry_ThrowsInsteadOfWarningAndContinuing()
+    {
+        using var backing = new MemoryStream();
+        using var archive = EmptyArchive(backing);
+        var manifest = Manifest("mod_missing_dep", "missing.dll");
+        var loadContext = new SparkitectLoadContext(null);
+
+        await Assert.That(() =>
+                ModManager.LoadModDependencies(manifest, archive, "mod_missing_dep", loadContext))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task RequiredAssemblyFailsToLoad_PropagatesExceptionInsteadOfLoggingAndContinuing()
+    {
+        using var backing = new MemoryStream();
+        using var archive = ArchiveWithCorruptEntry(backing, "lib/corrupt.dll");
+        var manifest = Manifest("mod_corrupt_dep", "corrupt.dll");
+        var loadContext = new SparkitectLoadContext(null);
+
+        await Assert.That(() =>
+                ModManager.LoadModDependencies(manifest, archive, "mod_corrupt_dep", loadContext))
+            .Throws<Exception>();
     }
 }
 

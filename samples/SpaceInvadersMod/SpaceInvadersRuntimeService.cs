@@ -308,6 +308,10 @@ public class SpaceInvadersRuntimeService(IComponentManager componentManager, ISy
     {
         _commandBufferAccessor = null;
         _frameTimer.Stop();
+
+        if (_world is not null)
+            systemManager.NotifyDispose(_world);
+
         _world?.Dispose();
         _world = null;
     }

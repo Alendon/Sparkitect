@@ -24,9 +24,10 @@ namespace Sparkitect.RiderPlugin.Debug;
 /// Rider Solution model, so it is the thin, Rider-only shim the rest of the debug backend keeps clear of
 /// (<c>DebugChannelClient</c> / <c>DebugNavigation</c> / <c>DiscoveryWatcher</c> all compile against the
 /// ReSharper SDK alone). It: (a) republishes the <see cref="DiscoveryWatcher" />'s live process list to
-/// the selector (D-07); (b) on process selection, opens a <see cref="DebugChannelClient" /> and
-/// republishes its cached snapshot to the window (D-06, Pitfall 5); and (c) answers row-navigation calls
-/// via <see cref="DebugNavigation" /> (D-10). Everything is scoped to the solution lifetime; the
+/// the selector; (b) on process selection, opens a <see cref="DebugChannelClient" /> and
+/// republishes its cached snapshot to the window (the frontend cannot reach the game socket directly);
+/// and (c) answers row-navigation calls via <see cref="DebugNavigation" />. Everything is scoped to the
+/// solution lifetime; the
 /// per-connection nested lifetime is recycled on every re-selection so a switch tears the old wire down.
 /// </summary>
 [SolutionComponent(Instantiation.ContainerAsyncPrimaryThread)]
@@ -52,15 +53,15 @@ public sealed class DebugToolWindowHost
         myModel = solution.GetProtocolSolution().GetDebugToolWindowModel();
         myWatcher = new DiscoveryWatcher(lifetime);
 
-        // D-07: keep the selector's process list current. The watcher fires Changed on a background
+        // Keep the selector's process list current. The watcher fires Changed on a background
         // thread; marshal the model write onto the protocol thread.
         myWatcher.Changed += OnDiscoveryChanged;
         PublishProcesses();
 
-        // D-06/D-07: frontend selection drives which game channel the backend connects to.
+        // Frontend selection drives which game channel the backend connects to.
         myModel.SelectedProcess.Advise(lifetime, Connect);
 
-        // D-10: row navigation resolves through the shared reverse-lookup machinery.
+        // Row navigation resolves through the shared reverse-lookup machinery.
         myModel.Navigate.Set((_, request) => Navigate(request));
     }
 
@@ -74,7 +75,7 @@ public sealed class DebugToolWindowHost
             .ToList();
         myModel.Processes.Value = processes;
 
-        // D-07: auto-select a live process when the frontend has none, and drop (or replace) a selection
+        // Auto-select a live process when the frontend has none, and drop (or replace) a selection
         // whose process is gone. Reading .Value of a never-set RdProperty throws, so probe through Maybe.
         var selected = myModel.SelectedProcess.Maybe;
         var current = selected.HasValue ? selected.Value : null;
@@ -107,9 +108,9 @@ public sealed class DebugToolWindowHost
 
         // The client fires snapshots on its own scheduler thread; marshal the Ext republish onto the
         // protocol thread. The backend caches (holds the last value) simply by being the sole writer of
-        // the Ext property — at a breakpoint pause the game pushes nothing new and the last value holds
-        // (D-06). The raw snapshot (version marker included) is republished as-is so the frontend can
-        // render the loud version-drift banner (D-09) for a mismatched marker.
+        // the Ext property — at a breakpoint pause the game pushes nothing new and the last value holds.
+        // The raw snapshot (version marker included) is republished as-is so the frontend can render the
+        // loud version-drift banner for a mismatched marker.
         _ = new DebugChannelClient(connection.Lifetime, process.Port, snapshot =>
             myLocks.ExecuteOrQueueEx(connection.Lifetime, "SparkitectDebug.Snapshot",
                 () => myModel.Snapshot.Value = snapshot));
@@ -132,7 +133,7 @@ public sealed class DebugToolWindowHost
         }
         if (range == null)
         {
-            // D-11: no numeric fallback, no guessing — an unresolved row is surfaced loudly.
+            // No numeric fallback, no guessing — an unresolved row is surfaced loudly.
             Logger.Warn(
                 $"SparkitectDebug: no {request.Target} target for ('{id.Mod}', '{id.Category}', '{id.Item}').");
             return false;
@@ -146,7 +147,7 @@ public sealed class DebugToolWindowHost
     /// <summary>
     /// Resolves a wire string triple to a source range under a read lock, trying each solution PSI module
     /// until the generated leaf resolves (the IDs structs live in the opened mod projects). Registration
-    /// site for the context menu, type declaration for double-click (D-10).
+    /// site for the context menu, type declaration for double-click.
     /// </summary>
     private DocumentRange? ResolveTarget(string mod, string category, string item, NavigationTarget target)
     {

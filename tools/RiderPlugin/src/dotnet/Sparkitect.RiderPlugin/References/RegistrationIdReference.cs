@@ -36,7 +36,7 @@ public class RegistrationIdReference : CheckedReferenceBase<ICSharpLiteralExpres
     public override ResolveResultWithInfo ResolveWithoutCache()
     {
         var result = CheckedReferenceImplUtil.Resolve(this, GetReferenceSymbolTable(true));
-        // Extend-never-break (D-05/D-09): a registration-ID literal is just a string to the C#
+        // Extend-never-break: a registration-ID literal is just a string to the C#
         // language, so an unresolved reference MUST be a silent no-op — never a red "Cannot resolve
         // symbol" error. ResolveResultWithInfo.Ignore carries ResolveErrorType.IGNORABLE, which the
         // resolve-problem daemon stage does not highlight. Resolution still navigates when the target

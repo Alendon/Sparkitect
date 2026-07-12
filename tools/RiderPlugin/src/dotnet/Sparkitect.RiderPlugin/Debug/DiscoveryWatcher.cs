@@ -27,21 +27,21 @@ public sealed class DiscoveredProcess
     /// <summary>The OS-assigned port the engine's rd <c>SocketWire.Server</c> listens on.</summary>
     public int Port { get; }
 
-    /// <summary>The engine version marker; the client rejects a version it does not speak (D-09).</summary>
+    /// <summary>The engine version marker; the client rejects a version it does not speak.</summary>
     public string EngineVersion { get; }
 }
 
 /// <summary>
 /// Watches the shared-temp discovery directory and enumerates the live Sparkitect debug channels for the
-/// process selector (D-07). Each running game writes one file per pid on channel start and removes it on
-/// shutdown (D-16; engine side is plan 06). This watcher parses those files into a process list and treats
+/// process selector. Each running game writes one file per pid on channel start and removes it on
+/// shutdown (the engine side owns the writer). This watcher parses those files into a process list and treats
 /// a file whose pid is no longer alive as stale (crash leftovers), so the selector never offers a dead
 /// channel. All resources are scoped to the supplied <see cref="Lifetime" />. A parse/read error is logged
 /// loudly and the offending file skipped (a half-written file re-fires a change event) — the watcher itself
 /// never goes down silently.
 /// </summary>
 /// <remarks>
-/// Discovery contract (this watcher is the reader; plan 06 is the writer and MUST match):
+/// Discovery contract (this watcher is the reader; the engine-side writer MUST match):
 /// <list type="bullet">
 ///   <item>Directory: <c>{XDG_RUNTIME_DIR|OS-temp}/Sparkitect/debug-channel/</c> (see <see cref="DiscoveryDirectory" />).</item>
 ///   <item>File name: <c>{pid}.json</c>, one per running channel.</item>
@@ -55,7 +55,7 @@ public sealed class DiscoveryWatcher
     private static readonly ILogger Logger =
         JetBrains.Util.Logging.Logger.GetLogger(typeof(DiscoveryWatcher));
 
-    /// <summary>The shared per-user rendezvous directory both the engine and the plugin agree on (D-16).</summary>
+    /// <summary>The shared per-user rendezvous directory both the engine and the plugin agree on.</summary>
     public static readonly string DiscoveryDirectory =
         Path.Combine(ResolveBaseDirectory(), "Sparkitect", "debug-channel");
 
@@ -150,7 +150,7 @@ public sealed class DiscoveryWatcher
                 continue;
 
             if (!IsProcessAlive(process.Pid))
-                continue; // stale crash leftover — the selector must not offer a dead channel (D-07)
+                continue; // stale crash leftover — the selector must not offer a dead channel
 
             found.Add(process);
         }

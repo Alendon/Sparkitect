@@ -107,12 +107,12 @@ sourceSets {
     main {
         java.srcDir("src/rider/main/java")
         kotlin.srcDir("src/rider/main/kotlin")
-        // Generated rd debug-channel frontend stubs (58.1-08). :protocol:rdgen emits the shared data
+        // Generated rd debug-channel frontend stubs. :protocol:rdgen emits the shared data
         // library Kotlin (sparkitect.debug.protocol.*) into protocol/build/generated/kotlin and the
         // Solution-Ext republish Kotlin (com.jetbrains.rd.ide.model.DebugToolWindowModel) into
         // protocol/build/generated/kotlin-ext. The Ext binds against the full Rider platform runtime,
         // so — unlike the standalone :protocol subproject, which only compile-checks the rd-framework
-        // library Kotlin — the PLUGIN build is where the Ext Kotlin is compiled (plan 04 finding). Both
+        // library Kotlin — the PLUGIN build is where the Ext Kotlin is compiled. Both
         // dirs are git-ignored build output regenerated on model change.
         kotlin.srcDir("protocol/build/generated/kotlin")
         kotlin.srcDir("protocol/build/generated/kotlin-ext")

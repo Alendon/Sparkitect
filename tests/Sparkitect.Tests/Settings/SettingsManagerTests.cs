@@ -198,4 +198,123 @@ public class SettingsManagerTests
 
         await Assert.That(fires).IsEqualTo(0);
     }
+
+    // F-03 regression: setting-source teardown must remove the exact source, recompute the effective
+    // order, and notify subscribers when removal changes the resolved value. Previously the generated
+    // teardown path had no removal effect at all -- the source lingered after "unregistration".
+
+    [Test]
+    public async Task RemoveSource_EffectiveSource_FallsBackToNextOrDefault()
+    {
+        var manager = new SettingsManager();
+        manager.Declare(Flag, new SettingDefinition<bool>(Default: false));
+        manager.RegisterSource(UserSourceId, new StubSource("user", canWrite: true,
+            values: new Dictionary<Identification, object> { [Flag] = true }));
+        manager.ProcessRegisteredSources();
+
+        await Assert.That(manager.GetValue<bool>(Flag)).IsTrue();
+
+        manager.RemoveSource(UserSourceId);
+
+        await Assert.That(manager.GetValue<bool>(Flag)).IsFalse();
+    }
+
+    [Test]
+    public async Task RemoveSource_ReRegister_Oscillation_SingleCurrentInstance()
+    {
+        var manager = new SettingsManager();
+        manager.Declare(Flag, new SettingDefinition<bool>(Default: false));
+        manager.RegisterSource(UserSourceId, new StubSource("first", canWrite: true,
+            values: new Dictionary<Identification, object> { [Flag] = true }));
+        manager.ProcessRegisteredSources();
+
+        manager.RemoveSource(UserSourceId);
+        await Assert.That(manager.GetValue<bool>(Flag)).IsFalse();
+
+        // Reactivation must resolve through the new instance, not any lingering registration.
+        manager.RegisterSource(UserSourceId, new StubSource("second", canWrite: true,
+            values: new Dictionary<Identification, object> { [Flag] = true }));
+        manager.ProcessRegisteredSources();
+
+        await Assert.That(manager.GetValue<bool>(Flag)).IsTrue();
+
+        var result = manager.SetUserValue(Flag, false);
+        await Assert.That(result is Result<SetError>.Ok).IsTrue();
+        await Assert.That(manager.GetValue<bool>(Flag)).IsFalse();
+    }
+
+    [Test]
+    public async Task RemoveSource_EffectiveValueChanges_FiresCallback()
+    {
+        var manager = new SettingsManager();
+        manager.Declare(Flag, new SettingDefinition<bool>(Default: false));
+        manager.RegisterSource(UserSourceId, new StubSource("user", canWrite: true,
+            values: new Dictionary<Identification, object> { [Flag] = true }));
+        manager.ProcessRegisteredSources();
+
+        var fires = 0;
+        var observed = true;
+        manager.Subscribe<bool>(Flag, value =>
+        {
+            fires++;
+            observed = value;
+        });
+
+        manager.RemoveSource(UserSourceId);
+
+        await Assert.That(fires).IsEqualTo(1);
+        await Assert.That(observed).IsFalse();
+    }
+
+    [Test]
+    public async Task RemoveSource_ShadowedSource_FiresNoCallback()
+    {
+        var manager = new SettingsManager();
+        manager.Declare(Flag, new SettingDefinition<bool>(Default: false));
+
+        // Low registered, shadowed by a higher source that always supplies the effective value. The
+        // ordering edge lives on the removed (low) source itself, so removal never leaves a dangling
+        // required-edge reference on the source that stays registered.
+        manager.RegisterSource(HighSourceId, new StubSource("high", canWrite: false,
+            values: new Dictionary<Identification, object> { [Flag] = true }));
+        manager.RegisterSource(LowSourceId, new StubSource("low", canWrite: false,
+            values: new Dictionary<Identification, object> { [Flag] = true },
+            orderAfter: [new SettingSourceOrder(HighSourceId)]));
+        manager.ProcessRegisteredSources();
+
+        var fires = 0;
+        manager.Subscribe<bool>(Flag, _ => fires++);
+
+        // Removing the shadowed (non-effective) source cannot change the resolved value.
+        manager.RemoveSource(LowSourceId);
+
+        await Assert.That(fires).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task RemoveSource_UserSource_ClearsUserSourcePointer()
+    {
+        var manager = new SettingsManager();
+        manager.Declare(Flag, new SettingDefinition<bool>(Default: false));
+        manager.RegisterSource(UserSourceId, new StubSource("user", canWrite: true));
+        manager.ProcessRegisteredSources();
+
+        manager.RemoveSource(UserSourceId);
+
+        var result = manager.SetUserValue(Flag, true);
+        await Assert.That(result is Result<SetError>.Error { Value: SetError.UnknownSource }).IsTrue();
+    }
+
+    [Test]
+    public async Task RemoveSource_UnknownSource_IsNoOp()
+    {
+        var manager = new SettingsManager();
+        manager.Declare(Flag, new SettingDefinition<bool>(Default: false));
+        manager.RegisterSource(UserSourceId, new StubSource("user", canWrite: true,
+            values: new Dictionary<Identification, object> { [Flag] = true }));
+        manager.ProcessRegisteredSources();
+
+        await Assert.That(() => manager.RemoveSource(HighSourceId)).ThrowsNothing();
+        await Assert.That(manager.GetValue<bool>(Flag)).IsTrue();
+    }
 }

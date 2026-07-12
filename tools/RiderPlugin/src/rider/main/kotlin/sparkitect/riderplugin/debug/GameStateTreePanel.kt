@@ -41,19 +41,19 @@ import com.intellij.openapi.ui.ComboBox
 import javax.swing.DefaultComboBoxModel
 
 /**
- * The Game State Stack inspector (D-01..D-12). Binds the republished [DebugToolWindowModel] Ext: a
- * process selector (D-07), the composed state stack rendered top-of-stack-first with enriched headers
- * (D-04), per-frame Modules with origin badges + expandable one-hop requirers (D-01/D-02), a "Mods added"
- * section (D-03) and per-frame StatelessFunctions (D-05), standard tree speed-search only (D-12), and row
- * navigation to source through the backend reverse lookup (D-10). Version drift degrades loudly: a
- * mismatched protocol marker replaces the whole tree with a banner (D-09) — never a half-rendered tree.
+ * The Game State Stack inspector. Binds the republished [DebugToolWindowModel] Ext: a
+ * process selector, the composed state stack rendered top-of-stack-first with enriched headers,
+ * per-frame Modules with origin badges + expandable one-hop requirers, a "Mods added"
+ * section and per-frame StatelessFunctions, standard tree speed-search only, and row
+ * navigation to source through the backend reverse lookup. Version drift degrades loudly: a
+ * mismatched protocol marker replaces the whole tree with a banner — never a half-rendered tree.
  *
- * The frontend cannot socket the game (Pitfall 5); every value here arrives over the Solution protocol.
+ * The frontend cannot socket the game directly; every value here arrives over the Solution protocol.
  */
 class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(BorderLayout()) {
 
     private companion object {
-        /** The debug-view protocol version this plugin speaks (D-09). Must match the engine's
+        /** The debug-view protocol version this plugin speaks. Must match the engine's
          *  DebugSnapshotBuilder.ProtocolVersion; a mismatch is surfaced loudly, never half-rendered. */
         const val PLUGIN_PROTOCOL_VERSION = 1
     }
@@ -71,9 +71,10 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
     // Guards the selector<->model echo so syncing the combo from the model does not re-fire selection.
     private var syncingSelection = false
 
-    // D-05: SF-row action reaching the authored method — the same destination D-04's caret jump lands on
-    // (RegistrationFactory.FromLeaf -> NavigableTarget, dispatched by RegistrationSite backend-side). Gated
-    // to STATELESS_FUNCTION rows in the popup handler, so it is hidden on module/frame/mod rows.
+    // SF-row action reaching the authored method — the same destination the frame header's caret jump
+    // lands on (RegistrationFactory.FromLeaf -> NavigableTarget, dispatched by RegistrationSite
+    // backend-side). Gated to STATELESS_FUNCTION rows in the popup handler, so it is hidden on
+    // module/frame/mod rows.
     private val toAuthoredMethod = JMenuItem("Go to Authored Method").apply {
         addActionListener { selectedNavId()?.let { navigate(it, NavigationTarget.RegistrationSite) } }
     }
@@ -88,7 +89,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
         tree.isRootVisible = false
         tree.showsRootHandles = true
         tree.cellRenderer = RowRenderer()
-        TreeSpeedSearch.installOn(tree) // D-12: standard speed-search only, no custom filter/export.
+        TreeSpeedSearch.installOn(tree) // Standard speed-search only, no custom filter/export.
 
         add(buildTopBar(), BorderLayout.NORTH)
         add(treeScroll, BorderLayout.CENTER)
@@ -96,11 +97,11 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
         wireSelector()
         wireNavigation()
 
-        // D-07: keep the selector populated with the backend's discovered-process list.
+        // Keep the selector populated with the backend's discovered-process list.
         model.processes.advise(lifetime) { processes -> onProcessesChanged(processes) }
         // Reflect a backend-driven default selection (auto-select of the active process) into the combo.
         model.selectedProcess.advise(lifetime) { pid -> syncSelectorTo(pid) }
-        // D-06: the cached snapshot is always current (push-on-change); re-render on every publish.
+        // The cached snapshot is always current (push-on-change); re-render on every publish.
         model.snapshot.advise(lifetime) { snapshot -> render(snapshot) }
 
         renderEmptyOrCurrent()
@@ -152,11 +153,11 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
         if (snapshot != null) {
             render(snapshot)
         } else if (processSelector.itemCount == 0) {
-            // D-08: nothing discovered.
+            // Nothing discovered.
             showMessage("No Sparkitect process found.\nStart a game with --debug-channel to inspect its Game State Stack.")
         } else {
-            // D-08: a process exists but no channel snapshot has arrived (module off / pre-58.1 engine).
-            showMessage("No debug channel on this process (module disabled or pre-58.1 engine).")
+            // A process exists but no channel snapshot has arrived (module disabled or engine too old).
+            showMessage("No debug channel on this process (module disabled or engine debug channel unsupported).")
         }
     }
 
@@ -165,7 +166,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
             renderEmptyOrCurrent()
             return
         }
-        // D-09 fail-loud: version drift replaces the tree with a banner — never a half-rendered tree.
+        // Fail-loud: version drift replaces the tree with a banner — never a half-rendered tree.
         if (snapshot.protocolVersion != PLUGIN_PROTOCOL_VERSION) {
             showMessage(
                 "Engine debug view v${snapshot.protocolVersion} not supported (plugin speaks v$PLUGIN_PROTOCOL_VERSION).\n" +
@@ -179,7 +180,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
 
     private fun rebuildTree(snapshot: DebugSnapshot) {
         treeRoot.removeAllChildren()
-        // D-04: frames arrive top-of-stack first; the first is the active frame.
+        // Frames arrive top-of-stack first; the first is the active frame.
         snapshot.frames.forEachIndexed { index, frame ->
             treeRoot.add(buildFrameNode(frame, active = index == 0))
         }
@@ -188,11 +189,11 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
     }
 
     private fun buildFrameNode(frame: StateFrame, active: Boolean): DefaultMutableTreeNode {
-        val marker = if (active) "▶ " else "" // active frame visually marked (D-04)
+        val marker = if (active) "▶ " else "" // active frame visually marked
         val header = "$marker${frame.stateId.item} — ${frame.moduleCount} modules, ${frame.modCount} mods"
         val node = DefaultMutableTreeNode(Row(header, RowKind.FRAME))
 
-        // D-03: sibling "Modules" and "Mods added" sections, plus per-frame StatelessFunctions (D-05).
+        // Sibling "Modules" and "Mods added" sections, plus per-frame StatelessFunctions.
         node.add(buildModulesSection(frame))
         node.add(buildModsSection(frame))
         node.add(buildStatelessFunctionsSection(frame))
@@ -201,7 +202,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
 
     private fun buildModulesSection(frame: StateFrame): DefaultMutableTreeNode {
         val section = DefaultMutableTreeNode(Row("Modules (${frame.modules.size})", RowKind.SECTION))
-        // D-01: the COMPLETE composed set (Pitfall 4), each badged by origin.
+        // The COMPLETE composed set, each badged by origin.
         for (module in frame.modules) {
             section.add(buildModuleNode(module))
         }
@@ -212,7 +213,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
         val node = DefaultMutableTreeNode(
             Row(module.id.item, RowKind.MODULE, navId = module.id, badge = originBadge(module.origin))
         )
-        // D-02: one-hop requirers behind an expandable detail node (not inline).
+        // One-hop requirers behind an expandable detail node (not inline).
         if (module.requirers.isNotEmpty()) {
             val requirers = DefaultMutableTreeNode(Row("Required by (${module.requirers.size})", RowKind.SECTION))
             for (requirer in module.requirers) {
@@ -235,7 +236,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
         val section = DefaultMutableTreeNode(
             Row("Stateless Functions (${frame.statelessFunctions.size})", RowKind.SECTION)
         )
-        // D-05: runtime-truth SF sets, grouped by schedule kind under the state frame.
+        // Runtime-truth SF sets, grouped by schedule kind under the state frame.
         for (kind in StatelessFunctionKind.values()) {
             val ofKind = frame.statelessFunctions.filter { it.kind == kind }
             if (ofKind.isEmpty()) continue
@@ -255,7 +256,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
     }
 
     private fun wireNavigation() {
-        // D-10 double-click -> type declaration.
+        // Double-click -> type declaration.
         object : DoubleClickListener() {
             override fun onDoubleClick(event: MouseEvent): Boolean {
                 val id = selectedNavId() ?: return false
@@ -264,7 +265,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
             }
         }.installOn(tree)
 
-        // D-10 context menu -> registration site (+ type declaration). A PopupHandler drives a plain
+        // Context menu -> registration site (+ type declaration). A PopupHandler drives a plain
         // Swing menu so no ActionManager registration is needed; it handles cross-platform triggers.
         val contextMenu = buildContextMenu()
         tree.addMouseListener(object : PopupHandler() {
@@ -272,7 +273,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
                 val path = tree.getClosestPathForLocation(x, y) ?: return
                 tree.selectionPath = path
                 if (selectedNavId() != null) {
-                    // D-05: the authored-method action is offered only on SF rows.
+                    // The authored-method action is offered only on SF rows.
                     toAuthoredMethod.isVisible = selectedRowKind() == RowKind.STATELESS_FUNCTION
                     contextMenu.show(comp, x, y)
                 }
@@ -281,7 +282,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
     }
 
     private fun buildContextMenu(): JPopupMenu {
-        // Type-declaration navigation is offered for every nav row; the authored-method action (the D-04
+        // Type-declaration navigation is offered for every nav row; the authored-method action (the
         // registration-site hop) is additionally offered on SF rows, gated in the popup handler.
         val menu = JPopupMenu()
         val toDeclaration = JMenuItem("Go to Type Declaration").apply {
@@ -294,7 +295,7 @@ class GameStateTreePanel(project: Project, toolWindow: ToolWindow) : JPanel(Bord
 
     private fun navigate(id: IdName, target: NavigationTarget) {
         // Fire-and-forget over the Ext; the backend runs the reverse lookup + editor jump and answers
-        // whether a target resolved (a miss is logged loudly backend-side, D-11).
+        // whether a target resolved (a miss is logged loudly backend-side).
         model.navigate.start(lifetime, NavigationRequest(id, target))
     }
 

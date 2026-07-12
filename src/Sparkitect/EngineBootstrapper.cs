@@ -40,6 +40,7 @@ public class EngineBootstrapper
         Log.Information("Sparkitect engine starting up");
 
         var bootstrapper = new EngineBootstrapper();
+        Exception? primaryFailure = null;
 
         try
         {
@@ -52,11 +53,21 @@ public class EngineBootstrapper
             Log.Information("Enter Root State");
             bootstrapper.EnterRootState();
         }
-        finally
+        catch (Exception ex)
         {
-            Log.Information("Cleaning up resources");
-            bootstrapper.CleanUp();
+            // Do not resume: the process boundary is terminal from here. The primary runtime cause
+            // is captured and preserved through shutdown rather than being replaced by a later
+            // cleanup-phase exception (the classic try/finally exception-shadowing gotcha).
+            primaryFailure = ex;
+            Log.Fatal(ex, "Unhandled runtime failure; entering process-boundary shutdown");
         }
+
+        Log.Information("Cleaning up resources");
+        var shutdownFailures = bootstrapper.CleanUp();
+
+        var boundaryException = BuildBoundaryException(primaryFailure, shutdownFailures);
+        if (boundaryException is not null)
+            throw boundaryException;
     }
 
     private void EnterRootState()
@@ -164,15 +175,79 @@ public class EngineBootstrapper
     }
 
     /// <summary>
-    /// Cleans up resources when the engine shuts down
+    /// Runs the process-boundary shutdown sequence: attempts terminal state unwind (if a game state
+    /// manager was resolved), root container disposal (if the container was built), and logger flush,
+    /// in that order. Every step is attempted regardless of an earlier step's failure; a step whose
+    /// prerequisite object was never created is skipped as unsafe rather than attempted. Returns every
+    /// failure observed, in attempt order, for the caller to preserve alongside the primary cause.
     /// </summary>
-    public void CleanUp()
+    public IReadOnlyList<Exception> CleanUp()
     {
-        Log.Information("Disposing core container");
-        _coreContainer?.Dispose();
-        
-        // Flush any remaining logs
-        Log.Information("Shutting down logger");
-        Log.CloseAndFlush();
+        return RunBoundarySequence(
+            hasGameStateManager: _gameStateManager is not null,
+            attemptTerminalUnwind: () => _gameStateManager!.Shutdown(),
+            hasCoreContainer: _coreContainer is not null,
+            attemptRootCleanup: () => _coreContainer!.Dispose(),
+            attemptLoggerFlush: () => Log.CloseAndFlush());
+    }
+
+    /// <summary>
+    /// Pure boundary-collector algorithm: attempts each step exactly once in order, skipping a step
+    /// whose prerequisite is absent (unsafe to attempt) while still continuing the remaining,
+    /// unrelated steps. Never rethrows - failures are captured and returned instead of interrupting
+    /// the sequence, so a later step's exception can never shadow an earlier one. The logger cannot
+    /// be trusted to report its own flush failure, so that one alone is also written to
+    /// <paramref name="stderr"/> (defaults to <see cref="Console.Error"/>; injectable for tests).
+    /// </summary>
+    internal static IReadOnlyList<Exception> RunBoundarySequence(
+        bool hasGameStateManager,
+        Action attemptTerminalUnwind,
+        bool hasCoreContainer,
+        Action attemptRootCleanup,
+        Action attemptLoggerFlush,
+        TextWriter? stderr = null)
+    {
+        var failures = new List<Exception>();
+
+        if (hasGameStateManager)
+            Attempt(attemptTerminalUnwind, "Terminal state unwind failed.", failures);
+
+        if (hasCoreContainer)
+            Attempt(attemptRootCleanup, "Root container cleanup failed.", failures);
+
+        // Always attempted last and unconditionally: diagnostics are worthless if nothing got flushed.
+        Attempt(attemptLoggerFlush, "Logger flush failed.", failures, stderr ?? Console.Error);
+
+        return failures;
+    }
+
+    private static void Attempt(Action action, string failureMessage, List<Exception> failures, TextWriter? stderr = null)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            failures.Add(new InvalidOperationException(failureMessage, ex));
+            stderr?.WriteLine($"FATAL: {failureMessage} {ex}");
+        }
+    }
+
+    /// <summary>
+    /// Composes the final process-boundary outcome: the primary runtime failure (if any) stays first
+    /// and is never replaced by a shutdown-phase failure; shutdown failures are appended, and the
+    /// whole set is flattened into one aggregate. Returns null only when nothing failed.
+    /// </summary>
+    internal static Exception? BuildBoundaryException(Exception? primaryFailure, IReadOnlyList<Exception> shutdownFailures)
+    {
+        if (primaryFailure is null && shutdownFailures.Count == 0)
+            return null;
+
+        var causes = primaryFailure is null
+            ? shutdownFailures
+            : new[] { primaryFailure }.Concat(shutdownFailures).ToArray();
+
+        return new AggregateException("Sparkitect engine terminated unsuccessfully.", causes).Flatten();
     }
 }

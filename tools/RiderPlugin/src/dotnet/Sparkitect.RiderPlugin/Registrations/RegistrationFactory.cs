@@ -98,7 +98,7 @@ public static class RegistrationFactory
         var literal = FindRegistrationLiteral(owner.Type, key.Value);
         if (literal == null)
         {
-            // Fail-loud (D-07b): a C# owner is present but no matching id-string literal was found on it — the
+            // Fail-loud: a C# owner is present but no matching id-string literal was found on it — the
             // symptom of an unresolvable cross-registry alias leaf. Distinct from the legitimate "no C# owner"
             // return above (a resource-owned leaf navigated via RegisteredFromReader). Return contract is
             // unchanged (still null); the failure is merely made diagnosable. No alias representation encoded.

@@ -16,7 +16,7 @@ namespace Sparkitect.RiderPlugin.Debug;
 /// Composes the shipped registration machinery unchanged: the string triple rebuilds the same
 /// <see cref="RegistrationKey" /> a registration attribute would, the key resolves the leaf id property in
 /// the module's symbol scope, and the leaf's <c>[RegisteredFrom]</c> owner edge yields both the
-/// registration site (context menu, D-10) and the type declaration (double-click, D-10). The wire carries
+/// registration site (context menu) and the type declaration (double-click). The wire carries
 /// strings, never the numeric Identification (runtime-assigned, un-mappable in the plugin).
 /// </summary>
 public static class DebugNavigation
@@ -60,14 +60,14 @@ public static class DebugNavigation
     }
 
     /// <summary>
-    /// The registration-site target (D-10 context menu): the id-string literal / resource entry-key anchor,
+    /// The registration-site target (context menu): the id-string literal / resource entry-key anchor,
     /// resolved through the shared factory unchanged. Null when no registration anchors the leaf.
     /// </summary>
     public static DocumentRange? ResolveRegistrationSite(IProperty leaf) =>
         RegistrationFactory.FromLeaf(leaf)?.NavigableTarget;
 
     /// <summary>
-    /// The type-declaration target (D-10 double-click): the <c>[RegisteredFrom]</c> owner type's declaration,
+    /// The type-declaration target (double-click): the <c>[RegisteredFrom]</c> owner type's declaration,
     /// read through the shared reader unchanged. Null for a resource-file owner (no C# type coordinate).
     /// </summary>
     public static DocumentRange? ResolveTypeDeclaration(IProperty leaf)

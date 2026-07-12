@@ -58,8 +58,8 @@ public static class SparkresYamlAnchors
     }
 
     /// <summary>
-    /// The owning mod's csproj <c>&lt;ModId&gt;</c> for a scalar's resource file — the reliable mod source
-    /// (D-40), replacing the brittle project-name guess. Returns null when no <c>&lt;ModId&gt;</c> is set.
+    /// The owning mod's csproj <c>&lt;ModId&gt;</c> for a scalar's resource file — the reliable mod source,
+    /// replacing the brittle project-name guess. Returns null when no <c>&lt;ModId&gt;</c> is set.
     /// </summary>
     public static string? GetModId(ITreeNode node) => SparkitectModId.Resolve(node);
 

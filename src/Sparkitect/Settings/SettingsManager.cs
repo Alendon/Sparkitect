@@ -46,6 +46,39 @@ public sealed class SettingsManager : ISettingsManager
         _orderStale = true;
     }
 
+    /// <inheritdoc/>
+    public void RemoveSource(Identification id)
+    {
+        if (!_sources.ContainsKey(id))
+        {
+            return;
+        }
+
+        // Snapshot every subscriber's resolved value while the source and its order are still intact,
+        // so removal that changes an effective value still dispatches (mirrors Set<T>'s before/after
+        // diff; a source cannot be tied to individual settings, so the check runs over all subscribers).
+        ProcessRegisteredSources();
+        var before = _subscriptions.Keys.ToDictionary(settingId => settingId, ResolveBoxed);
+
+        _sources.Remove(id);
+        if (_userSourceId == id)
+        {
+            _userSourceId = null;
+        }
+
+        _orderStale = true;
+        ProcessRegisteredSources();
+
+        foreach (var (settingId, beforeValue) in before)
+        {
+            var afterValue = ResolveBoxed(settingId);
+            if (!Equals(beforeValue, afterValue))
+            {
+                Dispatch(settingId, afterValue);
+            }
+        }
+    }
+
     // Playback half of record-and-playback registration: RegisterSource only records, so a registration
     // pass may record sources whose required order targets register later in the same pass. Invoked by
     // the settings module's frame-enter function and lazily by the first resolve — whichever runs first
@@ -163,6 +196,24 @@ public sealed class SettingsManager : ISettingsManager
         }
 
         throw new InvalidOperationException($"Setting '{id}' is not declared.");
+    }
+
+    // Type-erased mirror of Resolve<T> used only for the before/after diff on source removal, where no
+    // static T is available. Falls back to the boxed declared default via reflection over the boxed
+    // SettingDefinition<T> — an infrequent teardown-only path, not the hot resolve loop.
+    private object? ResolveBoxed(Identification id)
+    {
+        foreach (var sourceId in _orderedSourceIds)
+        {
+            if (_sources.TryGetValue(sourceId, out var source) && source.TryGet(id, out var value) && value is not null)
+            {
+                return value;
+            }
+        }
+
+        return _declarations.TryGetValue(id, out var declaration)
+            ? declaration.GetType().GetProperty(nameof(SettingDefinition<object>.Default))?.GetValue(declaration)
+            : null;
     }
 
     private void Dispatch(Identification id, object? value)

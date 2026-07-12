@@ -285,7 +285,15 @@ internal class IdentificationManager : IIdentificationManager
             return false;
         }
 
-        return idDict.Remove(objectIdString);
+        var removed = idDict.Remove(objectIdString);
+
+        // Prune the emptied (mod, category) bucket so it stops reading as a live dependent.
+        // UnregisterCategory/UnregisterMod gate on key presence in _objectIds, so a lingering
+        // empty bucket blocks symmetric category/mod teardown (F-02 shader_module teardown).
+        if (removed && idDict.Count == 0)
+            _objectIds.Remove(key);
+
+        return removed;
     }
 
     public IEnumerable<ushort> GetRegisteredMods()

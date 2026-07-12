@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Serilog;
 
 namespace Sparkitect.DI.Container;
 
@@ -77,24 +76,17 @@ internal sealed class FactoryContainer<TKey, TBase> : IFactoryContainer<TKey, TB
         if (_disposed)
             return;
 
-        // Dispose all disposable factories
-        foreach (var factory in _factories.Values)
-        {
-            if (factory is IDisposable disposable)
-            {
-                try
-                {
-                    disposable.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    // Log disposal exceptions but don't let them propagate to prevent cascading failures
-                    Log.Error(ex, "Exception disposing {TypeName}", factory.GetType().Name);
-                }
-            }
-        }
-
-        _factories.Clear();
+        // Terminalize ownership before attempting disposal: a repeat call is always a no-op,
+        // even if this attempt fails partway through.
         _disposed = true;
+
+        try
+        {
+            DisposalAggregator.DisposeAll(nameof(FactoryContainer<TKey, TBase>), _factories.Values);
+        }
+        finally
+        {
+            _factories.Clear();
+        }
     }
 }

@@ -55,7 +55,7 @@ object ExplorerModel : Ext(SolutionModel.Solution) {
         // Detail-pane supply for the ONE demo deep-inspector: given a shader-module entry's (mod, category,
         // item) triple, the backend resolves its registration source file and returns the text (nullable =
         // unresolved). Strictly scoped to the shader-module category; every other category's detail viewer
-        // is SEEDED (the extensible frontend slot is designed for them but none are built here).
+        // is not built (the extensible frontend slot is designed for them but none are built here).
         call("loadShaderSource", DebugLibrary.IdName, string.nullable)
     }
 }

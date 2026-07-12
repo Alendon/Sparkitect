@@ -19,7 +19,7 @@ public sealed partial class InputModule : TransitiveStateModule, IHasIdentificat
 {
     /// <inheritdoc/>
     public override IReadOnlyList<Identification> Requires =>
-        [StateModuleID.Sparkitect.Core, StateModuleID.Sparkitect.Event];
+        [StateModuleID.Sparkitect.Event];
 
     /// <summary>Processes <see cref="ActionRegistry"/> registrations on state entry (D-26 registry precedent).</summary>
     [TransitionFunction("process_action_registry_up")]

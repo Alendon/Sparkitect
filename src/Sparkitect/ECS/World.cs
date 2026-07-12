@@ -1,4 +1,3 @@
-using Serilog;
 using Sparkitect.ECS.Capabilities;
 using Sparkitect.ECS.Storage;
 using Sparkitect.ECS.Systems;
@@ -103,16 +102,16 @@ internal class World : IWorld
         _generations[handle.Index]++;
         _freeSlots.Push(handle.Index);
 
+        // Single-resource operation: bookkeeping is already preserved above, so the original
+        // failure surfaces unwrapped rather than being caught and swallowed via logging.
         try
         {
             storage.Dispose();
         }
-        catch (Exception ex)
+        finally
         {
-            Log.Error(ex, "Exception disposing storage at slot {Index}", handle.Index);
+            NotifyFilters();
         }
-
-        NotifyFilters();
     }
 
     /// <summary>
@@ -179,13 +178,18 @@ internal class World : IWorld
     }
 
     /// <summary>
-    /// Disposes all active storages with per-item exception handling.
-    /// After disposal, all handles are stale and double-dispose is safe.
+    /// Terminalizes ownership and attempts to dispose every active storage exactly once.
+    /// After disposal, all handles are stale and double-dispose is safe. If one or more storages
+    /// fail to dispose, every sibling is still attempted and the failures are reported together
+    /// as an <see cref="AggregateException"/> rather than swallowed.
     /// </summary>
+    /// <exception cref="AggregateException">One or more storages failed to dispose.</exception>
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+
+        List<Exception>? failures = null;
 
         for (int i = 0; i < _highWaterMark; i++)
         {
@@ -202,8 +206,14 @@ internal class World : IWorld
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Exception disposing storage at slot {Index}", i);
+                (failures ??= []).Add(
+                    new InvalidOperationException($"Storage at slot {i} failed to dispose.", ex));
             }
+        }
+
+        if (failures is not null)
+        {
+            throw new AggregateException("One or more storages failed to dispose.", failures);
         }
     }
 

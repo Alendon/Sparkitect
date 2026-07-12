@@ -41,15 +41,16 @@
               implementationClass="org.jetbrains.yaml.YAMLSyntaxHighlighterFactory" />
 
     <!--
-      The GSM Debugger tool window (58.1). Always available (D-08) with no availability condition so its
+      The GSM Debugger tool window. Always available with no availability condition so its
       explanatory empty states are reachable whether or not a Sparkitect game is running; the factory
-      binds the republished DebugToolWindowModel Ext (backend is the sole game-channel client, Pitfall 5).
+      binds the republished DebugToolWindowModel Ext. The backend is the sole game-channel client —
+      the frontend never opens the game SocketWire directly.
     -->
     <toolWindow id="Sparkitect Game State" anchor="bottom"
               factoryClass="sparkitect.riderplugin.debug.GameStateToolWindowFactory" />
 
     <!--
-      The Sparkitect Explorer tool window (D-08). Always available (no availability condition) so its
+      The Sparkitect Explorer tool window. Always available (no availability condition) so its
       empty states are reachable regardless of solution contents; the factory binds the Solution-scoped
       ExplorerModel Ext (backend PSI walk), a sibling of the Game State window. Anchored left as a
       browsable structure explorer distinct from the bottom-anchored runtime Game State inspector.

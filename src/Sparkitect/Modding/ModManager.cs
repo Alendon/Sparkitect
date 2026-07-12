@@ -782,7 +782,7 @@ internal class ModManager : IModManager
         return assembly;
     }
 
-    private static void LoadModDependencies(ModManifest modManifest, ZipArchive archive, string modId,
+    internal static void LoadModDependencies(ModManifest modManifest, ZipArchive archive, string modId,
         SparkitectLoadContext loadContext)
     {
         foreach (var requiredAssembly in modManifest.RequiredAssemblies)
@@ -790,8 +790,8 @@ internal class ModManager : IModManager
             var assemblyEntry = archive.GetEntry($"lib/{requiredAssembly}");
             if (assemblyEntry == null)
             {
-                Log.Warning("Required assembly {Assembly} not found in mod {ModId}", requiredAssembly, modId);
-                continue;
+                throw new InvalidOperationException(
+                    $"Required assembly {requiredAssembly} not found in mod {modId}");
             }
 
             using var assemblyStream = assemblyEntry.Open();
@@ -805,15 +805,8 @@ internal class ModManager : IModManager
             pdbStream?.CopyTo(pdbMemoryStream!);
             pdbMemoryStream?.Seek(0, SeekOrigin.Begin);
 
-            try
-            {
-                loadContext.CachedLoadFromStream(assemblyMemoryStream, pdbMemoryStream);
-                Log.Debug("Loaded required assembly: {Assembly} for mod {ModId}", requiredAssembly, modId);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error loading required assembly {Assembly} for mod {ModId}", requiredAssembly, modId);
-            }
+            loadContext.CachedLoadFromStream(assemblyMemoryStream, pdbMemoryStream);
+            Log.Debug("Loaded required assembly: {Assembly} for mod {ModId}", requiredAssembly, modId);
         }
     }
 
