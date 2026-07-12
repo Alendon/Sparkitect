@@ -92,7 +92,7 @@ public class ModManagerTests
 }
 
 /// <summary>
-/// Covers <see cref="ModManager.LoadModDependencies"/> (F-04): a mod's <see cref="ModManifest.RequiredAssemblies"/>
+/// Covers <see cref="ModManager.LoadModDependencies"/>: a mod's <see cref="ModManifest.RequiredAssemblies"/>
 /// are hard dependencies, unlike <see cref="ModRelationship.IsOptional"/> mod-to-mod relationships. Both
 /// failure paths (entry absent from the archive; entry present but fails to load) must stop the load at
 /// origin rather than warn/log and continue silently — mirrors the existing throw shape in

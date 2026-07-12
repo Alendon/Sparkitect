@@ -24,7 +24,9 @@ namespace Sparkitect.RiderPlugin.Navigation;
 /// destination is a single deterministic target, never a multi-target popup. Backend handler over the
 /// existing RD protocol, matched by id to the frontend action; no rdgen model.
 /// </summary>
+#pragma warning disable CS0612 // ActionAttribute(id, text) is the sole explicit-id ctor; SDK-obsolete but required to id-match the frontend action (mirrors GoToOrderTargetAction).
 [Action("GoToRegistration", "Registration")]
+#pragma warning restore CS0612
 public sealed class GoToRegistrationAction : IExecutableAction
 {
     public bool Update(IDataContext context, ActionPresentation presentation, DelegateUpdate nextUpdate)

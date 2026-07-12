@@ -8,7 +8,7 @@ description: Resources built from CPU data plus references to other resources, d
 
 A composite resource is CPU data plus references to resources that already exist — it has no backing provider and no manager of its own. A leaf resource owns a piece of GPU backing (a buffer, an image); a composite threads leaves and other composites together and may carry CPU metadata alongside them.
 
-The [`EntityListResource`](xref:SpaceInvadersMod.Resources.EntityListResource) is a composite: a device buffer reference plus an element count.
+The `EntityListResource` (from `SpaceInvadersMod`) is a composite: a device buffer reference plus an element count.
 
 ```csharp
 public sealed class EntityListResource(BufferResource buffer)

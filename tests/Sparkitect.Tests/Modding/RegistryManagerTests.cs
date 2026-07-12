@@ -11,7 +11,7 @@ using Sparkitect.Modding;
 namespace Sparkitect.Tests.Modding;
 
 /// <summary>
-/// F-02 regression: registry category lifecycle must survive add -> remove -> add oscillation without a
+/// Regression: registry category lifecycle must survive add -> remove -> add oscillation without a
 /// duplicate-category collision, and teardown must fail loudly if entries were not fully reversed first.
 /// Drives the real <see cref="RegistryManager"/> add/remove path rather than asserting registry storage.
 /// </summary>
@@ -113,7 +113,7 @@ public class RegistryManagerTests
         lifecycle.RemoveModuleRegistries(TestModuleId);
         await Assert.That(identification.IsCategoryRegistered(TestRegistry.RegistryIdentifier)).IsFalse();
 
-        // Re-add must not throw "Category already registered" -- this is the F-02 regression: a removed
+        // Re-add must not throw "Category already registered" -- this is the regression: a removed
         // module registry used to retain its category, colliding on reactivation.
         await Assert.That(() => lifecycle.AddModuleRegistries(TestModuleId, container)).ThrowsNothing();
         await Assert.That(identification.IsCategoryRegistered(TestRegistry.RegistryIdentifier)).IsTrue();

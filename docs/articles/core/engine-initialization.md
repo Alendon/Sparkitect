@@ -40,7 +40,7 @@ The bootstrapper creates the Root container with the eight [`CoreModule`](xref:S
 | [`IModManager`](xref:Sparkitect.Modding.IModManager) | Mod discovery and loading |
 | [`IRegistryManager`](xref:Sparkitect.Modding.IRegistryManager) | Registry lifecycle |
 | [`IGameStateManager`](xref:Sparkitect.GameState.IGameStateManager) | State transitions and main loop |
-| [`IModDIService`](xref:Sparkitect.DI.IModDIService) | DI container creation for mods |
+| [`IDIService`](xref:Sparkitect.DI.IDIService) | DI container creation for mods |
 | [`IStatelessFunctionManager`](xref:Sparkitect.Stateless.IStatelessFunctionManager) | Function discovery, sorting, and wrapper creation |
 
 ### 3. CLI Argument Processing

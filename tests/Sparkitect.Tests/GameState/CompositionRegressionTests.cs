@@ -12,7 +12,7 @@ namespace Sparkitect.Tests.GameState;
 /// Fixture modelling notes:
 /// - The RenderGraph -> Vulkan direct edge is modelled explicitly (RenderGraph.Requires = [Vulkan]) and
 ///   is load-bearing: no state lists Vulkan directly, so Vulkan must arrive purely through the closure.
-/// - Under the F-09 model Core is NOT in any module's Requires — it arrives purely from the root ambient
+/// - Core is NOT in any module's Requires — it arrives purely from the root ambient
 ///   seed { Core, Settings, UserSettings }, proving ambient behaviour at the composer level.
 /// - Event/Input/Windowing/Vulkan carry the real current-fixpoint edges (Event: none; Vulkan/Windowing/
 ///   Input: Event only), and WindowInput is modelled with its real Requires = [Event] plus its real

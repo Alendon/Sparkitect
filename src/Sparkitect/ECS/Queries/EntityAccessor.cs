@@ -7,7 +7,7 @@ namespace Sparkitect.ECS.Queries;
 /// <summary>
 /// Per-entity accessor exposing component data via dictionary lookup.
 /// Holds pointers to component data for the current chunk and the entity's index within it.
-/// The dictionary lookup per Get/GetRef is acceptable for v1.4 -- v1.5 SG eliminates it.
+/// The dictionary lookup per Get/GetRef is an accepted tradeoff here; a source-generated typed accessor could eliminate it.
 /// </summary>
 [PublicAPI]
 public readonly unsafe struct EntityAccessor

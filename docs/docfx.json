@@ -26,7 +26,7 @@
       },
       {
         "files": ["**.{md,yml}"],
-        "exclude": ["filterConfig.yml"]
+        "exclude": ["filterConfig.yml", "_site/**"]
       }
     ],
     "resource": [

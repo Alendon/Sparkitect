@@ -206,7 +206,7 @@ Discoverable extension points the engine instantiates during container-construct
 
 Three usage shapes ride on this substrate:
 
-- **Bare entrypoints** — mods author classes implementing `IConfigurationEntrypoint<TDiscoveryAttribute>` directly. Examples: <xref:Sparkitect.Graphics.Vulkan.IVulkanInstanceConfigurator>, <xref:Sparkitect.GameState.IEntryStateSelector>.
+- **Bare entrypoints** — mods author classes implementing `IConfigurationEntrypoint<TDiscoveryAttribute>` directly. Example: <xref:Sparkitect.GameState.IEntryStateSelector>.
 - **SG-emitted entrypoints** — generators (Registry, StateModuleService, etc.) emit entrypoint classes in response to attributes like `[StateService]`, `[Registry]`, `[RegistryMethod]`. Mods do not write these directly.
 - **Metadata entrypoints** — see the utility-infrastructure article (forthcoming).
 
@@ -220,7 +220,7 @@ public interface IConfigurationEntrypoint<TDiscoveryAttribute> : IBaseConfigurat
 }
 ```
 
-Entrypoints must be non-abstract classes with a parameterless constructor — types that fail this requirement are logged and silently skipped. Dependencies arrive via the per-subsystem `Configure(...)` / `Select(...)` method parameters (e.g., [`ICoreContainerBuilder`](xref:Sparkitect.DI.ICoreContainerBuilder)), not constructor injection.
+Entrypoints must be non-abstract classes with a parameterless constructor — types that fail this requirement are logged and silently skipped. Dependencies arrive via the per-subsystem `Configure(...)` / `Select(...)` method parameters (e.g., [`ICoreContainerBuilder`](xref:Sparkitect.DI.Container.ICoreContainerBuilder)), not constructor injection.
 
 ### Entrypoint Ordering
 

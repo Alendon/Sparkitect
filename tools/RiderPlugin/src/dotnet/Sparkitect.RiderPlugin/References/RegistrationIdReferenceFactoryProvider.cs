@@ -17,7 +17,7 @@ public class RegistrationIdReferenceFactoryProvider : IReferenceProviderFactory
 {
     public RegistrationIdReferenceFactoryProvider(Lifetime lifetime)
     {
-        Changed = new Signal<IReferenceProviderFactory>(lifetime, GetType().FullName);
+        Changed = new Signal<IReferenceProviderFactory>(GetType().FullName);
     }
 
     public IReferenceFactory? CreateFactory(IPsiSourceFile sourceFile, IFile file, IWordIndex? wordIndex)

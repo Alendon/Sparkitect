@@ -35,7 +35,7 @@ public sealed class RegistryShapeAnalyzerTests : AnalyzerTestBase<RegistryShapeA
     [Test]
     public async Task RetiredArityCapDiagnostic_NoLongerExists()
     {
-        // F-08: the retired arity-cap diagnostic (the descriptor that guarded a since-lifted
+        // The retired arity-cap diagnostic (the descriptor that guarded a since-lifted
         // one-type-parameter limit) must not remain as a supported/release-tracked descriptor
         // with no reachable report path -- the field itself must be gone, not merely unreported.
         var retiredField = typeof(RegistryDiagnostics).GetField("TooManyTypeParameters",

@@ -289,7 +289,7 @@ internal class IdentificationManager : IIdentificationManager
 
         // Prune the emptied (mod, category) bucket so it stops reading as a live dependent.
         // UnregisterCategory/UnregisterMod gate on key presence in _objectIds, so a lingering
-        // empty bucket blocks symmetric category/mod teardown (F-02 shader_module teardown).
+        // empty bucket blocks symmetric category/mod teardown (surfaced by shader_module teardown).
         if (removed && idDict.Count == 0)
             _objectIds.Remove(key);
 

@@ -199,7 +199,7 @@ public class SettingsManagerTests
         await Assert.That(fires).IsEqualTo(0);
     }
 
-    // F-03 regression: setting-source teardown must remove the exact source, recompute the effective
+    // Regression: setting-source teardown must remove the exact source, recompute the effective
     // order, and notify subscribers when removal changes the resolved value. Previously the generated
     // teardown path had no removal effect at all -- the source lingered after "unregistration".
 

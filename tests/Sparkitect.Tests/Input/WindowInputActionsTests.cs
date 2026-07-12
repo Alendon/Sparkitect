@@ -247,7 +247,7 @@ public class WindowInputActionsTests
             bareId, new ActionDescription<float, Key>(Key.Space))).Throws<InvalidOperationException>();
     }
 
-    // F-05 regression: unregistering an action must compact its live instance out of the
+    // Regression: unregistering an action must compact its live instance out of the
     // type-bunched binding-group storage (not just detach it from combination), so it stops being
     // sampled/evaluated every frame and storage stays bounded across register/unregister cycles.
 

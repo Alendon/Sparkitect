@@ -735,7 +735,7 @@ public class IdentificationManagerTests
 
     // Teardown-symmetry Tests: reversing every object under a mod/category must let the
     // category (and mod) unregister cleanly. Empty (mod, category) buckets left behind by
-    // UnregisterObject would otherwise read as live dependents (F-02 shader_module teardown).
+    // UnregisterObject would otherwise read as live dependents (surfaced by shader_module teardown).
 
     [Test]
     public async Task UnregisterCategory_AfterAllObjectsUnregistered_Succeeds()
